@@ -2,7 +2,18 @@ import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  project: {
+    chooseDirectory: (): Promise<string | null> =>
+      electronAPI.ipcRenderer.invoke('project:choose-directory'),
+    create: (input: { name: string; parentDirectory: string }): Promise<{ projectPath: string }> =>
+      electronAPI.ipcRenderer.invoke('project:create', input)
+  },
+  page: {
+    create: (input: { projectPath: string; name: string; fileName: string }): Promise<void> =>
+      electronAPI.ipcRenderer.invoke('page:create', input)
+  }
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
