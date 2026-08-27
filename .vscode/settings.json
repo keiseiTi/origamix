@@ -8,5 +8,5 @@
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "cSpell.words": ["heroui", "typebox"]
+  "cSpell.words": ["heroui", "origamix", "typebox"]
 }

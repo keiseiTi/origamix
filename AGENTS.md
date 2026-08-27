@@ -10,16 +10,17 @@
 ## Engineering rules
 
 - Use TypeScript in strict mode and pnpm for dependency management and scripts.
-- Use Less for application styling. Do not add Tailwind utility classes to React markup.
+- Use TailwindCSS for application styling. Prefer Tailwind utility classes in React markup; `tailwind-merge` and `clsx` may be used to compose conditional classes.
 - Use `lucide-react` for interface icons. Do not add hand-written SVG icons.
-- Use HeroUI as the only full workbench component library.
+- Use `@heroui/react` for every foundational UI component it provides. Do not recreate available HeroUI components with native elements or another component library.
 - Keep IPC domain-specific and typed; do not expose raw `ipcRenderer`, filesystem, shell, or arbitrary paths to the Renderer.
 - Validate IPC inputs in Main before filesystem operations. Keep project writes within a user-selected directory.
 - Preserve existing user changes and avoid unrelated rewrites.
 
 ## Interface rules
 
-- Default to the compact GitHub dark palette used by Codex-like developer tools.
+- Default to the light application theme and keep custom surfaces aligned with HeroUI theme tokens.
+- Every page and UI state must support both light and dark modes. When developing or changing a page, implement and verify both themes in the same change.
 - Follow the current GPT desktop information architecture: collapsible project sidebar, lightweight page header, focused conversation/editor content, and a fixed composer.
 - Keep interaction states accessible with labels, keyboard focus, hover feedback, disabled states, empty states, and actionable errors.
 

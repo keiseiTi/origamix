@@ -1,5 +1,9 @@
+@import 'tailwindcss';
+@import '@heroui/styles';
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family:
     Inter,
     ui-sans-serif,
@@ -8,13 +12,21 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #f0f6fc;
-  background: #0d1117;
+  color: #202123;
+  background: #ffffff;
   font-synthesis: none;
 }
+
+:root.dark {
+  color-scheme: dark;
+  color: #f4f4f5;
+  background: #09090b;
+}
+
 * {
   box-sizing: border-box;
 }
+
 html,
 body,
 #root {
@@ -22,14 +34,13 @@ body,
   height: 100%;
   margin: 0;
 }
+
 button,
 input,
 textarea {
   font: inherit;
 }
-button {
-  color: inherit;
-}
+
 ::selection {
-  background: fade(#2f81f7, 40%);
+  background: rgb(37 99 235 / 24%);
 }

@@ -1,34 +1,8 @@
-import { Button, Input } from '@heroui/react'
-import {
-  ChevronLeft,
-  Eye,
-  FilePlus2,
-  Folder,
-  FolderPlus,
-  LayoutPanelLeft,
-  MessageSquareText,
-  PanelLeft,
-  Plus,
-  Send,
-  Settings,
-  Sparkles,
-  X
-} from 'lucide-react'
-import { useState } from 'react'
-import './app.less'
-
-interface PageItem {
-  id: string
-  name: string
-  fileName: string
-}
-interface ProjectItem {
-  id: string
-  name: string
-  path?: string
-  pages: PageItem[]
-}
-type ModalState = { type: 'project' } | { type: 'page'; projectId: string } | null
+import { Button, TextArea, ToggleButton, ToggleButtonGroup } from '@heroui/react'
+import { Eye, FilePlus2, LayoutPanelLeft, PanelLeft, Plus, Send, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Sidebar, type AppTheme, type PageItem, type ProjectItem } from './components/sidebar'
+import { CreateProjectModal } from './components/sidebar/mod/create-project-modal'
 
 const initialProjects: ProjectItem[] = [
   {
@@ -42,31 +16,11 @@ const initialProjects: ProjectItem[] = [
   { id: 'project_demo', name: '演示项目', pages: [] }
 ]
 
-function Dialog({
-  title,
-  children,
-  onClose
-}: {
-  title: string
-  children: React.ReactNode
-  onClose: () => void
-}): React.JSX.Element {
-  return (
-    <div
-      className="dialog-backdrop"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <section className="dialog" role="dialog" aria-modal="true" aria-label={title}>
-        <header>
-          <h2>{title}</h2>
-          <button className="icon-button" onClick={onClose} aria-label="关闭">
-            <X size={16} />
-          </button>
-        </header>
-        {children}
-      </section>
-    </div>
-  )
+const themeStorageKey = 'origamix-theme'
+
+function getInitialTheme(): AppTheme {
+  const storedTheme = localStorage.getItem(themeStorageKey)
+  return storedTheme === 'dark' ? 'dark' : 'light'
 }
 
 function App(): React.JSX.Element {
@@ -75,244 +29,178 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'chat' | 'edit'>('chat')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarPeek, setSidebarPeek] = useState(false)
-  const [modal, setModal] = useState<ModalState>(null)
-  const [projectName, setProjectName] = useState('')
-  const [directory, setDirectory] = useState('')
-  const [pageName, setPageName] = useState('')
-  const [fileName, setFileName] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true)
+  const [theme, setTheme] = useState<AppTheme>(getInitialTheme)
+  const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false)
   const selectedPage = projects
     .flatMap((project) => project.pages)
     .find((page) => page.id === selectedPageId)
   const sidebarVisible = !sidebarCollapsed || sidebarPeek
 
-  const resetDialog = (): void => {
-    setModal(null)
-    setProjectName('')
-    setDirectory('')
-    setPageName('')
-    setFileName('')
-    setError(null)
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.theme = theme
+    root.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem(themeStorageKey, theme)
+  }, [theme])
+
+  const collapseSidebar = (): void => {
+    setSidebarCollapsed(true)
+    setSidebarPeek(false)
+    setSidebarPeekEnabled(false)
   }
-  const chooseDirectory = async (): Promise<void> => {
-    const selected = await window.api.project.chooseDirectory()
-    if (selected) setDirectory(selected)
+
+  const pinSidebarOpen = (): void => {
+    setSidebarCollapsed(false)
+    setSidebarPeek(false)
+    setSidebarPeekEnabled(true)
   }
-  const createProject = async (): Promise<void> => {
-    if (!projectName.trim() || !directory) return setError('请填写项目名称并选择生成地址。')
-    setIsSubmitting(true)
-    setError(null)
-    try {
-      const result = await window.api.project.create({
-        name: projectName.trim(),
-        parentDirectory: directory
-      })
-      setProjects((current) => [
-        ...current,
-        {
-          id: `project_${crypto.randomUUID()}`,
-          name: projectName.trim(),
-          path: result.projectPath,
-          pages: []
-        }
-      ])
-      resetDialog()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '项目创建失败')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-  const createPage = async (projectId: string): Promise<void> => {
-    if (!pageName.trim() || !fileName.trim()) return setError('请填写页面名称和文件名称。')
-    const project = projects.find((item) => item.id === projectId)
-    setIsSubmitting(true)
-    setError(null)
-    try {
-      if (project?.path)
-        await window.api.page.create({
-          projectPath: project.path,
-          name: pageName.trim(),
-          fileName: fileName.trim()
-        })
-      const page = {
-        id: `page_${crypto.randomUUID()}`,
-        name: pageName.trim(),
-        fileName: fileName.trim()
-      }
-      setProjects((current) =>
-        current.map((project) =>
-          project.id === projectId ? { ...project, pages: [...project.pages, page] } : project
-        )
+
+  const addPage = (projectId: string, page: PageItem): void => {
+    setProjects((current) =>
+      current.map((project) =>
+        project.id === projectId ? { ...project, pages: [...project.pages, page] } : project
       )
-      setSelectedPageId(page.id)
-      resetDialog()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '页面创建失败')
-    } finally {
-      setIsSubmitting(false)
-    }
+    )
+    setSelectedPageId(page.id)
   }
 
   return (
-    <main className="app-shell">
-      {sidebarCollapsed && !sidebarPeek && (
-        <div className="sidebar-reveal-zone" onMouseEnter={() => setSidebarPeek(true)} />
-      )}
+    <main
+      className="flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
+      data-theme={theme}
+    >
       {sidebarVisible && (
-        <aside
-          className={`sidebar ${sidebarCollapsed ? 'sidebar--floating' : ''}`}
-          onMouseLeave={() => sidebarCollapsed && setSidebarPeek(false)}
+        <Sidebar
+          projects={projects}
+          selectedPageId={selectedPageId}
+          isTemporary={sidebarCollapsed}
+          theme={theme}
+          onCollapse={collapseSidebar}
+          onPin={pinSidebarOpen}
+          onTemporaryClose={() => setSidebarPeek(false)}
+          onThemeChange={setTheme}
+          onProjectCreated={(project) => setProjects((current) => [...current, project])}
+          onPageCreated={addPage}
+          onSelectPage={(pageId) => {
+            setSelectedPageId(pageId)
+            setActiveTab('chat')
+          }}
+        />
+      )}
+      {sidebarCollapsed && (
+        <Button
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          className="fixed top-4 left-4 z-10 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          onMouseEnter={() => sidebarPeekEnabled && setSidebarPeek(true)}
+          onMouseLeave={() => setSidebarPeekEnabled(true)}
+          onPress={pinSidebarOpen}
+          aria-label="展开侧边栏"
         >
-          <header className="sidebar__header">
-            <strong>
-              <span className="brand-mark">
-                <Sparkles size={14} />
-              </span>
-              Origamix
-            </strong>
-            <button
-              className="icon-button"
-              onClick={() => {
-                setSidebarCollapsed(true)
-                setSidebarPeek(false)
-              }}
-              aria-label="收起侧边栏"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          </header>
-          <button className="new-project" onClick={() => setModal({ type: 'project' })}>
-            <FolderPlus size={15} />
-            新建项目
-          </button>
-          <div className="sidebar__label">项目</div>
-          <nav className="project-tree">
-            {projects.map((project) => (
-              <section className="project" key={project.id}>
-                <div className="project__row">
-                  <Folder size={14} />
-                  <span>{project.name}</span>
-                  <button
-                    className="project__add"
-                    onClick={() => setModal({ type: 'page', projectId: project.id })}
-                    aria-label={`在 ${project.name} 中新建页面`}
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                {project.pages.map((page) => (
-                  <button
-                    key={page.id}
-                    onClick={() => {
-                      setSelectedPageId(page.id)
-                      setActiveTab('chat')
-                    }}
-                    className={`page-row ${selectedPageId === page.id ? 'is-active' : ''}`}
-                  >
-                    <MessageSquareText size={13} />
-                    <span>{page.name}</span>
-                  </button>
-                ))}
-              </section>
-            ))}
-          </nav>
-          <button className="settings-button">
-            <Settings size={16} />
-            <span>设置</span>
-          </button>
-        </aside>
+          <PanelLeft size={17} />
+        </Button>
       )}
 
-      <section className="workspace">
-        <header className="workspace__header">
-          <div className="workspace__title">
-            {sidebarCollapsed && (
-              <button
-                className="icon-button sidebar-open"
-                onMouseEnter={() => setSidebarPeek(true)}
-                onClick={() => setSidebarCollapsed(false)}
-                aria-label="展开侧边栏"
-              >
-                <PanelLeft size={16} />
-              </button>
-            )}
-            <span>{selectedPage?.name ?? '主页'}</span>
-          </div>
-          {selectedPage && (
-            <div className="workspace-tabs">
-              <button
-                className={activeTab === 'chat' ? 'is-active' : ''}
-                onClick={() => setActiveTab('chat')}
-              >
-                对话
-              </button>
-              <button
-                className={activeTab === 'edit' ? 'is-active' : ''}
-                onClick={() => setActiveTab('edit')}
-              >
-                编辑
-              </button>
+      <section className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950">
+        {selectedPage && (
+          <header className="relative grid h-15 min-h-15 grid-cols-[1fr_auto_1fr] items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800">
+            <div className={`flex items-center font-semibold ${sidebarCollapsed ? 'pl-9' : ''}`}>
+              <span>{selectedPage.name}</span>
             </div>
-          )}
-          <Button size="sm" variant="secondary" isDisabled={!selectedPage}>
-            <Eye size={14} />
-            预览
-          </Button>
-        </header>
+            <ToggleButtonGroup
+              aria-label="页面模式"
+              selectionMode="single"
+              disallowEmptySelection
+              selectedKeys={new Set([activeTab])}
+              onSelectionChange={(keys) => {
+                const selectedMode = [...keys][0]
+                if (selectedMode === 'chat' || selectedMode === 'edit') setActiveTab(selectedMode)
+              }}
+              size="sm"
+              className="h-8 min-w-34"
+            >
+              <ToggleButton id="chat" className="min-w-16 text-xs">
+                对话
+              </ToggleButton>
+              <ToggleButton id="edit" className="min-w-16 text-xs">
+                编辑
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Button className="justify-self-end gap-1.5" size="sm" variant="secondary">
+              <Eye size={14} />
+              <span>预览</span>
+            </Button>
+          </header>
+        )}
         {!selectedPage ? (
-          <div className="empty-state">
-            <div className="empty-state__icon">
+          <div className="flex flex-1 flex-col items-center justify-center pb-12 text-center">
+            <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl border border-zinc-200 bg-zinc-50 text-blue-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-blue-400">
               <Sparkles size={22} />
             </div>
-            <h1>现在开始 AI Schema 旅程吧</h1>
-            <p>从左侧选择页面，或新建一个项目开始。</p>
-            <Button onPress={() => setModal({ type: 'project' })}>
+            <h1 className="m-0 text-xl font-semibold tracking-tight">现在开始 AI Schema 旅程吧</h1>
+            <p className="mt-2 mb-5 text-zinc-500 dark:text-zinc-400">
+              从左侧选择页面，或新建一个项目开始。
+            </p>
+            <Button className="gap-1.5" onPress={() => setIsHomeProjectModalOpen(true)}>
               <Plus size={14} />
               新建项目
             </Button>
           </div>
         ) : activeTab === 'chat' ? (
-          <div className="chat-view">
-            <div className="chat-thread">
-              <div className="agent-message">
-                <span className="agent-avatar">
+          <div className="flex min-h-0 flex-1 flex-col items-center">
+            <div className="w-[min(780px,calc(100%-64px))] flex-1 py-16 pb-7">
+              <div className="flex gap-3 leading-relaxed">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
                   <Sparkles size={14} />
                 </span>
                 <div>
-                  <strong>准备好修改“{selectedPage.name}”</strong>
-                  <p>告诉我你希望这个页面包含什么。我会先生成候选 Schema，通过校验后再更新页面。</p>
+                  <strong className="text-sm">准备好修改“{selectedPage.name}”</strong>
+                  <p className="mt-1 max-w-155 text-zinc-600 dark:text-zinc-300">
+                    告诉我你希望这个页面包含什么。我会先生成候选 Schema，通过校验后再更新页面。
+                  </p>
                 </div>
               </div>
             </div>
-            <div className="composer">
-              <textarea aria-label="发送消息" placeholder="描述你想创建或修改的页面" />
-              <footer>
-                <button className="context-button">
+            <div className="w-[min(780px,calc(100%-64px))] rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)]">
+              <TextArea
+                variant="secondary"
+                className="block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none"
+                aria-label="发送消息"
+                placeholder="描述你想创建或修改的页面"
+              />
+              <footer className="flex items-center justify-between">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"
+                >
                   <LayoutPanelLeft size={14} />
                   页面上下文
-                </button>
-                <button className="send-button" aria-label="发送">
+                </Button>
+                <Button isIconOnly size="sm" className="h-7 min-h-7 w-7 min-w-7" aria-label="发送">
                   <Send size={15} />
-                </button>
+                </Button>
               </footer>
             </div>
-            <p className="composer-note">AI 可能会出错，请检查生成结果。</p>
+            <p className="mt-2 mb-2.5 text-[10px] text-zinc-400 dark:text-zinc-500">
+              AI 可能会出错，请检查生成结果。
+            </p>
           </div>
         ) : (
-          <div className="editor-view">
-            <div className="editor-toolbar">
-              <span>
+          <div className="flex min-h-0 flex-1 flex-col bg-zinc-50 p-4 dark:bg-zinc-900">
+            <div className="flex h-8 items-center justify-between px-2.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <span className="flex items-center gap-1.5">
                 <FilePlus2 size={14} />
                 {selectedPage.fileName}.schema.json
               </span>
               <span>已保存</span>
             </div>
-            <div className="canvas">
-              <div className="canvas__empty">
+            <div className="grid min-h-0 flex-1 place-items-center rounded-lg border border-zinc-200 bg-white [background-image:radial-gradient(#e2e2e2_1px,transparent_1px)] [background-size:16px_16px] dark:border-zinc-700 dark:bg-zinc-950 dark:[background-image:radial-gradient(#3f3f46_1px,transparent_1px)]">
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-7 text-zinc-500 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
                 <LayoutPanelLeft size={24} />
-                <strong>页面编辑画布</strong>
+                <strong className="text-zinc-900 dark:text-zinc-100">页面编辑画布</strong>
                 <span>Schema Runtime 将在此处渲染。</span>
               </div>
             </div>
@@ -320,71 +208,11 @@ function App(): React.JSX.Element {
         )}
       </section>
 
-      {modal?.type === 'project' && (
-        <Dialog title="新建项目" onClose={resetDialog}>
-          <div className="dialog__body">
-            <label>
-              项目名称
-              <Input
-                value={projectName}
-                onChange={(event) => setProjectName(event.target.value)}
-                placeholder="例如：客户管理系统"
-                autoFocus
-              />
-            </label>
-            <label>
-              生成地址
-              <div className="path-picker">
-                <Input value={directory} readOnly placeholder="选择项目生成目录" />
-                <Button size="sm" variant="secondary" onPress={chooseDirectory}>
-                  选择…
-                </Button>
-              </div>
-            </label>
-            {error && <p className="form-error">{error}</p>}
-          </div>
-          <footer className="dialog__footer">
-            <Button size="sm" variant="secondary" onPress={resetDialog}>
-              取消
-            </Button>
-            <Button size="sm" onPress={createProject} isDisabled={isSubmitting}>
-              {isSubmitting ? '创建中…' : '创建项目'}
-            </Button>
-          </footer>
-        </Dialog>
-      )}
-      {modal?.type === 'page' && (
-        <Dialog title="新建页面" onClose={resetDialog}>
-          <div className="dialog__body">
-            <label>
-              页面名称
-              <Input
-                value={pageName}
-                onChange={(event) => setPageName(event.target.value)}
-                placeholder="例如：客户列表"
-                autoFocus
-              />
-            </label>
-            <label>
-              文件名称
-              <Input
-                value={fileName}
-                onChange={(event) => setFileName(event.target.value)}
-                placeholder="例如：customer-list"
-              />
-            </label>
-            {error && <p className="form-error">{error}</p>}
-          </div>
-          <footer className="dialog__footer">
-            <Button size="sm" variant="secondary" onPress={resetDialog}>
-              取消
-            </Button>
-            <Button size="sm" isDisabled={isSubmitting} onPress={() => createPage(modal.projectId)}>
-              {isSubmitting ? '创建中…' : '创建页面'}
-            </Button>
-          </footer>
-        </Dialog>
-      )}
+      <CreateProjectModal
+        isOpen={isHomeProjectModalOpen}
+        onClose={() => setIsHomeProjectModalOpen(false)}
+        onCreated={(project) => setProjects((current) => [...current, project])}
+      />
     </main>
   )
 }
