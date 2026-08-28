@@ -12,6 +12,26 @@ const api = {
   page: {
     create: (input: { projectPath: string; name: string; fileName: string }): Promise<void> =>
       electronAPI.ipcRenderer.invoke('page:create', input)
+  },
+  settings: {
+    getModel: (): Promise<{
+      provider: 'deepseek'
+      model: 'deepseek-v4-flash'
+      hasApiKey: boolean
+    }> => electronAPI.ipcRenderer.invoke('settings:model:get'),
+    saveModel: (input: {
+      provider: 'deepseek'
+      model: 'deepseek-v4-flash'
+      apiKey?: string
+    }): Promise<{ hasApiKey: boolean }> =>
+      electronAPI.ipcRenderer.invoke('settings:model:save', input),
+    getProfile: (): Promise<{ name: string; iconBackground: string }> =>
+      electronAPI.ipcRenderer.invoke('settings:profile:get'),
+    saveProfile: (input: {
+      name: string
+      iconBackground: string
+    }): Promise<{ name: string; iconBackground: string }> =>
+      electronAPI.ipcRenderer.invoke('settings:profile:save', input)
   }
 }
 

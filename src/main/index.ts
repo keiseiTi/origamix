@@ -1,6 +1,6 @@
-import { app, shell, BrowserWindow, ipcMain, screen, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen, dialog, safeStorage } from 'electron'
 import { join } from 'path'
-import { mkdir, writeFile, access } from 'fs/promises'
+import { mkdir, writeFile, access, readFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -51,6 +51,104 @@ interface CreateProjectInput {
 }
 
 const createdProjectRoots = new Set<string>()
+
+interface StoredModelSettings {
+  provider: 'deepseek'
+  model: 'deepseek-v4-flash'
+  encryptedApiKey?: string
+}
+
+interface UserProfileSettings {
+  name: string
+  iconBackground: string
+}
+
+const allowedIconBackgrounds = new Set([
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#dc2626',
+  '#d97706',
+  '#059669',
+  '#475569'
+])
+
+function modelSettingsPath(): string {
+  return join(app.getPath('userData'), 'model-settings.json')
+}
+
+function userProfileSettingsPath(): string {
+  return join(app.getPath('userData'), 'user-profile.json')
+}
+
+async function readUserProfile(): Promise<UserProfileSettings> {
+  try {
+    const value = JSON.parse(
+      await readFile(userProfileSettingsPath(), 'utf8')
+    ) as UserProfileSettings
+    return {
+      name: value.name?.trim().slice(0, 40) || 'Origamix 用户',
+      iconBackground: allowedIconBackgrounds.has(value.iconBackground)
+        ? value.iconBackground
+        : '#2563eb'
+    }
+  } catch {
+    return { name: 'Origamix 用户', iconBackground: '#2563eb' }
+  }
+}
+
+async function saveUserProfile(input: {
+  name: string
+  iconBackground: string
+}): Promise<UserProfileSettings> {
+  const name = input.name?.trim()
+  if (!name || name.length > 40) throw new Error('用户名称应为 1–40 个字符')
+  if (!allowedIconBackgrounds.has(input.iconBackground)) throw new Error('不支持该头像背景色')
+  const profile = { name, iconBackground: input.iconBackground }
+  await writeFile(userProfileSettingsPath(), `${JSON.stringify(profile, null, 2)}\n`, {
+    mode: 0o600
+  })
+  return profile
+}
+
+async function readModelSettings(): Promise<StoredModelSettings> {
+  try {
+    const value = JSON.parse(await readFile(modelSettingsPath(), 'utf8')) as StoredModelSettings
+    return {
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      encryptedApiKey: value.encryptedApiKey
+    }
+  } catch {
+    return { provider: 'deepseek', model: 'deepseek-v4-flash' }
+  }
+}
+
+async function saveModelSettings(input: {
+  provider: string
+  model: string
+  apiKey?: string
+}): Promise<{ hasApiKey: boolean }> {
+  if (input.provider !== 'deepseek' || input.model !== 'deepseek-v4-flash') {
+    throw new Error('暂不支持该模型配置')
+  }
+  const current = await readModelSettings()
+  const apiKey = input.apiKey?.trim()
+  if (!current.encryptedApiKey && !apiKey) throw new Error('请输入 DeepSeek API Key')
+  if (apiKey && apiKey.length < 8) throw new Error('API Key 格式无效')
+  if (apiKey && !safeStorage.isEncryptionAvailable())
+    throw new Error('当前系统无法安全保存 API Key')
+
+  const encryptedApiKey = apiKey
+    ? safeStorage.encryptString(apiKey).toString('base64')
+    : current.encryptedApiKey
+  await writeFile(
+    modelSettingsPath(),
+    `${JSON.stringify({ provider: 'deepseek', model: 'deepseek-v4-flash', encryptedApiKey }, null, 2)}\n`,
+    { mode: 0o600 }
+  )
+  return { hasApiKey: Boolean(encryptedApiKey) }
+}
 
 async function createProjectTemplate(input: CreateProjectInput): Promise<{ projectPath: string }> {
   const name = input.name.trim()
@@ -147,6 +245,17 @@ app.whenReady().then(() => {
     createProjectTemplate(input)
   )
   ipcMain.handle('page:create', (_event, input) => createPageTemplate(input))
+  ipcMain.handle('settings:model:get', async () => {
+    const settings = await readModelSettings()
+    return {
+      provider: settings.provider,
+      model: settings.model,
+      hasApiKey: Boolean(settings.encryptedApiKey)
+    }
+  })
+  ipcMain.handle('settings:model:save', (_event, input) => saveModelSettings(input))
+  ipcMain.handle('settings:profile:get', () => readUserProfile())
+  ipcMain.handle('settings:profile:save', (_event, input) => saveUserProfile(input))
 
   createWindow()
 

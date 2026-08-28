@@ -3,6 +3,7 @@ import {
   Folder,
   FolderPlus,
   MessageSquareText,
+  CircleUserRound,
   PanelLeft,
   PanelLeftClose,
   Plus,
@@ -11,7 +12,6 @@ import {
 import { useState } from 'react'
 import { CreatePageModal } from './mod/create-page-modal'
 import { CreateProjectModal } from './mod/create-project-modal'
-import { SettingsModal } from './mod/settings-modal'
 
 export type AppTheme = 'light' | 'dark'
 
@@ -28,15 +28,20 @@ export interface ProjectItem {
   pages: PageItem[]
 }
 
+export interface UserProfile {
+  name: string
+  iconBackground: string
+}
+
 interface SidebarProps {
   projects: ProjectItem[]
   selectedPageId: string | null
   isTemporary: boolean
-  theme: AppTheme
+  userProfile: UserProfile
   onCollapse: () => void
   onPin: () => void
   onTemporaryClose: () => void
-  onThemeChange: (theme: AppTheme) => void
+  onOpenSettings: () => void
   onProjectCreated: (project: ProjectItem) => void
   onPageCreated: (projectId: string, page: PageItem) => void
   onSelectPage: (pageId: string) => void
@@ -46,18 +51,17 @@ export function Sidebar({
   projects,
   selectedPageId,
   isTemporary,
-  theme,
+  userProfile,
   onCollapse,
   onPin,
   onTemporaryClose,
-  onThemeChange,
+  onOpenSettings,
   onProjectCreated,
   onPageCreated,
   onSelectPage
 }: SidebarProps): React.JSX.Element {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [pageProjectId, setPageProjectId] = useState<string | null>(null)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const pageProject = projects.find((project) => project.id === pageProjectId) ?? null
 
   const keepSidebarOpen = (): void => {
@@ -76,7 +80,7 @@ export function Sidebar({
 
   const openSettingsModal = (): void => {
     keepSidebarOpen()
-    setIsSettingsOpen(true)
+    onOpenSettings()
   }
 
   return (
@@ -152,11 +156,17 @@ export function Sidebar({
         </nav>
         <Button
           variant="ghost"
-          className="mt-auto h-9 w-full justify-center gap-2 text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+          className="mt-auto h-10 w-full justify-start gap-2.5 px-2 text-zinc-600 hover:bg-white hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
           onPress={openSettingsModal}
         >
-          <Settings size={16} />
-          <span>设置</span>
+          <span
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-white shadow-sm"
+            style={{ backgroundColor: userProfile.iconBackground }}
+          >
+            <CircleUserRound size={17} />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-left">{userProfile.name}</span>
+          <Settings size={14} className="text-zinc-400" />
         </Button>
       </aside>
 
@@ -169,12 +179,6 @@ export function Sidebar({
         project={pageProject}
         onClose={() => setPageProjectId(null)}
         onCreated={onPageCreated}
-      />
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        theme={theme}
-        onThemeChange={onThemeChange}
-        onClose={() => setIsSettingsOpen(false)}
       />
     </>
   )
