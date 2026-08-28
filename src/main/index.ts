@@ -1,6 +1,16 @@
-import { app, shell, BrowserWindow, ipcMain, screen, dialog, safeStorage } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  dialog,
+  safeStorage,
+  utilityProcess,
+  type UtilityProcess
+} from 'electron'
 import { join } from 'path'
-import { mkdir, writeFile, access, readFile } from 'fs/promises'
+import { writeFile, readFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -45,12 +55,55 @@ function createWindow(): void {
   }
 }
 
-interface CreateProjectInput {
-  name: string
-  parentDirectory: string
+interface BackendConnection {
+  baseUrl: string
+  token: string
+  serviceInstanceId: string
 }
 
-const createdProjectRoots = new Set<string>()
+let backendProcess: UtilityProcess | undefined
+let backendConnection: BackendConnection | undefined
+
+async function startBackend(): Promise<BackendConnection> {
+  const serviceInstanceId = crypto.randomUUID()
+  const token = crypto.randomUUID() + crypto.randomUUID()
+  const backend = utilityProcess.fork(join(__dirname, 'server.js'))
+  backendProcess = backend
+  return new Promise<BackendConnection>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('本地服务启动超时')), 10_000)
+    backend.on('message', (message: { kind?: string; port?: number; message?: string }) => {
+      if (message.kind === 'error') {
+        clearTimeout(timeout)
+        reject(new Error(message.message ?? '本地服务启动失败'))
+        return
+      }
+      if (message.kind !== 'ready' || !message.port) return
+      clearTimeout(timeout)
+      backendConnection = {
+        baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
+        token,
+        serviceInstanceId
+      }
+      resolve(backendConnection)
+    })
+    backend.once('exit', () => {
+      backendConnection = undefined
+    })
+    backend.postMessage({
+      kind: 'initialize',
+      databasePath: join(app.getPath('userData'), 'origamix.db'),
+      desktopToken: token,
+      serviceInstanceId
+    })
+  })
+}
+
+function grantDirectory(path: string): { directoryGrantId: string; displayPath: string } {
+  if (!backendProcess) throw new Error('本地服务尚未就绪')
+  const directoryGrantId = `grant_${crypto.randomUUID()}`
+  backendProcess.postMessage({ kind: 'grant', grantId: directoryGrantId, path })
+  return { directoryGrantId, displayPath: path }
+}
 
 interface StoredModelSettings {
   provider: 'deepseek'
@@ -150,83 +203,10 @@ async function saveModelSettings(input: {
   return { hasApiKey: Boolean(encryptedApiKey) }
 }
 
-async function createProjectTemplate(input: CreateProjectInput): Promise<{ projectPath: string }> {
-  const name = input.name.trim()
-  if (!name || name.length > 80 || /[\\/:*?"<>|]/.test(name)) {
-    throw new Error('项目名称无效')
-  }
-  if (!input.parentDirectory) throw new Error('请选择生成地址')
-
-  const projectPath = join(input.parentDirectory, name)
-  try {
-    await access(projectPath)
-    throw new Error('目标目录已经存在')
-  } catch (error) {
-    if (error instanceof Error && error.message === '目标目录已经存在') throw error
-  }
-
-  await mkdir(join(projectPath, 'src', 'pages'), { recursive: true })
-  await mkdir(join(projectPath, '.origamix', 'revisions'), { recursive: true })
-  await writeFile(
-    join(projectPath, 'origamix.project.json'),
-    JSON.stringify(
-      {
-        projectId: `project_${crypto.randomUUID()}`,
-        name,
-        projectFormatVersion: '1',
-        schemaVersion: '1',
-        templateVersion: '1',
-        materialSets: [{ id: 'official', version: '1' }]
-      },
-      null,
-      2
-    )
-  )
-  await writeFile(join(projectPath, 'src', 'pages', 'registry.json'), '[]\n')
-  await writeFile(
-    join(projectPath, 'package.json'),
-    `${JSON.stringify({ name: name.toLowerCase().replace(/\s+/g, '-'), private: true, version: '0.0.0', scripts: { dev: 'vite', build: 'vite build' } }, null, 2)}\n`
-  )
-  createdProjectRoots.add(projectPath)
-  return { projectPath }
-}
-
-async function createPageTemplate(input: {
-  projectPath: string
-  name: string
-  fileName: string
-}): Promise<void> {
-  const name = input.name.trim()
-  const fileName = input.fileName.trim()
-  if (!createdProjectRoots.has(input.projectPath)) throw new Error('项目目录未获授权')
-  if (!name || name.length > 80) throw new Error('页面名称无效')
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(fileName))
-    throw new Error('文件名称仅支持小写字母、数字和连字符')
-
-  const pagePath = join(input.projectPath, 'src', 'pages', fileName)
-  try {
-    await access(pagePath)
-    throw new Error('页面文件已经存在')
-  } catch (error) {
-    if (error instanceof Error && error.message === '页面文件已经存在') throw error
-  }
-
-  const pageId = `page_${crypto.randomUUID()}`
-  await mkdir(pagePath, { recursive: false })
-  await writeFile(
-    join(pagePath, 'page.meta.json'),
-    `${JSON.stringify({ pageId, name, slug: fileName }, null, 2)}\n`
-  )
-  await writeFile(
-    join(pagePath, 'schema.json'),
-    `${JSON.stringify({ elements: { element_root: { type: 'container', props: {} } }, layout: { root: 'element_root', structure: { element_root: [] } }, flows: {}, bindElements: [], context: { globalVariables: [] }, extensions: { origamix: { schemaVersion: '1.0' } } }, null, 2)}\n`
-  )
-}
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.origamix')
 
@@ -237,14 +217,20 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  ipcMain.handle('project:choose-directory', async () => {
-    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    return result.canceled ? null : result.filePaths[0]
+  await startBackend()
+
+  ipcMain.handle('backend:get-connection', () => {
+    if (!backendConnection) throw new Error('本地服务不可用')
+    return backendConnection
   })
-  ipcMain.handle('project:create', (_event, input: CreateProjectInput) =>
-    createProjectTemplate(input)
-  )
-  ipcMain.handle('page:create', (_event, input) => createPageTemplate(input))
+  ipcMain.handle('dialog:choose-project-parent', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
+  })
+  ipcMain.handle('dialog:choose-existing-project', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
+  })
   ipcMain.handle('settings:model:get', async () => {
     const settings = await readModelSettings()
     return {
@@ -273,6 +259,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  backendProcess?.postMessage({ kind: 'shutdown' })
 })
 
 // In this file you can include the rest of your app's specific main process

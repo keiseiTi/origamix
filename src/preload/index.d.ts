@@ -4,15 +4,15 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: {
-      project: {
-        chooseDirectory: () => Promise<string | null>
-        create: (input: {
-          name: string
-          parentDirectory: string
-        }) => Promise<{ projectPath: string }>
+      backend: {
+        getConnection: () => Promise<{ baseUrl: string; token: string; serviceInstanceId: string }>
       }
-      page: {
-        create: (input: { projectPath: string; name: string; fileName: string }) => Promise<void>
+      dialog: {
+        chooseProjectParent: () => Promise<{ directoryGrantId: string; displayPath: string } | null>
+        chooseExistingProject: () => Promise<{
+          directoryGrantId: string
+          displayPath: string
+        } | null>
       }
       settings: {
         getModel: () => Promise<{

@@ -1,6 +1,7 @@
 import { Button } from '@heroui/react'
 import {
   Folder,
+  FolderOpen,
   FolderPlus,
   MessageSquareText,
   CircleUserRound,
@@ -24,7 +25,7 @@ export interface PageItem {
 export interface ProjectItem {
   id: string
   name: string
-  path?: string
+  path: string
   pages: PageItem[]
 }
 
@@ -43,6 +44,7 @@ interface SidebarProps {
   onTemporaryClose: () => void
   onOpenSettings: () => void
   onProjectCreated: (project: ProjectItem) => void
+  onOpenProject: () => void
   onPageCreated: (projectId: string, page: PageItem) => void
   onSelectPage: (pageId: string) => void
 }
@@ -57,6 +59,7 @@ export function Sidebar({
   onTemporaryClose,
   onOpenSettings,
   onProjectCreated,
+  onOpenProject,
   onPageCreated,
   onSelectPage
 }: SidebarProps): React.JSX.Element {
@@ -115,6 +118,14 @@ export function Sidebar({
         >
           <FolderPlus size={15} />
           新建项目
+        </Button>
+        <Button
+          variant="ghost"
+          className="mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900"
+          onPress={onOpenProject}
+        >
+          <FolderOpen size={15} />
+          打开项目
         </Button>
         <div className="mx-2 mt-4 mb-1.5 text-[11px] font-semibold tracking-[0.04em] text-zinc-500 uppercase dark:text-zinc-400">
           项目

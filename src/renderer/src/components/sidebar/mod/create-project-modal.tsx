@@ -1,6 +1,7 @@
 import { Button, Input, Label, Modal, TextField } from '@heroui/react'
 import { useState } from 'react'
 import type { ProjectItem } from '..'
+import { backendApi } from '../../../services/backend-api'
 
 interface CreateProjectModalProps {
   isOpen: boolean
@@ -15,36 +16,33 @@ export function CreateProjectModal({
 }: CreateProjectModalProps): React.JSX.Element {
   const [name, setName] = useState('')
   const [directory, setDirectory] = useState('')
+  const [directoryGrantId, setDirectoryGrantId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const close = (): void => {
     setName('')
     setDirectory('')
+    setDirectoryGrantId('')
     setError(null)
     onClose()
   }
 
   const chooseDirectory = async (): Promise<void> => {
-    const selected = await window.api.project.chooseDirectory()
-    if (selected) setDirectory(selected)
+    const selected = await window.api.dialog.chooseProjectParent()
+    if (selected) {
+      setDirectory(selected.displayPath)
+      setDirectoryGrantId(selected.directoryGrantId)
+    }
   }
 
   const createProject = async (): Promise<void> => {
-    if (!name.trim() || !directory) return setError('请填写项目名称并选择生成地址。')
+    if (!name.trim() || !directoryGrantId) return setError('请填写项目名称并选择生成地址。')
     setIsSubmitting(true)
     setError(null)
     try {
-      const result = await window.api.project.create({
-        name: name.trim(),
-        parentDirectory: directory
-      })
-      onCreated({
-        id: `project_${crypto.randomUUID()}`,
-        name: name.trim(),
-        path: result.projectPath,
-        pages: []
-      })
+      const project = await backendApi.projects.create({ name: name.trim(), directoryGrantId })
+      onCreated({ id: project.id, name: project.name, path: project.path, pages: [] })
       close()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '项目创建失败')

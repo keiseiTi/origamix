@@ -6,6 +6,7 @@ import { WorkspaceHeader, type WorkspaceMode } from './workspace-header'
 
 interface WorkspaceProps {
   page?: PageItem
+  projectId?: string
   mode: WorkspaceMode
   sidebarCollapsed: boolean
   onModeChange: (mode: WorkspaceMode) => void
@@ -14,6 +15,7 @@ interface WorkspaceProps {
 
 export function Workspace({
   page,
+  projectId,
   mode,
   sidebarCollapsed,
   onModeChange,
@@ -34,7 +36,14 @@ export function Workspace({
       ) : mode === 'chat' ? (
         <ChatWorkspace pageName={page.name} />
       ) : (
-        <EditorWorkspace fileName={page.fileName} />
+        projectId && (
+          <EditorWorkspace
+            key={`${projectId}:${page.id}`}
+            projectId={projectId}
+            pageId={page.id}
+            fileName={page.fileName}
+          />
+        )
       )}
     </section>
   )

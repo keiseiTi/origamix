@@ -1,6 +1,7 @@
 import { Button, Input, Label, Modal, TextField } from '@heroui/react'
 import { useState } from 'react'
 import type { PageItem, ProjectItem } from '..'
+import { backendApi } from '../../../services/backend-api'
 
 interface CreatePageModalProps {
   project: ProjectItem | null
@@ -32,19 +33,11 @@ export function CreatePageModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      if (project.path) {
-        await window.api.page.create({
-          projectPath: project.path,
-          name: name.trim(),
-          fileName: fileName.trim()
-        })
-      }
-      const page = {
-        id: `page_${crypto.randomUUID()}`,
+      const page = await backendApi.projects.createPage(project.id, {
         name: name.trim(),
-        fileName: fileName.trim()
-      }
-      onCreated(project.id, page)
+        slug: fileName.trim()
+      })
+      onCreated(project.id, { id: page.id, name: page.name, fileName: page.slug })
       close()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '页面创建失败')

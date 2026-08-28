@@ -3,15 +3,15 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 const api = {
-  project: {
-    chooseDirectory: (): Promise<string | null> =>
-      electronAPI.ipcRenderer.invoke('project:choose-directory'),
-    create: (input: { name: string; parentDirectory: string }): Promise<{ projectPath: string }> =>
-      electronAPI.ipcRenderer.invoke('project:create', input)
+  backend: {
+    getConnection: (): Promise<{ baseUrl: string; token: string; serviceInstanceId: string }> =>
+      electronAPI.ipcRenderer.invoke('backend:get-connection')
   },
-  page: {
-    create: (input: { projectPath: string; name: string; fileName: string }): Promise<void> =>
-      electronAPI.ipcRenderer.invoke('page:create', input)
+  dialog: {
+    chooseProjectParent: (): Promise<{ directoryGrantId: string; displayPath: string } | null> =>
+      electronAPI.ipcRenderer.invoke('dialog:choose-project-parent'),
+    chooseExistingProject: (): Promise<{ directoryGrantId: string; displayPath: string } | null> =>
+      electronAPI.ipcRenderer.invoke('dialog:choose-existing-project')
   },
   settings: {
     getModel: (): Promise<{
