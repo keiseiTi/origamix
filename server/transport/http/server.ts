@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import type { Static } from '@sinclair/typebox'
+import { nanoid } from 'nanoid'
 import {
   CreatePageSchema,
   CreateProjectSchema,
@@ -14,7 +15,7 @@ import type { WorkspaceRepository } from '../../repositories/workspace-repositor
 import type { ProjectService } from '../../services/project-service'
 
 function requestId(value: unknown): string {
-  return typeof value === 'string' && value.length <= 100 ? value : crypto.randomUUID()
+  return typeof value === 'string' && value.length <= 100 ? value : nanoid()
 }
 function failure(requestId: string, error: unknown): ApiResult<never> {
   return {
@@ -31,6 +32,8 @@ type CreateProject = Static<typeof CreateProjectSchema>
 type OpenProject = Static<typeof OpenProjectSchema>
 type CreatePage = Static<typeof CreatePageSchema>
 type WorkspacePatch = Static<typeof WorkspacePatchSchema>
+type WithoutChangeSetId<T> = T extends unknown ? Omit<T, 'changeSetId'> : never
+type ChangeSetRequest = WithoutChangeSetId<ChangeSet>
 type RouteInput<T> = { body: T; params: Record<string, string>; headers: Record<string, unknown> }
 
 export function createHttpServer(input: {
@@ -144,11 +147,11 @@ export function createHttpServer(input: {
   )
   server.post(
     '/api/v1/pages/:pageId/changesets',
-    route<ChangeSet>(async (request) => {
+    route<ChangeSetRequest>(async (request) => {
       const projectId = String(request.headers['x-origamix-project-id'] ?? '')
       const page = input.projects.getPage(projectId, request.params.pageId)
       const project = input.projects.getProject(projectId)
-      const changeSet = request.body
+      const changeSet = { ...request.body, changeSetId: `change_${nanoid()}` } as ChangeSet
       if (!page || !project || changeSet.pageId !== page.id) throw new Error('页面或变更集无效')
       return commitSchema(
         { projectPath: project.path, pageId: page.id, slug: page.slug },

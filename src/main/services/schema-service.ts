@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdir, open, readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
+import { nanoid } from 'nanoid'
 import type { ChangeSet, OrigamixPageSchema } from '../../shared/protocol/schema'
 import { validateChangeSet, validatePage } from '../../shared/protocol/validation'
 
@@ -32,7 +33,7 @@ export interface SchemaReadResult {
 }
 
 async function writeJsonAtomically(path: string, value: unknown): Promise<void> {
-  const temporaryPath = `${path}.${crypto.randomUUID()}.tmp`
+  const temporaryPath = `${path}.${nanoid()}.tmp`
   const handle = await open(temporaryPath, 'w', 0o600)
   try {
     await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`, 'utf8')
@@ -91,7 +92,7 @@ async function createRevision(
   parentRevisionId: string | null
 ): Promise<RevisionSnapshot> {
   const snapshot: RevisionSnapshot = {
-    revisionId: `revision_${crypto.randomUUID()}`,
+    revisionId: `revision_${nanoid()}`,
     parentRevisionId,
     source,
     createdAt: new Date().toISOString(),

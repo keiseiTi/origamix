@@ -68,7 +68,6 @@ export const backendApi = {
         projectId,
         method: 'POST',
         body: JSON.stringify({
-          changeSetId: `change_${crypto.randomUUID()}`,
           pageId,
           baseRevisionId: input.baseRevisionId,
           source: { kind: 'user' },

@@ -1,5 +1,6 @@
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { nanoid } from 'nanoid'
 import type { PageRecord, ProjectRecord } from '../../src/shared/protocol/api'
 import type { OrigamixPageSchema } from '../../src/shared/protocol/schema'
 import { validatePage } from '../../src/shared/protocol/validation'
@@ -29,7 +30,7 @@ const schemaTemplate = (): OrigamixPageSchema => ({
 })
 
 async function atomicWrite(path: string, contents: string): Promise<void> {
-  const temporary = `${path}.${crypto.randomUUID()}.tmp`
+  const temporary = `${path}.${nanoid()}.tmp`
   await writeFile(temporary, contents, { mode: 0o600 })
   await rename(temporary, path)
 }
@@ -64,7 +65,7 @@ export class ProjectService {
     } catch (error) {
       if (error instanceof Error && error.message === '目标目录已经存在') throw error
     }
-    const id = `project_${crypto.randomUUID()}`
+    const id = `project_${nanoid()}`
     await mkdir(join(path, 'src', 'pages'), { recursive: true })
     await mkdir(join(path, '.origamix', 'revisions'), { recursive: true })
     await atomicWrite(
@@ -95,7 +96,7 @@ export class ProjectService {
     } catch (error) {
       if (error instanceof Error && error.message === '页面文件已经存在') throw error
     }
-    const id = `page_${crypto.randomUUID()}`
+    const id = `page_${nanoid()}`
     await mkdir(pagePath)
     await atomicWrite(
       join(pagePath, 'page.meta.json'),

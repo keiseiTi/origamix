@@ -12,6 +12,7 @@ import {
 import { join } from 'path'
 import { writeFile, readFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { nanoid } from 'nanoid'
 import icon from '../../resources/icon.png?asset'
 
 function createWindow(): void {
@@ -65,8 +66,8 @@ let backendProcess: UtilityProcess | undefined
 let backendConnection: BackendConnection | undefined
 
 async function startBackend(): Promise<BackendConnection> {
-  const serviceInstanceId = crypto.randomUUID()
-  const token = crypto.randomUUID() + crypto.randomUUID()
+  const serviceInstanceId = nanoid()
+  const token = nanoid(48)
   const backend = utilityProcess.fork(join(__dirname, 'server.js'))
   backendProcess = backend
   return new Promise<BackendConnection>((resolve, reject) => {
@@ -100,7 +101,7 @@ async function startBackend(): Promise<BackendConnection> {
 
 function grantDirectory(path: string): { directoryGrantId: string; displayPath: string } {
   if (!backendProcess) throw new Error('本地服务尚未就绪')
-  const directoryGrantId = `grant_${crypto.randomUUID()}`
+  const directoryGrantId = `grant_${nanoid()}`
   backendProcess.postMessage({ kind: 'grant', grantId: directoryGrantId, path })
   return { directoryGrantId, displayPath: path }
 }

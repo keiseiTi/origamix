@@ -26,7 +26,6 @@ parentPort.on('message', async (message: unknown) => {
   if (event.kind === 'shutdown') {
     await stop?.()
     process.exit(0)
-    return
   }
   if (
     event.kind !== 'initialize' ||
