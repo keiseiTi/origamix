@@ -74,7 +74,7 @@ export function CreatePageModal({
                   />
                 </TextField>
                 <TextField fullWidth isRequired>
-                  <Label>文件名称</Label>
+                  <Label>页面标识</Label>
                   <Input
                     name="fileName"
                     value={fileName}
@@ -86,7 +86,7 @@ export function CreatePageModal({
                 {error && <p className="text-sm text-danger">{error}</p>}
               </Modal.Body>
               <Modal.Footer>
-                <Button slot="close" variant="secondary" type="button">
+                <Button slot="close" variant="tertiary" type="button">
                   取消
                 </Button>
                 <Button type="submit" isDisabled={isSubmitting}>

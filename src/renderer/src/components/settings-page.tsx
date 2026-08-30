@@ -1,22 +1,12 @@
 import { Button, Card, Chip, Input, Radio, RadioGroup } from '@heroui/react';
-import {
-  ArrowLeft,
-  Bot,
-  Check,
-  CircleUserRound,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Moon,
-  Save,
-  Sun
-} from 'lucide-react';
+import { ArrowLeft, Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppTheme } from './sidebar';
 import type { UserProfile } from './sidebar';
 
 interface SettingsPageProps {
   theme: AppTheme;
+  sidebarCollapsed: boolean;
   userProfile: UserProfile;
   onThemeChange: (theme: AppTheme) => void;
   onProfileChange: (profile: UserProfile) => void;
@@ -25,6 +15,7 @@ interface SettingsPageProps {
 
 export function SettingsPage({
   theme,
+  sidebarCollapsed,
   userProfile,
   onThemeChange,
   onProfileChange,
@@ -112,17 +103,19 @@ export function SettingsPage({
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
       <header className="flex h-15 min-h-15 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800">
-        <Button
-          isIconOnly
-          size="sm"
-          variant="ghost"
-          className="mr-2 h-8 min-h-8 w-8 min-w-8"
-          onPress={onBack}
-          aria-label="返回工作区"
-        >
-          <ArrowLeft size={17} />
-        </Button>
-        <div>
+        {!sidebarCollapsed && (
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            className="mr-2 h-8 min-h-8 w-8 min-w-8"
+            onPress={onBack}
+            aria-label="返回工作区"
+          >
+            <ArrowLeft size={17} />
+          </Button>
+        )}
+        <div className={sidebarCollapsed ? 'pl-10' : undefined}>
           <h1 className="m-0 text-sm font-semibold">设置</h1>
           <p className="m-0 text-[11px] text-zinc-500 dark:text-zinc-400">应用外观与模型连接</p>
         </div>
@@ -143,7 +136,7 @@ export function SettingsPage({
                   className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-sm"
                   style={{ backgroundColor: iconBackground }}
                 >
-                  <CircleUserRound size={27} />
+                  <User size={27} />
                 </span>
                 <div className="min-w-0 flex-1">
                   <label className="mb-2 block text-xs font-medium">用户名称</label>

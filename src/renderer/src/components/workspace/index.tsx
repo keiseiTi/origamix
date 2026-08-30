@@ -7,6 +7,7 @@ import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 interface WorkspaceProps {
   page?: PageItem;
   projectId?: string;
+  projectName?: string;
   mode: WorkspaceMode;
   sidebarCollapsed: boolean;
   onModeChange: (mode: WorkspaceMode) => void;
@@ -16,6 +17,7 @@ interface WorkspaceProps {
 export function Workspace({
   page,
   projectId,
+  projectName,
   mode,
   sidebarCollapsed,
   onModeChange,
@@ -25,6 +27,7 @@ export function Workspace({
     <section className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950">
       {page && (
         <WorkspaceHeader
+          projectName={projectName ?? '未命名项目'}
           pageName={page.name}
           mode={mode}
           sidebarCollapsed={sidebarCollapsed}

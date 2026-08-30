@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button, Spinner } from '@heroui/react';
 import { PanelLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -10,25 +10,34 @@ import {
 } from './components/sidebar';
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
-import { Workspace, type WorkspaceMode } from './components/workspace';
+import { Workspace } from './components/workspace';
+import { useViewSession } from './store/use-view-session';
 import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
 
 function App(): React.JSX.Element {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<WorkspaceMode>('chat');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const {
+    activeTab,
+    setActiveTab,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    sidebarCollapsed: sessionSidebarCollapsed,
+    setSidebarCollapsed,
+    restoreSidebarCollapsed
+  } = useViewSession();
+  const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
   const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true);
   const [theme, setTheme] = useState<AppTheme>('light');
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Origamix 用户',
     iconBackground: '#2563eb'
   });
   const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const selectedPage = projects
     .flatMap((project) => project.pages)
     .find((page) => page.id === selectedPageId);
@@ -44,6 +53,7 @@ function App(): React.JSX.Element {
   }, [theme]);
 
   useEffect(() => {
+    let active = true;
     Promise.all([workspaceService.get(), projectsService.list()])
       .then(async ([workspace, projectRecords]) => {
         const hydrated = await Promise.all(
@@ -58,14 +68,21 @@ function App(): React.JSX.Element {
             }))
           }))
         );
+        if (!active) return;
         setProjects(hydrated);
         setSelectedPageId(workspace.activePageId);
         setTheme(workspace.theme);
-        setSidebarCollapsed(workspace.sidebarCollapsed);
+        restoreSidebarCollapsed(workspace.sidebarCollapsed);
+        setWorkspaceReady(true);
       })
-      .catch(() => undefined)
-      .finally(() => setWorkspaceReady(true));
-  }, []);
+      .catch((error: unknown) => {
+        if (!active) return;
+        setWorkspaceError(error instanceof Error ? error.message : '无法恢复工作区');
+      });
+    return () => {
+      active = false;
+    };
+  }, [restoreSidebarCollapsed]);
 
   useEffect(() => {
     if (!workspaceReady) return;
@@ -172,15 +189,37 @@ function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPage
           theme={theme}
+          sidebarCollapsed={sidebarCollapsed}
           userProfile={userProfile}
           onThemeChange={setTheme}
           onProfileChange={setUserProfile}
           onBack={() => setIsSettingsOpen(false)}
         />
+      ) : !workspaceReady ? (
+        <section
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400"
+          aria-busy={!workspaceError}
+          aria-label="恢复工作区"
+        >
+          {workspaceError ? (
+            <>
+              <p role="alert">工作区恢复失败：{workspaceError}</p>
+              <Button variant="secondary" onPress={() => window.location.reload()}>
+                重新加载
+              </Button>
+            </>
+          ) : (
+            <>
+              <Spinner aria-label="正在恢复工作区" />
+              <p role="status">正在恢复工作区…</p>
+            </>
+          )}
+        </section>
       ) : (
         <Workspace
           page={selectedPage}
           projectId={selectedProject?.id}
+          projectName={selectedProject?.name}
           mode={activeTab}
           sidebarCollapsed={sidebarCollapsed}
           onModeChange={setActiveTab}

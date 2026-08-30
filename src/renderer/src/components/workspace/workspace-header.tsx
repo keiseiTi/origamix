@@ -4,6 +4,7 @@ import { Eye } from 'lucide-react';
 export type WorkspaceMode = 'chat' | 'edit';
 
 interface WorkspaceHeaderProps {
+  projectName: string;
   pageName: string;
   mode: WorkspaceMode;
   sidebarCollapsed: boolean;
@@ -11,6 +12,7 @@ interface WorkspaceHeaderProps {
 }
 
 export function WorkspaceHeader({
+  projectName,
   pageName,
   mode,
   sidebarCollapsed,
@@ -19,7 +21,9 @@ export function WorkspaceHeader({
   return (
     <header className="relative grid h-15 min-h-15 grid-cols-[1fr_auto_1fr] items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800">
       <div className={`flex items-center font-semibold ${sidebarCollapsed ? 'pl-9' : ''}`}>
-        <span>{pageName}</span>
+        <span>
+          {projectName} - {pageName}
+        </span>
       </div>
       <ToggleButtonGroup
         aria-label="页面模式"

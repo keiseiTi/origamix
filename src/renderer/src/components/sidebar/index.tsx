@@ -4,11 +4,11 @@ import {
   FolderOpen,
   FolderPlus,
   MessageSquareText,
-  CircleUserRound,
   PanelLeft,
   PanelLeftClose,
   Plus,
-  Settings
+  Settings,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 import { CreatePageModal } from './mod/create-page-modal';
@@ -174,7 +174,7 @@ export function Sidebar({
             className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-white shadow-sm"
             style={{ backgroundColor: userProfile.iconBackground }}
           >
-            <CircleUserRound size={17} />
+            <User size={17} />
           </span>
           <span className="min-w-0 flex-1 truncate text-left">{userProfile.name}</span>
           <Settings size={14} className="text-zinc-400" />

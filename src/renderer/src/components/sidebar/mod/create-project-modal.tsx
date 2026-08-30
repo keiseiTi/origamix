@@ -1,4 +1,4 @@
-import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
+import { Button, FieldError, Form, Input, Label, Modal, TextField } from '@heroui/react';
 import { useState } from 'react';
 import type { ProjectItem } from '..';
 import { projectsService } from '../../../services/projects';
@@ -84,16 +84,20 @@ export function CreateProjectModal({
                     autoFocus
                     required
                   />
+                  <FieldError>请输入项目名称</FieldError>
                 </TextField>
                 <TextField fullWidth isRequired>
                   <Label>项目标识</Label>
                   <Input
                     name="projectCode"
                     value={code}
-                    placeholder="例如：customer-console"
+                    placeholder="请输入"
                     onChange={(event) => setCode(event.target.value)}
                     required
                   />
+                  <FieldError>
+                    必须小于或等于 214 个字符，不能包含大写字母、URL 非法字符或空格
+                  </FieldError>
                 </TextField>
                 <TextField fullWidth isRequired>
                   <Label>生成地址</Label>
@@ -106,6 +110,7 @@ export function CreateProjectModal({
                     placeholder="选择目录"
                     required
                   />
+                  <FieldError>请选择项目所在的目录</FieldError>
                 </TextField>
                 {error && <p className="text-sm text-danger">{error}</p>}
               </Modal.Body>
