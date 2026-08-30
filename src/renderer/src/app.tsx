@@ -1,6 +1,6 @@
 import { Button, Spinner } from '@heroui/react';
 import { PanelLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Sidebar,
   type AppTheme,
@@ -11,6 +11,9 @@ import {
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
 import { Workspace } from './components/workspace';
+import { WorkspaceDrawer } from './components/workspace/workspace-drawer';
+import type { EditorHandle } from './components/workspace/editor-workspace';
+import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './store/use-view-session';
 import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
@@ -38,13 +41,39 @@ function App(): React.JSX.Element {
   });
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const editorRef = useRef<EditorHandle>(null);
+  const transitionPending = useRef(false);
+  const [transitionError, setTransitionError] = useState<string | null>(null);
   const selectedPage = projects
     .flatMap((project) => project.pages)
     .find((page) => page.id === selectedPageId);
   const selectedProject = projects.find((project) =>
     project.pages.some((page) => page.id === selectedPageId)
   );
-  const sidebarVisible = !sidebarCollapsed || sidebarPeek;
+  const editing = activeTab === 'edit' && !!selectedPage && !isSettingsOpen;
+  const sidebarVisible = !editing && (!sidebarCollapsed || sidebarPeek);
+
+  const flushEditor = async (): Promise<void> => {
+    if (editorRef.current) await editorRef.current.flush();
+  };
+  const transition = async (action: () => void): Promise<void> => {
+    if (transitionPending.current) return;
+    transitionPending.current = true;
+    setTransitionError(null);
+    try {
+      await flushEditor();
+      action();
+    } catch (error) {
+      setTransitionError(error instanceof Error ? error.message : '保存失败，请重试');
+    } finally {
+      transitionPending.current = false;
+    }
+  };
+  const changeMode = async (mode: WorkspaceMode): Promise<void> =>
+    transition(() => {
+      if (mode === 'edit') collapseSidebar();
+      setActiveTab(mode);
+    });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -123,10 +152,14 @@ function App(): React.JSX.Element {
         project.id === projectId ? { ...project, pages: [...project.pages, page] } : project
       )
     );
-    setSelectedPageId(page.id);
+    void transition(() => {
+      setSelectedPageId(page.id);
+      setSidebarPeek(false);
+    });
   };
 
   const openProject = async (): Promise<void> => {
+    await flushEditor();
     const grant = await window.api.dialog.chooseExistingProject();
     if (!grant) return;
     const project = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
@@ -147,39 +180,68 @@ function App(): React.JSX.Element {
     setActiveTab('chat');
   };
 
+  const sidebar = (
+    <Sidebar
+      projects={projects}
+      selectedPageId={selectedPageId}
+      isTemporary={!editing && sidebarCollapsed}
+      userProfile={userProfile}
+      onCollapse={collapseSidebar}
+      onPin={pinSidebarOpen}
+      onTemporaryClose={() => setSidebarPeek(false)}
+      onOpenSettings={() =>
+        void transition(() => {
+          setSidebarPeek(false);
+          setIsSettingsOpen(true);
+        })
+      }
+      onProjectCreated={(project) => setProjects((current) => [...current, project])}
+      onOpenProject={() =>
+        void openProject().catch((error: unknown) =>
+          setTransitionError(error instanceof Error ? error.message : '打开失败')
+        )
+      }
+      onPageCreated={addPage}
+      onSelectPage={(pageId) =>
+        void transition(() => {
+          setSelectedPageId(pageId);
+          setSidebarPeek(false);
+        })
+      }
+    />
+  );
   return (
     <main
       className="flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
       data-theme={theme}
     >
-      {sidebarVisible && (
-        <Sidebar
-          projects={projects}
-          selectedPageId={selectedPageId}
-          isTemporary={sidebarCollapsed}
-          userProfile={userProfile}
-          onCollapse={collapseSidebar}
-          onPin={pinSidebarOpen}
-          onTemporaryClose={() => setSidebarPeek(false)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onProjectCreated={(project) => setProjects((current) => [...current, project])}
-          onOpenProject={() => void openProject()}
-          onPageCreated={addPage}
-          onSelectPage={(pageId) => {
-            setSelectedPageId(pageId);
-            setActiveTab('chat');
-          }}
-        />
+      {sidebarVisible && sidebar}
+      <WorkspaceDrawer
+        open={editing && sidebarPeek}
+        onClose={() => setSidebarPeek(false)}
+        title="项目导航"
+        side="left"
+      >
+        {sidebar}
+      </WorkspaceDrawer>
+      {transitionError && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground"
+        >
+          操作未完成：{transitionError}。草稿已保留，请重试保存。
+        </div>
       )}
-      {sidebarCollapsed && (
+      {(sidebarCollapsed || editing) && (
         <Button
           isIconOnly
           size="sm"
           variant="ghost"
           className="fixed top-4 left-4 z-10 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          onMouseEnter={() => sidebarPeekEnabled && setSidebarPeek(true)}
+          onMouseEnter={() => !editing && sidebarPeekEnabled && setSidebarPeek(true)}
           onMouseLeave={() => setSidebarPeekEnabled(true)}
-          onPress={pinSidebarOpen}
+          onPress={() => (editing ? setSidebarPeek((value) => !value) : pinSidebarOpen())}
+          aria-expanded={editing ? sidebarPeek : !sidebarCollapsed}
           aria-label="展开侧边栏"
         >
           <PanelLeft size={17} />
@@ -189,7 +251,7 @@ function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPage
           theme={theme}
-          sidebarCollapsed={sidebarCollapsed}
+          sidebarCollapsed={sidebarCollapsed || editing}
           userProfile={userProfile}
           onThemeChange={setTheme}
           onProfileChange={setUserProfile}
@@ -221,8 +283,10 @@ function App(): React.JSX.Element {
           projectId={selectedProject?.id}
           projectName={selectedProject?.name}
           mode={activeTab}
-          sidebarCollapsed={sidebarCollapsed}
-          onModeChange={setActiveTab}
+          sidebarCollapsed={sidebarCollapsed || editing}
+          editorRef={editorRef}
+          onModeChange={changeMode}
+          onBeforePreview={flushEditor}
           onCreateProject={() => setIsHomeProjectModalOpen(true)}
         />
       )}

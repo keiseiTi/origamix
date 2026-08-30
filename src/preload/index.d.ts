@@ -2,8 +2,12 @@ import { ElectronAPI } from '@electron-toolkit/preload';
 
 declare global {
   interface Window {
+    preview: { readSnapshot: () => Promise<import('../shared/page-window').PreviewSnapshot> };
     electron: ElectronAPI;
     api: {
+      window: {
+        openPage: (input: import('../shared/page-window').PageWindowInput) => Promise<void>;
+      };
       backend: {
         getConnection: () => Promise<{ baseUrl: string; token: string; serviceInstanceId: string }>;
       };

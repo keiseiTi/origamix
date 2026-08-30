@@ -3,6 +3,10 @@ import { electronAPI } from '@electron-toolkit/preload';
 
 // Custom APIs for renderer
 const api = {
+  window: {
+    openPage: (input: import('../shared/page-window').PageWindowInput): Promise<void> =>
+      electronAPI.ipcRenderer.invoke('window:open-page', input)
+  },
   backend: {
     getConnection: (): Promise<{ baseUrl: string; token: string; serviceInstanceId: string }> =>
       electronAPI.ipcRenderer.invoke('backend:get-connection')

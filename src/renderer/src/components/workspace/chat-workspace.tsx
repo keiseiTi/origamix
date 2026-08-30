@@ -1,7 +1,15 @@
 import { Button, TextArea } from '@heroui/react';
 import { LayoutPanelLeft, Send, Sparkles } from 'lucide-react';
 
-export function ChatWorkspace({ pageName }: { pageName: string }): React.JSX.Element {
+export function ChatWorkspace({
+  pageName,
+  draft,
+  onDraftChange
+}: {
+  pageName: string;
+  draft: string;
+  onDraftChange: (draft: string) => void;
+}): React.JSX.Element {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center">
       <div className="w-[min(780px,calc(100%-64px))] flex-1 py-16 pb-7">
@@ -19,6 +27,8 @@ export function ChatWorkspace({ pageName }: { pageName: string }): React.JSX.Ele
       </div>
       <div className="w-[min(780px,calc(100%-64px))] rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)]">
         <TextArea
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
           variant="secondary"
           className="block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none"
           aria-label="发送消息"

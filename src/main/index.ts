@@ -14,6 +14,7 @@ import { writeFile, readFile } from 'fs/promises';
 import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import { nanoid } from 'nanoid';
 import icon from '../../resources/icon.png?asset';
+import { registerPageWindows } from './page-windows';
 
 function createWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -240,6 +241,10 @@ app
     });
 
     await startBackend();
+    registerPageWindows(() => {
+      if (!backendConnection) throw new Error('本地服务不可用');
+      return backendConnection;
+    });
 
     ipcMain.handle('backend:get-connection', () => {
       if (!backendConnection) throw new Error('本地服务不可用');

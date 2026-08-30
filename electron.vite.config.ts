@@ -15,7 +15,17 @@ export default defineConfig({
       }
     }
   },
-  preload: {},
+  preload: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/preload/index.ts'),
+          preview: resolve('src/preload/preview.ts')
+        },
+        output: { entryFileNames: '[name].js' }
+      }
+    }
+  },
   renderer: {
     resolve: {
       alias: {
