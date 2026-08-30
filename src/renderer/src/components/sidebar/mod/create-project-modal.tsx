@@ -1,7 +1,7 @@
 import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
 import { useState } from 'react';
 import type { ProjectItem } from '..';
-import { backendApi } from '../../../services/backend-api';
+import { projectsService } from '../../../services/projects';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -44,7 +44,11 @@ export function CreateProjectModal({
     setIsSubmitting(true);
     setError(null);
     try {
-      const project = await backendApi.projects.create({ name: name.trim(), directoryGrantId });
+      const project = await projectsService.create({
+        name: name.trim(),
+        code: code.trim(),
+        directoryGrantId
+      });
       onCreated({ id: project.id, name: project.name, path: project.path, pages: [] });
       close();
     } catch (reason) {
@@ -82,11 +86,11 @@ export function CreateProjectModal({
                   />
                 </TextField>
                 <TextField fullWidth isRequired>
-                  <Label>项目编码</Label>
+                  <Label>项目标识</Label>
                   <Input
                     name="projectCode"
                     value={code}
-                    placeholder="请输入"
+                    placeholder="例如：customer-console"
                     onChange={(event) => setCode(event.target.value)}
                     required
                   />

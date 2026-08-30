@@ -1,5 +1,5 @@
-import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { PageRecord, ProjectRecord } from '../../src/shared/protocol/api';
 import type { OrigamixPageSchema } from '../../src/shared/protocol/schema';
@@ -11,6 +11,7 @@ import type { WorkspaceRepository } from '../repositories/workspace-repository';
 interface ProjectManifest {
   projectId: string;
   name: string;
+  code?: string;
   projectFormatVersion?: string;
 }
 interface RegistryItem {
@@ -35,6 +36,44 @@ async function atomicWrite(path: string, contents: string): Promise<void> {
   await rename(temporary, path);
 }
 
+function pageComponentName(slug: string): string {
+  return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
+}
+
+function pageComponentSource(name: string, slug: string): string {
+  const componentName = pageComponentName(slug);
+  return `export default function ${componentName}(): React.JSX.Element {\n  return <main><h1>${name}</h1></main>;\n}\n`;
+}
+
+function routerSource(registry: RegistryItem[]): string {
+  const imports = registry
+    .map((page) => `import ${pageComponentName(page.slug)} from './pages/${page.slug}';`)
+    .join('\n');
+  const routes = registry
+    .map(
+      (page) =>
+        `  {\n    path: '${page.slug === 'home' ? '/' : `/${page.slug}`}',\n    Component: ${pageComponentName(page.slug)}\n  }`
+    )
+    .join(',\n');
+  return `import { createBrowserRouter } from 'react-router';\n${imports}\n\nexport default createBrowserRouter([\n${routes}\n]);\n`;
+}
+
+async function templateDirectory(): Promise<string> {
+  const candidates = [
+    join(process.resourcesPath ?? '', 'template'),
+    join(process.cwd(), 'template')
+  ];
+  for (const path of candidates) {
+    try {
+      await access(path);
+      return path;
+    } catch {
+      // Continue with the next supported runtime location.
+    }
+  }
+  throw new Error('项目模板不可用');
+}
+
 export class ProjectService {
   private readonly grants = new Map<string, string>();
 
@@ -54,29 +93,76 @@ export class ProjectService {
     return path;
   }
 
-  async createProject(input: { name: string; directoryGrantId: string }): Promise<ProjectRecord> {
+  async createProject(input: {
+    name: string;
+    code: string;
+    directoryGrantId: string;
+  }): Promise<ProjectRecord> {
     const name = input.name.trim();
     if (!name || /[\\/:*?"<>|]/.test(name)) throw new Error('项目名称无效');
+    const code = input.code.trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
+      throw new Error('项目标识仅支持小写字母、数字和连字符');
+    }
     const parentPath = this.consumeGrant(input.directoryGrantId);
-    const path = join(parentPath, name);
+    const path = join(parentPath, code);
     try {
       await access(path);
       throw new Error('目标目录已经存在');
     } catch (error) {
       if (error instanceof Error && error.message === '目标目录已经存在') throw error;
     }
+    const temporaryPath = join(parentPath, `.${code}.${nanoid()}.tmp`);
     const id = `project_${nanoid()}`;
-    await mkdir(join(path, 'src', 'pages'), { recursive: true });
-    await mkdir(join(path, '.origamix', 'revisions'), { recursive: true });
-    await atomicWrite(
-      join(path, 'origamix.project.json'),
-      `${JSON.stringify({ projectId: id, name, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official', version: '1' }] }, null, 2)}\n`
-    );
-    await atomicWrite(join(path, 'src', 'pages', 'registry.json'), '[]\n');
-    await atomicWrite(
-      join(path, 'package.json'),
-      `${JSON.stringify({ name: name.toLowerCase().replace(/\s+/g, '-'), private: true, version: '0.0.0', scripts: { dev: 'vite', build: 'vite build' } }, null, 2)}\n`
-    );
+    const homePage: RegistryItem = { pageId: `page_${nanoid()}`, name: '首页', slug: 'home' };
+    try {
+      await cp(await templateDirectory(), temporaryPath, { recursive: true, errorOnExist: true });
+      await mkdir(join(temporaryPath, '.origamix', 'revisions'), { recursive: true });
+      await atomicWrite(
+        join(temporaryPath, 'origamix.project.json'),
+        `${JSON.stringify({ projectId: id, name, code, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official', version: '1' }] }, null, 2)}\n`
+      );
+      await atomicWrite(join(temporaryPath, 'README.md'), `# ${name}\n\n项目标识：\`${code}\`\n`);
+      const packageJson = JSON.parse(
+        await readFile(join(temporaryPath, 'package.json'), 'utf8')
+      ) as Record<string, unknown>;
+      await atomicWrite(
+        join(temporaryPath, 'package.json'),
+        `${JSON.stringify({ ...packageJson, name: code }, null, 2)}\n`
+      );
+      await atomicWrite(
+        join(temporaryPath, 'index.html'),
+        (await readFile(join(temporaryPath, 'index.html'), 'utf8'))
+          .replace('<html lang="en">', '<html lang="zh-CN">')
+          .replace('<title>template</title>', `<title>${name}</title>`)
+      );
+      await atomicWrite(
+        join(temporaryPath, 'src', 'pages', 'registry.json'),
+        `${JSON.stringify([homePage], null, 2)}\n`
+      );
+      await atomicWrite(
+        join(temporaryPath, 'src', 'pages', 'home', 'page.meta.json'),
+        `${JSON.stringify({ pageId: homePage.pageId, name: homePage.name, slug: homePage.slug }, null, 2)}\n`
+      );
+      const schema = schemaTemplate();
+      await atomicWrite(
+        join(temporaryPath, 'src', 'pages', 'home', 'schema.json'),
+        `${JSON.stringify(schema, null, 2)}\n`
+      );
+      await atomicWrite(
+        join(temporaryPath, 'src', 'pages', 'home', 'index.tsx'),
+        pageComponentSource(homePage.name, homePage.slug)
+      );
+      await atomicWrite(join(temporaryPath, 'src', 'router.ts'), routerSource([homePage]));
+      await initializePageSchema(
+        { projectPath: temporaryPath, pageId: homePage.pageId, slug: homePage.slug },
+        schema
+      );
+      await rename(temporaryPath, path);
+    } catch (error) {
+      await rm(temporaryPath, { recursive: true, force: true });
+      throw error;
+    }
     return this.reconcile(path);
   }
 
@@ -104,12 +190,17 @@ export class ProjectService {
     );
     const schema = schemaTemplate();
     await atomicWrite(join(pagePath, 'schema.json'), `${JSON.stringify(schema, null, 2)}\n`);
+    await atomicWrite(join(pagePath, 'index.tsx'), pageComponentSource(name, input.slug));
     await initializePageSchema({ projectPath: project.path, pageId: id, slug: input.slug }, schema);
     const registryPath = join(project.path, 'src', 'pages', 'registry.json');
     const registry = JSON.parse(await readFile(registryPath, 'utf8')) as RegistryItem[];
     await atomicWrite(
       registryPath,
       `${JSON.stringify([...registry, { pageId: id, name, slug: input.slug }], null, 2)}\n`
+    );
+    await atomicWrite(
+      join(project.path, 'src', 'router.ts'),
+      routerSource([...registry, { pageId: id, name, slug: input.slug }])
     );
     await this.reconcile(project.path);
     const page = this.projects.getPage(projectId, id);
@@ -119,13 +210,32 @@ export class ProjectService {
   }
 
   reconcile = async (path: string): Promise<ProjectRecord> => {
-    const manifest = JSON.parse(
-      await readFile(join(path, 'origamix.project.json'), 'utf8')
-    ) as ProjectManifest;
+    const manifestPath = join(path, 'origamix.project.json');
+    let manifest: ProjectManifest;
+    try {
+      manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ProjectManifest;
+    } catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
+      const directoryName = basename(path);
+      manifest = {
+        projectId: `project_${nanoid()}`,
+        name: directoryName,
+        code: directoryName,
+        projectFormatVersion: '1'
+      };
+      await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    }
     if (!manifest.projectId || !manifest.name) throw new Error('项目清单无效');
-    const registry = JSON.parse(
-      await readFile(join(path, 'src', 'pages', 'registry.json'), 'utf8')
-    ) as RegistryItem[];
+    const registryPath = join(path, 'src', 'pages', 'registry.json');
+    let registry: RegistryItem[];
+    try {
+      registry = JSON.parse(await readFile(registryPath, 'utf8')) as RegistryItem[];
+    } catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
+      await mkdir(join(path, 'src', 'pages'), { recursive: true });
+      registry = [];
+      await atomicWrite(registryPath, '[]\n');
+    }
     if (!Array.isArray(registry)) throw new Error('页面注册表无效');
     const timestamp = now();
     const pages: PageRecord[] = [];

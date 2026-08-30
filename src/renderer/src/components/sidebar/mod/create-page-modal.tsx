@@ -1,7 +1,7 @@
 import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
 import { useState } from 'react';
 import type { PageItem, ProjectItem } from '..';
-import { backendApi } from '../../../services/backend-api';
+import { projectsService } from '../../../services/projects';
 
 interface CreatePageModalProps {
   project: ProjectItem | null;
@@ -33,7 +33,7 @@ export function CreatePageModal({
     setIsSubmitting(true);
     setError(null);
     try {
-      const page = await backendApi.projects.createPage(project.id, {
+      const page = await projectsService.createPage(project.id, {
         name: name.trim(),
         slug: fileName.trim()
       });

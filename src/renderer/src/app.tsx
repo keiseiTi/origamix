@@ -11,7 +11,8 @@ import {
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
 import { Workspace, type WorkspaceMode } from './components/workspace';
-import { backendApi } from './services/backend-api';
+import { projectsService } from './services/projects';
+import { workspaceService } from './services/workspace';
 
 function App(): React.JSX.Element {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -43,14 +44,14 @@ function App(): React.JSX.Element {
   }, [theme]);
 
   useEffect(() => {
-    Promise.all([backendApi.workspace.get(), backendApi.projects.list()])
+    Promise.all([workspaceService.get(), projectsService.list()])
       .then(async ([workspace, projectRecords]) => {
         const hydrated = await Promise.all(
           projectRecords.map(async (project) => ({
             id: project.id,
             name: project.name,
             path: project.path,
-            pages: (await backendApi.projects.pages(project.id)).map((page) => ({
+            pages: (await projectsService.pages(project.id)).map((page) => ({
               id: page.id,
               name: page.name,
               fileName: page.slug
@@ -77,7 +78,7 @@ function App(): React.JSX.Element {
       theme,
       sidebarCollapsed
     };
-    void backendApi.workspace.save(workspace);
+    void workspaceService.save(workspace);
   }, [projects, selectedPageId, theme, sidebarCollapsed, workspaceReady]);
 
   useEffect(() => {
@@ -111,8 +112,8 @@ function App(): React.JSX.Element {
   const openProject = async (): Promise<void> => {
     const grant = await window.api.dialog.chooseExistingProject();
     if (!grant) return;
-    const project = await backendApi.projects.open({ directoryGrantId: grant.directoryGrantId });
-    const pages = await backendApi.projects.pages(project.id);
+    const project = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
+    const pages = await projectsService.pages(project.id);
     const result = {
       project: {
         id: project.id,

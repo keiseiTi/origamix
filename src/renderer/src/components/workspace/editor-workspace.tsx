@@ -2,7 +2,7 @@ import { Button, Input, Spinner } from '@heroui/react';
 import { FilePlus2, LayoutPanelLeft, RotateCcw, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { OrigamixPageSchema } from '../../../../shared/protocol/schema';
-import { backendApi } from '../../services/backend-api';
+import { schemaService } from '../../services/schema';
 
 interface EditorWorkspaceProps {
   projectId: string;
@@ -24,7 +24,7 @@ export function EditorWorkspace({
 
   useEffect(() => {
     let active = true;
-    backendApi.schema
+    schemaService
       .get(projectId, pageId)
       .then((result) => {
         if (!active) return;
@@ -46,7 +46,7 @@ export function EditorWorkspace({
     setIsSaving(true);
     setError(null);
     try {
-      const result = await backendApi.schema.updateProps(projectId, pageId, {
+      const result = await schemaService.updateProps(projectId, pageId, {
         baseRevisionId: revisionId,
         elementId: 'element_root',
         props: { title }
@@ -64,7 +64,7 @@ export function EditorWorkspace({
     setIsSaving(true);
     setError(null);
     try {
-      const result = await backendApi.schema.undo(projectId, pageId);
+      const result = await schemaService.undo(projectId, pageId);
       setSchema(result.schema);
       setRevisionId(result.revisionId);
       setTitle(String(result.schema.elements.element_root?.props.title ?? ''));

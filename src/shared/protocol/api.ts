@@ -44,6 +44,7 @@ export const WorkspaceSchema = Type.Object({
 
 export const CreateProjectSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
+  code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
   directoryGrantId: Type.String({ minLength: 1 })
 });
 
