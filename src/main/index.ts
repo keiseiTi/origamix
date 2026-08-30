@@ -68,33 +68,52 @@ let backendConnection: BackendConnection | undefined
 async function startBackend(): Promise<BackendConnection> {
   const serviceInstanceId = nanoid()
   const token = nanoid(48)
-  const backend = utilityProcess.fork(join(__dirname, 'server.js'))
+  const backend = utilityProcess.fork(join(__dirname, 'server.js'), [], { stdio: 'pipe' })
+
   backendProcess = backend
   return new Promise<BackendConnection>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('本地服务启动超时')), 10_000)
+    let settled = false
+    const fail = (error: Error): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      reject(error)
+    }
+    const timeout = setTimeout(() => fail(new Error('本地服务启动超时')), 10_000)
     backend.on('message', (message: { kind?: string; port?: number; message?: string }) => {
       if (message.kind === 'error') {
-        clearTimeout(timeout)
-        reject(new Error(message.message ?? '本地服务启动失败'))
+        fail(new Error(message.message ?? '本地服务启动失败'))
         return
       }
       if (message.kind !== 'ready' || !message.port) return
+      if (settled) return
+      settled = true
       clearTimeout(timeout)
       backendConnection = {
         baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
         token,
         serviceInstanceId
       }
+      console.info('[Origamix Server] 已就绪')
       resolve(backendConnection)
     })
-    backend.once('exit', () => {
+    backend.once('exit', (code) => {
       backendConnection = undefined
+      fail(new Error(`本地服务异常退出（退出码 ${code}）`))
     })
-    backend.postMessage({
-      kind: 'initialize',
-      databasePath: join(app.getPath('userData'), 'origamix.db'),
-      desktopToken: token,
-      serviceInstanceId
+    backend.stdout?.on('data', (data) => {
+      process.stdout.write(`[Server Log]: ${data.toString()}`)
+    })
+    backend.stderr?.on('data', (chunk: Buffer) => {
+      console.error(`[Origamix Server] ${chunk.toString().trim()}`)
+    })
+    backend.once('spawn', () => {
+      backend.postMessage({
+        kind: 'initialize',
+        databasePath: join(app.getPath('userData'), 'origamix.db'),
+        desktopToken: token,
+        serviceInstanceId
+      })
     })
   })
 }
@@ -207,51 +226,61 @@ async function saveModelSettings(input: {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.origamix')
+app
+  .whenReady()
+  .then(async () => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId('com.origamix')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
 
-  await startBackend()
+    await startBackend()
 
-  ipcMain.handle('backend:get-connection', () => {
-    if (!backendConnection) throw new Error('本地服务不可用')
-    return backendConnection
-  })
-  ipcMain.handle('dialog:choose-project-parent', async () => {
-    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
-  })
-  ipcMain.handle('dialog:choose-existing-project', async () => {
-    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
-    return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
-  })
-  ipcMain.handle('settings:model:get', async () => {
-    const settings = await readModelSettings()
-    return {
-      provider: settings.provider,
-      model: settings.model,
-      hasApiKey: Boolean(settings.encryptedApiKey)
-    }
-  })
-  ipcMain.handle('settings:model:save', (_event, input) => saveModelSettings(input))
-  ipcMain.handle('settings:profile:get', () => readUserProfile())
-  ipcMain.handle('settings:profile:save', (_event, input) => saveUserProfile(input))
+    ipcMain.handle('backend:get-connection', () => {
+      if (!backendConnection) throw new Error('本地服务不可用')
+      return backendConnection
+    })
+    ipcMain.handle('dialog:choose-project-parent', async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory']
+      })
+      return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
+    })
+    ipcMain.handle('dialog:choose-existing-project', async () => {
+      const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+      return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0])
+    })
+    ipcMain.handle('settings:model:get', async () => {
+      const settings = await readModelSettings()
+      return {
+        provider: settings.provider,
+        model: settings.model,
+        hasApiKey: Boolean(settings.encryptedApiKey)
+      }
+    })
+    ipcMain.handle('settings:model:save', (_event, input) => saveModelSettings(input))
+    ipcMain.handle('settings:profile:get', () => readUserProfile())
+    ipcMain.handle('settings:profile:save', (_event, input) => saveUserProfile(input))
 
-  createWindow()
+    createWindow()
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    app.on('activate', function () {
+      // On macOS it's common to re-create a window in the app when the
+      // dock icon is clicked and there are no other windows open.
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-})
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : '本地服务启动失败'
+    console.error(message)
+    dialog.showErrorBox('Origamix 无法启动', message)
+    app.quit()
+  })
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

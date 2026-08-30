@@ -1,4 +1,3 @@
-import { parentPort } from 'electron'
 import { ApplicationDatabase } from './database/database'
 import { ProjectRepository } from './repositories/project-repository'
 import { WorkspaceRepository } from './repositories/workspace-repository'
@@ -6,9 +5,16 @@ import { ProjectService } from './services/project-service'
 import { createHttpServer } from './transport/http/server'
 
 let stop: (() => Promise<void>) | undefined
-parentPort.on('message', async (message: unknown) => {
+const controlPort = process.parentPort
+
+if (!controlPort) {
+  throw new Error('Origamix Server 必须作为 Electron Utility Process 启动')
+}
+
+controlPort.on('message', async (event: { data: unknown }) => {
+  const message = event.data
   if (!message || typeof message !== 'object') return
-  const event = message as {
+  const payload = message as {
     kind?: string
     databasePath?: string
     desktopToken?: string
@@ -16,33 +22,33 @@ parentPort.on('message', async (message: unknown) => {
     grantId?: string
     path?: string
   }
-  if (event.kind === 'grant' && event.grantId && event.path) {
+  if (payload.kind === 'grant' && payload.grantId && payload.path) {
     ;(globalThis as { projectService?: ProjectService }).projectService?.registerGrant(
-      event.grantId,
-      event.path
+      payload.grantId,
+      payload.path
     )
     return
   }
-  if (event.kind === 'shutdown') {
+  if (payload.kind === 'shutdown') {
     await stop?.()
     process.exit(0)
   }
   if (
-    event.kind !== 'initialize' ||
-    !event.databasePath ||
-    !event.desktopToken ||
-    !event.serviceInstanceId
+    payload.kind !== 'initialize' ||
+    !payload.databasePath ||
+    !payload.desktopToken ||
+    !payload.serviceInstanceId
   )
     return
   try {
-    const database = new ApplicationDatabase(event.databasePath)
+    const database = new ApplicationDatabase(payload.databasePath)
     const projects = new ProjectRepository(database)
     const workspace = new WorkspaceRepository(database)
     const projectService = new ProjectService(projects, workspace)
     ;(globalThis as { projectService?: ProjectService }).projectService = projectService
     const server = createHttpServer({
-      desktopToken: event.desktopToken,
-      serviceInstanceId: event.serviceInstanceId,
+      desktopToken: payload.desktopToken,
+      serviceInstanceId: payload.serviceInstanceId,
       projects,
       workspace,
       projectService
@@ -54,13 +60,13 @@ parentPort.on('message', async (message: unknown) => {
       await server.close()
       database.close()
     }
-    process.parentPort.postMessage({
+    controlPort.postMessage({
       kind: 'ready',
       port: address.port,
-      serviceInstanceId: event.serviceInstanceId
+      serviceInstanceId: payload.serviceInstanceId
     })
   } catch (error) {
-    process.parentPort.postMessage({
+    controlPort.postMessage({
       kind: 'error',
       message: error instanceof Error ? error.message : '后台启动失败'
     })
