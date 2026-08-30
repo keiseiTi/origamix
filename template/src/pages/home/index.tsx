@@ -1,4 +1,4 @@
-function App() {
+function App(): React.JSX.Element {
   return <div>hello world</div>;
 }
 

@@ -1,10 +1,10 @@
-import { Button } from '@heroui/react'
-import { Plus, Sparkles } from 'lucide-react'
+import { Button } from '@heroui/react';
+import { Plus, Sparkles } from 'lucide-react';
 
 export function EmptyWorkspace({
   onCreateProject
 }: {
-  onCreateProject: () => void
+  onCreateProject: () => void;
 }): React.JSX.Element {
   return (
     <div className="flex flex-1 flex-col items-center justify-center pb-12 text-center">
@@ -20,5 +20,5 @@ export function EmptyWorkspace({
         新建项目
       </Button>
     </div>
-  )
+  );
 }

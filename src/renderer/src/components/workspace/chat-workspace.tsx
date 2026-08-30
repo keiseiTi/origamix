@@ -1,5 +1,5 @@
-import { Button, TextArea } from '@heroui/react'
-import { LayoutPanelLeft, Send, Sparkles } from 'lucide-react'
+import { Button, TextArea } from '@heroui/react';
+import { LayoutPanelLeft, Send, Sparkles } from 'lucide-react';
 
 export function ChatWorkspace({ pageName }: { pageName: string }): React.JSX.Element {
   return (
@@ -42,5 +42,5 @@ export function ChatWorkspace({ pageName }: { pageName: string }): React.JSX.Ele
         AI 可能会出错，请检查生成结果。
       </p>
     </div>
-  )
+  );
 }

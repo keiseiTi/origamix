@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { validateChangeSet, validatePage } from './validation'
+import { describe, expect, it } from 'vitest';
+import { validateChangeSet, validatePage } from './validation';
 
 const emptyPage = {
   elements: { element_root: { type: 'container', props: {} } },
@@ -8,29 +8,29 @@ const emptyPage = {
   bindElements: [],
   context: { globalVariables: [] },
   extensions: { origamix: { schemaVersion: '1.0' } }
-}
+};
 
 describe('page protocol validation', () => {
   it('accepts the canonical empty page', () => {
-    expect(validatePage(emptyPage)).toEqual({ valid: true, errors: [], semanticErrors: [] })
-  })
+    expect(validatePage(emptyPage)).toEqual({ valid: true, errors: [], semanticErrors: [] });
+  });
 
   it('rejects a missing root element', () => {
     const result = validatePage({
       ...emptyPage,
       layout: { ...emptyPage.layout, root: 'element_missing' }
-    })
-    expect(result.valid).toBe(false)
-    expect(result.semanticErrors[0]?.code).toBe('ROOT_NOT_FOUND')
-  })
+    });
+    expect(result.valid).toBe(false);
+    expect(result.semanticErrors[0]?.code).toBe('ROOT_NOT_FOUND');
+  });
 
   it('rejects dangling layout references', () => {
     const result = validatePage({
       ...emptyPage,
       layout: { ...emptyPage.layout, structure: { element_root: ['element_missing'] } }
-    })
-    expect(result.semanticErrors[0]?.code).toBe('LAYOUT_ELEMENT_NOT_FOUND')
-  })
+    });
+    expect(result.semanticErrors[0]?.code).toBe('LAYOUT_ELEMENT_NOT_FOUND');
+  });
 
   it('rejects layout cycles', () => {
     const result = validatePage({
@@ -43,9 +43,9 @@ describe('page protocol validation', () => {
         ...emptyPage.layout,
         structure: { element_root: ['element_child'], element_child: ['element_root'] }
       }
-    })
-    expect(result.semanticErrors[0]?.code).toBe('LAYOUT_CYCLE')
-  })
+    });
+    expect(result.semanticErrors[0]?.code).toBe('LAYOUT_CYCLE');
+  });
 
   it('accepts a replaceSchema change set', () => {
     expect(
@@ -58,6 +58,6 @@ describe('page protocol validation', () => {
         operation: 'replaceSchema',
         schema: emptyPage
       }).valid
-    ).toBe(true)
-  })
-})
+    ).toBe(true);
+  });
+});

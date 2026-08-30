@@ -1,16 +1,16 @@
-import type { PageItem } from '../sidebar'
-import { ChatWorkspace } from './chat-workspace'
-import { EditorWorkspace } from './editor-workspace'
-import { EmptyWorkspace } from './empty-workspace'
-import { WorkspaceHeader, type WorkspaceMode } from './workspace-header'
+import type { PageItem } from '../sidebar';
+import { ChatWorkspace } from './chat-workspace';
+import { EditorWorkspace } from './editor-workspace';
+import { EmptyWorkspace } from './empty-workspace';
+import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 
 interface WorkspaceProps {
-  page?: PageItem
-  projectId?: string
-  mode: WorkspaceMode
-  sidebarCollapsed: boolean
-  onModeChange: (mode: WorkspaceMode) => void
-  onCreateProject: () => void
+  page?: PageItem;
+  projectId?: string;
+  mode: WorkspaceMode;
+  sidebarCollapsed: boolean;
+  onModeChange: (mode: WorkspaceMode) => void;
+  onCreateProject: () => void;
 }
 
 export function Workspace({
@@ -46,7 +46,7 @@ export function Workspace({
         )
       )}
     </section>
-  )
+  );
 }
 
-export type { WorkspaceMode } from './workspace-header'
+export type { WorkspaceMode } from './workspace-header';

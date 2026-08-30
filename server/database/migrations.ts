@@ -1,6 +1,6 @@
 export interface Migration {
-  version: number
-  sql: string
+  version: number;
+  sql: string;
 }
 
 export const migrations: Migration[] = [
@@ -43,10 +43,10 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_agent_runs_conversation_started ON agent_runs(conversation_id, started_at);
     `
   }
-]
+];
 
 export function assertMigrationSafety(sql: string): void {
   if (/\b(foreign\s+key|references)\b/i.test(sql)) {
-    throw new Error('Migration 不能包含外键约束')
+    throw new Error('Migration 不能包含外键约束');
   }
 }

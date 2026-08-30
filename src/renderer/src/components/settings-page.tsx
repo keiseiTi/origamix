@@ -1,4 +1,4 @@
-import { Button, Card, Chip, Input, Radio, RadioGroup } from '@heroui/react'
+import { Button, Card, Chip, Input, Radio, RadioGroup } from '@heroui/react';
 import {
   ArrowLeft,
   Bot,
@@ -10,17 +10,17 @@ import {
   Moon,
   Save,
   Sun
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import type { AppTheme } from './sidebar'
-import type { UserProfile } from './sidebar'
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { AppTheme } from './sidebar';
+import type { UserProfile } from './sidebar';
 
 interface SettingsPageProps {
-  theme: AppTheme
-  userProfile: UserProfile
-  onThemeChange: (theme: AppTheme) => void
-  onProfileChange: (profile: UserProfile) => void
-  onBack: () => void
+  theme: AppTheme;
+  userProfile: UserProfile;
+  onThemeChange: (theme: AppTheme) => void;
+  onProfileChange: (profile: UserProfile) => void;
+  onBack: () => void;
 }
 
 export function SettingsPage({
@@ -30,71 +30,74 @@ export function SettingsPage({
   onProfileChange,
   onBack
 }: SettingsPageProps): React.JSX.Element {
-  const [apiKey, setApiKey] = useState('')
-  const [userName, setUserName] = useState(userProfile.name)
-  const [iconBackground, setIconBackground] = useState(userProfile.iconBackground)
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [apiKey, setApiKey] = useState('');
+  const [userName, setUserName] = useState(userProfile.name);
+  const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState<{
-    kind: 'success' | 'error'
-    message: string
-  } | null>(null)
-  const [hasSavedKey, setHasSavedKey] = useState(false)
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [status, setStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
+    kind: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [hasSavedKey, setHasSavedKey] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [status, setStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     window.api.settings
       .getModel()
       .then((settings) => active && setHasSavedKey(settings.hasApiKey))
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
-      .finally(() => active && setIsLoading(false))
+      .finally(() => active && setIsLoading(false));
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
 
   const save = async (): Promise<void> => {
-    setIsSaving(true)
-    setStatus(null)
+    setIsSaving(true);
+    setStatus(null);
     try {
       const result = await window.api.settings.saveModel({
         provider: 'deepseek',
         model: 'deepseek-v4-flash',
         apiKey: apiKey || undefined
-      })
-      setHasSavedKey(result.hasApiKey)
-      setApiKey('')
-      setStatus({ kind: 'success', message: '模型设置已安全保存。' })
+      });
+      setHasSavedKey(result.hasApiKey);
+      setApiKey('');
+      setStatus({ kind: 'success', message: '模型设置已安全保存。' });
     } catch (reason) {
-      setStatus({ kind: 'error', message: reason instanceof Error ? reason.message : '保存失败。' })
+      setStatus({
+        kind: 'error',
+        message: reason instanceof Error ? reason.message : '保存失败。'
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const saveProfile = async (): Promise<void> => {
-    setIsSavingProfile(true)
-    setProfileStatus(null)
+    setIsSavingProfile(true);
+    setProfileStatus(null);
     try {
       const profile = await window.api.settings.saveProfile({
         name: userName,
         iconBackground
-      })
-      onProfileChange(profile)
-      setUserName(profile.name)
-      setProfileStatus({ kind: 'success', message: '用户资料已保存。' })
+      });
+      onProfileChange(profile);
+      setUserName(profile.name);
+      setProfileStatus({ kind: 'success', message: '用户资料已保存。' });
     } catch (reason) {
       setProfileStatus({
         kind: 'error',
         message: reason instanceof Error ? reason.message : '保存失败。'
-      })
+      });
     } finally {
-      setIsSavingProfile(false)
+      setIsSavingProfile(false);
     }
-  }
+  };
 
   const profileColors = [
     '#2563eb',
@@ -104,7 +107,7 @@ export function SettingsPage({
     '#d97706',
     '#059669',
     '#475569'
-  ]
+  ];
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
@@ -353,5 +356,5 @@ export function SettingsPage({
         </div>
       </div>
     </section>
-  )
+  );
 }

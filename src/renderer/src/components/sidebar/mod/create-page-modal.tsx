@@ -1,12 +1,12 @@
-import { Button, Input, Label, Modal, TextField } from '@heroui/react'
-import { useState } from 'react'
-import type { PageItem, ProjectItem } from '..'
-import { backendApi } from '../../../services/backend-api'
+import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
+import { useState } from 'react';
+import type { PageItem, ProjectItem } from '..';
+import { backendApi } from '../../../services/backend-api';
 
 interface CreatePageModalProps {
-  project: ProjectItem | null
-  onClose: () => void
-  onCreated: (projectId: string, page: PageItem) => void
+  project: ProjectItem | null;
+  onClose: () => void;
+  onCreated: (projectId: string, page: PageItem) => void;
 }
 
 export function CreatePageModal({
@@ -14,37 +14,37 @@ export function CreatePageModal({
   onClose,
   onCreated
 }: CreatePageModalProps): React.JSX.Element {
-  const [name, setName] = useState('')
-  const [fileName, setFileName] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [name, setName] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const close = (): void => {
-    setName('')
-    setFileName('')
-    setError(null)
-    onClose()
-  }
+    setName('');
+    setFileName('');
+    setError(null);
+    onClose();
+  };
 
   const createPage = async (): Promise<void> => {
     if (!project || !name.trim() || !fileName.trim()) {
-      return setError('请填写页面名称和文件名称。')
+      return setError('请填写页面名称和文件名称。');
     }
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
     try {
       const page = await backendApi.projects.createPage(project.id, {
         name: name.trim(),
         slug: fileName.trim()
-      })
-      onCreated(project.id, { id: page.id, name: page.name, fileName: page.slug })
-      close()
+      });
+      onCreated(project.id, { id: page.id, name: page.name, fileName: page.slug });
+      close();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '页面创建失败')
+      setError(reason instanceof Error ? reason.message : '页面创建失败');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Modal isOpen={project !== null} onOpenChange={(open) => !open && close()}>
@@ -52,40 +52,51 @@ export function CreatePageModal({
         <Modal.Container>
           <Modal.Dialog>
             <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>新建页面</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="grid gap-4">
-              <TextField fullWidth>
-                <Label>页面名称</Label>
-                <Input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="例如：客户列表"
-                  autoFocus
-                />
-              </TextField>
-              <TextField fullWidth>
-                <Label>文件名称</Label>
-                <Input
-                  value={fileName}
-                  onChange={(event) => setFileName(event.target.value)}
-                  placeholder="例如：customer-list"
-                />
-              </TextField>
-              {error && <p className="text-sm text-danger">{error}</p>}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button slot="close" variant="secondary">
-                取消
-              </Button>
-              <Button isDisabled={isSubmitting} onPress={createPage}>
-                {isSubmitting ? '创建中…' : '创建页面'}
-              </Button>
-            </Modal.Footer>
+            <Form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createPage();
+              }}
+            >
+              <Modal.Header>
+                <Modal.Heading>新建页面</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="grid gap-4">
+                <TextField fullWidth isRequired>
+                  <Label>页面名称</Label>
+                  <Input
+                    name="pageName"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="请输入"
+                    autoFocus
+                    required
+                  />
+                </TextField>
+                <TextField fullWidth isRequired>
+                  <Label>文件名称</Label>
+                  <Input
+                    name="fileName"
+                    value={fileName}
+                    onChange={(event) => setFileName(event.target.value)}
+                    placeholder="例如：customer-list"
+                    required
+                  />
+                </TextField>
+                {error && <p className="text-sm text-danger">{error}</p>}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button slot="close" variant="secondary" type="button">
+                  取消
+                </Button>
+                <Button type="submit" isDisabled={isSubmitting}>
+                  {isSubmitting ? '创建中…' : '创建页面'}
+                </Button>
+              </Modal.Footer>
+            </Form>
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
     </Modal>
-  )
+  );
 }

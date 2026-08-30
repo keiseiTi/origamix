@@ -1,13 +1,13 @@
-import { Button, Input, Spinner } from '@heroui/react'
-import { FilePlus2, LayoutPanelLeft, RotateCcw, Save } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import type { OrigamixPageSchema } from '../../../../shared/protocol/schema'
-import { backendApi } from '../../services/backend-api'
+import { Button, Input, Spinner } from '@heroui/react';
+import { FilePlus2, LayoutPanelLeft, RotateCcw, Save } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { OrigamixPageSchema } from '../../../../shared/protocol/schema';
+import { backendApi } from '../../services/backend-api';
 
 interface EditorWorkspaceProps {
-  projectId: string
-  pageId: string
-  fileName: string
+  projectId: string;
+  pageId: string;
+  fileName: string;
 }
 
 export function EditorWorkspace({
@@ -15,65 +15,65 @@ export function EditorWorkspace({
   pageId,
   fileName
 }: EditorWorkspaceProps): React.JSX.Element {
-  const [schema, setSchema] = useState<OrigamixPageSchema | null>(null)
-  const [revisionId, setRevisionId] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [schema, setSchema] = useState<OrigamixPageSchema | null>(null);
+  const [revisionId, setRevisionId] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     backendApi.schema
       .get(projectId, pageId)
       .then((result) => {
-        if (!active) return
-        setSchema(result.schema)
-        setRevisionId(result.revisionId)
-        setTitle(String(result.schema.elements.element_root?.props.title ?? ''))
+        if (!active) return;
+        setSchema(result.schema);
+        setRevisionId(result.revisionId);
+        setTitle(String(result.schema.elements.element_root?.props.title ?? ''));
       })
       .catch(
         (reason) => active && setError(reason instanceof Error ? reason.message : '无法读取 Schema')
       )
-      .finally(() => active && setIsLoading(false))
+      .finally(() => active && setIsLoading(false));
     return () => {
-      active = false
-    }
-  }, [projectId, pageId])
+      active = false;
+    };
+  }, [projectId, pageId]);
 
   const saveTitle = async (): Promise<void> => {
-    if (!revisionId) return
-    setIsSaving(true)
-    setError(null)
+    if (!revisionId) return;
+    setIsSaving(true);
+    setError(null);
     try {
       const result = await backendApi.schema.updateProps(projectId, pageId, {
         baseRevisionId: revisionId,
         elementId: 'element_root',
         props: { title }
-      })
-      setSchema(result.schema)
-      setRevisionId(result.revisionId)
+      });
+      setSchema(result.schema);
+      setRevisionId(result.revisionId);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '保存失败')
+      setError(reason instanceof Error ? reason.message : '保存失败');
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const undo = async (): Promise<void> => {
-    setIsSaving(true)
-    setError(null)
+    setIsSaving(true);
+    setError(null);
     try {
-      const result = await backendApi.schema.undo(projectId, pageId)
-      setSchema(result.schema)
-      setRevisionId(result.revisionId)
-      setTitle(String(result.schema.elements.element_root?.props.title ?? ''))
+      const result = await backendApi.schema.undo(projectId, pageId);
+      setSchema(result.schema);
+      setRevisionId(result.revisionId);
+      setTitle(String(result.schema.elements.element_root?.props.title ?? ''));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '撤销失败')
+      setError(reason instanceof Error ? reason.message : '撤销失败');
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-zinc-50 p-4 dark:bg-zinc-900">
@@ -129,5 +129,5 @@ export function EditorWorkspace({
         ) : null}
       </div>
     </div>
-  )
+  );
 }

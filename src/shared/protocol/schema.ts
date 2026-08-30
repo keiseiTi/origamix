@@ -1,12 +1,12 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from '@sinclair/typebox';
 
-export const ElementIdSchema = Type.String({ pattern: '^element_[A-Za-z0-9_-]+$' })
-export const RevisionIdSchema = Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' })
+export const ElementIdSchema = Type.String({ pattern: '^element_[A-Za-z0-9_-]+$' });
+export const RevisionIdSchema = Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' });
 
 export const PageElementSchema = Type.Object({
   type: Type.String({ minLength: 1 }),
   props: Type.Record(Type.String(), Type.Unknown())
-})
+});
 
 export const PageSchema = Type.Object({
   elements: Type.Record(ElementIdSchema, PageElementSchema),
@@ -20,7 +20,7 @@ export const PageSchema = Type.Object({
   extensions: Type.Object({
     origamix: Type.Object({ schemaVersion: Type.Literal('1.0') })
   })
-})
+});
 
 export const ChangeSourceSchema = Type.Union([
   Type.Object({ kind: Type.Literal('user'), actorId: Type.Optional(Type.String()) }),
@@ -30,7 +30,7 @@ export const ChangeSourceSchema = Type.Union([
     messageId: Type.Optional(Type.String())
   }),
   Type.Object({ kind: Type.Literal('undo'), revisionId: RevisionIdSchema })
-])
+]);
 
 const ChangeSetBaseSchema = Type.Object({
   changeSetId: Type.String({ pattern: '^change_[A-Za-z0-9_-]+$' }),
@@ -38,12 +38,12 @@ const ChangeSetBaseSchema = Type.Object({
   baseRevisionId: RevisionIdSchema,
   source: ChangeSourceSchema,
   createdAt: Type.String({ format: 'date-time' })
-})
+});
 
 export const ReplaceSchemaChangeSet = Type.Composite([
   ChangeSetBaseSchema,
   Type.Object({ operation: Type.Literal('replaceSchema'), schema: PageSchema })
-])
+]);
 
 export const UpdateElementPropsChangeSet = Type.Composite([
   ChangeSetBaseSchema,
@@ -52,9 +52,9 @@ export const UpdateElementPropsChangeSet = Type.Composite([
     elementId: ElementIdSchema,
     props: Type.Record(Type.String(), Type.Unknown())
   })
-])
+]);
 
-export const ChangeSetSchema = Type.Union([ReplaceSchemaChangeSet, UpdateElementPropsChangeSet])
+export const ChangeSetSchema = Type.Union([ReplaceSchemaChangeSet, UpdateElementPropsChangeSet]);
 
-export type OrigamixPageSchema = Static<typeof PageSchema>
-export type ChangeSet = Static<typeof ChangeSetSchema>
+export type OrigamixPageSchema = Static<typeof PageSchema>;
+export type ChangeSet = Static<typeof ChangeSetSchema>;

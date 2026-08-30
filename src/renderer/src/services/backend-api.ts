@@ -3,23 +3,23 @@ import type {
   PageRecord,
   ProjectRecord,
   WorkspaceRecord
-} from '../../../shared/protocol/api'
-import type { OrigamixPageSchema } from '../../../shared/protocol/schema'
+} from '../../../shared/protocol/api';
+import type { OrigamixPageSchema } from '../../../shared/protocol/schema';
 
 interface Connection {
-  baseUrl: string
-  token: string
-  serviceInstanceId: string
+  baseUrl: string;
+  token: string;
+  serviceInstanceId: string;
 }
-let connection: Connection | undefined
+let connection: Connection | undefined;
 
 async function getConnection(): Promise<Connection> {
-  connection ??= await window.api.backend.getConnection()
-  return connection
+  connection ??= await window.api.backend.getConnection();
+  return connection;
 }
 
 async function request<T>(path: string, init?: RequestInit & { projectId?: string }): Promise<T> {
-  const current = await getConnection()
+  const current = await getConnection();
   const response = await fetch(`${current.baseUrl}${path}`, {
     ...init,
     headers: {
@@ -29,10 +29,10 @@ async function request<T>(path: string, init?: RequestInit & { projectId?: strin
       ...(init?.body ? { 'content-type': 'application/json' } : {}),
       ...init?.headers
     }
-  })
-  const result = (await response.json()) as ApiResult<T>
-  if (!result.ok) throw new Error(result.error.message)
-  return result.data
+  });
+  const result = (await response.json()) as ApiResult<T>;
+  if (!result.ok) throw new Error(result.error.message);
+  return result.data;
 }
 
 export const backendApi = {
@@ -83,4 +83,4 @@ export const backendApi = {
         method: 'POST'
       })
   }
-}
+};

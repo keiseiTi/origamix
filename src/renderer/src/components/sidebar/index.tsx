@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react'
+import { Button } from '@heroui/react';
 import {
   Folder,
   FolderOpen,
@@ -9,44 +9,44 @@ import {
   PanelLeftClose,
   Plus,
   Settings
-} from 'lucide-react'
-import { useState } from 'react'
-import { CreatePageModal } from './mod/create-page-modal'
-import { CreateProjectModal } from './mod/create-project-modal'
+} from 'lucide-react';
+import { useState } from 'react';
+import { CreatePageModal } from './mod/create-page-modal';
+import { CreateProjectModal } from './mod/create-project-modal';
 
-export type AppTheme = 'light' | 'dark'
+export type AppTheme = 'light' | 'dark';
 
 export interface PageItem {
-  id: string
-  name: string
-  fileName: string
+  id: string;
+  name: string;
+  fileName: string;
 }
 
 export interface ProjectItem {
-  id: string
-  name: string
-  path: string
-  pages: PageItem[]
+  id: string;
+  name: string;
+  path: string;
+  pages: PageItem[];
 }
 
 export interface UserProfile {
-  name: string
-  iconBackground: string
+  name: string;
+  iconBackground: string;
 }
 
 interface SidebarProps {
-  projects: ProjectItem[]
-  selectedPageId: string | null
-  isTemporary: boolean
-  userProfile: UserProfile
-  onCollapse: () => void
-  onPin: () => void
-  onTemporaryClose: () => void
-  onOpenSettings: () => void
-  onProjectCreated: (project: ProjectItem) => void
-  onOpenProject: () => void
-  onPageCreated: (projectId: string, page: PageItem) => void
-  onSelectPage: (pageId: string) => void
+  projects: ProjectItem[];
+  selectedPageId: string | null;
+  isTemporary: boolean;
+  userProfile: UserProfile;
+  onCollapse: () => void;
+  onPin: () => void;
+  onTemporaryClose: () => void;
+  onOpenSettings: () => void;
+  onProjectCreated: (project: ProjectItem) => void;
+  onOpenProject: () => void;
+  onPageCreated: (projectId: string, page: PageItem) => void;
+  onSelectPage: (pageId: string) => void;
 }
 
 export function Sidebar({
@@ -63,28 +63,28 @@ export function Sidebar({
   onPageCreated,
   onSelectPage
 }: SidebarProps): React.JSX.Element {
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
-  const [pageProjectId, setPageProjectId] = useState<string | null>(null)
-  const pageProject = projects.find((project) => project.id === pageProjectId) ?? null
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [pageProjectId, setPageProjectId] = useState<string | null>(null);
+  const pageProject = projects.find((project) => project.id === pageProjectId) ?? null;
 
   const keepSidebarOpen = (): void => {
-    if (isTemporary) onPin()
-  }
+    if (isTemporary) onPin();
+  };
 
   const openProjectModal = (): void => {
-    keepSidebarOpen()
-    setIsProjectModalOpen(true)
-  }
+    keepSidebarOpen();
+    setIsProjectModalOpen(true);
+  };
 
   const openPageModal = (projectId: string): void => {
-    keepSidebarOpen()
-    setPageProjectId(projectId)
-  }
+    keepSidebarOpen();
+    setPageProjectId(projectId);
+  };
 
   const openSettingsModal = (): void => {
-    keepSidebarOpen()
-    onOpenSettings()
-  }
+    keepSidebarOpen();
+    onOpenSettings();
+  };
 
   return (
     <>
@@ -192,5 +192,5 @@ export function Sidebar({
         onCreated={onPageCreated}
       />
     </>
-  )
+  );
 }

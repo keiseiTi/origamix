@@ -1,13 +1,13 @@
-import { Button, ToggleButton, ToggleButtonGroup } from '@heroui/react'
-import { Eye } from 'lucide-react'
+import { Button, ToggleButton, ToggleButtonGroup } from '@heroui/react';
+import { Eye } from 'lucide-react';
 
-export type WorkspaceMode = 'chat' | 'edit'
+export type WorkspaceMode = 'chat' | 'edit';
 
 interface WorkspaceHeaderProps {
-  pageName: string
-  mode: WorkspaceMode
-  sidebarCollapsed: boolean
-  onModeChange: (mode: WorkspaceMode) => void
+  pageName: string;
+  mode: WorkspaceMode;
+  sidebarCollapsed: boolean;
+  onModeChange: (mode: WorkspaceMode) => void;
 }
 
 export function WorkspaceHeader({
@@ -27,8 +27,8 @@ export function WorkspaceHeader({
         disallowEmptySelection
         selectedKeys={new Set([mode])}
         onSelectionChange={(keys) => {
-          const selectedMode = [...keys][0]
-          if (selectedMode === 'chat' || selectedMode === 'edit') onModeChange(selectedMode)
+          const selectedMode = [...keys][0];
+          if (selectedMode === 'chat' || selectedMode === 'edit') onModeChange(selectedMode);
         }}
         size="sm"
         className="h-8 min-w-34"
@@ -45,5 +45,5 @@ export function WorkspaceHeader({
         <span>预览</span>
       </Button>
     </header>
-  )
+  );
 }
