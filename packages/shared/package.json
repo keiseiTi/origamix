@@ -1,0 +1,9 @@
+{
+  "name": "@origamix/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "exports": { "./*": "./src/*.ts" },
+  "scripts": { "lint": "eslint src", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run", "build": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@sinclair/typebox": "^0.34.52", "ajv": "^8.20.0", "ajv-formats": "^3.0.1" }
+}

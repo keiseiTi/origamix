@@ -1,0 +1,19 @@
+{
+  "name": "@origamix/desktop",
+  "version": "1.0.0",
+  "description": "Origamix desktop application",
+  "author": "yupeilin <yuchacha250@gmail.com>",
+  "type": "module",
+  "private": true,
+  "main": "dist/main/index.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "node scripts/build.mjs",
+    "package": "pnpm build && electron-builder --config electron-builder.yml"
+  },
+  "dependencies": { "@origamix/shared": "workspace:*", "nanoid": "^6.0.1" },
+  "devDependencies": { "electron": "catalog:", "electron-builder": "catalog:", "esbuild": "catalog:" }
+}

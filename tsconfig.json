@@ -1,4 +1,10 @@
 {
   "files": [],
-  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]
+  "references": [
+    { "path": "./apps/desktop" },
+    { "path": "./packages/app" },
+    { "path": "./packages/server" },
+    { "path": "./packages/shared" },
+    { "path": "./packages/template" }
+  ]
 }

@@ -1,0 +1,26 @@
+appId: com.origamix.app
+productName: Origamix
+directories:
+  buildResources: ../../build
+files:
+  - dist/**
+extraResources:
+  - from: ../../packages/app/dist
+    to: app
+  - from: ../../packages/template
+    to: template
+    filter:
+      - '!node_modules/**'
+      - '!dist/**'
+      - '!pnpm-lock.yaml'
+asarUnpack:
+  - resources/**
+mac:
+  entitlementsInherit: ../../build/entitlements.mac.plist
+  notarize: false
+win:
+  executableName: origamix
+linux:
+  target: [AppImage, snap, deb]
+  category: Utility
+npmRebuild: false
