@@ -13,9 +13,12 @@ import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
 import { registerPageWindows } from './page-windows';
+import type { BackendConnection } from '@origamix/shared/desktop-api';
 
 const isDevelopment = !app.isPackaged;
-const rendererIndexPath = (): string => join(process.resourcesPath, 'app', 'index.html');
+const rendererIndexPath = (): string => isDevelopment
+  ? join(__dirname, '../../../../packages/app/dist/index.html')
+  : join(process.resourcesPath, 'app', 'index.html');
 
 function createWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -55,19 +58,13 @@ function createWindow(): void {
   }
 }
 
-interface BackendConnection {
-  baseUrl: string;
-  token: string;
-  serviceInstanceId: string;
-}
-
 let backendProcess: UtilityProcess | undefined;
 let backendConnection: BackendConnection | undefined;
 
 async function startBackend(): Promise<BackendConnection> {
   const serviceInstanceId = nanoid();
   const token = nanoid(48);
-  const backend = utilityProcess.fork(join(__dirname, 'server.js'), [], { stdio: 'pipe' });
+  const backend = utilityProcess.fork(join(__dirname, 'server.cjs'), [], { stdio: 'pipe' });
 
   backendProcess = backend;
   return new Promise<BackendConnection>((resolve, reject) => {
@@ -97,6 +94,7 @@ async function startBackend(): Promise<BackendConnection> {
       resolve(backendConnection);
     });
     backend.once('exit', (code) => {
+      if (backendProcess === backend) backendProcess = undefined;
       backendConnection = undefined;
       fail(new Error(`本地服务异常退出（退出码 ${code}）`));
     });
@@ -110,6 +108,9 @@ async function startBackend(): Promise<BackendConnection> {
       backend.postMessage({
         kind: 'initialize',
         databasePath: join(app.getPath('userData'), 'origamix.db'),
+        templatePath: app.isPackaged
+          ? join(process.resourcesPath, 'template')
+          : process.env.ORIGAMIX_TEMPLATE_DIR ?? join(__dirname, '../template'),
         desktopToken: token,
         serviceInstanceId
       });
@@ -235,7 +236,7 @@ app
     registerPageWindows(() => {
       if (!backendConnection) throw new Error('本地服务不可用');
       return backendConnection;
-    });
+    }, rendererIndexPath);
 
     ipcMain.handle('backend:get-connection', () => {
       if (!backendConnection) throw new Error('本地服务不可用');
@@ -287,8 +288,21 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  backendProcess?.postMessage({ kind: 'shutdown' });
+let backendStopped = false;
+let quitting = false;
+app.on('before-quit', (event) => {
+  if (backendStopped || !backendProcess) return;
+  event.preventDefault();
+  if (quitting) return;
+  quitting = true;
+  const backend = backendProcess;
+  const timeout = setTimeout(() => backend.kill(), 3000);
+  backend.once('exit', () => {
+    clearTimeout(timeout);
+    backendStopped = true;
+    app.quit();
+  });
+  backend.postMessage({ kind: 'shutdown' });
 });
 
 // In this file you can include the rest of your app's specific main process

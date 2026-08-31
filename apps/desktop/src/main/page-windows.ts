@@ -14,7 +14,8 @@ interface PreviewEntry {
 }
 
 export function registerPageWindows(
-  getConnection: () => { baseUrl: string; token: string; serviceInstanceId: string }
+  getConnection: () => { baseUrl: string; token: string; serviceInstanceId: string },
+  getRendererPath: () => string
 ): void {
   const windows = new Map<string, PreviewEntry>();
   const pending = new Map<string, Promise<void>>();
@@ -91,7 +92,7 @@ export function registerPageWindows(
           await window.loadURL(url.toString());
         } else {
           await window.loadFile(
-            join(process.resourcesPath ?? join(__dirname, '../../app'), 'app', 'index.html'),
+            getRendererPath(),
             { query }
           );
         }

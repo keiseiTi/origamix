@@ -28,21 +28,21 @@ describe('ApplicationDatabase', () => {
         'workspace_state',
         'conversations',
         'messages',
-        'agent_runs'
-      ])
+        'agent_runs',
+      ]),
     );
     const workspace = new WorkspaceRepository(database);
     expect(workspace.get()).toMatchObject({ theme: 'light', sidebarCollapsed: false });
     expect(workspace.save({ theme: 'dark', sidebarCollapsed: true })).toMatchObject({
       theme: 'dark',
-      sidebarCollapsed: true
+      sidebarCollapsed: true,
     });
     database.close();
   });
 
   it('rejects migrations that introduce foreign keys', () => {
     expect(() =>
-      assertMigrationSafety('CREATE TABLE child (parent_id TEXT REFERENCES parents(id))')
+      assertMigrationSafety('CREATE TABLE child (parent_id TEXT REFERENCES parents(id))'),
     ).toThrow('外键');
   });
 });

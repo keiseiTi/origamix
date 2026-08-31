@@ -89,12 +89,17 @@ export function Sidebar({
   return (
     <>
       <aside
+        id="project-sidebar"
+        aria-label="项目侧边栏"
         className={`z-20 flex h-full w-64 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 p-2.5 text-[13px] text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 ${
           isTemporary
             ? 'fixed inset-y-0 left-0 rounded-r-xl shadow-[8px_0_30px_rgb(0_0_0/0.14)] dark:shadow-[8px_0_30px_rgb(0_0_0/0.45)]'
             : 'relative'
         }`}
         onMouseLeave={() => isTemporary && onTemporaryClose()}
+        onKeyDown={(event) => {
+          if (isTemporary && event.key === 'Escape') onTemporaryClose();
+        }}
       >
         <header className="flex h-10 items-center gap-2.5 px-1.5">
           <Button

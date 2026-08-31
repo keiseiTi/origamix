@@ -4,10 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
+    "test:web": "pnpm --filter @origamix/server build && node scripts/smoke-web.mjs",
     "build": "vite build"
   },
   "dependencies": {
@@ -15,11 +16,12 @@
     "@heroui/styles": "^3.2.4",
     "@origamix/shared": "workspace:*",
     "lucide-react": "^1.34.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@origamix/server": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

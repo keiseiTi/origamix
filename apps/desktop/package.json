@@ -11,16 +11,20 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "node scripts/build.mjs",
-    "package": "pnpm build && electron-builder --config electron-builder.yml"
+    "test:smoke": "node scripts/smoke.mjs",
+    "build": "pnpm --filter @origamix/server build && node scripts/build.mjs",
+    "build:assemble": "node scripts/build.mjs",
+    "package": "pnpm --filter @origamix/app build && pnpm build && electron-builder --config electron-builder.yml"
   },
   "dependencies": {
+    "@origamix/server": "workspace:*",
     "@origamix/shared": "workspace:*",
+    "@sinclair/typebox": "^0.34.52",
     "nanoid": "^6.0.1"
   },
   "devDependencies": {
     "electron": "^44.0.0",
     "electron-builder": "^26.15.0",
-    "esbuild": "catalog:"
+    "tsup": "^8.5.0"
   }
 }

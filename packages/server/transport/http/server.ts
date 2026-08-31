@@ -42,13 +42,14 @@ export function createHttpServer(input: {
   projects: ProjectRepository;
   workspace: WorkspaceRepository;
   projectService: ProjectService;
+  allowedOrigins?: readonly string[];
 }): FastifyInstance {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
+  const allowedOrigins = new Set(input.allowedOrigins ?? ['null', 'http://localhost:5173', 'http://127.0.0.1:5173']);
   server.addHook('onRequest', async (request, reply) => {
     const id = requestId(request.headers['x-request-id']);
     request.headers['x-request-id'] = id;
     const origin = request.headers.origin;
-    const allowedOrigins = new Set(['null', 'http://localhost:5173']);
     if (origin && !allowedOrigins.has(origin)) {
       return reply.code(403).send({
         ok: false,

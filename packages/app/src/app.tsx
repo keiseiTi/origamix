@@ -6,12 +6,11 @@ import {
   type AppTheme,
   type PageItem,
   type ProjectItem,
-  type UserProfile
+  type UserProfile,
 } from './components/sidebar';
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
 import { Workspace } from './components/workspace';
-import { WorkspaceDrawer } from './components/workspace/workspace-drawer';
 import type { EditorHandle } from './components/workspace/editor-workspace';
 import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './store/use-view-session';
@@ -28,7 +27,7 @@ function App(): React.JSX.Element {
     setIsSettingsOpen,
     sidebarCollapsed: sessionSidebarCollapsed,
     setSidebarCollapsed,
-    restoreSidebarCollapsed
+    restoreSidebarCollapsed,
   } = useViewSession();
   const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
@@ -37,7 +36,7 @@ function App(): React.JSX.Element {
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Origamix 用户',
-    iconBackground: '#2563eb'
+    iconBackground: '#2563eb',
   });
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -48,10 +47,9 @@ function App(): React.JSX.Element {
     .flatMap((project) => project.pages)
     .find((page) => page.id === selectedPageId);
   const selectedProject = projects.find((project) =>
-    project.pages.some((page) => page.id === selectedPageId)
+    project.pages.some((page) => page.id === selectedPageId),
   );
-  const editing = activeTab === 'edit' && !!selectedPage && !isSettingsOpen;
-  const sidebarVisible = !editing && (!sidebarCollapsed || sidebarPeek);
+  const sidebarVisible = !sidebarCollapsed || sidebarPeek;
 
   const flushEditor = async (): Promise<void> => {
     if (editorRef.current) await editorRef.current.flush();
@@ -71,7 +69,11 @@ function App(): React.JSX.Element {
   };
   const changeMode = async (mode: WorkspaceMode): Promise<void> =>
     transition(() => {
-      if (mode === 'edit') collapseSidebar();
+      if (mode === 'edit' && activeTab !== 'edit') {
+        collapseSidebar();
+        // Entering edit mode does not leave the pointer over the collapse button.
+        setSidebarPeekEnabled(true);
+      }
       setActiveTab(mode);
     });
 
@@ -93,9 +95,9 @@ function App(): React.JSX.Element {
             pages: (await projectsService.pages(project.id)).map((page) => ({
               id: page.id,
               name: page.name,
-              fileName: page.slug
-            }))
-          }))
+              fileName: page.slug,
+            })),
+          })),
         );
         if (!active) return;
         setProjects(hydrated);
@@ -116,20 +118,20 @@ function App(): React.JSX.Element {
   useEffect(() => {
     if (!workspaceReady) return;
     const activeProjectId = projects.find((project) =>
-      project.pages.some((page) => page.id === selectedPageId)
+      project.pages.some((page) => page.id === selectedPageId),
     )?.id;
     const workspace = {
       activeProjectId: activeProjectId ?? null,
       activePageId: selectedPageId,
       theme,
-      sidebarCollapsed
+      sidebarCollapsed,
     };
     void workspaceService.save(workspace);
   }, [projects, selectedPageId, theme, sidebarCollapsed, workspaceReady]);
 
   useEffect(() => {
-    window.api.settings
-      .getProfile()
+    window.api?.settings
+      ?.getProfile?.()
       .then(setUserProfile)
       .catch(() => undefined);
   }, []);
@@ -149,8 +151,8 @@ function App(): React.JSX.Element {
   const addPage = (projectId: string, page: PageItem): void => {
     setProjects((current) =>
       current.map((project) =>
-        project.id === projectId ? { ...project, pages: [...project.pages, page] } : project
-      )
+        project.id === projectId ? { ...project, pages: [...project.pages, page] } : project,
+      ),
     );
     void transition(() => {
       setSelectedPageId(page.id);
@@ -160,7 +162,7 @@ function App(): React.JSX.Element {
 
   const openProject = async (): Promise<void> => {
     await flushEditor();
-    const grant = await window.api.dialog.chooseExistingProject();
+    const grant = await window.api?.dialog?.chooseExistingProject?.();
     if (!grant) return;
     const project = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
     const pages = await projectsService.pages(project.id);
@@ -169,12 +171,12 @@ function App(): React.JSX.Element {
         id: project.id,
         name: project.name,
         path: project.path,
-        pages: pages.map((page) => ({ id: page.id, name: page.name, fileName: page.slug }))
-      }
+        pages: pages.map((page) => ({ id: page.id, name: page.name, fileName: page.slug })),
+      },
     };
     setProjects((current) => [
       ...current.filter((project) => project.path !== result.project.path),
-      result.project
+      result.project,
     ]);
     setSelectedPageId(result.project.pages[0]?.id ?? null);
     setActiveTab('chat');
@@ -184,7 +186,7 @@ function App(): React.JSX.Element {
     <Sidebar
       projects={projects}
       selectedPageId={selectedPageId}
-      isTemporary={!editing && sidebarCollapsed}
+      isTemporary={sidebarCollapsed}
       userProfile={userProfile}
       onCollapse={collapseSidebar}
       onPin={pinSidebarOpen}
@@ -198,7 +200,7 @@ function App(): React.JSX.Element {
       onProjectCreated={(project) => setProjects((current) => [...current, project])}
       onOpenProject={() =>
         void openProject().catch((error: unknown) =>
-          setTransitionError(error instanceof Error ? error.message : '打开失败')
+          setTransitionError(error instanceof Error ? error.message : '打开失败'),
         )
       }
       onPageCreated={addPage}
@@ -212,37 +214,30 @@ function App(): React.JSX.Element {
   );
   return (
     <main
-      className="flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100"
+      className='flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'
       data-theme={theme}
     >
       {sidebarVisible && sidebar}
-      <WorkspaceDrawer
-        open={editing && sidebarPeek}
-        onClose={() => setSidebarPeek(false)}
-        title="项目导航"
-        side="left"
-      >
-        {sidebar}
-      </WorkspaceDrawer>
       {transitionError && (
         <div
-          role="alert"
-          className="fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground"
+          role='alert'
+          className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
         >
           操作未完成：{transitionError}。草稿已保留，请重试保存。
         </div>
       )}
-      {(sidebarCollapsed || editing) && (
+      {sidebarCollapsed && (
         <Button
           isIconOnly
-          size="sm"
-          variant="ghost"
-          className="fixed top-4 left-4 z-10 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          onMouseEnter={() => !editing && sidebarPeekEnabled && setSidebarPeek(true)}
+          size='sm'
+          variant='ghost'
+          className='fixed top-4 left-4 z-10 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+          onMouseEnter={() => sidebarPeekEnabled && setSidebarPeek(true)}
           onMouseLeave={() => setSidebarPeekEnabled(true)}
-          onPress={() => (editing ? setSidebarPeek((value) => !value) : pinSidebarOpen())}
-          aria-expanded={editing ? sidebarPeek : !sidebarCollapsed}
-          aria-label="展开侧边栏"
+          onPress={pinSidebarOpen}
+          aria-expanded={sidebarPeek}
+          aria-controls='project-sidebar'
+          aria-label='展开侧边栏'
         >
           <PanelLeft size={17} />
         </Button>
@@ -251,7 +246,7 @@ function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPage
           theme={theme}
-          sidebarCollapsed={sidebarCollapsed || editing}
+          sidebarCollapsed={sidebarCollapsed}
           userProfile={userProfile}
           onThemeChange={setTheme}
           onProfileChange={setUserProfile}
@@ -259,21 +254,21 @@ function App(): React.JSX.Element {
         />
       ) : !workspaceReady ? (
         <section
-          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400"
+          className='flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400'
           aria-busy={!workspaceError}
-          aria-label="恢复工作区"
+          aria-label='恢复工作区'
         >
           {workspaceError ? (
             <>
-              <p role="alert">工作区恢复失败：{workspaceError}</p>
-              <Button variant="secondary" onPress={() => window.location.reload()}>
+              <p role='alert'>工作区恢复失败：{workspaceError}</p>
+              <Button variant='secondary' onPress={() => window.location.reload()}>
                 重新加载
               </Button>
             </>
           ) : (
             <>
-              <Spinner aria-label="正在恢复工作区" />
-              <p role="status">正在恢复工作区…</p>
+              <Spinner aria-label='正在恢复工作区' />
+              <p role='status'>正在恢复工作区…</p>
             </>
           )}
         </section>
@@ -283,7 +278,7 @@ function App(): React.JSX.Element {
           projectId={selectedProject?.id}
           projectName={selectedProject?.name}
           mode={activeTab}
-          sidebarCollapsed={sidebarCollapsed || editing}
+          sidebarCollapsed={sidebarCollapsed}
           editorRef={editorRef}
           onModeChange={changeMode}
           onBeforePreview={flushEditor}

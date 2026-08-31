@@ -1,23 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { WorkspaceMode } from '../components/workspace';
+import { parseSession, restoreSidebar, type ViewSession } from './view-session';
 
 const storageKey = 'origamix:view-session';
 
-interface ViewSession {
-  activeTab: WorkspaceMode;
-  isSettingsOpen: boolean;
-  sidebarCollapsed?: boolean;
-}
-
 function readSession(): ViewSession {
   try {
-    const value = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null');
-    return {
-      activeTab: value?.activeTab === 'edit' ? 'edit' : 'chat',
-      isSettingsOpen: value?.isSettingsOpen === true,
-      sidebarCollapsed:
-        typeof value?.sidebarCollapsed === 'boolean' ? value.sidebarCollapsed : undefined
-    };
+    return parseSession(sessionStorage.getItem(storageKey));
   } catch {
     return { activeTab: 'chat', isSettingsOpen: false };
   }
@@ -32,9 +21,7 @@ export function useViewSession(): ViewSession & {
   const [state, setState] = useState<ViewSession>(readSession);
   const restoreSidebarCollapsed = useCallback((sidebarCollapsed: boolean) => {
     // The current window's state takes precedence over an older server snapshot.
-    setState((current) =>
-      current.sidebarCollapsed === undefined ? { ...current, sidebarCollapsed } : current
-    );
+    setState((current) => restoreSidebar(current, sidebarCollapsed));
   }, []);
 
   useEffect(() => {

@@ -30,7 +30,7 @@ export function CreateProjectModal({
   };
 
   const chooseDirectory = async (): Promise<void> => {
-    const selected = await window.api.dialog.chooseProjectParent();
+    const selected = await window.api?.dialog?.chooseProjectParent?.();
     if (selected) {
       setDirectory(selected.displayPath);
       setDirectoryGrantId(selected.directoryGrantId);

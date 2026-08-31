@@ -18,7 +18,8 @@ export function PageWindow(): React.JSX.Element {
       pending = true;
       if (manual) setRefreshing(true);
       try {
-        const result = await window.preview.readSnapshot();
+        const result = await window.preview?.readSnapshot?.();
+        if (!result) throw new Error('当前环境不支持页面预览，请在桌面应用中打开');
         if (!active) return;
         setSnapshot((current) =>
           current?.revisionId === result.revisionId && current.theme === result.theme

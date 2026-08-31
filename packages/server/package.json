@@ -3,15 +3,27 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
+  "exports": {
+    "./runtime": { "types": "./runtime.ts", "default": "./dist/runtime.cjs" },
+    "./utility": "./dist/server.cjs",
+    "./build": "./scripts/build.mjs",
+    "./development": "./scripts/development.mjs",
+    "./template": { "types": "./template.ts", "default": "./dist/template.cjs" }
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "tsc --noEmit -p tsconfig.json"
+    "test:template": "pnpm build && node scripts/smoke-template.mjs",
+    "test:dev": "node scripts/smoke-development.mjs",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
     "@origamix/shared": "workspace:*",
+    "@sinclair/typebox": "^0.34.52",
     "fastify": "^5.12.1",
     "nanoid": "^6.0.1"
-  }
+  },
+  "devDependencies": { "tsup": "^8.5.0" }
 }

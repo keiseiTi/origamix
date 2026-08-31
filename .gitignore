@@ -5,3 +5,7 @@ out
 .eslintcache
 *.log*
 _doc
+
+.pnpm-store
+release
+.origamix-web

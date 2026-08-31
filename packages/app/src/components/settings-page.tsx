@@ -37,9 +37,8 @@ export function SettingsPage({
 
   useEffect(() => {
     let active = true;
-    window.api.settings
-      .getModel()
-      .then((settings) => active && setHasSavedKey(settings.hasApiKey))
+    Promise.resolve(window.api?.settings?.getModel?.())
+      .then((settings) => active && setHasSavedKey(settings?.hasApiKey ?? false))
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
       .finally(() => active && setIsLoading(false));
     return () => {
@@ -51,11 +50,12 @@ export function SettingsPage({
     setIsSaving(true);
     setStatus(null);
     try {
-      const result = await window.api.settings.saveModel({
+      const result = await window.api?.settings?.saveModel?.({
         provider: 'deepseek',
         model: 'deepseek-v4-flash',
         apiKey: apiKey || undefined
       });
+      if (!result) throw new Error('当前环境不支持保存模型设置，请在桌面应用中操作。');
       setHasSavedKey(result.hasApiKey);
       setApiKey('');
       setStatus({ kind: 'success', message: '模型设置已安全保存。' });
@@ -73,10 +73,11 @@ export function SettingsPage({
     setIsSavingProfile(true);
     setProfileStatus(null);
     try {
-      const profile = await window.api.settings.saveProfile({
+      const profile = await window.api?.settings?.saveProfile?.({
         name: userName,
         iconBackground
       });
+      if (!profile) throw new Error('当前环境不支持保存用户资料，请在桌面应用中操作。');
       onProfileChange(profile);
       setUserName(profile.name);
       setProfileStatus({ kind: 'success', message: '用户资料已保存。' });

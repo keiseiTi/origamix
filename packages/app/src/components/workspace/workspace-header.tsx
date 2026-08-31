@@ -38,7 +38,7 @@ export function WorkspaceHeader({
     setError(null);
     try {
       await onBeforePreview();
-      await window.api.window.openPage({ projectId, pageId, mode: 'preview' });
+      await window.api?.window?.openPage?.({ projectId, pageId, mode: 'preview' });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '无法打开窗口');
     } finally {

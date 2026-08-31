@@ -1,76 +1,37 @@
-import { ApplicationDatabase } from './database/database';
-import { ProjectRepository } from './repositories/project-repository';
-import { WorkspaceRepository } from './repositories/workspace-repository';
-import { ProjectService } from './services/project-service';
-import { createHttpServer } from './transport/http/server';
+import { startServer } from './runtime';
 
-let stop: (() => Promise<void>) | undefined;
 const controlPort = (process as typeof process & {
   parentPort?: { on: (event: 'message', listener: (event: { data: unknown }) => void) => void; postMessage: (message: unknown) => void };
 }).parentPort;
+if (!controlPort) throw new Error('请使用 Server dev 命令或由 Electron Utility Process 启动');
 
-if (!controlPort) {
-  throw new Error('Origamix Server 必须作为 Electron Utility Process 启动');
-}
-
-controlPort.on('message', async (event: { data: unknown }) => {
-  const message = event.data;
-  if (!message || typeof message !== 'object') return;
-  const payload = message as {
-    kind?: string;
-    databasePath?: string;
-    desktopToken?: string;
-    serviceInstanceId?: string;
-    grantId?: string;
-    path?: string;
-  };
-  if (payload.kind === 'grant' && payload.grantId && payload.path) {
-    (globalThis as { projectService?: ProjectService }).projectService?.registerGrant(
-      payload.grantId,
-      payload.path
-    );
-    return;
-  }
-  if (payload.kind === 'shutdown') {
-    await stop?.();
+let backend: Awaited<ReturnType<typeof startServer>> | undefined;
+let starting = false;
+let shuttingDown = false;
+controlPort.on('message', async ({ data }) => {
+  if (!data || typeof data !== 'object') return;
+  const input = data as Record<string, unknown>;
+  if (input.kind === 'shutdown') {
+    shuttingDown = true;
+    await backend?.close();
     process.exit(0);
   }
-  if (
-    payload.kind !== 'initialize' ||
-    !payload.databasePath ||
-    !payload.desktopToken ||
-    !payload.serviceInstanceId
-  )
+  if (input.kind === 'grant' && typeof input.grantId === 'string' && typeof input.path === 'string') {
+    backend?.registerGrant(input.grantId, input.path);
     return;
-  try {
-    const database = new ApplicationDatabase(payload.databasePath);
-    const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
-    const projectService = new ProjectService(projects, workspace);
-    (globalThis as { projectService?: ProjectService }).projectService = projectService;
-    const server = createHttpServer({
-      desktopToken: payload.desktopToken,
-      serviceInstanceId: payload.serviceInstanceId,
-      projects,
-      workspace,
-      projectService
-    });
-    await server.listen({ host: '127.0.0.1', port: 0 });
-    const address = server.server.address();
-    if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');
-    stop = async () => {
-      await server.close();
-      database.close();
-    };
-    controlPort.postMessage({
-      kind: 'ready',
-      port: address.port,
-      serviceInstanceId: payload.serviceInstanceId
-    });
-  } catch (error) {
-    controlPort.postMessage({
-      kind: 'error',
-      message: error instanceof Error ? error.message : '后台启动失败'
-    });
   }
+  if (input.kind !== 'initialize' || starting || backend || shuttingDown) return;
+  if (typeof input.databasePath !== 'string' || typeof input.templatePath !== 'string' ||
+      typeof input.desktopToken !== 'string' || typeof input.serviceInstanceId !== 'string') {
+    controlPort.postMessage({ kind: 'error', message: '后台启动参数不完整' });
+    return;
+  }
+  starting = true;
+  try {
+    backend = await startServer({ databasePath: input.databasePath, templatePath: input.templatePath,
+      desktopToken: input.desktopToken, serviceInstanceId: input.serviceInstanceId });
+    controlPort.postMessage({ kind: 'ready', port: backend.port, serviceInstanceId: input.serviceInstanceId });
+  } catch (error) {
+    controlPort.postMessage({ kind: 'error', message: error instanceof Error ? error.message : '后台启动失败' });
+  } finally { starting = false; }
 });

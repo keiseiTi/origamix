@@ -67,7 +67,7 @@ beforeEach(() => {
     baseUrl: 'http://localhost/api/v1',
     token: 'desktop-secret',
     serviceInstanceId: 'instance_one'
-  }));
+  }), () => '/test-renderer/index.html');
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -80,6 +80,7 @@ describe('MVP preview windows', () => {
     await open();
     expect(mocks.windows).toHaveLength(1);
     expect(mocks.windows[0].loadFile).toHaveBeenCalledTimes(1);
+    expect(mocks.windows[0].loadFile).toHaveBeenCalledWith('/test-renderer/index.html', expect.objectContaining({ query: expect.objectContaining({ pageId: 'page_one' }) }));
     await open('project_one', 'page_two');
     expect(mocks.windows).toHaveLength(1);
     expect(mocks.windows[0].loadFile).toHaveBeenCalledTimes(2);

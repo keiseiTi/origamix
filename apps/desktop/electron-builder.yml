@@ -2,19 +2,15 @@ appId: com.origamix.app
 productName: Origamix
 directories:
   buildResources: ../../build
+  output: ../../release
 files:
   - dist/**
+  - '!dist/template/**'
 extraResources:
   - from: ../../packages/app/dist
     to: app
-  - from: ../../packages/template
+  - from: dist/template
     to: template
-    filter:
-      - '!node_modules/**'
-      - '!dist/**'
-      - '!pnpm-lock.yaml'
-asarUnpack:
-  - resources/**
 mac:
   entitlementsInherit: ../../build/entitlements.mac.plist
   notarize: false

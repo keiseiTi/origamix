@@ -1,4 +1,5 @@
-import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { copyTemplate } from '../template';
 import { basename, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
@@ -58,30 +59,13 @@ function routerSource(registry: RegistryItem[]): string {
   return `import { createBrowserRouter } from 'react-router';\n${imports}\n\nexport default createBrowserRouter([\n${routes}\n]);\n`;
 }
 
-async function templateDirectory(): Promise<string> {
-  const candidates = [
-    join((process as typeof process & { resourcesPath?: string }).resourcesPath ?? '', 'template'),
-    join(process.cwd(), '..', 'template'),
-    join(process.cwd(), 'packages', 'template'),
-    join(process.cwd(), 'template')
-  ];
-  for (const path of candidates) {
-    try {
-      await access(path);
-      return path;
-    } catch {
-      // Continue with the next supported runtime location.
-    }
-  }
-  throw new Error('项目模板不可用');
-}
-
 export class ProjectService {
   private readonly grants = new Map<string, string>();
 
   constructor(
     private readonly projects: ProjectRepository,
-    private readonly workspace: WorkspaceRepository
+    private readonly workspace: WorkspaceRepository,
+    private readonly templatePath: string
   ) {}
 
   registerGrant(id: string, path: string): void {
@@ -118,7 +102,7 @@ export class ProjectService {
     const id = `project_${nanoid()}`;
     const homePage: RegistryItem = { pageId: `page_${nanoid()}`, name: '首页', slug: 'home' };
     try {
-      await cp(await templateDirectory(), temporaryPath, { recursive: true, errorOnExist: true });
+      await copyTemplate(this.templatePath, temporaryPath);
       await mkdir(join(temporaryPath, '.origamix', 'revisions'), { recursive: true });
       await atomicWrite(
         join(temporaryPath, 'origamix.project.json'),
