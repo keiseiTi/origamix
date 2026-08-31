@@ -35,7 +35,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
     errors.push({
       code: 'ROOT_NOT_FOUND',
       path: '/layout/root',
-      message: 'Root element does not exist'
+      message: 'Root element does not exist',
     });
   }
 
@@ -47,7 +47,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
       errors.push({
         code: 'LAYOUT_CYCLE',
         path: `/layout/structure/${elementId}`,
-        message: `Layout contains a cycle at ${elementId}`
+        message: `Layout contains a cycle at ${elementId}`,
       });
       return;
     }
@@ -60,7 +60,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
         errors.push({
           code: 'LAYOUT_ELEMENT_NOT_FOUND',
           path: `/layout/structure/${elementId}`,
-          message: `Layout references missing element ${childId}`
+          message: `Layout references missing element ${childId}`,
         });
         continue;
       }
@@ -74,7 +74,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
       errors.push({
         code: 'LAYOUT_ELEMENT_NOT_FOUND',
         path: `/layout/structure/${elementId}`,
-        message: `Layout key references missing element ${elementId}`
+        message: `Layout key references missing element ${elementId}`,
       });
       continue;
     }
@@ -91,7 +91,7 @@ export function validatePage(value: unknown): PageValidationResult {
   return {
     ...structuralResult,
     valid: structuralResult.valid && semanticErrors.length === 0,
-    semanticErrors
+    semanticErrors,
   };
 }
 

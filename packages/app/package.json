@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "scripts": { "dev": "vite", "lint": "eslint .", "typecheck": "tsc --noEmit -p tsconfig.json", "test": "vitest run --passWithNoTests", "build": "vite build" },
+  "scripts": {
+    "dev": "vite",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "build": "vite build"
+  },
   "dependencies": {
     "@heroui/react": "^3.2.4",
     "@heroui/styles": "^3.2.4",
@@ -13,5 +19,13 @@
     "react-dom": "catalog:",
     "zustand": "^5.0.15"
   },
-  "devDependencies": { "@tailwindcss/vite": "^4.3.3", "@vitejs/plugin-react": "catalog:", "tailwindcss": "^4.3.3", "vite": "catalog:" }
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.2"
+  }
 }

@@ -18,8 +18,8 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
-        project: true, // or './tsconfig.json'
-        tsconfigRootDir: import.meta.dirname, // Tells ESLint to look relative to this file
+        project: ['./tsconfig.app.json', './tsconfig.node.json'],
+        tsconfigRootDir: import.meta.dirname,
       },
     },
   },
