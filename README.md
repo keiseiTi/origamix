@@ -21,6 +21,13 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+Dependency installation also installs the repository's Lefthook `pre-commit` hook. Before each commit it runs lint, typecheck and tests in parallel. Run the same checks without committing, or reinstall the hook, with:
+
+```sh
+pnpm hooks:run
+pnpm hooks:install
+```
+
 Desktop development starts the server compiler, Renderer and Electron. Main/Preload/Server changes rebuild and restart Electron; Renderer changes use Vite HMR. The default Renderer port is 5173 and must be available. VS Code's desktop launch configuration starts the same development script.
 
 ```sh

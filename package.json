@@ -9,6 +9,8 @@
     "dev:web": "pnpm --filter @origamix/app dev",
     "build": "pnpm -r --filter \"!@origamix/desktop\" build && pnpm --filter @origamix/desktop build:assemble",
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "hooks:install": "lefthook install",
+    "hooks:run": "lefthook run pre-commit --force",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
@@ -28,6 +30,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "lefthook": "^2.1.12",
     "prettier": "^3.9.6",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
@@ -36,7 +39,8 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "electron",
-      "esbuild"
+      "esbuild",
+      "lefthook"
     ]
   }
 }
