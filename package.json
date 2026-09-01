@@ -2,8 +2,6 @@
   "name": "origamix",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@10.33.4",
-  "engines": { "node": ">=24.13.0 <25", "pnpm": ">=10.33.0 <11" },
   "description": "A low-code agent platform and visual builder",
   "author": "yupeilin <yuchacha250@gmail.com>",
   "scripts": {
