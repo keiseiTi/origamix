@@ -1,21 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-beforeEach(() => { vi.resetModules(); });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+beforeEach(() => {
+  vi.resetModules();
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 describe('renderer transport', () => {
   it('uses the desktop bridge and forwards authentication and project scope', async () => {
-    const getConnection = vi.fn().mockResolvedValue({ baseUrl: 'http://127.0.0.1:1234/api/v1', token: 'test-token', serviceInstanceId: 'test-instance' });
+    const getConnection = vi
+      .fn()
+      .mockResolvedValue({
+        baseUrl: 'http://127.0.0.1:1234/api/v1',
+        token: 'test-token',
+        serviceInstanceId: 'test-instance',
+      });
     vi.stubGlobal('window', { api: { backend: { getConnection } } });
-    const fetch = vi.fn().mockResolvedValue({ json: async () => ({ ok: true, data: { saved: true } }) });
+    const fetch = vi
+      .fn()
+      .mockResolvedValue({ json: async () => ({ ok: true, data: { saved: true } }) });
     vi.stubGlobal('fetch', fetch);
     const { request } = await import('./request');
-    expect(await request('/workspace', { method: 'PATCH', projectId: 'project-one', body: '{}' })).toEqual({ saved: true });
+    expect(
+      await request('/workspace', { method: 'PATCH', projectId: 'project-one', body: '{}' }),
+    ).toEqual({ saved: true });
     await request('/projects');
     expect(getConnection).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenNthCalledWith(1, 'http://127.0.0.1:1234/api/v1/workspace', expect.objectContaining({
-      method: 'PATCH', headers: expect.objectContaining({ Authorization: 'Bearer test-token', 'x-origamix-service': 'test-instance', 'x-origamix-project-id': 'project-one', 'content-type': 'application/json' })
-    }));
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://127.0.0.1:1234/api/v1/workspace',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token',
+          'x-origamix-service': 'test-instance',
+          'x-origamix-project-id': 'project-one',
+          'content-type': 'application/json',
+        }),
+      }),
+    );
   });
 
   it('uses the same-origin development proxy without client credentials', async () => {
@@ -41,7 +66,11 @@ describe('renderer transport', () => {
   it('surfaces API and network failures to the UI', async () => {
     vi.stubEnv('DEV', true);
     vi.stubGlobal('window', {});
-    const fetch = vi.fn().mockResolvedValueOnce({ json: async () => ({ ok: false, error: { message: '页面不存在' } }) })
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: async () => ({ ok: false, error: { message: '页面不存在' } }),
+      })
       .mockRejectedValueOnce(new Error('Failed to fetch'));
     vi.stubGlobal('fetch', fetch);
     const { request } = await import('./request');

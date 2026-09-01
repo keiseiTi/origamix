@@ -41,8 +41,8 @@ export const migrations: Migration[] = [
         started_at TEXT NOT NULL, finished_at TEXT
       );
       CREATE INDEX idx_agent_runs_conversation_started ON agent_runs(conversation_id, started_at);
-    `
-  }
+    `,
+  },
 ];
 
 export function assertMigrationSafety(sql: string): void {

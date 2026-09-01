@@ -6,7 +6,7 @@ export function WorkspaceDrawer({
   onClose,
   title,
   side,
-  children
+  children,
 }: {
   open: boolean;
   onClose: () => void;

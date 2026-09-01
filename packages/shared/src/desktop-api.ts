@@ -5,9 +5,19 @@ export interface BackendConnection {
   token: string;
   serviceInstanceId: string;
 }
-export interface DirectoryGrant { directoryGrantId: string; displayPath: string }
-export interface UserProfile { name: string; iconBackground: string }
-export interface ModelSettings { provider: 'deepseek'; model: 'deepseek-v4-flash'; hasApiKey: boolean }
+export interface DirectoryGrant {
+  directoryGrantId: string;
+  displayPath: string;
+}
+export interface UserProfile {
+  name: string;
+  iconBackground: string;
+}
+export interface ModelSettings {
+  provider: 'deepseek';
+  model: 'deepseek-v4-flash';
+  hasApiKey: boolean;
+}
 export interface DesktopApi {
   window: { openPage(input: PageWindowInput): Promise<void> };
   backend: { getConnection(): Promise<BackendConnection> };
@@ -17,9 +27,13 @@ export interface DesktopApi {
   };
   settings: {
     getModel(): Promise<ModelSettings>;
-    saveModel(input: Omit<ModelSettings, 'hasApiKey'> & { apiKey?: string }): Promise<{ hasApiKey: boolean }>;
+    saveModel(
+      input: Omit<ModelSettings, 'hasApiKey'> & { apiKey?: string },
+    ): Promise<{ hasApiKey: boolean }>;
     getProfile(): Promise<UserProfile>;
     saveProfile(input: UserProfile): Promise<UserProfile>;
   };
 }
-export interface PreviewApi { readSnapshot(): Promise<PreviewSnapshot> }
+export interface PreviewApi {
+  readSnapshot(): Promise<PreviewSnapshot>;
+}

@@ -12,7 +12,7 @@ interface CreateProjectModalProps {
 export function CreateProjectModal({
   isOpen,
   onClose,
-  onCreated
+  onCreated,
 }: CreateProjectModalProps): React.JSX.Element {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -47,7 +47,7 @@ export function CreateProjectModal({
       const project = await projectsService.create({
         name: name.trim(),
         code: code.trim(),
-        directoryGrantId
+        directoryGrantId,
       });
       onCreated({ id: project.id, name: project.name, path: project.path, pages: [] });
       close();
@@ -73,13 +73,13 @@ export function CreateProjectModal({
               <Modal.Header>
                 <Modal.Heading>新建项目</Modal.Heading>
               </Modal.Header>
-              <Modal.Body className="grid gap-4">
+              <Modal.Body className='grid gap-4'>
                 <TextField fullWidth isRequired>
                   <Label>项目名称</Label>
                   <Input
-                    name="projectName"
+                    name='projectName'
                     value={name}
-                    placeholder="请输入"
+                    placeholder='请输入'
                     onChange={(event) => setName(event.target.value)}
                     autoFocus
                     required
@@ -89,9 +89,9 @@ export function CreateProjectModal({
                 <TextField fullWidth isRequired>
                   <Label>项目标识</Label>
                   <Input
-                    name="projectCode"
+                    name='projectCode'
                     value={code}
-                    placeholder="请输入"
+                    placeholder='请输入'
                     onChange={(event) => setCode(event.target.value)}
                     required
                   />
@@ -102,23 +102,23 @@ export function CreateProjectModal({
                 <TextField fullWidth isRequired>
                   <Label>生成地址</Label>
                   <Input
-                    name="directory"
-                    className="flex-1"
+                    name='directory'
+                    className='flex-1'
                     onClick={chooseDirectory}
                     value={directory}
                     readOnly
-                    placeholder="选择目录"
+                    placeholder='选择目录'
                     required
                   />
                   <FieldError>请选择项目所在的目录</FieldError>
                 </TextField>
-                {error && <p className="text-sm text-danger">{error}</p>}
+                {error && <p className='text-sm text-danger'>{error}</p>}
               </Modal.Body>
               <Modal.Footer>
-                <Button slot="close" variant="tertiary" type="button">
+                <Button slot='close' variant='tertiary' type='button'>
                   取消
                 </Button>
-                <Button type="submit" isDisabled={isSubmitting}>
+                <Button type='submit' isDisabled={isSubmitting}>
                   {isSubmitting ? '创建中…' : '创建项目'}
                 </Button>
               </Modal.Footer>

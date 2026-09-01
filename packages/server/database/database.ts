@@ -7,18 +7,18 @@ export class ApplicationDatabase {
   constructor(path: string) {
     this.connection = new DatabaseSync(path);
     this.connection.exec(
-      'PRAGMA foreign_keys = OFF; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;'
+      'PRAGMA foreign_keys = OFF; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;',
     );
     this.migrate();
   }
 
   private migrate(): void {
     this.connection.exec(
-      'CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
+      'CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)',
     );
     const current = Number(
       this.connection.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get()
-        ?.value ?? 0
+        ?.value ?? 0,
     );
     for (const migration of migrations.filter((item) => item.version > current)) {
       assertMigrationSafety(migration.sql);
@@ -27,7 +27,7 @@ export class ApplicationDatabase {
         this.connection.exec(migration.sql);
         this.connection
           .prepare(
-            "INSERT INTO app_meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+            "INSERT INTO app_meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
           )
           .run(String(migration.version));
         this.connection.exec('COMMIT');
@@ -38,7 +38,7 @@ export class ApplicationDatabase {
     }
     this.connection
       .prepare(
-        "INSERT INTO workspace_state (id, theme, sidebar_state, updated_at) VALUES (1, 'light', 'expanded', ?) ON CONFLICT(id) DO NOTHING"
+        "INSERT INTO workspace_state (id, theme, sidebar_state, updated_at) VALUES (1, 'light', 'expanded', ?) ON CONFLICT(id) DO NOTHING",
       )
       .run(new Date().toISOString());
   }

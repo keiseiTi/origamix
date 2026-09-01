@@ -22,7 +22,10 @@ export async function startServer(input: {
     if (input.projectPath) {
       projectService.registerGrant('startup-project', input.projectPath);
       const project = await projectService.openProject({ directoryGrantId: 'startup-project' });
-      workspace.save({ activeProjectId: project.id, activePageId: projects.listPages(project.id)[0]?.id ?? null });
+      workspace.save({
+        activeProjectId: project.id,
+        activePageId: projects.listPages(project.id)[0]?.id ?? null,
+      });
     }
     await server.listen({ host: '127.0.0.1', port: 0 });
     const address = server.server.address();
@@ -30,7 +33,10 @@ export async function startServer(input: {
     return {
       port: address.port,
       registerGrant: (id: string, path: string) => projectService.registerGrant(id, path),
-      close: async () => { await server.close(); database.close(); }
+      close: async () => {
+        await server.close();
+        database.close();
+      },
     };
   } catch (error) {
     await server.close();

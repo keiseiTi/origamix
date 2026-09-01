@@ -8,9 +8,9 @@ export const ApiResultSchema = Type.Object({
       code: Type.String(),
       message: Type.String(),
       details: Type.Optional(Type.Unknown()),
-      requestId: Type.String()
-    })
-  )
+      requestId: Type.String(),
+    }),
+  ),
 });
 
 export const ProjectRecordSchema = Type.Object({
@@ -20,7 +20,7 @@ export const ProjectRecordSchema = Type.Object({
   formatVersion: Type.String(),
   status: Type.String(),
   createdAt: Type.String(),
-  lastOpenedAt: Type.String()
+  lastOpenedAt: Type.String(),
 });
 
 export const PageRecordSchema = Type.Object({
@@ -31,7 +31,7 @@ export const PageRecordSchema = Type.Object({
   relativePath: Type.String(),
   status: Type.String(),
   createdAt: Type.String(),
-  updatedAt: Type.String()
+  updatedAt: Type.String(),
 });
 
 export const WorkspaceSchema = Type.Object({
@@ -39,20 +39,20 @@ export const WorkspaceSchema = Type.Object({
   activePageId: Type.Union([Type.String(), Type.Null()]),
   theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
   sidebarCollapsed: Type.Boolean(),
-  updatedAt: Type.String()
+  updatedAt: Type.String(),
 });
 
 export const CreateProjectSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
-  directoryGrantId: Type.String({ minLength: 1 })
+  directoryGrantId: Type.String({ minLength: 1 }),
 });
 
 export const OpenProjectSchema = Type.Object({ directoryGrantId: Type.String({ minLength: 1 }) });
 
 export const CreatePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
-  slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })
+  slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
 });
 
 export const WorkspacePatchSchema = Type.Partial(
@@ -60,8 +60,8 @@ export const WorkspacePatchSchema = Type.Partial(
     activeProjectId: Type.Union([Type.String(), Type.Null()]),
     activePageId: Type.Union([Type.String(), Type.Null()]),
     theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
-    sidebarCollapsed: Type.Boolean()
-  })
+    sidebarCollapsed: Type.Boolean(),
+  }),
 );
 
 export type ApiResult<T> =

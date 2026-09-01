@@ -20,7 +20,7 @@ async function getConnection(): Promise<Connection> {
 
 export async function request<T>(
   path: string,
-  init?: RequestInit & { projectId?: string }
+  init?: RequestInit & { projectId?: string },
 ): Promise<T> {
   const current = await getConnection();
   const response = await fetch(`${current.baseUrl}${path}`, {
@@ -30,8 +30,8 @@ export async function request<T>(
       ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
       ...(init?.projectId ? { 'x-origamix-project-id': init.projectId } : {}),
       ...(init?.body ? { 'content-type': 'application/json' } : {}),
-      ...init?.headers
-    }
+      ...init?.headers,
+    },
   });
   const result = (await response.json()) as ApiResult<T>;
   if (!result.ok) throw new Error(result.error.message);

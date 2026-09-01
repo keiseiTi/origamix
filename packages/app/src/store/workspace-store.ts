@@ -22,5 +22,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   selectPage: (activePageId) => set({ activePageId, selectedElementId: null }),
   selectElement: (selectedElementId) => set({ selectedElementId }),
   setRevision: (currentRevisionId) => set({ currentRevisionId }),
-  setAgentStatus: (agentStatus) => set({ agentStatus })
+  setAgentStatus: (agentStatus) => set({ agentStatus }),
 }));

@@ -7,5 +7,5 @@ import './main.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {new URLSearchParams(window.location.search).has('mode') ? <PageWindow /> : <App />}
-  </StrictMode>
+  </StrictMode>,
 );

@@ -8,6 +8,7 @@
     "dev": "pnpm --filter @origamix/desktop dev",
     "dev:web": "pnpm --filter @origamix/app dev",
     "build": "pnpm -r --filter \"!@origamix/desktop\" build && pnpm --filter @origamix/desktop build:assemble",
+    "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

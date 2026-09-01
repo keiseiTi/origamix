@@ -7,7 +7,7 @@ const emptyPage = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } }
+  extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
 describe('page protocol validation', () => {
@@ -18,7 +18,7 @@ describe('page protocol validation', () => {
   it('rejects a missing root element', () => {
     const result = validatePage({
       ...emptyPage,
-      layout: { ...emptyPage.layout, root: 'element_missing' }
+      layout: { ...emptyPage.layout, root: 'element_missing' },
     });
     expect(result.valid).toBe(false);
     expect(result.semanticErrors[0]?.code).toBe('ROOT_NOT_FOUND');
@@ -27,7 +27,7 @@ describe('page protocol validation', () => {
   it('rejects dangling layout references', () => {
     const result = validatePage({
       ...emptyPage,
-      layout: { ...emptyPage.layout, structure: { element_root: ['element_missing'] } }
+      layout: { ...emptyPage.layout, structure: { element_root: ['element_missing'] } },
     });
     expect(result.semanticErrors[0]?.code).toBe('LAYOUT_ELEMENT_NOT_FOUND');
   });
@@ -37,12 +37,12 @@ describe('page protocol validation', () => {
       ...emptyPage,
       elements: {
         ...emptyPage.elements,
-        element_child: { type: 'container', props: {} }
+        element_child: { type: 'container', props: {} },
       },
       layout: {
         ...emptyPage.layout,
-        structure: { element_root: ['element_child'], element_child: ['element_root'] }
-      }
+        structure: { element_root: ['element_child'], element_child: ['element_root'] },
+      },
     });
     expect(result.semanticErrors[0]?.code).toBe('LAYOUT_CYCLE');
   });
@@ -56,8 +56,8 @@ describe('page protocol validation', () => {
         source: { kind: 'user' },
         createdAt: '2026-08-27T00:00:00.000Z',
         operation: 'replaceSchema',
-        schema: emptyPage
-      }).valid
+        schema: emptyPage,
+      }).valid,
     ).toBe(true);
   });
 });

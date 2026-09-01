@@ -13,7 +13,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } }
+  extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
 async function createPageFixture(): Promise<{
@@ -29,7 +29,7 @@ async function createPageFixture(): Promise<{
   await mkdir(pagePath, { recursive: true });
   await writeFile(
     join(pagePath, 'page.meta.json'),
-    JSON.stringify({ pageId, name: '测试页面', slug })
+    JSON.stringify({ pageId, name: '测试页面', slug }),
   );
   await writeFile(join(pagePath, 'schema.json'), JSON.stringify(schema));
   return { projectPath, pageId, slug };
@@ -52,7 +52,7 @@ describe('Schema Service', () => {
       createdAt: '2026-08-28T00:00:00.000Z',
       operation: 'updateElementProps',
       elementId: 'element_root',
-      props: { title: '更新后的标题' }
+      props: { title: '更新后的标题' },
     });
 
     expect(result.revisionId).not.toBe(initialRevisionId);
@@ -70,7 +70,7 @@ describe('Schema Service', () => {
       createdAt: '2026-08-28T00:00:00.000Z',
       operation: 'updateElementProps',
       elementId: 'element_root',
-      props: { title: '更新后的标题' }
+      props: { title: '更新后的标题' },
     });
 
     await expect(
@@ -82,8 +82,8 @@ describe('Schema Service', () => {
         createdAt: '2026-08-28T00:00:00.000Z',
         operation: 'updateElementProps',
         elementId: 'element_root',
-        props: { title: '不应保存' }
-      })
+        props: { title: '不应保存' },
+      }),
     ).rejects.toThrow('页面已更新');
 
     const undone = await undoSchema(page);

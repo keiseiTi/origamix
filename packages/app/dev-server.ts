@@ -12,7 +12,9 @@ export function localWebServer(): Plugin {
     async configureServer(vite) {
       if (process.env.ORIGAMIX_DESKTOP === '1' || process.env.VITEST) return;
       const { startServer } = await import('@origamix/server/runtime');
-      const stateDir = process.env.ORIGAMIX_WEB_STATE_DIR ?? fileURLToPath(new URL('../../.origamix-web/', import.meta.url));
+      const stateDir =
+        process.env.ORIGAMIX_WEB_STATE_DIR ??
+        fileURLToPath(new URL('../../.origamix-web/', import.meta.url));
       await mkdir(stateDir, { recursive: true });
       const token = randomUUID();
       const serviceInstanceId = randomUUID();
@@ -21,16 +23,19 @@ export function localWebServer(): Plugin {
       const backend = await startServer({
         databasePath: resolve(stateDir, 'origamix.db'),
         templatePath: fileURLToPath(new URL('../template', import.meta.url)),
-        desktopToken: token, serviceInstanceId,
+        desktopToken: token,
+        serviceInstanceId,
         allowedOrigins: [...hosts].map((host) => `http://${host}`),
-        projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR
+        projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR,
       });
       vite.middlewares.use((request, response, next) => {
         if (!/^\/api\/v1(?:\/|$)/.test(request.url ?? '')) return next();
         const origin = request.headers.origin;
-        if (!hosts.has(request.headers.host ?? '') ||
-            (origin && ![...hosts].some((host) => origin === `http://${host}`)) ||
-            request.headers['sec-fetch-site'] === 'cross-site') {
+        if (
+          !hosts.has(request.headers.host ?? '') ||
+          (origin && ![...hosts].some((host) => origin === `http://${host}`)) ||
+          request.headers['sec-fetch-site'] === 'cross-site'
+        ) {
           response.writeHead(403).end('Untrusted local API request');
           return;
         }
@@ -44,9 +49,11 @@ export function localWebServer(): Plugin {
             request.setHeader('Authorization', `Bearer ${token}`);
             request.setHeader('X-Origamix-Service', serviceInstanceId);
           });
-        }
+        },
       };
-      vite.httpServer?.once('close', () => { void backend.close(); });
-    }
+      vite.httpServer?.once('close', () => {
+        void backend.close();
+      });
+    },
   };
 }

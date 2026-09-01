@@ -6,7 +6,7 @@ import {
   CreateProjectSchema,
   OpenProjectSchema,
   WorkspacePatchSchema,
-  type ApiResult
+  type ApiResult,
 } from '@origamix/shared/protocol/api';
 import type { ChangeSet } from '@origamix/shared/protocol/schema';
 import { commitSchema, getSchema, undoSchema } from '../../services/schema-service';
@@ -23,8 +23,8 @@ function failure(requestId: string, error: unknown): ApiResult<never> {
     error: {
       code: 'REQUEST_FAILED',
       message: error instanceof Error ? error.message : '请求失败',
-      requestId
-    }
+      requestId,
+    },
   };
 }
 
@@ -45,7 +45,9 @@ export function createHttpServer(input: {
   allowedOrigins?: readonly string[];
 }): FastifyInstance {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
-  const allowedOrigins = new Set(input.allowedOrigins ?? ['null', 'http://localhost:5173', 'http://127.0.0.1:5173']);
+  const allowedOrigins = new Set(
+    input.allowedOrigins ?? ['null', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+  );
   server.addHook('onRequest', async (request, reply) => {
     const id = requestId(request.headers['x-request-id']);
     request.headers['x-request-id'] = id;
@@ -53,7 +55,7 @@ export function createHttpServer(input: {
     if (origin && !allowedOrigins.has(origin)) {
       return reply.code(403).send({
         ok: false,
-        error: { code: 'ORIGIN_DENIED', message: '请求来源不受信任', requestId: id }
+        error: { code: 'ORIGIN_DENIED', message: '请求来源不受信任', requestId: id },
       });
     }
     if (origin) {
@@ -61,7 +63,7 @@ export function createHttpServer(input: {
       reply.header('Vary', 'Origin');
       reply.header(
         'Access-Control-Allow-Headers',
-        'Authorization, Content-Type, X-Origamix-Service, X-Origamix-Project-Id, X-Request-Id'
+        'Authorization, Content-Type, X-Origamix-Service, X-Origamix-Project-Id, X-Request-Id',
       );
       reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     }
@@ -73,12 +75,12 @@ export function createHttpServer(input: {
     ) {
       return reply.code(401).send({
         ok: false,
-        error: { code: 'UNAUTHORIZED', message: '桌面会话无效', requestId: id }
+        error: { code: 'UNAUTHORIZED', message: '桌面会话无效', requestId: id },
       });
     }
   });
   server.setErrorHandler((error, request, reply) =>
-    reply.code(400).send(failure(requestId(request.headers['x-request-id']), error))
+    reply.code(400).send(failure(requestId(request.headers['x-request-id']), error)),
   );
   const route =
     <T>(handler: (request: RouteInput<T>) => Promise<unknown> | unknown) =>
@@ -90,8 +92,8 @@ export function createHttpServer(input: {
           data: await handler({
             body: request.body as T,
             params: request.params as Record<string, string>,
-            headers: request.headers as Record<string, unknown>
-          })
+            headers: request.headers as Record<string, unknown>,
+          }),
         });
       } catch (error) {
         reply.send(failure(id, error));
@@ -100,41 +102,41 @@ export function createHttpServer(input: {
 
   server.get('/api/v1/health', async () => ({
     ok: true,
-    data: { serviceInstanceId: input.serviceInstanceId }
+    data: { serviceInstanceId: input.serviceInstanceId },
   }));
   server.get(
     '/api/v1/workspace',
-    route<void>(async () => input.workspace.get())
+    route<void>(async () => input.workspace.get()),
   );
   server.patch(
     '/api/v1/workspace',
     { schema: { body: WorkspacePatchSchema } },
-    route<WorkspacePatch>((request) => input.workspace.save(request.body))
+    route<WorkspacePatch>((request) => input.workspace.save(request.body)),
   );
   server.get(
     '/api/v1/projects',
-    route<void>(async () => input.projects.listProjects())
+    route<void>(async () => input.projects.listProjects()),
   );
   server.post(
     '/api/v1/projects',
     { schema: { body: CreateProjectSchema } },
-    route<CreateProject>((request) => input.projectService.createProject(request.body))
+    route<CreateProject>((request) => input.projectService.createProject(request.body)),
   );
   server.post(
     '/api/v1/projects/open',
     { schema: { body: OpenProjectSchema } },
-    route<OpenProject>((request) => input.projectService.openProject(request.body))
+    route<OpenProject>((request) => input.projectService.openProject(request.body)),
   );
   server.get(
     '/api/v1/projects/:projectId/pages',
-    route<void>(async (request) => input.projects.listPages(request.params.projectId))
+    route<void>(async (request) => input.projects.listPages(request.params.projectId)),
   );
   server.post(
     '/api/v1/projects/:projectId/pages',
     { schema: { body: CreatePageSchema } },
     route<CreatePage>((request) =>
-      input.projectService.createPage(request.params.projectId, request.body)
-    )
+      input.projectService.createPage(request.params.projectId, request.body),
+    ),
   );
   server.get(
     '/api/v1/pages/:pageId/schema',
@@ -144,7 +146,7 @@ export function createHttpServer(input: {
       const project = input.projects.getProject(projectId);
       if (!page || !project) throw new Error('页面不存在');
       return getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
-    })
+    }),
   );
   server.post(
     '/api/v1/pages/:pageId/changesets',
@@ -156,9 +158,9 @@ export function createHttpServer(input: {
       if (!page || !project || changeSet.pageId !== page.id) throw new Error('页面或变更集无效');
       return commitSchema(
         { projectPath: project.path, pageId: page.id, slug: page.slug },
-        changeSet
+        changeSet,
       );
-    })
+    }),
   );
   server.post(
     '/api/v1/pages/:pageId/undo',
@@ -168,7 +170,7 @@ export function createHttpServer(input: {
       const project = input.projects.getProject(projectId);
       if (!page || !project) throw new Error('页面不存在');
       return undoSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
-    })
+    }),
   );
   return server;
 }

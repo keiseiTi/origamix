@@ -12,7 +12,7 @@ export const schemaService = {
   updateProps: (
     projectId: string,
     pageId: string,
-    input: { baseRevisionId: string; elementId: string; props: Record<string, unknown> }
+    input: { baseRevisionId: string; elementId: string; props: Record<string, unknown> },
   ): Promise<SchemaResult> =>
     request<SchemaResult>(`/pages/${pageId}/changesets`, {
       projectId,
@@ -24,9 +24,9 @@ export const schemaService = {
         createdAt: new Date().toISOString(),
         operation: 'updateElementProps',
         elementId: input.elementId,
-        props: input.props
-      })
+        props: input.props,
+      }),
     }),
   undo: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' })
+    request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' }),
 };

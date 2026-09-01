@@ -12,7 +12,7 @@ interface CreatePageModalProps {
 export function CreatePageModal({
   project,
   onClose,
-  onCreated
+  onCreated,
 }: CreatePageModalProps): React.JSX.Element {
   const [name, setName] = useState('');
   const [fileName, setFileName] = useState('');
@@ -35,7 +35,7 @@ export function CreatePageModal({
     try {
       const page = await projectsService.createPage(project.id, {
         name: name.trim(),
-        slug: fileName.trim()
+        slug: fileName.trim(),
       });
       onCreated(project.id, { id: page.id, name: page.name, fileName: page.slug });
       close();
@@ -61,14 +61,14 @@ export function CreatePageModal({
               <Modal.Header>
                 <Modal.Heading>新建页面</Modal.Heading>
               </Modal.Header>
-              <Modal.Body className="grid gap-4">
+              <Modal.Body className='grid gap-4'>
                 <TextField fullWidth isRequired>
                   <Label>页面名称</Label>
                   <Input
-                    name="pageName"
+                    name='pageName'
                     value={name}
                     onChange={(event) => setName(event.target.value)}
-                    placeholder="请输入"
+                    placeholder='请输入'
                     autoFocus
                     required
                   />
@@ -76,20 +76,20 @@ export function CreatePageModal({
                 <TextField fullWidth isRequired>
                   <Label>页面标识</Label>
                   <Input
-                    name="fileName"
+                    name='fileName'
                     value={fileName}
                     onChange={(event) => setFileName(event.target.value)}
-                    placeholder="例如：customer-list"
+                    placeholder='例如：customer-list'
                     required
                   />
                 </TextField>
-                {error && <p className="text-sm text-danger">{error}</p>}
+                {error && <p className='text-sm text-danger'>{error}</p>}
               </Modal.Body>
               <Modal.Footer>
-                <Button slot="close" variant="tertiary" type="button">
+                <Button slot='close' variant='tertiary' type='button'>
                   取消
                 </Button>
-                <Button type="submit" isDisabled={isSubmitting}>
+                <Button type='submit' isDisabled={isSubmitting}>
                   {isSubmitting ? '创建中…' : '创建页面'}
                 </Button>
               </Modal.Footer>

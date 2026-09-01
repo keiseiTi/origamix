@@ -28,7 +28,7 @@ const schemaTemplate = (): OrigamixPageSchema => ({
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } }
+  extensions: { origamix: { schemaVersion: '1.0' } },
 });
 
 async function atomicWrite(path: string, contents: string): Promise<void> {
@@ -53,7 +53,7 @@ function routerSource(registry: RegistryItem[]): string {
   const routes = registry
     .map(
       (page) =>
-        `  {\n    path: '${page.slug === 'home' ? '/' : `/${page.slug}`}',\n    Component: ${pageComponentName(page.slug)}\n  }`
+        `  {\n    path: '${page.slug === 'home' ? '/' : `/${page.slug}`}',\n    Component: ${pageComponentName(page.slug)}\n  }`,
     )
     .join(',\n');
   return `import { createBrowserRouter } from 'react-router';\n${imports}\n\nexport default createBrowserRouter([\n${routes}\n]);\n`;
@@ -65,7 +65,7 @@ export class ProjectService {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly workspace: WorkspaceRepository,
-    private readonly templatePath: string
+    private readonly templatePath: string,
   ) {}
 
   registerGrant(id: string, path: string): void {
@@ -106,43 +106,43 @@ export class ProjectService {
       await mkdir(join(temporaryPath, '.origamix', 'revisions'), { recursive: true });
       await atomicWrite(
         join(temporaryPath, 'origamix.project.json'),
-        `${JSON.stringify({ projectId: id, name, code, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official', version: '1' }] }, null, 2)}\n`
+        `${JSON.stringify({ projectId: id, name, code, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official', version: '1' }] }, null, 2)}\n`,
       );
       await atomicWrite(join(temporaryPath, 'README.md'), `# ${name}\n\n项目标识：\`${code}\`\n`);
       const packageJson = JSON.parse(
-        await readFile(join(temporaryPath, 'package.json'), 'utf8')
+        await readFile(join(temporaryPath, 'package.json'), 'utf8'),
       ) as Record<string, unknown>;
       await atomicWrite(
         join(temporaryPath, 'package.json'),
-        `${JSON.stringify({ ...packageJson, name: code }, null, 2)}\n`
+        `${JSON.stringify({ ...packageJson, name: code }, null, 2)}\n`,
       );
       await atomicWrite(
         join(temporaryPath, 'index.html'),
         (await readFile(join(temporaryPath, 'index.html'), 'utf8'))
           .replace('<html lang="en">', '<html lang="zh-CN">')
-          .replace('<title>template</title>', `<title>${name}</title>`)
+          .replace('<title>template</title>', `<title>${name}</title>`),
       );
       await atomicWrite(
         join(temporaryPath, 'src', 'pages', 'registry.json'),
-        `${JSON.stringify([homePage], null, 2)}\n`
+        `${JSON.stringify([homePage], null, 2)}\n`,
       );
       await atomicWrite(
         join(temporaryPath, 'src', 'pages', 'home', 'page.meta.json'),
-        `${JSON.stringify({ pageId: homePage.pageId, name: homePage.name, slug: homePage.slug }, null, 2)}\n`
+        `${JSON.stringify({ pageId: homePage.pageId, name: homePage.name, slug: homePage.slug }, null, 2)}\n`,
       );
       const schema = schemaTemplate();
       await atomicWrite(
         join(temporaryPath, 'src', 'pages', 'home', 'schema.json'),
-        `${JSON.stringify(schema, null, 2)}\n`
+        `${JSON.stringify(schema, null, 2)}\n`,
       );
       await atomicWrite(
         join(temporaryPath, 'src', 'pages', 'home', 'index.tsx'),
-        pageComponentSource(homePage.name, homePage.slug)
+        pageComponentSource(homePage.name, homePage.slug),
       );
       await atomicWrite(join(temporaryPath, 'src', 'router.ts'), routerSource([homePage]));
       await initializePageSchema(
         { projectPath: temporaryPath, pageId: homePage.pageId, slug: homePage.slug },
-        schema
+        schema,
       );
       await rename(temporaryPath, path);
     } catch (error) {
@@ -172,7 +172,7 @@ export class ProjectService {
     await mkdir(pagePath);
     await atomicWrite(
       join(pagePath, 'page.meta.json'),
-      `${JSON.stringify({ pageId: id, name, slug: input.slug }, null, 2)}\n`
+      `${JSON.stringify({ pageId: id, name, slug: input.slug }, null, 2)}\n`,
     );
     const schema = schemaTemplate();
     await atomicWrite(join(pagePath, 'schema.json'), `${JSON.stringify(schema, null, 2)}\n`);
@@ -182,11 +182,11 @@ export class ProjectService {
     const registry = JSON.parse(await readFile(registryPath, 'utf8')) as RegistryItem[];
     await atomicWrite(
       registryPath,
-      `${JSON.stringify([...registry, { pageId: id, name, slug: input.slug }], null, 2)}\n`
+      `${JSON.stringify([...registry, { pageId: id, name, slug: input.slug }], null, 2)}\n`,
     );
     await atomicWrite(
       join(project.path, 'src', 'router.ts'),
-      routerSource([...registry, { pageId: id, name, slug: input.slug }])
+      routerSource([...registry, { pageId: id, name, slug: input.slug }]),
     );
     await this.reconcile(project.path);
     const page = this.projects.getPage(projectId, id);
@@ -207,7 +207,7 @@ export class ProjectService {
         projectId: `project_${nanoid()}`,
         name: directoryName,
         code: directoryName,
-        projectFormatVersion: '1'
+        projectFormatVersion: '1',
       };
       await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     }
@@ -229,10 +229,10 @@ export class ProjectService {
       const relativePath = join('src', 'pages', item.slug);
       const pagePath = join(path, relativePath);
       const meta = JSON.parse(
-        await readFile(join(pagePath, 'page.meta.json'), 'utf8')
+        await readFile(join(pagePath, 'page.meta.json'), 'utf8'),
       ) as RegistryItem;
       const schema = JSON.parse(
-        await readFile(join(pagePath, 'schema.json'), 'utf8')
+        await readFile(join(pagePath, 'schema.json'), 'utf8'),
       ) as OrigamixPageSchema;
       if (meta.pageId !== item.pageId || meta.slug !== item.slug || !validatePage(schema).valid)
         throw new Error(`页面“${item.name}”无效`);
@@ -244,7 +244,7 @@ export class ProjectService {
         relativePath,
         status: 'active',
         createdAt: timestamp,
-        updatedAt: timestamp
+        updatedAt: timestamp,
       });
     }
     const project: ProjectRecord = {
@@ -254,7 +254,7 @@ export class ProjectService {
       formatVersion: manifest.projectFormatVersion ?? '1',
       status: 'available',
       createdAt: timestamp,
-      lastOpenedAt: timestamp
+      lastOpenedAt: timestamp,
     };
     this.projects.reconcile(project, pages);
     this.workspace.save({ activeProjectId: project.id, activePageId: pages[0]?.id ?? null });

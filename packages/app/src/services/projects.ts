@@ -16,6 +16,6 @@ export const projectsService = {
   createPage: (projectId: string, input: { name: string; slug: string }): Promise<PageRecord> =>
     request<PageRecord>(`/projects/${projectId}/pages`, {
       method: 'POST',
-      body: JSON.stringify(input)
-    })
+      body: JSON.stringify(input),
+    }),
 };

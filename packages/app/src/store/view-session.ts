@@ -10,7 +10,8 @@ export function parseSession(raw: string | null): ViewSession {
     return {
       activeTab: value?.activeTab === 'edit' ? 'edit' : 'chat',
       isSettingsOpen: value?.isSettingsOpen === true,
-      sidebarCollapsed: typeof value?.sidebarCollapsed === 'boolean' ? value.sidebarCollapsed : undefined
+      sidebarCollapsed:
+        typeof value?.sidebarCollapsed === 'boolean' ? value.sidebarCollapsed : undefined,
     };
   } catch {
     return { activeTab: 'chat', isSettingsOpen: false };

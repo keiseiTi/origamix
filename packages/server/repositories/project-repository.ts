@@ -27,7 +27,7 @@ const projectRecord = (row: ProjectRow): ProjectRecord => ({
   formatVersion: row.format_version,
   status: row.status,
   createdAt: row.created_at,
-  lastOpenedAt: row.last_opened_at
+  lastOpenedAt: row.last_opened_at,
 });
 const pageRecord = (row: PageRow): PageRecord => ({
   id: row.id,
@@ -37,7 +37,7 @@ const pageRecord = (row: PageRow): PageRecord => ({
   relativePath: row.relative_path,
   status: row.status,
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
 });
 
 export class ProjectRepository {
@@ -77,7 +77,7 @@ export class ProjectRepository {
     db.exec('BEGIN IMMEDIATE');
     try {
       db.prepare(
-        'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET path = excluded.path, name = excluded.name, format_version = excluded.format_version, status = excluded.status, last_opened_at = excluded.last_opened_at'
+        'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET path = excluded.path, name = excluded.name, format_version = excluded.format_version, status = excluded.status, last_opened_at = excluded.last_opened_at',
       ).run(
         project.id,
         project.path,
@@ -85,10 +85,10 @@ export class ProjectRepository {
         project.formatVersion,
         project.status,
         project.createdAt,
-        project.lastOpenedAt
+        project.lastOpenedAt,
       );
       const upsertPage = db.prepare(
-        'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, name = excluded.name, relative_path = excluded.relative_path, status = excluded.status, updated_at = excluded.updated_at'
+        'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, name = excluded.name, relative_path = excluded.relative_path, status = excluded.status, updated_at = excluded.updated_at',
       );
       for (const page of pages)
         upsertPage.run(
@@ -99,12 +99,12 @@ export class ProjectRepository {
           page.relativePath,
           page.status,
           page.createdAt,
-          page.updatedAt
+          page.updatedAt,
         );
       const ids = pages.map((page) => page.id);
       if (ids.length)
         db.prepare(
-          `UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ? AND id NOT IN (${ids.map(() => '?').join(', ')})`
+          `UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ? AND id NOT IN (${ids.map(() => '?').join(', ')})`,
         ).run(new Date().toISOString(), project.id, ...ids);
       db.exec('COMMIT');
     } catch (error) {

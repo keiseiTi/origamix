@@ -23,5 +23,7 @@ it('copies only portable source files and excludes workspace dependencies and sy
     expect((await readdir(target)).sort()).toEqual(['package.json', 'src']);
     expect(await readdir(join(target, 'src'))).toEqual(['main.tsx']);
     expect(await readFile(join(target, 'src', 'main.tsx'), 'utf8')).toBe('export {};');
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

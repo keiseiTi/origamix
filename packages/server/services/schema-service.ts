@@ -89,7 +89,7 @@ async function createRevision(
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
   source: ChangeSet['source'],
-  parentRevisionId: string | null
+  parentRevisionId: string | null,
 ): Promise<RevisionSnapshot> {
   const snapshot: RevisionSnapshot = {
     revisionId: `revision_${nanoid()}`,
@@ -97,7 +97,7 @@ async function createRevision(
     source,
     createdAt: new Date().toISOString(),
     schemaHash: hashSchema(schema),
-    schema
+    schema,
   };
   await mkdir(revisionsDirectory(page), { recursive: true });
   await writeJsonAtomically(revisionFile(page, snapshot.revisionId), snapshot);
@@ -106,7 +106,7 @@ async function createRevision(
 
 export async function initializePageSchema(
   page: SchemaPageRef,
-  schema: OrigamixPageSchema
+  schema: OrigamixPageSchema,
 ): Promise<string> {
   const validation = validatePage(schema);
   if (!validation.valid) throw new Error(validationMessage(validation));
@@ -133,14 +133,14 @@ function applyChangeSet(schema: OrigamixPageSchema, changeSet: ChangeSet): Origa
     ...schema,
     elements: {
       ...schema.elements,
-      [changeSet.elementId]: { ...element, props: { ...element.props, ...changeSet.props } }
-    }
+      [changeSet.elementId]: { ...element, props: { ...element.props, ...changeSet.props } },
+    },
   };
 }
 
 export async function commitSchema(
   page: SchemaPageRef,
-  changeSet: ChangeSet
+  changeSet: ChangeSet,
 ): Promise<SchemaReadResult> {
   const changeSetValidation = validateChangeSet(changeSet);
   if (!changeSetValidation.valid) throw new Error('ChangeSet 格式无效');
@@ -166,13 +166,13 @@ export async function undoSchema(page: SchemaPageRef): Promise<SchemaReadResult>
   const currentRevision = await readJson<RevisionSnapshot>(revisionFile(page, current.revisionId));
   if (!currentRevision.parentRevisionId) throw new Error('当前页面没有可撤销的 Revision');
   const parent = await readJson<RevisionSnapshot>(
-    revisionFile(page, currentRevision.parentRevisionId)
+    revisionFile(page, currentRevision.parentRevisionId),
   );
   const revision = await createRevision(
     page,
     parent.schema,
     { kind: 'undo', revisionId: current.revisionId },
-    current.revisionId
+    current.revisionId,
   );
   await writeJsonAtomically(schemaFile(page), parent.schema);
   const meta = await readPageMeta(page);

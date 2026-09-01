@@ -39,6 +39,6 @@ export function useViewSession(): ViewSession & {
     setSidebarCollapsed: (sidebarCollapsed) =>
       setState((current) => ({ ...current, sidebarCollapsed })),
     setActiveTab: (activeTab) => setState((current) => ({ ...current, activeTab })),
-    setIsSettingsOpen: (isSettingsOpen) => setState((current) => ({ ...current, isSettingsOpen }))
+    setIsSettingsOpen: (isSettingsOpen) => setState((current) => ({ ...current, isSettingsOpen })),
   };
 }

@@ -28,7 +28,7 @@ export function Workspace({
   onCreateProject,
   editorRef,
   onModeChange,
-  onBeforePreview
+  onBeforePreview,
 }: WorkspaceProps): React.JSX.Element {
   const [aiOpen, setAiOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState('加载中…');
@@ -41,7 +41,7 @@ export function Workspace({
     />
   );
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950">
+    <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       {page && projectId && (
         <WorkspaceHeader
           projectName={projectName ?? '未命名项目'}
@@ -77,7 +77,7 @@ export function Workspace({
             open={aiOpen && mode === 'edit'}
             onClose={() => setAiOpen(false)}
             title={`AI · ${page.name}`}
-            side="right"
+            side='right'
           >
             {chat}
           </WorkspaceDrawer>

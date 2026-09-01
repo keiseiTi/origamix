@@ -11,7 +11,7 @@ export function EditorSession({
   page,
   visible,
   editorRef,
-  onStatusChange
+  onStatusChange,
 }: {
   projectId: string;
   page: PageItem;

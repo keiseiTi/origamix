@@ -19,7 +19,7 @@ export class WorkspaceRepository {
       activePageId: row.active_page_id,
       theme: row.theme,
       sidebarCollapsed: row.sidebar_state === 'collapsed',
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 
@@ -28,14 +28,14 @@ export class WorkspaceRepository {
     const next = { ...current, ...input, updatedAt: new Date().toISOString() };
     this.database.connection
       .prepare(
-        'UPDATE workspace_state SET active_project_id = ?, active_page_id = ?, theme = ?, sidebar_state = ?, updated_at = ? WHERE id = 1'
+        'UPDATE workspace_state SET active_project_id = ?, active_page_id = ?, theme = ?, sidebar_state = ?, updated_at = ? WHERE id = 1',
       )
       .run(
         next.activeProjectId,
         next.activePageId,
         next.theme,
         next.sidebarCollapsed ? 'collapsed' : 'expanded',
-        next.updatedAt
+        next.updatedAt,
       );
     return next;
   }
