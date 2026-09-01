@@ -1,4 +1,4 @@
-import type { ApiResult } from '@origamix/shared/protocol/api';
+import { isApiResultEnvelope } from '@origamix/shared/protocol/api';
 
 interface Connection {
   baseUrl: string;
@@ -7,6 +7,17 @@ interface Connection {
 }
 
 let connection: Connection | undefined;
+
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code: number,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
 
 async function getConnection(): Promise<Connection> {
   connection ??= await window.api?.backend?.getConnection?.();
@@ -33,7 +44,10 @@ export async function request<T>(
       ...init?.headers,
     },
   });
-  const result = (await response.json()) as ApiResult<T>;
-  if (!result.ok) throw new Error(result.error.message);
-  return result.data;
+  const result = await response.json();
+  if (!isApiResultEnvelope(result))
+    throw new ApiRequestError('服务返回格式无效', 500, response.status);
+  if (!result.success)
+    throw new ApiRequestError(result.message ?? '请求失败', result.code, response.status);
+  return result.data as T;
 }

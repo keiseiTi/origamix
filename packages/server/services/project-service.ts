@@ -8,6 +8,7 @@ import { validatePage } from '@origamix/shared/protocol/validation';
 import { initializePageSchema } from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
 import type { WorkspaceRepository } from '../repositories/workspace-repository';
+import { conflict, invalid, notFound } from '../errors';
 
 interface ProjectManifest {
   projectId: string;
@@ -74,7 +75,7 @@ export class ProjectService {
 
   private consumeGrant(id: string): string {
     const path = this.grants.get(id);
-    if (!path) throw new Error('目录授权已失效，请重新选择目录');
+    if (!path) throw invalid('目录授权已失效，请重新选择目录');
     this.grants.delete(id);
     return path;
   }
@@ -85,16 +86,16 @@ export class ProjectService {
     directoryGrantId: string;
   }): Promise<ProjectRecord> {
     const name = input.name.trim();
-    if (!name || /[\\/:*?"<>|]/.test(name)) throw new Error('项目名称无效');
+    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
     const code = input.code.trim();
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
-      throw new Error('项目标识仅支持小写字母、数字和连字符');
+      throw invalid('项目标识仅支持小写字母、数字和连字符');
     }
     const parentPath = this.consumeGrant(input.directoryGrantId);
     const path = join(parentPath, code);
     try {
       await access(path);
-      throw new Error('目标目录已经存在');
+      throw conflict('目标目录已经存在');
     } catch (error) {
       if (error instanceof Error && error.message === '目标目录已经存在') throw error;
     }
@@ -158,13 +159,13 @@ export class ProjectService {
 
   async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
-    if (!project || project.status !== 'available') throw new Error('项目不存在或不可用');
+    if (!project || project.status !== 'available') throw notFound('项目不存在或不可用');
     const name = input.name.trim();
-    if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw new Error('页面信息无效');
+    if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
     const pagePath = join(project.path, 'src', 'pages', input.slug);
     try {
       await access(pagePath);
-      throw new Error('页面文件已经存在');
+      throw conflict('页面文件已经存在');
     } catch (error) {
       if (error instanceof Error && error.message === '页面文件已经存在') throw error;
     }
@@ -211,7 +212,7 @@ export class ProjectService {
       };
       await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     }
-    if (!manifest.projectId || !manifest.name) throw new Error('项目清单无效');
+    if (!manifest.projectId || !manifest.name) throw invalid('项目清单无效');
     const registryPath = join(path, 'src', 'pages', 'registry.json');
     let registry: RegistryItem[];
     try {
@@ -222,7 +223,7 @@ export class ProjectService {
       registry = [];
       await atomicWrite(registryPath, '[]\n');
     }
-    if (!Array.isArray(registry)) throw new Error('页面注册表无效');
+    if (!Array.isArray(registry)) throw invalid('页面注册表无效');
     const timestamp = now();
     const pages: PageRecord[] = [];
     for (const item of registry) {
@@ -235,7 +236,7 @@ export class ProjectService {
         await readFile(join(pagePath, 'schema.json'), 'utf8'),
       ) as OrigamixPageSchema;
       if (meta.pageId !== item.pageId || meta.slug !== item.slug || !validatePage(schema).valid)
-        throw new Error(`页面“${item.name}”无效`);
+        throw invalid(`页面“${item.name}”无效`);
       pages.push({
         id: item.pageId,
         projectId: manifest.projectId,

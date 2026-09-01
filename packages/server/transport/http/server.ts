@@ -13,18 +13,31 @@ import { commitSchema, getSchema, undoSchema } from '../../services/schema-servi
 import type { ProjectRepository } from '../../repositories/project-repository';
 import type { WorkspaceRepository } from '../../repositories/workspace-repository';
 import type { ProjectService } from '../../services/project-service';
+import { ApiError, invalid, notFound } from '../../errors';
 
 function requestId(value: unknown): string {
   return typeof value === 'string' && value.length <= 100 ? value : nanoid();
 }
-function failure(requestId: string, error: unknown): ApiResult<never> {
+function errorStatus(error: unknown): number {
+  if (error instanceof ApiError) return error.statusCode;
+  const statusCode =
+    typeof error === 'object' && error !== null && 'statusCode' in error
+      ? error.statusCode
+      : undefined;
+  return typeof statusCode === 'number' && statusCode >= 400 ? statusCode : 500;
+}
+function failure(error: unknown, fallbackStatus = 500): ApiResult<never> {
+  const statusCode = error instanceof ApiError ? error.statusCode : fallbackStatus;
   return {
-    ok: false,
-    error: {
-      code: 'REQUEST_FAILED',
-      message: error instanceof Error ? error.message : '请求失败',
-      requestId,
-    },
+    success: false,
+    code: error instanceof ApiError ? error.code : statusCode,
+    data: null,
+    message:
+      error instanceof ApiError
+        ? error.message
+        : statusCode < 500 && error instanceof Error
+          ? error.message
+          : '服务器内部错误',
   };
 }
 
@@ -51,11 +64,14 @@ export function createHttpServer(input: {
   server.addHook('onRequest', async (request, reply) => {
     const id = requestId(request.headers['x-request-id']);
     request.headers['x-request-id'] = id;
+    reply.header('X-Request-Id', id);
     const origin = request.headers.origin;
     if (origin && !allowedOrigins.has(origin)) {
       return reply.code(403).send({
-        ok: false,
-        error: { code: 'ORIGIN_DENIED', message: '请求来源不受信任', requestId: id },
+        success: false,
+        code: 403,
+        data: null,
+        message: '请求来源不受信任',
       });
     }
     if (origin) {
@@ -74,21 +90,24 @@ export function createHttpServer(input: {
       request.headers['x-origamix-service'] !== input.serviceInstanceId
     ) {
       return reply.code(401).send({
-        ok: false,
-        error: { code: 'UNAUTHORIZED', message: '桌面会话无效', requestId: id },
+        success: false,
+        code: 401,
+        data: null,
+        message: '桌面会话无效',
       });
     }
   });
-  server.setErrorHandler((error, request, reply) =>
-    reply.code(400).send(failure(requestId(request.headers['x-request-id']), error)),
-  );
+  server.setErrorHandler((error, _request, reply) => {
+    const statusCode = errorStatus(error);
+    return reply.code(statusCode).send(failure(error, statusCode));
+  });
   const route =
-    <T>(handler: (request: RouteInput<T>) => Promise<unknown> | unknown) =>
+    <T>(handler: (request: RouteInput<T>) => Promise<unknown> | unknown, successStatus = 200) =>
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const id = requestId(request.headers['x-request-id']);
       try {
-        reply.send({
-          ok: true,
+        reply.code(successStatus).send({
+          success: true,
+          code: 200,
           data: await handler({
             body: request.body as T,
             params: request.params as Record<string, string>,
@@ -96,12 +115,14 @@ export function createHttpServer(input: {
           }),
         });
       } catch (error) {
-        reply.send(failure(id, error));
+        const statusCode = errorStatus(error);
+        reply.code(statusCode).send(failure(error));
       }
     };
 
   server.get('/api/v1/health', async () => ({
-    ok: true,
+    success: true,
+    code: 200,
     data: { serviceInstanceId: input.serviceInstanceId },
   }));
   server.get(
@@ -120,7 +141,7 @@ export function createHttpServer(input: {
   server.post(
     '/api/v1/projects',
     { schema: { body: CreateProjectSchema } },
-    route<CreateProject>((request) => input.projectService.createProject(request.body)),
+    route<CreateProject>((request) => input.projectService.createProject(request.body), 201),
   );
   server.post(
     '/api/v1/projects/open',
@@ -134,8 +155,9 @@ export function createHttpServer(input: {
   server.post(
     '/api/v1/projects/:projectId/pages',
     { schema: { body: CreatePageSchema } },
-    route<CreatePage>((request) =>
-      input.projectService.createPage(request.params.projectId, request.body),
+    route<CreatePage>(
+      (request) => input.projectService.createPage(request.params.projectId, request.body),
+      201,
     ),
   );
   server.get(
@@ -144,7 +166,7 @@ export function createHttpServer(input: {
       const projectId = String(request.headers['x-origamix-project-id'] ?? '');
       const page = input.projects.getPage(projectId, request.params.pageId);
       const project = input.projects.getProject(projectId);
-      if (!page || !project) throw new Error('页面不存在');
+      if (!page || !project) throw notFound('页面不存在');
       return getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
     }),
   );
@@ -155,7 +177,8 @@ export function createHttpServer(input: {
       const page = input.projects.getPage(projectId, request.params.pageId);
       const project = input.projects.getProject(projectId);
       const changeSet = { ...request.body, changeSetId: `change_${nanoid()}` } as ChangeSet;
-      if (!page || !project || changeSet.pageId !== page.id) throw new Error('页面或变更集无效');
+      if (!page || !project) throw notFound('页面不存在');
+      if (changeSet.pageId !== page.id) throw invalid('变更集与页面不匹配');
       return commitSchema(
         { projectPath: project.path, pageId: page.id, slug: page.slug },
         changeSet,
@@ -168,7 +191,7 @@ export function createHttpServer(input: {
       const projectId = String(request.headers['x-origamix-project-id'] ?? '');
       const page = input.projects.getPage(projectId, request.params.pageId);
       const project = input.projects.getProject(projectId);
-      if (!page || !project) throw new Error('页面不存在');
+      if (!page || !project) throw notFound('页面不存在');
       return undoSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
     }),
   );

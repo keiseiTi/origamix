@@ -6,7 +6,7 @@ import {
   type PageWindowInput,
   type PreviewSnapshot
 } from '@origamix/shared/page-window';
-import type { ApiResult, PageRecord, WorkspaceRecord } from '@origamix/shared/protocol/api';
+import { isApiResultEnvelope, type PageRecord, type WorkspaceRecord } from '@origamix/shared/protocol/api';
 
 interface PreviewEntry {
   window: BrowserWindow;
@@ -29,9 +29,10 @@ export function registerPageWindows(
         ...(projectId ? { 'x-origamix-project-id': projectId } : {})
       }
     });
-    const result = (await response.json()) as ApiResult<T>;
-    if (!result.ok) throw new Error(result.error.message);
-    return result.data;
+    const result = await response.json();
+    if (!isApiResultEnvelope(result)) throw new Error('服务返回格式无效');
+    if (!result.success) throw new Error(result.message ?? `请求失败（${result.code}）`);
+    return result.data as T;
   };
 
   ipcMain.handle('preview:read-snapshot', async (event): Promise<PreviewSnapshot> => {

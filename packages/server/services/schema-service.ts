@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { ChangeSet, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validateChangeSet, validatePage } from '@origamix/shared/protocol/validation';
+import { conflict, invalid, notFound } from '../errors';
 
 interface PageMeta {
   pageId: string;
@@ -80,8 +81,8 @@ function validationMessage(result: ReturnType<typeof validatePage>): string {
 
 async function readPageMeta(page: SchemaPageRef): Promise<PageMeta & { revisionId: string }> {
   const meta = await readJson<PageMeta>(metaFile(page));
-  if (meta.pageId !== page.pageId) throw new Error('页面元信息不匹配');
-  if (!meta.revisionId) throw new Error('页面缺少 Revision，需要重新索引');
+  if (meta.pageId !== page.pageId) throw invalid('页面元信息不匹配');
+  if (!meta.revisionId) throw invalid('页面缺少 Revision，需要重新索引');
   return meta as PageMeta & { revisionId: string };
 }
 
@@ -109,7 +110,7 @@ export async function initializePageSchema(
   schema: OrigamixPageSchema,
 ): Promise<string> {
   const validation = validatePage(schema);
-  if (!validation.valid) throw new Error(validationMessage(validation));
+  if (!validation.valid) throw invalid(validationMessage(validation));
   const revision = await createRevision(page, schema, { kind: 'user', actorId: 'system' }, null);
   await writeJsonAtomically(schemaFile(page), schema);
   const meta = await readJson<PageMeta>(metaFile(page));
@@ -121,14 +122,14 @@ export async function getSchema(page: SchemaPageRef): Promise<SchemaReadResult> 
   const meta = await readPageMeta(page);
   const schema = await readJson<OrigamixPageSchema>(schemaFile(page));
   const validation = validatePage(schema);
-  if (!validation.valid) throw new Error(validationMessage(validation));
+  if (!validation.valid) throw invalid(validationMessage(validation));
   return { schema, revisionId: meta.revisionId };
 }
 
 function applyChangeSet(schema: OrigamixPageSchema, changeSet: ChangeSet): OrigamixPageSchema {
   if (changeSet.operation === 'replaceSchema') return changeSet.schema;
   const element = schema.elements[changeSet.elementId];
-  if (!element) throw new Error('目标元素不存在');
+  if (!element) throw notFound('目标元素不存在');
   return {
     ...schema,
     elements: {
@@ -143,16 +144,16 @@ export async function commitSchema(
   changeSet: ChangeSet,
 ): Promise<SchemaReadResult> {
   const changeSetValidation = validateChangeSet(changeSet);
-  if (!changeSetValidation.valid) throw new Error('ChangeSet 格式无效');
-  if (changeSet.pageId !== page.pageId) throw new Error('ChangeSet 页面不匹配');
+  if (!changeSetValidation.valid) throw invalid('ChangeSet 格式无效');
+  if (changeSet.pageId !== page.pageId) throw invalid('ChangeSet 页面不匹配');
 
   const current = await getSchema(page);
   if (changeSet.baseRevisionId !== current.revisionId)
-    throw new Error('页面已更新，请重新加载后再提交');
+    throw conflict('页面已更新，请重新加载后再提交');
 
   const candidate = applyChangeSet(current.schema, changeSet);
   const validation = validatePage(candidate);
-  if (!validation.valid) throw new Error(validationMessage(validation));
+  if (!validation.valid) throw invalid(validationMessage(validation));
 
   const revision = await createRevision(page, candidate, changeSet.source, current.revisionId);
   await writeJsonAtomically(schemaFile(page), candidate);
@@ -164,7 +165,7 @@ export async function commitSchema(
 export async function undoSchema(page: SchemaPageRef): Promise<SchemaReadResult> {
   const current = await getSchema(page);
   const currentRevision = await readJson<RevisionSnapshot>(revisionFile(page, current.revisionId));
-  if (!currentRevision.parentRevisionId) throw new Error('当前页面没有可撤销的 Revision');
+  if (!currentRevision.parentRevisionId) throw conflict('当前页面没有可撤销的 Revision');
   const parent = await readJson<RevisionSnapshot>(
     revisionFile(page, currentRevision.parentRevisionId),
   );

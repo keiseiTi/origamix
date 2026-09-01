@@ -51,7 +51,8 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (url: string) => ({
       json: async () => ({
-        ok: true,
+        success: true,
+        code: 200,
         data: url.endsWith('/pages')
           ? [
               { id: 'page_one', name: '页面一' },

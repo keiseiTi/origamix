@@ -15,6 +15,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - Keep external behavior deterministic and side-effect-free: no filesystem/network calls, environment reads, credentials or process startup.
 - Define runtime schemas alongside transport shapes and derive TypeScript types where practical. A cast cannot validate untrusted input; receiving boundaries must actually validate it.
 - Preserve stable IDs, schemaVersion, ChangeSet discrimination, baseRevisionId and error/result semantics. Breaking persisted formats need explicit version/migration strategy, not silently relaxed validation.
+- Keep the HTTP result envelope in `src/protocol/api.ts` synchronized with every producer and consumer; `data` is always present, and failures never place error metadata inside it.
 - Separate shape validation from semantic checks such as root existence, layout references and cycles. Never weaken validators to accept invalid fixtures/model responses.
 - Review all App/Server/Desktop producers and consumers when changing exports. Keep preview contracts read-only and separate from workbench APIs.
 - Consumers import declared `@origamix/shared/...` exports and compile this source themselves. `build` intentionally typechecks without generating `dist`; no independent bundle/platform export without an explicit architecture change.
