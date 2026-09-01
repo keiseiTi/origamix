@@ -4,13 +4,14 @@ Local-first Electron low-code editor. Development uses custom tsup scripts and V
 
 ## Workspace
 
-| Package             | Responsibility                                                                          |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| `apps/desktop`      | Electron Main/Preload, desktop development orchestration and application packaging      |
-| `packages/app`      | React Renderer; no direct Node.js/Electron imports                                      |
-| `packages/server`   | SQLite, project persistence, HTTP API and independently built server artifacts          |
-| `packages/shared`   | Source-only TypeScript contracts and validation shared by consumers                     |
-| `packages/template` | Portable project scaffold with its own dependencies and strict TypeScript configuration |
+| Package              | Responsibility                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `apps/desktop`       | Electron Main/Preload, desktop development orchestration and application packaging      |
+| `packages/app`       | React Renderer; no direct Node.js/Electron imports                                      |
+| `packages/materials` | Source-only Tangramino page materials and editor manifests; currently Ant Design only   |
+| `packages/server`    | SQLite, project persistence, HTTP API and independently built server artifacts          |
+| `packages/shared`    | Source-only TypeScript contracts and validation shared by consumers                     |
+| `packages/template`  | Portable project scaffold with its own dependencies and strict TypeScript configuration |
 
 Each package declares its own direct runtime dependencies. Shared lint/typecheck/test tools live at the workspace root; the template keeps its own tools so generated projects work outside this repository. Full dependency hoisting is disabled. Shared source is compiled by its consumers; the server owns its `dist` output and Desktop assembles it without compiling server source itself.
 

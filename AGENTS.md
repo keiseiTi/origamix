@@ -11,13 +11,14 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Repository map
 
-| Package guidance                        | Owns                                                      | Start reading                                                                       |
-| --------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [Desktop](apps/desktop/AGENTS.md)       | Main/Preload, windows, lifecycle, packaging               | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                           |
-| [App](packages/app/AGENTS.md)           | React workbench, editor state, HTTP client                | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
-| [Server](packages/server/AGENTS.md)     | Local HTTP backend, SQLite, project files, Schema commits | `packages/server/runtime.ts`, `packages/server/services/`                           |
-| [Shared](packages/shared/AGENTS.md)     | Platform-neutral contracts and validators                 | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
-| [Template](packages/template/AGENTS.md) | Portable generated-project scaffold                       | `packages/template/package.json`, `packages/template/src/`                          |
+| Package guidance                          | Owns                                                      | Start reading                                                                       |
+| ----------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging               | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                           |
+| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
+| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests            | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`              |
+| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits | `packages/server/runtime.ts`, `packages/server/services/`                           |
+| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                 | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
+| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                       | `packages/template/package.json`, `packages/template/src/`                          |
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - [PRD and architecture](_doc/PRD-AND-ARCHITECTURE.md): product intent and phased scope.
@@ -34,7 +35,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 - SQLite belongs to Server. **Never add `FOREIGN KEY`, `REFERENCES`, or cascading database actions.** Services enforce relationships and deletion order through explicit checks, transactions and reconciliation.
 - Renderer business operations use typed HTTP APIs. IPC is limited to named desktop capabilities; never expose raw `ipcRenderer`, filesystem, shell or arbitrary-path operations. Validate inputs and caller authority at the privileged boundary.
 - Main owns directory authorization, windows, credentials and backend lifecycle. Project writes remain within a user-authorized directory. Previews never receive desktop credentials or write privileges.
-- Use declared package exports and direct dependencies. Shared cannot depend on other workspace packages; App runtime cannot import Desktop/Server; Server cannot import App/Desktop. App's Node-side development host may use exported Server entry points, never from browser source.
+- Use declared package exports and direct dependencies. Shared cannot depend on other workspace packages; Materials cannot import App/Desktop/Server; App runtime cannot import Desktop/Server; Server cannot import App/Desktop. App's Node-side development host may use exported Server entry points, never from browser source.
 - Backend listeners remain loopback-only. Tokens, API keys and decrypted credentials must not enter URLs, logs, browser storage, project files or client bundles.
 
 ## Engineering and interface rules

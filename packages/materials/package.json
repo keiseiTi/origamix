@@ -1,0 +1,30 @@
+{
+  "name": "@origamix/materials",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./antd": "./antd/index.ts",
+    "./antd/group": "./antd/group.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@tangramino/base-editor": "^0.1.0",
+    "antd": "^6.0.0",
+    "clsx": "^2.1.1",
+    "react": "^19.2.8",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18"
+  },
+  "peerDependencies": {
+    "antd": "^6",
+    "react": "^19"
+  }
+}
