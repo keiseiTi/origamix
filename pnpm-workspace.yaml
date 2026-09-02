@@ -4,6 +4,12 @@ allowBuilds:
   esbuild: true
   lefthook: true
 
+minimumReleaseAgeExclude:
+  - '@tangramino/base-editor@0.1.2'
+  - '@tangramino/engine@0.1.2'
+  - '@tangramino/flow-editor@0.1.2'
+  - '@tangramino/react@0.1.2'
+
 packages:
   - apps/*
   - packages/*
