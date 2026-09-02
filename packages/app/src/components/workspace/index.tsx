@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import type { PageItem } from '../sidebar';
 import { ChatWorkspace } from './chat-workspace';
-import { Editor } from '../editor';
+import { Editor, type EditorHandle } from '../editor';
+import { PreviewTab } from '../editor/mods/preview-tab';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 
@@ -12,6 +13,7 @@ interface WorkspaceProps {
   mode: WorkspaceMode;
   sidebarCollapsed: boolean;
   onCreateProject: () => void;
+  editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
 }
 
@@ -22,6 +24,7 @@ export function Workspace({
   mode,
   sidebarCollapsed,
   onCreateProject,
+  editorRef,
   onModeChange,
 }: WorkspaceProps): React.JSX.Element {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -38,8 +41,6 @@ export function Workspace({
         <WorkspaceHeader
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}
-          projectId={projectId}
-          pageId={page.id}
           sidebarCollapsed={sidebarCollapsed}
           mode={mode}
           onModeChange={onModeChange}
@@ -52,9 +53,15 @@ export function Workspace({
           <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
           {projectId && (
             <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-              <Editor />
+              <Editor
+                key={`${projectId}:${page.id}`}
+                ref={editorRef}
+                projectId={projectId}
+                pageId={page.id}
+              />
             </div>
           )}
+          {projectId && mode === 'preview' && <PreviewTab projectId={projectId} pageId={page.id} />}
         </>
       )}
     </section>

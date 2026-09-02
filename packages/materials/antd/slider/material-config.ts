@@ -1,10 +1,10 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
 
-const TimePickerMaterial: Material = {
+const SliderMaterial: Material = {
   Component: lazy(() => import('./index')),
   title: '滑动输入条',
-  type: 'timePicker',
+  type: 'slider',
   dropTypes: ['form'],
   contextConfig: {
     variables: [
@@ -50,4 +50,4 @@ const TimePickerMaterial: Material = {
   },
 };
 
-export default TimePickerMaterial;
+export default SliderMaterial;

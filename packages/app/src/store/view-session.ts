@@ -1,5 +1,5 @@
 export interface ViewSession {
-  activeTab: 'chat' | 'edit';
+  activeTab: 'chat' | 'edit' | 'preview';
   isSettingsOpen: boolean;
   sidebarCollapsed?: boolean;
 }
@@ -8,7 +8,8 @@ export function parseSession(raw: string | null): ViewSession {
   try {
     const value = JSON.parse(raw ?? 'null');
     return {
-      activeTab: value?.activeTab === 'edit' ? 'edit' : 'chat',
+      activeTab:
+        value?.activeTab === 'edit' || value?.activeTab === 'preview' ? value.activeTab : 'chat',
       isSettingsOpen: value?.isSettingsOpen === true,
       sidebarCollapsed:
         typeof value?.sidebarCollapsed === 'boolean' ? value.sidebarCollapsed : undefined,

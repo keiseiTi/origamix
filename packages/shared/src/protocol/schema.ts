@@ -1,6 +1,8 @@
 import { Type, type Static } from '@sinclair/typebox';
 
-export const ElementIdSchema = Type.String({ pattern: '^element_[A-Za-z0-9_-]+$' });
+// Tangramino prefixes generated IDs with the material type (for example,
+// `button-Ab12_cd3`), while Origamix's initialized root remains `element_root`.
+export const ElementIdSchema = Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' });
 export const RevisionIdSchema = Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' });
 
 export const PageElementSchema = Type.Object({

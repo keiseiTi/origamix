@@ -15,6 +15,29 @@ describe('page protocol validation', () => {
     expect(validatePage(emptyPage)).toEqual({ valid: true, errors: [], semanticErrors: [] });
   });
 
+  it('accepts Tangramino-generated material IDs', () => {
+    const result = validatePage({
+      ...emptyPage,
+      elements: {
+        ...emptyPage.elements,
+        'button-Ab12_cd3': { type: 'button', props: { text: '按钮' } },
+      },
+      layout: {
+        ...emptyPage.layout,
+        structure: { element_root: ['button-Ab12_cd3'] },
+      },
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it.each(['../button', 'button/child', '', '_button'])('rejects unsafe element ID %s', (id) => {
+    const result = validatePage({
+      ...emptyPage,
+      layout: { ...emptyPage.layout, root: id },
+    });
+    expect(result.valid).toBe(false);
+  });
+
   it('rejects a missing root element', () => {
     const result = validatePage({
       ...emptyPage,

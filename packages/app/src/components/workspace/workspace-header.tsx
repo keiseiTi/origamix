@@ -2,13 +2,11 @@ import { Button, Tooltip } from '@heroui/react';
 import { useState } from 'react';
 import { Eye, SquarePen, MessageSquare } from 'lucide-react';
 
-export type WorkspaceMode = 'chat' | 'edit';
+export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
 interface WorkspaceHeaderProps {
   projectName: string;
   pageName: string;
-  projectId: string;
-  pageId: string;
   sidebarCollapsed: boolean;
   mode: WorkspaceMode;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
@@ -17,21 +15,15 @@ interface WorkspaceHeaderProps {
 export function WorkspaceHeader({
   projectName,
   pageName,
-  projectId,
-  pageId,
   sidebarCollapsed,
   mode,
   onModeChange,
 }: WorkspaceHeaderProps): React.JSX.Element {
-  const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const openWindow = async (): Promise<void> => {
     setOpening(true);
-    setError(null);
     try {
-      await window.api?.window?.openPage?.({ projectId, pageId, mode: 'preview' });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '无法打开窗口');
+      await onModeChange('preview');
     } finally {
       setOpening(false);
     }
@@ -44,11 +36,6 @@ export function WorkspaceHeader({
         </span>
       </div>
       <div className='flex shrink-0 items-center gap-1'>
-        {error && (
-          <span role='alert' className='text-xs text-danger'>
-            {error}
-          </span>
-        )}
         <Tooltip>
           <Button
             isIconOnly
@@ -75,7 +62,7 @@ export function WorkspaceHeader({
           >
             <Eye size={17} />
           </Button>
-          <Tooltip.Content placement='bottom'>在新窗口中预览</Tooltip.Content>
+          <Tooltip.Content placement='bottom'>在预览标签中打开</Tooltip.Content>
         </Tooltip>
       </div>
     </header>
