@@ -17,6 +17,9 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname, // Tells ESLint to look relative to this file
       },
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [1],
+    },
   },
   {
     files: ['packages/app/src/**/*.{ts,tsx}'],

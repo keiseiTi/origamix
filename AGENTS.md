@@ -44,7 +44,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 - Keep transport adapters thin, business rules in services, persistence in repositories/filesystem services and shared contracts platform-neutral. Prefer domain-specific modules over speculative frameworks.
 - Use Tailwind utilities for styling (`clsx`/`tailwind-merge` are allowed), `lucide-react` for icons, and `@heroui/react` for foundational components it provides. Do not hand-write SVG icons or replace available HeroUI controls.
 - Default to light mode and HeroUI tokens. Every changed page, overlay and UI state must support and be verified in both light and dark modes.
-- Preserve lightweight headers, collapsible project navigation and focused conversation/editor content. Conversation mode has a fixed composer; editor mode fills the work area with overlay navigation/AI that does not resize the canvas.
+- Preserve lightweight headers, collapsible project navigation and focused conversation/editor content. Conversation mode has a fixed composer; editor mode fills the work area and overlay navigation does not resize the canvas.
 - Include labels, keyboard focus, hover/disabled feedback, empty/loading states and actionable errors. Failed saves preserve drafts; a successful request is not proof of successful rendering.
 - Preserve user changes. Never patch generated outputs, caches, real project data or dependency trees instead of their source.
 

@@ -1,6 +1,6 @@
 import { Button, Spinner } from '@heroui/react';
 import { PanelLeft } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Sidebar,
   type AppTheme,
@@ -11,7 +11,6 @@ import {
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
 import { Workspace } from './components/workspace';
-import type { EditorHandle } from './components/workspace/editor-workspace';
 import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './store/use-view-session';
 import { projectsService } from './services/projects';
@@ -40,8 +39,6 @@ function App(): React.JSX.Element {
   });
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
-  const editorRef = useRef<EditorHandle>(null);
-  const transitionPending = useRef(false);
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const selectedPage = projects
     .flatMap((project) => project.pages)
@@ -51,20 +48,12 @@ function App(): React.JSX.Element {
   );
   const sidebarVisible = !sidebarCollapsed || sidebarPeek;
 
-  const flushEditor = async (): Promise<void> => {
-    if (editorRef.current) await editorRef.current.flush();
-  };
   const transition = async (action: () => void): Promise<void> => {
-    if (transitionPending.current) return;
-    transitionPending.current = true;
     setTransitionError(null);
     try {
-      await flushEditor();
       action();
     } catch (error) {
-      setTransitionError(error instanceof Error ? error.message : '保存失败，请重试');
-    } finally {
-      transitionPending.current = false;
+      setTransitionError(error instanceof Error ? error.message : '操作失败，请重试');
     }
   };
   const changeMode = async (mode: WorkspaceMode): Promise<void> =>
@@ -73,6 +62,9 @@ function App(): React.JSX.Element {
         collapseSidebar();
         // Entering edit mode does not leave the pointer over the collapse button.
         setSidebarPeekEnabled(true);
+      }
+      if (mode === 'chat') {
+        pinSidebarOpen();
       }
       setActiveTab(mode);
     });
@@ -161,7 +153,6 @@ function App(): React.JSX.Element {
   };
 
   const openProject = async (): Promise<void> => {
-    await flushEditor();
     const grant = await window.api?.dialog?.chooseExistingProject?.();
     if (!grant) return;
     const project = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
@@ -223,7 +214,7 @@ function App(): React.JSX.Element {
           role='alert'
           className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
         >
-          操作未完成：{transitionError}。草稿已保留，请重试保存。
+          操作未完成：{transitionError}
         </div>
       )}
       {sidebarCollapsed && (
@@ -279,9 +270,7 @@ function App(): React.JSX.Element {
           projectName={selectedProject?.name}
           mode={activeTab}
           sidebarCollapsed={sidebarCollapsed}
-          editorRef={editorRef}
           onModeChange={changeMode}
-          onBeforePreview={flushEditor}
           onCreateProject={() => setIsHomeProjectModalOpen(true)}
         />
       )}

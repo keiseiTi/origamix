@@ -7,7 +7,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - `src/app.tsx`, `src/components/`: React workbench and interactions.
 - `src/services/request.ts` and sibling services: typed HTTP requests and errors.
 - `src/store/workspace-store.ts`, `src/store/view-session.ts`: workspace projections and editing sessions.
-- `src/components/workspace/editor-session.tsx`, `src/components/workspace/page-window.tsx`: editing and preview consumers.
+- `src/components/workspace/editor/`, `src/components/workspace/page-window.tsx`: editing and preview surfaces.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
 ## Runtime boundaries
@@ -22,8 +22,8 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 ## Interaction contract
 
 - Use HeroUI foundations, Tailwind and Lucide under root rules; consult installed APIs and existing usage rather than assuming another major version.
-- Conversation/editor share one page/session. Editor fills the work area; header controls open overlay navigation/AI without resizing the canvas.
-- Flush pending edits before page/mode switches and preview. Block transitions on save failure; restore per-page selection/viewport and safely clear invalid selections after Schema changes.
+- Conversation/editor share one page context. The current editor surface is intentionally empty; editor state, Schema loading and mutation must be introduced deliberately rather than hidden in a session wrapper.
+- Editor fills the work area; overlay navigation must not resize the canvas. When editable state returns, flush pending edits before page/mode switches and preview, block transitions on save failure and safely clear invalid selections after Schema changes.
 - Include keyboard operation, overlay focus restoration, Esc dismissal, loading/empty/error states and save feedback. Keep the fixed composer and overlays usable at narrow widths.
 - Verify affected surfaces in light and dark themes, including preview and disabled/error states. Avoid hard-coded light-only colors.
 - These are acceptance constraints for relevant changes, not claims that all planned editor/Agent features exist. Do not add drag/drop, flow editing or AI implementation unless requested.

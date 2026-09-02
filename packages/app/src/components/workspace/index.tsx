@@ -1,9 +1,7 @@
-import { useState, type RefObject } from 'react';
+import { useState } from 'react';
 import type { PageItem } from '../sidebar';
 import { ChatWorkspace } from './chat-workspace';
-import type { EditorHandle } from './editor-workspace';
-import { EditorSession } from './editor-session';
-import { WorkspaceDrawer } from './workspace-drawer';
+import { Editor } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 
@@ -14,9 +12,7 @@ interface WorkspaceProps {
   mode: WorkspaceMode;
   sidebarCollapsed: boolean;
   onCreateProject: () => void;
-  editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
-  onBeforePreview: () => Promise<void>;
 }
 
 export function Workspace({
@@ -26,12 +22,8 @@ export function Workspace({
   mode,
   sidebarCollapsed,
   onCreateProject,
-  editorRef,
   onModeChange,
-  onBeforePreview,
 }: WorkspaceProps): React.JSX.Element {
-  const [aiOpen, setAiOpen] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('加载中…');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const chat = page && (
     <ChatWorkspace
@@ -51,12 +43,6 @@ export function Workspace({
           sidebarCollapsed={sidebarCollapsed}
           mode={mode}
           onModeChange={onModeChange}
-          onBeforePreview={onBeforePreview}
-          onOpenAI={() => setAiOpen(true)}
-          saveStatus={saveStatus}
-          onUndo={async () => {
-            await editorRef.current?.undo();
-          }}
         />
       )}
       {!page ? (
@@ -65,22 +51,10 @@ export function Workspace({
         <>
           <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
           {projectId && (
-            <EditorSession
-              editorRef={editorRef}
-              visible={mode === 'edit'}
-              projectId={projectId}
-              page={page}
-              onStatusChange={setSaveStatus}
-            />
+            <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+              <Editor />
+            </div>
           )}
-          <WorkspaceDrawer
-            open={aiOpen && mode === 'edit'}
-            onClose={() => setAiOpen(false)}
-            title={`AI · ${page.name}`}
-            side='right'
-          >
-            {chat}
-          </WorkspaceDrawer>
         </>
       )}
     </section>
