@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MaterialComponentProps } from '@tangramino/base-editor';
-import { cn } from '../utils/cn';
+import { cn } from '../../src/cn';
 
 interface BasicPageProps extends MaterialComponentProps {
   children?: React.ReactNode;

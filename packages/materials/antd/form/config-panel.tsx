@@ -1,4 +1,4 @@
-import type { PanelConfig } from '../interfaces/material';
+import type { PanelConfig } from '../../src/material';
 // import { RuleConfig } from '@/components/rule-config';
 
 export const formConfigPanel: PanelConfig = {

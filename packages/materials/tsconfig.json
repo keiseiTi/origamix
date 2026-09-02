@@ -10,5 +10,5 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["antd", "components", "antd/interfaces", "utils", "*.ts"]
+  "include": ["antd", "components", "antd/interfaces", "utils", "*.ts", "src"]
 }

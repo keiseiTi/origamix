@@ -19,11 +19,13 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@heroui/react": "^3.2.4",
     "@types/react": "^19.2.18",
     "antd": "^6.0.0",
     "react": "^19.2.8"
   },
   "peerDependencies": {
+    "@heroui/react": "^3.2.4",
     "antd": "^6",
     "react": "^19"
   }

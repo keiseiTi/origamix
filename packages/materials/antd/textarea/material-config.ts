@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Textarea = React.lazy(() => import('./index'));
-import type { Material } from '../interfaces/material';
+import type { Material } from '../../src/material';
 import { AutoSize } from './mods/auto-size';
 
 const TextareaMaterial: Material = {

@@ -1,6 +1,6 @@
 // import { OptionsConfig } from '@/components/options-config';
 import { lazy } from 'react';
-import type { Material } from '../interfaces/material';
+import type { Material } from '../../src/material';
 
 const CheckboxMaterial: Material = {
   Component: lazy(() => import('./index')),

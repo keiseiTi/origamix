@@ -7,13 +7,13 @@ import type {
 } from '@tangramino/base-editor';
 import type {
   InputProps,
-  InputNumberProps,
   SelectProps,
   CheckboxProps,
   SwitchProps,
   RadioProps,
-} from 'antd';
-import type { ColorPickerProps } from '../components/color-picker';
+  NumberFieldProps,
+  ColorPickerProps,
+} from '@heroui/react';
 
 export type OptionItem = {
   label: string;
@@ -31,13 +31,14 @@ export type InputAttributeConfig = BasicAttributeConfig & {
 
 export type NumberAttributeConfig = BasicAttributeConfig & {
   uiType: 'number';
-  props?: InputNumberProps;
+  props?: NumberFieldProps;
 };
 
 export type RadioAttributeConfig = BasicAttributeConfig & {
   uiType: 'radio';
-  props?: RadioProps & {
+  props?: Omit<RadioProps, 'value'> & {
     options?: OptionItem[];
+    value?: string;
   };
 };
 
@@ -50,7 +51,7 @@ export type CheckboxAttributeConfig = BasicAttributeConfig & {
 
 export type SelectAttributeConfig = BasicAttributeConfig & {
   uiType: 'select';
-  props?: SelectProps & {
+  props?: SelectProps<object> & {
     options?: OptionItem[];
   };
 };

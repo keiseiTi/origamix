@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Switch = React.lazy(() => import('./index'));
-import type { Material } from '../interfaces/material';
+import type { Material } from '../../src/material';
 
 const SwitchMaterial: Material = {
   Component: Switch,

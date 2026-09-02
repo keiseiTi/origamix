@@ -7,4 +7,9 @@ export default defineConfig({
   base: './',
   plugins: [tailwindcss(), react(), localWebServer()],
   server: { port: 5173, strictPort: true },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
 });
