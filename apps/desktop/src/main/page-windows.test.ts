@@ -9,20 +9,20 @@ const mocks = vi.hoisted(() => ({
     loadFile: ReturnType<typeof vi.fn>;
     focus: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
-  }>
+  }>,
 }));
 
 vi.mock('electron', () => ({
   ipcMain: {
     handle: (name: string, handler: (...args: unknown[]) => Promise<unknown>) =>
-      mocks.handlers.set(name, handler)
+      mocks.handlers.set(name, handler),
   },
   BrowserWindow: class {
     webContents = {
       mainFrame: {},
       setWindowOpenHandler: vi.fn(),
       on: vi.fn(),
-      session: { setPermissionRequestHandler: vi.fn() }
+      session: { setPermissionRequestHandler: vi.fn() },
     };
     loadFile = vi.fn().mockResolvedValue(undefined);
     loadURL = vi.fn().mockResolvedValue(undefined);
@@ -37,7 +37,7 @@ vi.mock('electron', () => ({
     constructor(public options: (typeof mocks.windows)[number]['options']) {
       mocks.windows.push(this);
     }
-  }
+  },
 }));
 
 const open = (projectId = 'project_one', pageId = 'page_one'): Promise<unknown> =>
@@ -56,19 +56,22 @@ beforeEach(() => {
         data: url.endsWith('/pages')
           ? [
               { id: 'page_one', name: '页面一' },
-              { id: 'page_two', name: '页面二' }
+              { id: 'page_two', name: '页面二' },
             ]
           : url.endsWith('/workspace')
             ? { theme: 'dark' }
-            : { schema: { elements: {} }, revisionId: 'revision_one' }
-      })
-    }))
+            : { schema: { elements: {} }, revisionId: 'revision_one' },
+      }),
+    })),
   );
-  registerPageWindows(() => ({
-    baseUrl: 'http://localhost/api/v1',
-    token: 'desktop-secret',
-    serviceInstanceId: 'instance_one'
-  }), () => '/test-renderer/index.html');
+  registerPageWindows(
+    () => ({
+      baseUrl: 'http://localhost/api/v1',
+      token: 'desktop-secret',
+      serviceInstanceId: 'instance_one',
+    }),
+    () => '/test-renderer/index.html',
+  );
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -81,7 +84,10 @@ describe('MVP preview windows', () => {
     await open();
     expect(mocks.windows).toHaveLength(1);
     expect(mocks.windows[0].loadFile).toHaveBeenCalledTimes(1);
-    expect(mocks.windows[0].loadFile).toHaveBeenCalledWith('/test-renderer/index.html', expect.objectContaining({ query: expect.objectContaining({ pageId: 'page_one' }) }));
+    expect(mocks.windows[0].loadFile).toHaveBeenCalledWith(
+      '/test-renderer/index.html',
+      expect.objectContaining({ query: expect.objectContaining({ pageId: 'page_one' }) }),
+    );
     await open('project_one', 'page_two');
     expect(mocks.windows).toHaveLength(1);
     expect(mocks.windows[0].loadFile).toHaveBeenCalledTimes(2);
@@ -98,8 +104,8 @@ describe('MVP preview windows', () => {
     await expect(
       mocks.handlers.get('window:open-page')!(
         {},
-        { projectId: 'project_one', pageId: 'page_one', mode: 'edit' }
-      )
+        { projectId: 'project_one', pageId: 'page_one', mode: 'edit' },
+      ),
     ).rejects.toThrow('参数无效');
     await expect(open('../escape')).rejects.toThrow('参数无效');
     await expect(open('project_one', 'page_missing')).rejects.toThrow('页面不存在');
@@ -124,13 +130,13 @@ describe('MVP preview windows', () => {
     expect(snapshot).toEqual({
       schema: { elements: {} },
       revisionId: 'revision_one',
-      theme: 'dark'
+      theme: 'dark',
     });
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost/api/v1/pages/page_one/schema',
       expect.objectContaining({
-        headers: expect.objectContaining({ 'x-origamix-project-id': 'project_one' })
-      })
+        headers: expect.objectContaining({ 'x-origamix-project-id': 'project_one' }),
+      }),
     );
     expect(JSON.stringify(snapshot)).not.toContain('desktop-secret');
   });

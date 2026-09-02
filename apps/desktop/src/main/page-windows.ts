@@ -4,9 +4,13 @@ import { Value } from '@sinclair/typebox/value';
 import {
   PageWindowSchema,
   type PageWindowInput,
-  type PreviewSnapshot
+  type PreviewSnapshot,
 } from '@origamix/shared/page-window';
-import { isApiResultEnvelope, type PageRecord, type WorkspaceRecord } from '@origamix/shared/protocol/api';
+import {
+  isApiResultEnvelope,
+  type PageRecord,
+  type WorkspaceRecord,
+} from '@origamix/shared/protocol/api';
 
 interface PreviewEntry {
   window: BrowserWindow;
@@ -15,7 +19,7 @@ interface PreviewEntry {
 
 export function registerPageWindows(
   getConnection: () => { baseUrl: string; token: string; serviceInstanceId: string },
-  getRendererPath: () => string
+  getRendererPath: () => string,
 ): void {
   const windows = new Map<string, PreviewEntry>();
   const pending = new Map<string, Promise<void>>();
@@ -26,8 +30,8 @@ export function registerPageWindows(
       headers: {
         Authorization: `Bearer ${connection.token}`,
         'x-origamix-service': connection.serviceInstanceId,
-        ...(projectId ? { 'x-origamix-project-id': projectId } : {})
-      }
+        ...(projectId ? { 'x-origamix-project-id': projectId } : {}),
+      },
     });
     const result = await response.json();
     if (!isApiResultEnvelope(result)) throw new Error('服务返回格式无效');
@@ -41,7 +45,7 @@ export function registerPageWindows(
     const target = entry.target;
     const [snapshot, workspace] = await Promise.all([
       read<Omit<PreviewSnapshot, 'theme'>>(`/pages/${target.pageId}/schema`, target.projectId),
-      read<WorkspaceRecord>('/workspace')
+      read<WorkspaceRecord>('/workspace'),
     ]);
     return { ...snapshot, theme: workspace.theme };
   });
@@ -67,8 +71,8 @@ export function registerPageWindows(
           partition: `origamix-preview-${key}`,
           contextIsolation: true,
           nodeIntegration: false,
-          sandbox: true
-        }
+          sandbox: true,
+        },
       });
       entry = { window, target: input };
       windows.set(key, entry);
@@ -76,7 +80,7 @@ export function registerPageWindows(
       window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
       window.webContents.on('will-navigate', (event) => event.preventDefault());
       window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) =>
-        callback(false)
+        callback(false),
       );
     }
     if (!entry) return;
@@ -92,10 +96,7 @@ export function registerPageWindows(
           url.search = new URLSearchParams(query).toString();
           await window.loadURL(url.toString());
         } else {
-          await window.loadFile(
-            getRendererPath(),
-            { query }
-          );
+          await window.loadFile(getRendererPath(), { query });
         }
       } catch (error) {
         if (!window.isDestroyed()) window.destroy();

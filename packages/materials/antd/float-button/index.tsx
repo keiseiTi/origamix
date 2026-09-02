@@ -9,13 +9,7 @@ export type IProps = FloatButtonProps & {
 };
 
 export const FloatButtonComponent = (props: IProps) => {
-  const {
-    backgroundColor,
-    color,
-    borderColor,
-    borderRadius,
-    ...restProps
-  } = props;
+  const { backgroundColor, color, borderColor, borderRadius, ...restProps } = props;
 
   const customStyle = {
     backgroundColor,
@@ -24,12 +18,7 @@ export const FloatButtonComponent = (props: IProps) => {
     borderRadius,
   };
 
-  return (
-    <FloatButton
-      style={customStyle}
-      {...restProps}
-    />
-  );
+  return <FloatButton style={customStyle} {...restProps} />;
 };
 
 export default FloatButtonComponent;

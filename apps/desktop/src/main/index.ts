@@ -7,7 +7,7 @@ import {
   dialog,
   safeStorage,
   utilityProcess,
-  type UtilityProcess
+  type UtilityProcess,
 } from 'electron';
 import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
@@ -16,9 +16,10 @@ import { registerPageWindows } from './page-windows';
 import type { BackendConnection } from '@origamix/shared/desktop-api';
 
 const isDevelopment = !app.isPackaged;
-const rendererIndexPath = (): string => isDevelopment
-  ? join(__dirname, '../../../../packages/app/dist/index.html')
-  : join(process.resourcesPath, 'app', 'index.html');
+const rendererIndexPath = (): string =>
+  isDevelopment
+    ? join(__dirname, '../../../../packages/app/dist/index.html')
+    : join(process.resourcesPath, 'app', 'index.html');
 
 function createWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -38,8 +39,8 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
-      sandbox: false
-    }
+      sandbox: false,
+    },
   });
 
   mainWindow.on('ready-to-show', () => {
@@ -88,7 +89,7 @@ async function startBackend(): Promise<BackendConnection> {
       backendConnection = {
         baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
         token,
-        serviceInstanceId
+        serviceInstanceId,
       };
       console.info('[Origamix Server] 已就绪');
       resolve(backendConnection);
@@ -110,9 +111,9 @@ async function startBackend(): Promise<BackendConnection> {
         databasePath: join(app.getPath('userData'), 'origamix.db'),
         templatePath: app.isPackaged
           ? join(process.resourcesPath, 'template')
-          : process.env.ORIGAMIX_TEMPLATE_DIR ?? join(__dirname, '../template'),
+          : (process.env.ORIGAMIX_TEMPLATE_DIR ?? join(__dirname, '../template')),
         desktopToken: token,
-        serviceInstanceId
+        serviceInstanceId,
       });
     });
   });
@@ -143,7 +144,7 @@ const allowedIconBackgrounds = new Set([
   '#dc2626',
   '#d97706',
   '#059669',
-  '#475569'
+  '#475569',
 ]);
 
 function modelSettingsPath(): string {
@@ -157,13 +158,13 @@ function userProfileSettingsPath(): string {
 async function readUserProfile(): Promise<UserProfileSettings> {
   try {
     const value = JSON.parse(
-      await readFile(userProfileSettingsPath(), 'utf8')
+      await readFile(userProfileSettingsPath(), 'utf8'),
     ) as UserProfileSettings;
     return {
       name: value.name?.trim().slice(0, 40) || 'Origamix 用户',
       iconBackground: allowedIconBackgrounds.has(value.iconBackground)
         ? value.iconBackground
-        : '#2563eb'
+        : '#2563eb',
     };
   } catch {
     return { name: 'Origamix 用户', iconBackground: '#2563eb' };
@@ -179,7 +180,7 @@ async function saveUserProfile(input: {
   if (!allowedIconBackgrounds.has(input.iconBackground)) throw new Error('不支持该头像背景色');
   const profile = { name, iconBackground: input.iconBackground };
   await writeFile(userProfileSettingsPath(), `${JSON.stringify(profile, null, 2)}\n`, {
-    mode: 0o600
+    mode: 0o600,
   });
   return profile;
 }
@@ -190,7 +191,7 @@ async function readModelSettings(): Promise<StoredModelSettings> {
     return {
       provider: 'deepseek',
       model: 'deepseek-v4-flash',
-      encryptedApiKey: value.encryptedApiKey
+      encryptedApiKey: value.encryptedApiKey,
     };
   } catch {
     return { provider: 'deepseek', model: 'deepseek-v4-flash' };
@@ -218,7 +219,7 @@ async function saveModelSettings(input: {
   await writeFile(
     modelSettingsPath(),
     `${JSON.stringify({ provider: 'deepseek', model: 'deepseek-v4-flash', encryptedApiKey }, null, 2)}\n`,
-    { mode: 0o600 }
+    { mode: 0o600 },
   );
   return { hasApiKey: Boolean(encryptedApiKey) };
 }
@@ -244,7 +245,7 @@ app
     });
     ipcMain.handle('dialog:choose-project-parent', async () => {
       const result = await dialog.showOpenDialog({
-        properties: ['openDirectory', 'createDirectory']
+        properties: ['openDirectory', 'createDirectory'],
       });
       return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0]);
     });
@@ -257,7 +258,7 @@ app
       return {
         provider: settings.provider,
         model: settings.model,
-        hasApiKey: Boolean(settings.encryptedApiKey)
+        hasApiKey: Boolean(settings.encryptedApiKey),
       };
     });
     ipcMain.handle('settings:model:save', (_event, input) => saveModelSettings(input));

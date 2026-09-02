@@ -12,21 +12,13 @@ export const Radio = (props: IProps) => {
 
   if (optionDisplayButton) {
     return (
-      <AntdRadio.Group
-        optionType='button'
-        buttonStyle='solid'
-        {...rest}
-      >
+      <AntdRadio.Group optionType='button' buttonStyle='solid' {...rest}>
         {label}
       </AntdRadio.Group>
     );
   }
 
-  return (
-    <AntdRadio.Group {...rest}>
-      {label}
-    </AntdRadio.Group>
-  );
+  return <AntdRadio.Group {...rest}>{label}</AntdRadio.Group>;
 };
 
 export default Radio;

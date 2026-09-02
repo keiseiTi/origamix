@@ -3,7 +3,8 @@ import { Button as AntdButton, type ButtonProps } from 'antd';
 import type { MaterialComponentProps } from '@tangramino/base-editor';
 
 interface IProps
-  extends Pick<
+  extends
+    Pick<
       ButtonProps,
       'disabled' | 'loading' | 'onClick' | 'type' | 'shape' | 'href' | 'target' | 'ghost'
     >,
