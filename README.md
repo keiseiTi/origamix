@@ -22,7 +22,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Dependency installation also installs the repository's Lefthook `pre-commit` hook. Before each commit it runs lint, typecheck and tests in parallel. Run the same checks without committing, or reinstall the hook, with:
+Dependency installation also installs the repository's Lefthook `pre-commit` hook. Like lint-staged, it formats only staged text files, lints only staged application code and re-stages the processed files after successful fixes. Typecheck and tests run only when staged application or package files include TypeScript. Run the hook against the current staged files without committing, or reinstall it, with:
 
 ```sh
 pnpm hooks:run

@@ -1,9 +1,30 @@
 pre-commit:
-  parallel: true
   jobs:
-    - name: lint
-      run: pnpm lint
-    - name: typecheck
-      run: pnpm typecheck
-    - name: test
-      run: pnpm test
+    - name: staged gate
+      group:
+        piped: true
+        jobs:
+          - name: format staged files
+            glob: '*.{js,jsx,ts,tsx,json,jsonc,css,md,mdx,yaml,yml,html}'
+            run: pnpm exec prettier --write {staged_files}
+            stage_fixed: true
+          - name: lint staged code
+            glob:
+              - 'apps/**/*.{js,jsx,ts,tsx,mjs,cjs}'
+              - 'packages/**/*.{js,jsx,ts,tsx,mjs,cjs}'
+            run: pnpm exec eslint --fix --max-warnings=0 {staged_files}
+            stage_fixed: true
+          - name: verify TypeScript changes
+            group:
+              parallel: true
+              jobs:
+                - name: typecheck
+                  glob:
+                    - 'apps/**/*.{ts,tsx}'
+                    - 'packages/**/*.{ts,tsx}'
+                  run: pnpm typecheck
+                - name: test
+                  glob:
+                    - 'apps/**/*.{ts,tsx}'
+                    - 'packages/**/*.{ts,tsx}'
+                  run: pnpm test
