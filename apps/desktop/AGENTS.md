@@ -5,7 +5,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `src/main/index.ts`: application lifecycle, directory grants, settings/credentials and backend bootstrap.
-- `src/main/page-windows.ts`: preview window ownership, reuse and read authorization.
+- `src/main/page-windows.ts`: page preview `WebContentsView` ownership, reuse and read authorization.
 - `src/preload/index.ts`: workbench bridge; `src/preload/preview.ts`: separate read-only preview bridge.
 - `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/tsup-options.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly.
 
@@ -15,7 +15,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 - Expose only named domain methods through `contextBridge`. Validate payloads and sending window/frame before privileged operations; types alone do not authorize callers.
 - Keep `nodeIntegration: false`, `contextIsolation: true` and preview sandboxing. Restrict navigation, new windows and permissions; load trusted application routes, not Renderer-provided URLs or paths.
 - Directory pickers return grants for Backend use. Keep credentials under Main's safeStorage ownership; previews and logs receive neither secrets nor desktop tokens.
-- Reuse one preview window per project, serialize concurrent open requests and validate page/project membership. Closing preview must not close the workbench or lose drafts.
+- Page tabs belong to the Renderer. Main overlays the active page with one sandboxed `WebContentsView` in preview mode, keyed by project and page. Serialize concurrent open requests, validate page/project membership, resize the active view with the workbench and explicitly close owned web contents with the window. Exiting preview removes the view without closing the workbench or losing drafts.
 - Current preview transport is `window.preview.readSnapshot()`: Main binds requests to a registered preview window and fetches its target Schema over authenticated HTTP. It exposes no backend connection to preview. HTTP/SSE preview capability sessions in the ADR are planned, not implemented; do not introduce a broad bridge to approximate them.
 - Use exported Server build/runtime entry points. Server compiles its own artifacts; Desktop assembles them. Do not import Server business implementation into Main or create another Server compiler configuration.
 - Clean up owned handlers, windows, timers, watchers and child processes on shutdown/restart. Never kill unrelated processes to free a port.

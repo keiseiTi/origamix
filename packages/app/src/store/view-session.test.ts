@@ -18,10 +18,8 @@ describe('window view session', () => {
       parseSession('{"activeTab":"edit","isSettingsOpen":true,"sidebarCollapsed":true}'),
     ).toEqual({ activeTab: 'edit', isSettingsOpen: true, sidebarCollapsed: true });
   });
-  it('restores the in-workspace preview tab', () => {
-    expect(parseSession('{"activeTab":"preview","isSettingsOpen":false}').activeTab).toBe(
-      'preview',
-    );
+  it('falls back from obsolete in-workspace preview sessions', () => {
+    expect(parseSession('{"activeTab":"preview","isSettingsOpen":false}').activeTab).toBe('chat');
   });
   it('uses the server snapshot only before this window has a sidebar preference', () => {
     const initial = parseSession(null);

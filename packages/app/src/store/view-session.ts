@@ -8,8 +8,7 @@ export function parseSession(raw: string | null): ViewSession {
   try {
     const value = JSON.parse(raw ?? 'null');
     return {
-      activeTab:
-        value?.activeTab === 'edit' || value?.activeTab === 'preview' ? value.activeTab : 'chat',
+      activeTab: value?.activeTab === 'edit' ? value.activeTab : 'chat',
       isSettingsOpen: value?.isSettingsOpen === true,
       sidebarCollapsed:
         typeof value?.sidebarCollapsed === 'boolean' ? value.sidebarCollapsed : undefined,

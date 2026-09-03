@@ -6,6 +6,21 @@ const api: DesktopApi = {
   window: {
     openPage: (input: import('@origamix/shared/page-window').PageWindowInput): Promise<void> =>
       ipcRenderer.invoke('window:open-page', input),
+    closePreview: (input: import('@origamix/shared/page-window').PageWindowInput): Promise<void> =>
+      ipcRenderer.invoke('window:close-preview', input),
+    setPreviewBounds: (
+      bounds: import('@origamix/shared/page-window').PreviewBounds,
+    ): Promise<void> => ipcRenderer.invoke('window:set-preview-bounds', bounds),
+    onPreviewExited: (
+      listener: (input: import('@origamix/shared/page-window').PageWindowInput) => void,
+    ): (() => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        input: import('@origamix/shared/page-window').PageWindowInput,
+      ): void => listener(input);
+      ipcRenderer.on('preview:exited', handler);
+      return () => ipcRenderer.removeListener('preview:exited', handler);
+    },
   },
   backend: {
     getConnection: (): Promise<{ baseUrl: string; token: string; serviceInstanceId: string }> =>

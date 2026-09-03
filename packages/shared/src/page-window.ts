@@ -11,6 +11,18 @@ export const PageWindowSchema = Type.Object(
 
 export type PageWindowInput = Static<typeof PageWindowSchema>;
 
+export const PreviewBoundsSchema = Type.Object(
+  {
+    x: Type.Integer({ minimum: 0 }),
+    y: Type.Integer({ minimum: 0 }),
+    width: Type.Integer({ minimum: 1 }),
+    height: Type.Integer({ minimum: 1 }),
+  },
+  { additionalProperties: false },
+);
+
+export type PreviewBounds = Static<typeof PreviewBoundsSchema>;
+
 export interface PreviewSnapshot {
   schema: import('./protocol/schema').OrigamixPageSchema;
   revisionId: string;

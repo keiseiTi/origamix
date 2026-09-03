@@ -1,6 +1,6 @@
 import { Button, Spinner } from '@heroui/react';
 import { PanelLeft } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sidebar,
   type AppTheme,
@@ -11,6 +11,7 @@ import {
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings-page';
 import { Workspace } from './components/workspace';
+import { PageTabs } from './components/workspace/page-tabs';
 import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './store/use-view-session';
@@ -20,6 +21,8 @@ import { workspaceService } from './services/workspace';
 function App(): React.JSX.Element {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [openPageIds, setOpenPageIds] = useState<string[]>([]);
+  const [pageModes, setPageModes] = useState<Record<string, WorkspaceMode>>({});
   const {
     activeTab,
     setActiveTab,
@@ -41,7 +44,9 @@ function App(): React.JSX.Element {
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const editorRef = useRef<EditorHandle>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const transitionPending = useRef(false);
+  const previousPreviewMode = useRef<Record<string, Exclude<WorkspaceMode, 'preview'>>>({});
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const selectedPage = projects
     .flatMap((project) => project.pages)
@@ -54,13 +59,24 @@ function App(): React.JSX.Element {
   const flushEditor = async (): Promise<void> => {
     await editorRef.current?.flush();
   };
-  const transition = async (action: () => void): Promise<void> => {
+  const syncPreviewBounds = useCallback(async (): Promise<void> => {
+    const element = workspaceRef.current;
+    if (!element || !window.api?.window?.setPreviewBounds) return;
+    const bounds = element.getBoundingClientRect();
+    await window.api.window.setPreviewBounds({
+      x: Math.round(bounds.x),
+      y: Math.round(bounds.y),
+      width: Math.max(1, Math.round(bounds.width)),
+      height: Math.max(1, Math.round(bounds.height)),
+    });
+  }, []);
+  const transition = async (action: () => void | Promise<void>): Promise<void> => {
     if (transitionPending.current) return;
     transitionPending.current = true;
     setTransitionError(null);
     try {
       await flushEditor();
-      action();
+      await action();
     } catch (error) {
       setTransitionError(error instanceof Error ? error.message : '保存失败，请重试');
     } finally {
@@ -78,7 +94,61 @@ function App(): React.JSX.Element {
         pinSidebarOpen();
       }
       setActiveTab(mode);
+      if (selectedPageId) {
+        setPageModes((current) => ({ ...current, [selectedPageId]: mode }));
+      }
     });
+
+  const openPreview = async (): Promise<void> => {
+    if (!selectedProject || !selectedPage) throw new Error('请先选择需要预览的页面');
+    if (!window.api?.window?.openPage) throw new Error('应用级预览仅在桌面端可用');
+    await flushEditor();
+    await syncPreviewBounds();
+    await window.api.window.openPage({
+      projectId: selectedProject.id,
+      pageId: selectedPage.id,
+      mode: 'preview',
+    });
+    previousPreviewMode.current[selectedPage.id] =
+      activeTab === 'preview'
+        ? (previousPreviewMode.current[selectedPage.id] ?? 'chat')
+        : activeTab;
+    setPageModes((current) => ({ ...current, [selectedPage.id]: 'preview' }));
+    setActiveTab('preview');
+  };
+
+  const selectPage = (pageId: string): void => {
+    if (selectedPageId && activeTab !== 'preview') {
+      setPageModes((current) => ({ ...current, [selectedPageId]: activeTab }));
+    }
+    setOpenPageIds((current) => (current.includes(pageId) ? current : [...current, pageId]));
+    setSelectedPageId(pageId);
+    setActiveTab(pageModes[pageId] === 'edit' ? 'edit' : 'chat');
+    setSidebarPeek(false);
+  };
+
+  const closePage = async (pageId: string): Promise<void> => {
+    if (pageModes[pageId] === 'preview') {
+      const project = projects.find((item) => item.pages.some((page) => page.id === pageId));
+      if (project && window.api?.window?.closePreview) {
+        await window.api.window.closePreview({ projectId: project.id, pageId, mode: 'preview' });
+      }
+    }
+    const index = openPageIds.indexOf(pageId);
+    const remaining = openPageIds.filter((id) => id !== pageId);
+    setOpenPageIds(remaining);
+    setPageModes((current) => {
+      const next = { ...current };
+      delete next[pageId];
+      return next;
+    });
+    delete previousPreviewMode.current[pageId];
+    if (selectedPageId === pageId) {
+      const nextId = remaining[Math.min(index, remaining.length - 1)] ?? null;
+      setSelectedPageId(nextId);
+      setActiveTab(nextId && pageModes[nextId] === 'edit' ? 'edit' : 'chat');
+    }
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -104,7 +174,9 @@ function App(): React.JSX.Element {
         );
         if (!active) return;
         setProjects(hydrated);
-        setSelectedPageId(workspace.activePageId);
+        // A fresh workbench starts empty. Pages become tabs only after an explicit selection.
+        setSelectedPageId(null);
+        setOpenPageIds([]);
         setTheme(workspace.theme);
         restoreSidebarCollapsed(workspace.sidebarCollapsed);
         setWorkspaceReady(true);
@@ -139,6 +211,23 @@ function App(): React.JSX.Element {
       .catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    return window.api?.window?.onPreviewExited?.((target) => {
+      const restored = previousPreviewMode.current[target.pageId] ?? 'chat';
+      setPageModes((current) => ({ ...current, [target.pageId]: restored }));
+      if (selectedPageId === target.pageId) setActiveTab(restored);
+    });
+  }, [selectedPageId, setActiveTab]);
+
+  useEffect(() => {
+    const element = workspaceRef.current;
+    if (activeTab !== 'preview' || !element) return;
+    const observer = new ResizeObserver(() => void syncPreviewBounds());
+    observer.observe(element);
+    void syncPreviewBounds();
+    return () => observer.disconnect();
+  }, [activeTab, sidebarCollapsed, syncPreviewBounds]);
+
   const collapseSidebar = (): void => {
     setSidebarCollapsed(true);
     setSidebarPeek(false);
@@ -158,8 +247,7 @@ function App(): React.JSX.Element {
       ),
     );
     void transition(() => {
-      setSelectedPageId(page.id);
-      setSidebarPeek(false);
+      selectPage(page.id);
     });
   };
 
@@ -182,6 +270,7 @@ function App(): React.JSX.Element {
       result.project,
     ]);
     setSelectedPageId(result.project.pages[0]?.id ?? null);
+    setOpenPageIds(result.project.pages[0] ? [result.project.pages[0].id] : []);
     setActiveTab('chat');
   };
 
@@ -209,8 +298,7 @@ function App(): React.JSX.Element {
       onPageCreated={addPage}
       onSelectPage={(pageId) =>
         void transition(() => {
-          setSelectedPageId(pageId);
-          setSidebarPeek(false);
+          selectPage(pageId);
         })
       }
     />
@@ -234,7 +322,7 @@ function App(): React.JSX.Element {
           isIconOnly
           size='sm'
           variant='ghost'
-          className='fixed top-4 left-4 z-10 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+          className='fixed top-1.5 left-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
           onMouseEnter={() => sidebarPeekEnabled && setSidebarPeek(true)}
           onMouseLeave={() => setSidebarPeekEnabled(true)}
           onPress={pinSidebarOpen}
@@ -276,16 +364,34 @@ function App(): React.JSX.Element {
           )}
         </section>
       ) : (
-        <Workspace
-          page={selectedPage}
-          projectId={selectedProject?.id}
-          projectName={selectedProject?.name}
-          mode={activeTab}
-          sidebarCollapsed={sidebarCollapsed}
-          editorRef={editorRef}
-          onModeChange={changeMode}
-          onCreateProject={() => setIsHomeProjectModalOpen(true)}
-        />
+        <section className='flex min-w-0 flex-1 flex-col'>
+          {openPageIds.length > 0 && (
+            <PageTabs
+              pages={openPageIds.flatMap((pageId) => {
+                const page = projects
+                  .flatMap((project) => project.pages)
+                  .find((item) => item.id === pageId);
+                return page ? [page] : [];
+              })}
+              activePageId={selectedPageId}
+              sidebarCollapsed={sidebarCollapsed}
+              onSelect={(pageId) => void transition(() => selectPage(pageId))}
+              onClose={(pageId) => void transition(() => closePage(pageId))}
+            />
+          )}
+          <div ref={workspaceRef} className='flex min-h-0 flex-1'>
+            <Workspace
+              page={selectedPage}
+              projectId={selectedProject?.id}
+              projectName={selectedProject?.name}
+              mode={activeTab}
+              editorRef={editorRef}
+              onModeChange={changeMode}
+              onPreview={openPreview}
+              onCreateProject={() => setIsHomeProjectModalOpen(true)}
+            />
+          </div>
+        </section>
       )}
 
       <CreateProjectModal

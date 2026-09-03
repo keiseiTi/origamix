@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, utilityProcess } = require('electron');
+const { app, BrowserWindow, dialog, utilityProcess, webContents } = require('electron');
 const { mkdtempSync, mkdirSync, rmSync, existsSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { tmpdir } = require('node:os');
@@ -55,27 +55,38 @@ app.whenReady().then(async () => {
         ...(body ? { body: JSON.stringify(body) } : {})
       });
       const result = await response.json();
-      if (!result.ok) throw new Error(result.error.message);
+      if (!result.success) throw new Error(result.message || 'Desktop smoke request failed');
       return result.data;
     };
     const grant = await window.api.dialog.chooseProjectParent();
     const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project' });
     const pages = await request('/projects/' + project.id + '/pages');
-    await request('/workspace', { activeProjectId: project.id, activePageId: pages[0].id, theme: 'dark' }, 'PATCH');
+    await request('/workspace', { activeProjectId: project.id, activePageId: pages[0].id, theme: 'light' }, 'PATCH');
+    await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });
     await window.api.window.openPage({ projectId: project.id, pageId: pages[0].id, mode: 'preview' });
     return { path: project.path, pageId: pages[0].id };
   })()`);
   assert.equal(result.path, join(projects, 'smoke-project'));
   assert.ok(existsSync(join(result.path, 'origamix.project.json')));
   assert.ok(!existsSync(join(result.path, 'node_modules')));
-  const preview = await waitFor(() => BrowserWindow.getAllWindows().find((window) => window !== main));
-  await waitFor(() => !preview.webContents.isLoading() && preview.webContents.executeJavaScript(
-    `document.documentElement.dataset.theme === 'dark' && document.body.innerText.includes('已同步')`));
-  const snapshot = await preview.webContents.executeJavaScript('window.preview.readSnapshot()');
-  assert.equal(snapshot.theme, 'dark');
-  assert.equal(await preview.webContents.executeJavaScript('typeof window.api'), 'undefined');
-  preview.close();
-  await waitFor(() => preview.isDestroyed());
+  const preview = await waitFor(() => webContents.getAllWebContents().find((contents) => contents !== main.webContents && contents.getType() === 'window'));
+  await waitFor(() => !preview.isLoading() && preview.executeJavaScript(
+    `document.documentElement.dataset.theme === 'light' && Boolean(document.querySelector('[aria-label="退出预览"]'))`));
+  const snapshot = await preview.executeJavaScript('window.preview.readSnapshot()');
+  assert.equal(snapshot.theme, 'light');
+  assert.equal(await preview.executeJavaScript('typeof window.api'), 'undefined');
+  await main.webContents.executeJavaScript(`(async () => {
+    const connection = await window.api.backend.getConnection();
+    await fetch(connection.baseUrl + '/workspace', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + connection.token,
+        'X-Origamix-Service': connection.serviceInstanceId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: 'dark' })
+    });
+  })()`);
+  await waitFor(() => preview.executeJavaScript(
+    `document.documentElement.dataset.theme === 'dark'`));
+  await preview.executeJavaScript('window.preview.exit()');
   main.reload();
   await waitFor(() => !main.webContents.isLoading() && main.webContents.executeJavaScript(
     `document.documentElement.dataset.theme === 'dark' && document.body.innerText.includes('Smoke Project')`));

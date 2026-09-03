@@ -1,4 +1,4 @@
-import type { PageWindowInput, PreviewSnapshot } from './page-window';
+import type { PageWindowInput, PreviewBounds, PreviewSnapshot } from './page-window';
 
 export interface BackendConnection {
   baseUrl: string;
@@ -19,7 +19,12 @@ export interface ModelSettings {
   hasApiKey: boolean;
 }
 export interface DesktopApi {
-  window: { openPage(input: PageWindowInput): Promise<void> };
+  window: {
+    openPage(input: PageWindowInput): Promise<void>;
+    closePreview(input: PageWindowInput): Promise<void>;
+    setPreviewBounds(bounds: PreviewBounds): Promise<void>;
+    onPreviewExited(listener: (input: PageWindowInput) => void): () => void;
+  };
   backend: { getConnection(): Promise<BackendConnection> };
   dialog: {
     chooseProjectParent(): Promise<DirectoryGrant | null>;
@@ -36,4 +41,5 @@ export interface DesktopApi {
 }
 export interface PreviewApi {
   readSnapshot(): Promise<PreviewSnapshot>;
+  exit(): Promise<void>;
 }

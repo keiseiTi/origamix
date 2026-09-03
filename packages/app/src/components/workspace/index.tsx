@@ -2,7 +2,6 @@ import { useState, type RefObject } from 'react';
 import type { PageItem } from '../sidebar';
 import { ChatWorkspace } from './chat-workspace';
 import { Editor, type EditorHandle } from '../editor';
-import { PreviewTab } from '../editor/mods/preview-tab';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 
@@ -11,10 +10,10 @@ interface WorkspaceProps {
   projectId?: string;
   projectName?: string;
   mode: WorkspaceMode;
-  sidebarCollapsed: boolean;
   onCreateProject: () => void;
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
+  onPreview: () => Promise<void>;
 }
 
 export function Workspace({
@@ -22,10 +21,10 @@ export function Workspace({
   projectId,
   projectName,
   mode,
-  sidebarCollapsed,
   onCreateProject,
   editorRef,
   onModeChange,
+  onPreview,
 }: WorkspaceProps): React.JSX.Element {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const chat = page && (
@@ -37,13 +36,13 @@ export function Workspace({
   );
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      {page && projectId && (
+      {page && projectId && mode !== 'preview' && (
         <WorkspaceHeader
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}
-          sidebarCollapsed={sidebarCollapsed}
           mode={mode}
           onModeChange={onModeChange}
+          onPreview={onPreview}
         />
       )}
       {!page ? (
@@ -61,7 +60,6 @@ export function Workspace({
               />
             </div>
           )}
-          {projectId && mode === 'preview' && <PreviewTab projectId={projectId} pageId={page.id} />}
         </>
       )}
     </section>

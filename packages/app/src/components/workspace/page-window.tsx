@@ -1,16 +1,20 @@
 import { Button, Spinner, Tooltip } from '@heroui/react';
-import { RefreshCw } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { PreviewSnapshot } from '@origamix/shared/page-window';
+import { RuntimePreview } from '../editor/mods/runtime-preview';
 
 const query = new URLSearchParams(window.location.search);
+const previewTitle = query.get('previewTitle') ?? 'Origamix - 页面预览';
 
 export function PageWindow(): React.JSX.Element {
   const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const refreshRef = useRef<() => void>(() => undefined);
   useEffect(() => {
+    document.title = previewTitle;
     let active = true;
     let pending = false;
     const refresh = async (manual = false): Promise<void> => {
@@ -52,50 +56,47 @@ export function PageWindow(): React.JSX.Element {
   }, []);
 
   return (
-    <main className='flex h-full flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
-      <header className='flex h-15 shrink-0 items-center justify-between gap-4 border-b border-zinc-200 px-5 dark:border-zinc-800'>
-        <span className='truncate'>{query.get('pageName')} - 预览</span>
-        <div className='flex items-center gap-3'>
-          <span role='status' className='text-xs text-zinc-500 dark:text-zinc-400'>
-            {refreshing ? '刷新中…' : error ? '同步失败' : snapshot ? '已同步' : '加载中…'}
-          </span>
-          <Tooltip>
-            <Button
-              isIconOnly
-              size='sm'
-              variant='ghost'
-              aria-label='刷新预览'
-              isDisabled={refreshing}
-              onPress={() => refreshRef.current()}
-            >
-              <RefreshCw size={17} />
-            </Button>
-            <Tooltip.Content>刷新预览</Tooltip.Content>
-          </Tooltip>
-        </div>
-      </header>
+    <main className='relative flex h-full flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
+      <Tooltip>
+        <Button
+          isIconOnly
+          size='sm'
+          variant='secondary'
+          className='fixed top-4 right-4 z-50 shadow-md'
+          aria-label='退出预览'
+          isDisabled={exiting}
+          onPress={() => {
+            setExiting(true);
+            void window.preview?.exit().catch((reason: unknown) => {
+              setExiting(false);
+              setError(reason instanceof Error ? reason.message : '无法退出预览');
+            });
+          }}
+        >
+          <EyeOff size={17} />
+        </Button>
+        <Tooltip.Content placement='left'>退出预览</Tooltip.Content>
+      </Tooltip>
       {error && (
         <div
           role='alert'
-          className='flex items-center justify-between gap-3 bg-danger/10 p-4 text-sm text-danger'
+          className='fixed top-4 left-1/2 z-40 flex -translate-x-1/2 items-center justify-between gap-3 rounded-lg bg-danger/10 p-4 text-sm text-danger backdrop-blur'
         >
           <span>
             {error}。{snapshot ? '保留上次成功预览。' : '请重试。'}
           </span>
-          <Button size='sm' variant='secondary' onPress={() => refreshRef.current()}>
+          <Button
+            size='sm'
+            variant='secondary'
+            isDisabled={refreshing}
+            onPress={() => refreshRef.current()}
+          >
             重试
           </Button>
         </div>
       )}
       {snapshot ? (
-        <section className='min-h-0 flex-1 overflow-auto p-6'>
-          <p className='mb-4 text-sm text-zinc-500 dark:text-zinc-400'>
-            只读 Schema 预览。页面渲染器尚未接入；自动同步已保存的版本。
-          </p>
-          <pre className='whitespace-pre-wrap warp-break-words rounded-lg bg-zinc-50 p-4 text-xs dark:bg-zinc-900'>
-            {JSON.stringify(snapshot.schema, null, 2)}
-          </pre>
-        </section>
+        <RuntimePreview schema={snapshot.schema} revisionId={snapshot.revisionId} />
       ) : (
         !error && (
           <div className='grid flex-1 place-items-center'>

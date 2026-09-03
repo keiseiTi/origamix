@@ -21,7 +21,9 @@ const rendererIndexPath = (): string =>
     ? join(__dirname, '../../../../packages/app/dist/index.html')
     : join(process.resourcesPath, 'app', 'index.html');
 
-function createWindow(): void {
+let workbenchWindow: BrowserWindow | undefined;
+
+function createWindow(): BrowserWindow {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
@@ -48,6 +50,9 @@ function createWindow(): void {
 
     mainWindow.show();
   });
+  mainWindow.on('closed', () => {
+    if (workbenchWindow === mainWindow) workbenchWindow = undefined;
+  });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
@@ -59,6 +64,7 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(rendererIndexPath());
   }
+  return mainWindow;
 }
 
 let backendProcess: UtilityProcess | undefined;
@@ -236,10 +242,14 @@ app
     app.setAppUserModelId('com.origamix');
 
     await startBackend();
-    registerPageWindows(() => {
-      if (!backendConnection) throw new Error('本地服务不可用');
-      return backendConnection;
-    }, rendererIndexPath);
+    registerPageWindows(
+      () => {
+        if (!backendConnection) throw new Error('本地服务不可用');
+        return backendConnection;
+      },
+      rendererIndexPath,
+      () => workbenchWindow,
+    );
 
     ipcMain.handle('backend:get-connection', () => {
       if (!backendConnection) throw new Error('本地服务不可用');
@@ -267,12 +277,12 @@ app
     ipcMain.handle('settings:profile:get', () => readUserProfile());
     ipcMain.handle('settings:profile:save', (_event, input) => saveUserProfile(input));
 
-    createWindow();
+    workbenchWindow = createWindow();
 
     app.on('activate', function () {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      if (BrowserWindow.getAllWindows().length === 0) workbenchWindow = createWindow();
     });
   })
   .catch((error: unknown) => {
