@@ -1,13 +1,13 @@
 import { Button, Spinner, Tooltip } from '@heroui/react';
 import { EyeOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import type { PreviewSnapshot } from '@origamix/shared/page-window';
 import { RuntimePreview } from '../editor/mods/runtime-preview';
 
-const query = new URLSearchParams(window.location.search);
-const previewTitle = query.get('previewTitle') ?? 'Origamix - 页面预览';
-
 export function PageWindow(): React.JSX.Element {
+  const [searchParams] = useSearchParams();
+  const previewTitle = searchParams.get('previewTitle') ?? 'Origamix - 页面预览';
   const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,7 +53,7 @@ export function PageWindow(): React.JSX.Element {
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
     };
-  }, []);
+  }, [previewTitle]);
 
   return (
     <main className='relative flex h-full flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>

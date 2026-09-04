@@ -55,9 +55,9 @@ pnpm build
 pnpm package
 ```
 
-`pnpm build` builds workspace dependencies once, then runs Desktop's `build:assemble`. For independent use, Desktop's `build` still builds Server before assembly. `build:assemble` is an internal step and requires existing Server artifacts.
+`pnpm build` builds workspace dependencies once, assembles Desktop and creates an unsigned, unpacked application for the current platform in ignored `release/`. For independent use, Desktop's `build` still builds Server before assembly; `build:app`, `build:assemble` and `package:assemble` are internal steps that expect their input artifacts to exist.
 
-`pnpm package` runs checks, rebuilds the Renderer and desktop/server artifacts, and invokes electron-builder. `pnpm --filter @origamix/desktop package --dir` also rebuilds its inputs and produces an unpacked application. Outputs go to ignored `release/`. Platform signing credentials must be configured separately for distribution.
+`pnpm package` runs all checks and the desktop build before creating installable distributions. `pnpm --filter @origamix/desktop package --dir` also rebuilds its inputs and produces only an unpacked application. Platform signing credentials must be configured separately for distribution; the normal build intentionally disables automatic macOS certificate discovery so local builds do not prompt for signing credentials.
 
 The packaged Renderer uses relative asset URLs for `file://`. Main/Preload/Server live inside `app.asar`; Renderer and the clean project template are external resources. The template copier includes only scaffold files and excludes dependency directories, generated output, secrets, caches and symlinks. Icons are maintained in `build/` only.
 
@@ -72,6 +72,6 @@ pnpm --filter @origamix/desktop test:smoke
 pnpm --filter @origamix/desktop test:smoke /absolute/path/to/Origamix.app/Contents/Resources
 ```
 
-The default Electron smoke check requires `pnpm build` first and a graphical session. It loads the real compiled Main entry, uses its real IPC handlers and SQLite backend, and verifies workspace restoration, project creation, preview isolation, dark-theme persistence and graceful shutdown. Only the OS directory picker is replaced with a temporary test directory. Supplying a Resources path runs the separate packaged-resource smoke check; it is not an end-to-end launch of a signed installer.
+The default Electron smoke check requires Desktop's compiled artifacts (produced by `pnpm build` or `pnpm --filter @origamix/desktop build`) and a graphical session. It loads the real compiled Main entry, uses its real IPC handlers and SQLite backend, and verifies workspace restoration, project creation, preview isolation, dark-theme persistence and graceful shutdown. Only the OS directory picker is replaced with a temporary test directory. Supplying a Resources path runs the separate packaged-resource smoke check; it is not an end-to-end launch of a signed installer.
 
 `test:dev` copies source to a temporary workspace (reusing installed dependencies), starts App without Server artifacts, changes only temporary source and verifies Web/Server restarts and listener cleanup. The template check installs dependencies in a temporary generated project, so it requires registry access or a populated pnpm cache.

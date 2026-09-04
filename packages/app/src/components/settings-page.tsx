@@ -106,7 +106,7 @@ export function SettingsPage({
   return (
     <section className='flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <header
-        className={`relative flex h-15 min-h-15 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800 ${
+        className={`relative flex h-10 min-h-10 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800 ${
           sidebarCollapsed && isMacDesktop ? 'window-no-drag-region' : 'window-drag-region'
         }`}
       >
@@ -134,12 +134,12 @@ export function SettingsPage({
           }`}
         >
           <h1 className='m-0 text-sm font-semibold'>设置</h1>
-          <p className='m-0 text-[11px] text-zinc-500 dark:text-zinc-400'>应用外观与模型连接</p>
         </div>
       </header>
 
       <div className='min-h-0 flex-1 overflow-auto'>
         <div className='mx-auto w-full max-w-3xl px-8 py-9'>
+          <p className='mt-0 mb-8 text-sm text-zinc-500 dark:text-zinc-400'>应用外观与模型连接</p>
           <section className='mb-10'>
             <div className='mb-4'>
               <h2 className='m-0 text-base font-semibold'>用户设置</h2>

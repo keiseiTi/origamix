@@ -7,14 +7,14 @@
   "scripts": {
     "dev": "pnpm --filter @origamix/desktop dev",
     "dev:web": "pnpm --filter @origamix/app dev",
-    "build": "pnpm -r --filter \"!@origamix/desktop\" build && pnpm --filter @origamix/desktop build:assemble",
+    "build": "pnpm -r --filter \"!@origamix/desktop\" build && pnpm --filter @origamix/desktop build:assemble && pnpm --filter @origamix/desktop build:app",
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm --filter @origamix/desktop package"
+    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
   },
   "keywords": [
     "lowCode",

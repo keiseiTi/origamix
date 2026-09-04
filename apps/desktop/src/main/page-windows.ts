@@ -162,15 +162,15 @@ export function registerPageWindows(
       view.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) =>
         callback(false),
       );
-      const query = { ...input, previewTitle: page.name };
+      const previewRoute = `/preview?${new URLSearchParams({ previewTitle: page.name }).toString()}`;
       try {
         const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
         if (rendererUrl) {
           const url = new URL(rendererUrl);
-          url.search = new URLSearchParams(query).toString();
+          url.hash = previewRoute;
           await view.webContents.loadURL(url.toString());
         } else {
-          await view.webContents.loadFile(getRendererPath(), { query });
+          await view.webContents.loadFile(getRendererPath(), { hash: previewRoute });
         }
       } catch (error) {
         views.delete(key);

@@ -124,6 +124,9 @@ describe('page preview WebContentsViews', () => {
     await open('project_one', 'page_two');
     expect(mocks.views).toHaveLength(2);
     expect(mocks.views[0].webContents.loadFile).toHaveBeenCalledTimes(1);
+    expect(mocks.views[0].webContents.loadFile).toHaveBeenCalledWith('/test-renderer/index.html', {
+      hash: '/preview?previewTitle=%E9%A1%B5%E9%9D%A2%E4%B8%80',
+    });
     expect(mocks.workbench.contentView.addChildView).toHaveBeenLastCalledWith(mocks.views[1]);
     expect(mocks.workbench.contentView.removeChildView).toHaveBeenCalledWith(mocks.views[0]);
     expect(mocks.views[1].setBounds).toHaveBeenCalledWith({
@@ -150,6 +153,14 @@ describe('page preview WebContentsViews', () => {
     await Promise.all([open(), open(), open()]);
     expect(mocks.views).toHaveLength(1);
     expect(mocks.views[0].webContents.loadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the preview route through the development renderer URL', async () => {
+    vi.stubEnv('ELECTRON_RENDERER_URL', 'http://127.0.0.1:5173/');
+    await open();
+    expect(mocks.views[0].webContents.loadURL).toHaveBeenCalledWith(
+      'http://127.0.0.1:5173/#/preview?previewTitle=%E9%A1%B5%E9%9D%A2%E4%B8%80',
+    );
   });
 
   it('rejects unauthorized callers and invalid or missing pages', async () => {

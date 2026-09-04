@@ -22,7 +22,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Build and package contract
 
-- `pnpm --filter @origamix/desktop build` builds Server then assembles Desktop; `build:assemble` requires existing Server artifacts and is normally called by root build.
+- Root `pnpm build` builds workspace packages, assembles Desktop and creates an unsigned, unpacked current-platform application. `pnpm --filter @origamix/desktop build` builds Server then assembles Desktop without packaging; `build:app`, `build:assemble` and `package:assemble` are internal steps that require existing artifacts.
 - Main/Preload/Server ship in `app.asar`; Renderer and the clean template are external resources. Preserve development/packaged path resolution, relative Renderer assets and the template allowlist.
 - Maintain icons in root `build/`. Do not repair packaging by patching generated `dist/` or `release/`.
 

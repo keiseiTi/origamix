@@ -1,5 +1,5 @@
 appId: com.origamix.app
-productName: Origamix
+productName: origamix
 directories:
   buildResources: ../../build
   output: ../../release
