@@ -19,6 +19,7 @@ export interface ModelSettings {
   hasApiKey: boolean;
 }
 export interface DesktopApi {
+  platform: 'darwin' | 'other';
   window: {
     openPage(input: PageWindowInput): Promise<void>;
     closePreview(input: PageWindowInput): Promise<void>;

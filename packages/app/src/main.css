@@ -41,6 +41,14 @@ textarea {
   font: inherit;
 }
 
+.window-drag-region {
+  -webkit-app-region: drag;
+}
+
+.window-no-drag-region {
+  -webkit-app-region: no-drag;
+}
+
 ::selection {
   background: rgb(37 99 235 / 24%);
 }

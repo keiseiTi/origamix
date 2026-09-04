@@ -4,8 +4,6 @@ import {
   FolderOpen,
   FolderPlus,
   MessageSquareText,
-  PanelLeft,
-  PanelLeftClose,
   Plus,
   Settings,
   User,
@@ -38,8 +36,8 @@ interface SidebarProps {
   projects: ProjectItem[];
   selectedPageId: string | null;
   isTemporary: boolean;
+  isMacDesktop: boolean;
   userProfile: UserProfile;
-  onCollapse: () => void;
   onPin: () => void;
   onTemporaryClose: () => void;
   onOpenSettings: () => void;
@@ -53,8 +51,8 @@ export function Sidebar({
   projects,
   selectedPageId,
   isTemporary,
+  isMacDesktop,
   userProfile,
-  onCollapse,
   onPin,
   onTemporaryClose,
   onOpenSettings,
@@ -101,19 +99,13 @@ export function Sidebar({
           if (isTemporary && event.key === 'Escape') onTemporaryClose();
         }}
       >
-        <header className='flex h-10 shrink-0 items-center gap-2 px-1'>
-          <Button
-            isIconOnly
-            size='sm'
-            variant='ghost'
-            className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-            onPressStart={isTemporary ? undefined : onCollapse}
-            onPress={isTemporary ? onPin : undefined}
-            aria-label={isTemporary ? '固定展开侧边栏' : '收起侧边栏'}
-          >
-            {isTemporary ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
-          </Button>
-          <strong className='truncate text-xs font-semibold'>Origamix</strong>
+        <header
+          className={`window-drag-region flex h-10 shrink-0 items-center gap-2 pr-1 ${
+            isMacDesktop ? 'pl-[76px]' : 'pl-1'
+          }`}
+        >
+          <span aria-hidden='true' className='h-7 w-7 shrink-0' />
+          <strong className='truncate text-[15px] leading-none font-semibold'>Origamix</strong>
         </header>
 
         <Button

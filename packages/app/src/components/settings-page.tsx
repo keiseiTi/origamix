@@ -7,6 +7,7 @@ import type { UserProfile } from './sidebar';
 interface SettingsPageProps {
   theme: AppTheme;
   sidebarCollapsed: boolean;
+  isMacDesktop: boolean;
   userProfile: UserProfile;
   onThemeChange: (theme: AppTheme) => void;
   onProfileChange: (profile: UserProfile) => void;
@@ -16,6 +17,7 @@ interface SettingsPageProps {
 export function SettingsPage({
   theme,
   sidebarCollapsed,
+  isMacDesktop,
   userProfile,
   onThemeChange,
   onProfileChange,
@@ -103,20 +105,34 @@ export function SettingsPage({
 
   return (
     <section className='flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      <header className='flex h-15 min-h-15 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800'>
+      <header
+        className={`relative flex h-15 min-h-15 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800 ${
+          sidebarCollapsed && isMacDesktop ? 'window-no-drag-region' : 'window-drag-region'
+        }`}
+      >
+        {sidebarCollapsed && isMacDesktop && (
+          <span
+            aria-hidden='true'
+            className='window-drag-region absolute inset-y-0 right-0 left-[108px]'
+          />
+        )}
         {!sidebarCollapsed && (
           <Button
             isIconOnly
             size='sm'
             variant='ghost'
-            className='mr-2 h-8 min-h-8 w-8 min-w-8'
+            className='window-no-drag-region mr-2 h-8 min-h-8 w-8 min-w-8'
             onPress={onBack}
             aria-label='返回工作区'
           >
             <ArrowLeft size={17} />
           </Button>
         )}
-        <div className={sidebarCollapsed ? 'pl-10' : undefined}>
+        <div
+          className={`relative z-10 ${
+            sidebarCollapsed ? (isMacDesktop ? 'pl-[90px]' : 'pl-10') : ''
+          }`}
+        >
           <h1 className='m-0 text-sm font-semibold'>设置</h1>
           <p className='m-0 text-[11px] text-zinc-500 dark:text-zinc-400'>应用外观与模型连接</p>
         </div>

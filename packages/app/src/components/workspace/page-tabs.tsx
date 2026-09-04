@@ -6,6 +6,7 @@ interface PageTabsProps {
   pages: PageItem[];
   activePageId: string | null;
   sidebarCollapsed: boolean;
+  isMacDesktop: boolean;
   onSelect: (pageId: string) => void;
   onClose: (pageId: string) => void;
 }
@@ -14,25 +15,38 @@ export function PageTabs({
   pages,
   activePageId,
   sidebarCollapsed,
+  isMacDesktop,
   onSelect,
   onClose,
 }: PageTabsProps): React.JSX.Element {
   return (
     <nav
       aria-label='已打开页面'
-      className={`flex h-10 shrink-0 items-stretch overflow-x-auto border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 ${
-        sidebarCollapsed ? 'pl-10' : ''
-      }`}
+      className='window-drag-region flex h-10 shrink-0 items-stretch overflow-x-auto bg-zinc-50 dark:bg-zinc-900'
     >
-      {pages.map((page) => {
+      {sidebarCollapsed && isMacDesktop && (
+        <span
+          aria-hidden='true'
+          className='window-no-drag-region w-[108px] shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
+        />
+      )}
+      {sidebarCollapsed && !isMacDesktop && (
+        <span
+          aria-hidden='true'
+          className='window-no-drag-region w-10 shrink-0 border-b border-zinc-200 dark:border-zinc-800'
+        />
+      )}
+      {pages.map((page, index) => {
         const active = page.id === activePageId;
         return (
           <div
             key={page.id}
-            className={`group flex min-w-32 max-w-56 items-center border-r border-zinc-200 px-1 first:border-l dark:border-zinc-800 ${
+            className={`window-no-drag-region group flex min-w-32 max-w-56 items-center border-r border-zinc-200 px-1 dark:border-zinc-800 ${
+              sidebarCollapsed && !isMacDesktop && index === 0 ? 'border-l' : ''
+            } ${
               active
-                ? 'relative z-10 -mb-px border-b border-b-white bg-white text-zinc-900 dark:border-b-zinc-950 dark:bg-zinc-950 dark:text-zinc-100'
-                : 'text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
+                ? 'bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'
+                : 'border-b border-zinc-200 text-zinc-500 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800'
             }`}
           >
             <button
@@ -57,6 +71,10 @@ export function PageTabs({
           </div>
         );
       })}
+      <span
+        aria-hidden='true'
+        className='window-drag-region min-w-0 flex-1 border-b border-zinc-200 dark:border-zinc-800'
+      />
     </nav>
   );
 }

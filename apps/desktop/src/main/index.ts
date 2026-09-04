@@ -39,6 +39,12 @@ function createWindow(): BrowserWindow {
     resizable: true,
     title: 'origamix',
     autoHideMenuBar: true,
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: { x: 12, y: 12 },
+        }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       sandbox: false,

@@ -3,6 +3,7 @@ import type { DesktopApi } from '@origamix/shared/desktop-api';
 
 // Custom APIs for renderer
 const api: DesktopApi = {
+  platform: process.platform === 'darwin' ? 'darwin' : 'other',
   window: {
     openPage: (input: import('@origamix/shared/page-window').PageWindowInput): Promise<void> =>
       ipcRenderer.invoke('window:open-page', input),

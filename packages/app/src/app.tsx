@@ -1,5 +1,5 @@
 import { Button, Spinner } from '@heroui/react';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sidebar,
@@ -19,6 +19,7 @@ import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
 
 function App(): React.JSX.Element {
+  const isMacDesktop = window.api?.platform === 'darwin';
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [openPageIds, setOpenPageIds] = useState<string[]>([]);
@@ -279,8 +280,8 @@ function App(): React.JSX.Element {
       projects={projects}
       selectedPageId={selectedPageId}
       isTemporary={sidebarCollapsed}
+      isMacDesktop={isMacDesktop}
       userProfile={userProfile}
-      onCollapse={collapseSidebar}
       onPin={pinSidebarOpen}
       onTemporaryClose={() => setSidebarPeek(false)}
       onOpenSettings={() =>
@@ -317,27 +318,28 @@ function App(): React.JSX.Element {
           操作未完成：{transitionError}。编辑内容已保留，请重试。
         </div>
       )}
-      {sidebarCollapsed && (
-        <Button
-          isIconOnly
-          size='sm'
-          variant='ghost'
-          className='fixed top-1.5 left-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
-          onMouseEnter={() => sidebarPeekEnabled && setSidebarPeek(true)}
-          onMouseLeave={() => setSidebarPeekEnabled(true)}
-          onPress={pinSidebarOpen}
-          aria-expanded={sidebarPeek}
-          aria-controls='project-sidebar'
-          aria-label='展开侧边栏'
-        >
-          <PanelLeft size={17} />
-        </Button>
-      )}
+      <button
+        type='button'
+        className={`window-no-drag-region fixed top-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
+          isMacDesktop ? 'left-[76px]' : 'left-1.5'
+        } grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary`}
+        onMouseEnter={() => sidebarCollapsed && sidebarPeekEnabled && setSidebarPeek(true)}
+        onMouseLeave={() => sidebarCollapsed && setSidebarPeekEnabled(true)}
+        onClick={sidebarCollapsed ? pinSidebarOpen : collapseSidebar}
+        aria-expanded={sidebarPeek}
+        aria-controls='project-sidebar'
+        aria-label={
+          sidebarCollapsed ? (sidebarPeek ? '固定展开侧边栏' : '展开侧边栏') : '收起侧边栏'
+        }
+      >
+        {sidebarCollapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
+      </button>
 
       {isSettingsOpen ? (
         <SettingsPage
           theme={theme}
           sidebarCollapsed={sidebarCollapsed}
+          isMacDesktop={isMacDesktop}
           userProfile={userProfile}
           onThemeChange={setTheme}
           onProfileChange={setUserProfile}
@@ -375,9 +377,21 @@ function App(): React.JSX.Element {
               })}
               activePageId={selectedPageId}
               sidebarCollapsed={sidebarCollapsed}
+              isMacDesktop={isMacDesktop}
               onSelect={(pageId) => void transition(() => selectPage(pageId))}
               onClose={(pageId) => void transition(() => closePage(pageId))}
             />
+          )}
+          {openPageIds.length === 0 && (
+            <div
+              aria-hidden='true'
+              className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
+            >
+              {sidebarCollapsed && isMacDesktop && (
+                <span className='window-no-drag-region w-[108px] shrink-0' />
+              )}
+              <span className='window-drag-region min-w-0 flex-1' />
+            </div>
           )}
           <div ref={workspaceRef} className='flex min-h-0 flex-1'>
             <Workspace
