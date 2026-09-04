@@ -45,6 +45,7 @@ interface SidebarProps {
   onOpenProject: () => void;
   onPageCreated: (projectId: string, page: PageItem) => void;
   onSelectPage: (pageId: string) => void;
+  supportsNativeProjectDirectories: boolean;
 }
 
 export function Sidebar({
@@ -60,6 +61,7 @@ export function Sidebar({
   onOpenProject,
   onPageCreated,
   onSelectPage,
+  supportsNativeProjectDirectories,
 }: SidebarProps): React.JSX.Element {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
@@ -112,6 +114,10 @@ export function Sidebar({
           variant='ghost'
           className='mt-2 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
           onPress={openProjectModal}
+          isDisabled={!supportsNativeProjectDirectories}
+          aria-label={
+            supportsNativeProjectDirectories ? '新建项目' : '新建项目；浏览器端下载与导入尚未接入'
+          }
         >
           <FolderPlus size={15} />
           新建项目
@@ -120,6 +126,10 @@ export function Sidebar({
           variant='ghost'
           className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
           onPress={onOpenProject}
+          isDisabled={!supportsNativeProjectDirectories}
+          aria-label={
+            supportsNativeProjectDirectories ? '打开项目' : '打开项目；浏览器不能直接访问本机目录'
+          }
         >
           <FolderOpen size={15} />
           打开项目

@@ -5,8 +5,8 @@ import {
   type DropPlaceholderProps,
   type EnhancedComponentProps,
 } from '@tangramino/base-editor';
-import { SchemaUtils } from '@tangramino/engine';
 import { GripVertical, Trash2 } from 'lucide-react';
+import { removeEditorElement } from './editor-schema';
 
 export function DropIndicator({ material, isDragOver }: DropPlaceholderProps): React.JSX.Element {
   return (
@@ -18,43 +18,37 @@ export function DropIndicator({ material, isDragOver }: DropPlaceholderProps): R
   );
 }
 
-export function EditableElement({
-  children,
-  elementProps,
-  material,
-}: EnhancedComponentProps): React.JSX.Element {
+export function EditableElement({ children }: EnhancedComponentProps): React.JSX.Element {
+  return children;
+}
+
+export function EditorOverlay(): React.JSX.Element | null {
   const { activeElement, schema, setSchema, setActiveElement } = useEditorCore();
-  const elementId = String(elementProps['data-element-id'] ?? '');
-  const selected = activeElement?.id === elementId;
-  const isRoot = schema.layout.root === elementId;
+
+  if (!activeElement) return null;
+
+  const { id, material } = activeElement;
+  const isRoot = schema.layout.root === id;
 
   const remove = (): void => {
     if (isRoot) return;
-    // @ts-expect-error not-check
-    setSchema(SchemaUtils.removeElement(schema, elementId));
+    setSchema(removeEditorElement(schema, id));
     setActiveElement(null);
   };
 
   return (
-    <div
-      className={`${material.isContainer ? 'block' : 'inline-block'} relative ${
-        selected ? 'outline-2 outline-offset-1 outline-blue-500' : ''
-      }`}
-    >
-      {children}
-      {selected && !isRoot && (
+    <>
+      <div className='pointer-events-auto absolute -top-7 left-0 max-w-[calc(100%-3.5rem)] truncate rounded-t bg-blue-600 px-2 py-1 text-xs text-white shadow-sm'>
+        {material.title}
+      </div>
+      {!isRoot && (
         <div
-          className='absolute -top-8 right-0 z-20 flex h-7 items-center rounded-md bg-blue-600 p-0.5 text-white shadow-sm'
+          className='pointer-events-auto absolute -top-7 right-0 flex h-7 items-center rounded-t bg-blue-600 p-0.5 text-white shadow-sm'
+          onMouseDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
           <Tooltip>
-            <Movable
-              // @ts-expect-error not-check
-              elementId={elementId}
-              elementProps={elementProps}
-              material={material}
-              className='grid h-6 w-6 cursor-move place-items-center rounded hover:bg-white/15'
-            >
+            <Movable className='grid h-6 w-6 cursor-move place-items-center rounded hover:bg-white/15'>
               <GripVertical size={14} />
             </Movable>
             <Tooltip.Content>移动元素</Tooltip.Content>
@@ -74,6 +68,6 @@ export function EditableElement({
           </Tooltip>
         </div>
       )}
-    </div>
+    </>
   );
 }

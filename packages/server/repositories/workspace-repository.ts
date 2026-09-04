@@ -15,8 +15,6 @@ export class WorkspaceRepository {
       updated_at: string;
     };
     return {
-      activeProjectId: row.active_project_id,
-      activePageId: row.active_page_id,
       theme: row.theme,
       sidebarCollapsed: row.sidebar_state === 'collapsed',
       updatedAt: row.updated_at,
@@ -31,8 +29,8 @@ export class WorkspaceRepository {
         'UPDATE workspace_state SET active_project_id = ?, active_page_id = ?, theme = ?, sidebar_state = ?, updated_at = ? WHERE id = 1',
       )
       .run(
-        next.activeProjectId,
-        next.activePageId,
+        null,
+        null,
         next.theme,
         next.sidebarCollapsed ? 'collapsed' : 'expanded',
         next.updatedAt,

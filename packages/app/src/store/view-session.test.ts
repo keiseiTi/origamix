@@ -5,18 +5,45 @@ describe('window view session', () => {
   it.each([null, '{broken', 'null', '42'])(
     'defaults safely for missing or invalid storage: %s',
     (raw) => {
-      expect(parseSession(raw)).toMatchObject({ activeTab: 'chat', isSettingsOpen: false });
+      expect(parseSession(raw)).toMatchObject({
+        activeTab: 'chat',
+        isSettingsOpen: false,
+        activeProjectId: null,
+        activePageId: null,
+        openPageIds: [],
+        pageModes: {},
+        pageDrafts: {},
+      });
     },
   );
   it('does not treat truthy strings as persisted booleans', () => {
     expect(
       parseSession('{"activeTab":"unknown","isSettingsOpen":"true","sidebarCollapsed":"false"}'),
-    ).toEqual({ activeTab: 'chat', isSettingsOpen: false, sidebarCollapsed: undefined });
+    ).toMatchObject({ activeTab: 'chat', isSettingsOpen: false, sidebarCollapsed: undefined });
   });
   it('restores editor navigation and sidebar state across reload', () => {
     expect(
       parseSession('{"activeTab":"edit","isSettingsOpen":true,"sidebarCollapsed":true}'),
-    ).toEqual({ activeTab: 'edit', isSettingsOpen: true, sidebarCollapsed: true });
+    ).toMatchObject({ activeTab: 'edit', isSettingsOpen: true, sidebarCollapsed: true });
+  });
+  it('restores open pages, per-page modes, and drafts while sanitizing invalid entries', () => {
+    expect(
+      parseSession(
+        JSON.stringify({
+          activeProjectId: 'project-1',
+          activePageId: 'page-2',
+          openPageIds: ['page-1', 'page-2', 'page-1', 3],
+          pageModes: { 'page-1': 'edit', 'page-2': 'preview', bad: 3 },
+          pageDrafts: { 'page-1': 'unfinished prompt', bad: false },
+        }),
+      ),
+    ).toMatchObject({
+      activeProjectId: 'project-1',
+      activePageId: 'page-2',
+      openPageIds: ['page-1', 'page-2'],
+      pageModes: { 'page-1': 'edit', 'page-2': 'chat' },
+      pageDrafts: { 'page-1': 'unfinished prompt' },
+    });
   });
   it('falls back from obsolete in-workspace preview sessions', () => {
     expect(parseSession('{"activeTab":"preview","isSettingsOpen":false}').activeTab).toBe('chat');

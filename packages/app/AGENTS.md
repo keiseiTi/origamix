@@ -14,7 +14,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - Nothing under `src/` may import Node.js, Electron, Server or Desktop implementations. Use the typed optional desktop bridge and service-layer business requests.
 - The Node development host may import `@origamix/server/runtime`. Never import host modules into browser source or expose tokens via `VITE_*`, Vite `define`, HTML or localStorage.
-- Web mode is local development, not remote hosting. Preserve same-origin proxy checks and host-owned authentication. Unsupported native capabilities need clear disabled/error states, not fake success.
+- The Renderer supports both browser and desktop hosts. Keep project/tab navigation and per-tab UI state in window `sessionStorage`; never send that state to Server. Desktop may integrate directory pickers, template installation, backend lifecycle and independent windows. Browser deployments use configured HTTP services and download/import flows instead of assuming Electron capabilities. Unsupported host capabilities need clear disabled/error states, not fake success.
 - Zustand is a projection. Schema mutation produces a typed ChangeSet through Server; update committed state only after success. Never persist authoritative Schema in a component, store or browser storage.
 - Associate asynchronous work with page identity and revision; stale results must not overwrite another page. Preserve pending edits on failure.
 - Preview uses the read-only preview bridge, never a fallback that requests desktop credentials. Rendering errors must remain visible without corrupting the editing session.

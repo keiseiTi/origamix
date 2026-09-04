@@ -8,7 +8,7 @@ function readSession(): ViewSession {
   try {
     return parseSession(sessionStorage.getItem(storageKey));
   } catch {
-    return { activeTab: 'chat', isSettingsOpen: false };
+    return parseSession(null);
   }
 }
 
@@ -17,11 +17,24 @@ export function useViewSession(): ViewSession & {
   setIsSettingsOpen: (isSettingsOpen: boolean) => void;
   setSidebarCollapsed: (sidebarCollapsed: boolean) => void;
   restoreSidebarCollapsed: (sidebarCollapsed: boolean) => void;
+  updateWorkspace: (workspace: Partial<ViewSession>) => void;
 } {
   const [state, setState] = useState<ViewSession>(readSession);
   const restoreSidebarCollapsed = useCallback((sidebarCollapsed: boolean) => {
     // The current window's state takes precedence over an older server snapshot.
     setState((current) => restoreSidebar(current, sidebarCollapsed));
+  }, []);
+  const setSidebarCollapsed = useCallback((sidebarCollapsed: boolean) => {
+    setState((current) => ({ ...current, sidebarCollapsed }));
+  }, []);
+  const setActiveTab = useCallback((activeTab: WorkspaceMode) => {
+    setState((current) => ({ ...current, activeTab }));
+  }, []);
+  const setIsSettingsOpen = useCallback((isSettingsOpen: boolean) => {
+    setState((current) => ({ ...current, isSettingsOpen }));
+  }, []);
+  const updateWorkspace = useCallback((workspace: Partial<ViewSession>) => {
+    setState((current) => ({ ...current, ...workspace }));
   }, []);
 
   useEffect(() => {
@@ -36,9 +49,9 @@ export function useViewSession(): ViewSession & {
   return {
     ...state,
     restoreSidebarCollapsed,
-    setSidebarCollapsed: (sidebarCollapsed) =>
-      setState((current) => ({ ...current, sidebarCollapsed })),
-    setActiveTab: (activeTab) => setState((current) => ({ ...current, activeTab })),
-    setIsSettingsOpen: (isSettingsOpen) => setState((current) => ({ ...current, isSettingsOpen })),
+    setSidebarCollapsed,
+    setActiveTab,
+    setIsSettingsOpen,
+    updateWorkspace,
   };
 }

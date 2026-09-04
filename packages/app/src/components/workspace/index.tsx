@@ -1,4 +1,4 @@
-import { useState, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { PageItem } from '../sidebar';
 import { ChatWorkspace } from './chat-workspace';
 import { Editor, type EditorHandle } from '../editor';
@@ -14,6 +14,9 @@ interface WorkspaceProps {
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
+  draft: string;
+  onDraftChange: (draft: string) => void;
+  supportsNativeProjectDirectories: boolean;
 }
 
 export function Workspace({
@@ -25,14 +28,12 @@ export function Workspace({
   editorRef,
   onModeChange,
   onPreview,
+  draft,
+  onDraftChange,
+  supportsNativeProjectDirectories,
 }: WorkspaceProps): React.JSX.Element {
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const chat = page && (
-    <ChatWorkspace
-      pageName={page.name}
-      draft={drafts[page.id] ?? ''}
-      onDraftChange={(draft) => setDrafts((current) => ({ ...current, [page.id]: draft }))}
-    />
+    <ChatWorkspace pageName={page.name} draft={draft} onDraftChange={onDraftChange} />
   );
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
@@ -46,7 +47,10 @@ export function Workspace({
         />
       )}
       {!page ? (
-        <EmptyWorkspace onCreateProject={onCreateProject} />
+        <EmptyWorkspace
+          onCreateProject={onCreateProject}
+          supportsNativeProjectDirectories={supportsNativeProjectDirectories}
+        />
       ) : (
         <>
           <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>

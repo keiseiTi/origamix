@@ -15,17 +15,13 @@ export async function startServer(input: {
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
   const workspace = new WorkspaceRepository(database);
-  const projectService = new ProjectService(projects, workspace, input.templatePath);
+  const projectService = new ProjectService(projects, input.templatePath);
   const server = createHttpServer({ ...input, projects, workspace, projectService });
   try {
     // Only an explicit host-side startup option grants access to an existing directory.
     if (input.projectPath) {
       projectService.registerGrant('startup-project', input.projectPath);
-      const project = await projectService.openProject({ directoryGrantId: 'startup-project' });
-      workspace.save({
-        activeProjectId: project.id,
-        activePageId: projects.listPages(project.id)[0]?.id ?? null,
-      });
+      await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
     await server.listen({ host: '127.0.0.1', port: 0 });
     const address = server.server.address();

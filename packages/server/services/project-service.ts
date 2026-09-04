@@ -7,7 +7,6 @@ import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
 import { initializePageSchema } from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
-import type { WorkspaceRepository } from '../repositories/workspace-repository';
 import { conflict, invalid, notFound } from '../errors';
 
 interface ProjectManifest {
@@ -65,7 +64,6 @@ export class ProjectService {
 
   constructor(
     private readonly projects: ProjectRepository,
-    private readonly workspace: WorkspaceRepository,
     private readonly templatePath: string,
   ) {}
 
@@ -192,7 +190,6 @@ export class ProjectService {
     await this.reconcile(project.path);
     const page = this.projects.getPage(projectId, id);
     if (!page) throw new Error('页面索引失败');
-    this.workspace.save({ activeProjectId: projectId, activePageId: id });
     return page;
   }
 
@@ -258,7 +255,6 @@ export class ProjectService {
       lastOpenedAt: timestamp,
     };
     this.projects.reconcile(project, pages);
-    this.workspace.save({ activeProjectId: project.id, activePageId: pages[0]?.id ?? null });
     return project;
   };
 }

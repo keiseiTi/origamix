@@ -20,10 +20,8 @@ import { workspaceService } from './services/workspace';
 
 function App(): React.JSX.Element {
   const isMacDesktop = window.api?.platform === 'darwin';
+  const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
-  const [openPageIds, setOpenPageIds] = useState<string[]>([]);
-  const [pageModes, setPageModes] = useState<Record<string, WorkspaceMode>>({});
   const {
     activeTab,
     setActiveTab,
@@ -32,6 +30,12 @@ function App(): React.JSX.Element {
     sidebarCollapsed: sessionSidebarCollapsed,
     setSidebarCollapsed,
     restoreSidebarCollapsed,
+    activeProjectId,
+    activePageId: selectedPageId,
+    openPageIds,
+    pageModes,
+    pageDrafts,
+    updateWorkspace,
   } = useViewSession();
   const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
@@ -48,6 +52,13 @@ function App(): React.JSX.Element {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const transitionPending = useRef(false);
   const previousPreviewMode = useRef<Record<string, Exclude<WorkspaceMode, 'preview'>>>({});
+  const initialWorkspaceSession = useRef({
+    activeProjectId,
+    selectedPageId,
+    openPageIds,
+    pageModes,
+    pageDrafts,
+  });
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const selectedPage = projects
     .flatMap((project) => project.pages)
@@ -96,7 +107,7 @@ function App(): React.JSX.Element {
       }
       setActiveTab(mode);
       if (selectedPageId) {
-        setPageModes((current) => ({ ...current, [selectedPageId]: mode }));
+        updateWorkspace({ pageModes: { ...pageModes, [selectedPageId]: mode } });
       }
     });
 
@@ -114,16 +125,24 @@ function App(): React.JSX.Element {
       activeTab === 'preview'
         ? (previousPreviewMode.current[selectedPage.id] ?? 'chat')
         : activeTab;
-    setPageModes((current) => ({ ...current, [selectedPage.id]: 'preview' }));
+    updateWorkspace({ pageModes: { ...pageModes, [selectedPage.id]: 'preview' } });
     setActiveTab('preview');
   };
 
   const selectPage = (pageId: string): void => {
-    if (selectedPageId && activeTab !== 'preview') {
-      setPageModes((current) => ({ ...current, [selectedPageId]: activeTab }));
-    }
-    setOpenPageIds((current) => (current.includes(pageId) ? current : [...current, pageId]));
-    setSelectedPageId(pageId);
+    const nextModes =
+      selectedPageId && activeTab !== 'preview'
+        ? { ...pageModes, [selectedPageId]: activeTab }
+        : { ...pageModes };
+    const projectId = projects.find((project) =>
+      project.pages.some((page) => page.id === pageId),
+    )?.id;
+    updateWorkspace({
+      activeProjectId: projectId ?? activeProjectId,
+      activePageId: pageId,
+      openPageIds: openPageIds.includes(pageId) ? openPageIds : [...openPageIds, pageId],
+      pageModes: nextModes,
+    });
     setActiveTab(pageModes[pageId] === 'edit' ? 'edit' : 'chat');
     setSidebarPeek(false);
   };
@@ -137,16 +156,26 @@ function App(): React.JSX.Element {
     }
     const index = openPageIds.indexOf(pageId);
     const remaining = openPageIds.filter((id) => id !== pageId);
-    setOpenPageIds(remaining);
-    setPageModes((current) => {
-      const next = { ...current };
-      delete next[pageId];
-      return next;
-    });
+    const nextModes = { ...pageModes };
+    const nextDrafts = { ...pageDrafts };
+    delete nextModes[pageId];
+    delete nextDrafts[pageId];
     delete previousPreviewMode.current[pageId];
+    const nextId =
+      selectedPageId === pageId
+        ? (remaining[Math.min(index, remaining.length - 1)] ?? null)
+        : selectedPageId;
+    const nextProjectId =
+      projects.find((project) => project.pages.some((page) => page.id === nextId))?.id ??
+      activeProjectId;
+    updateWorkspace({
+      activeProjectId: nextProjectId,
+      activePageId: nextId,
+      openPageIds: remaining,
+      pageModes: nextModes,
+      pageDrafts: nextDrafts,
+    });
     if (selectedPageId === pageId) {
-      const nextId = remaining[Math.min(index, remaining.length - 1)] ?? null;
-      setSelectedPageId(nextId);
       setActiveTab(nextId && pageModes[nextId] === 'edit' ? 'edit' : 'chat');
     }
   };
@@ -174,10 +203,43 @@ function App(): React.JSX.Element {
           })),
         );
         if (!active) return;
+        const session = initialWorkspaceSession.current;
         setProjects(hydrated);
-        // A fresh workbench starts empty. Pages become tabs only after an explicit selection.
-        setSelectedPageId(null);
-        setOpenPageIds([]);
+        const pageIds = new Set(
+          hydrated.flatMap((project) => project.pages.map((page) => page.id)),
+        );
+        const projectIds = new Set(hydrated.map((project) => project.id));
+        const restoredOpenIds = session.openPageIds.filter((id) => pageIds.has(id));
+        const restoredPageId =
+          session.selectedPageId && pageIds.has(session.selectedPageId)
+            ? session.selectedPageId
+            : null;
+        const nextOpenIds =
+          restoredPageId && !restoredOpenIds.includes(restoredPageId)
+            ? [...restoredOpenIds, restoredPageId]
+            : restoredOpenIds;
+        const nextModes = Object.fromEntries(
+          Object.entries(session.pageModes).filter(([id]) => pageIds.has(id)),
+        );
+        const nextDrafts = Object.fromEntries(
+          Object.entries(session.pageDrafts).filter(([id]) => pageIds.has(id)),
+        );
+        const restoredPageProjectId = hydrated.find((project) =>
+          project.pages.some((page) => page.id === restoredPageId),
+        )?.id;
+        const restoredProjectId =
+          restoredPageProjectId ??
+          (session.activeProjectId && projectIds.has(session.activeProjectId)
+            ? session.activeProjectId
+            : null);
+        updateWorkspace({
+          activeProjectId: restoredProjectId,
+          activePageId: restoredPageId,
+          openPageIds: nextOpenIds,
+          pageModes: nextModes,
+          pageDrafts: nextDrafts,
+          activeTab: restoredPageId && nextModes[restoredPageId] === 'edit' ? 'edit' : 'chat',
+        });
         setTheme(workspace.theme);
         restoreSidebarCollapsed(workspace.sidebarCollapsed);
         setWorkspaceReady(true);
@@ -189,21 +251,16 @@ function App(): React.JSX.Element {
     return () => {
       active = false;
     };
-  }, [restoreSidebarCollapsed]);
+  }, [restoreSidebarCollapsed, updateWorkspace]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    const activeProjectId = projects.find((project) =>
-      project.pages.some((page) => page.id === selectedPageId),
-    )?.id;
     const workspace = {
-      activeProjectId: activeProjectId ?? null,
-      activePageId: selectedPageId,
       theme,
       sidebarCollapsed,
     };
     void workspaceService.save(workspace);
-  }, [projects, selectedPageId, theme, sidebarCollapsed, workspaceReady]);
+  }, [theme, sidebarCollapsed, workspaceReady]);
 
   useEffect(() => {
     window.api?.settings
@@ -215,10 +272,10 @@ function App(): React.JSX.Element {
   useEffect(() => {
     return window.api?.window?.onPreviewExited?.((target) => {
       const restored = previousPreviewMode.current[target.pageId] ?? 'chat';
-      setPageModes((current) => ({ ...current, [target.pageId]: restored }));
+      updateWorkspace({ pageModes: { ...pageModes, [target.pageId]: restored } });
       if (selectedPageId === target.pageId) setActiveTab(restored);
     });
-  }, [selectedPageId, setActiveTab]);
+  }, [pageModes, selectedPageId, setActiveTab, updateWorkspace]);
 
   useEffect(() => {
     const element = workspaceRef.current;
@@ -270,8 +327,13 @@ function App(): React.JSX.Element {
       ...current.filter((project) => project.path !== result.project.path),
       result.project,
     ]);
-    setSelectedPageId(result.project.pages[0]?.id ?? null);
-    setOpenPageIds(result.project.pages[0] ? [result.project.pages[0].id] : []);
+    updateWorkspace({
+      activeProjectId: result.project.id,
+      activePageId: result.project.pages[0]?.id ?? null,
+      openPageIds: result.project.pages[0] ? [result.project.pages[0].id] : [],
+      pageModes: {},
+      pageDrafts: {},
+    });
     setActiveTab('chat');
   };
 
@@ -302,6 +364,7 @@ function App(): React.JSX.Element {
           selectPage(pageId);
         })
       }
+      supportsNativeProjectDirectories={supportsNativeProjectDirectories}
     />
   );
   return (
@@ -402,6 +465,13 @@ function App(): React.JSX.Element {
               editorRef={editorRef}
               onModeChange={changeMode}
               onPreview={openPreview}
+              draft={selectedPageId ? (pageDrafts[selectedPageId] ?? '') : ''}
+              onDraftChange={(draft) => {
+                if (selectedPageId) {
+                  updateWorkspace({ pageDrafts: { ...pageDrafts, [selectedPageId]: draft } });
+                }
+              }}
+              supportsNativeProjectDirectories={supportsNativeProjectDirectories}
               onCreateProject={() => setIsHomeProjectModalOpen(true)}
             />
           </div>

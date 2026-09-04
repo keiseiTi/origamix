@@ -26,7 +26,7 @@ describe('local HTTP API', () => {
       serviceInstanceId: 'service-instance',
       projects,
       workspace,
-      projectService: new ProjectService(projects, workspace, templatePath),
+      projectService: new ProjectService(projects, templatePath),
     });
     try {
       for (const origin of ['http://127.0.0.1:5173', 'http://localhost:5173', 'null']) {
@@ -118,7 +118,7 @@ describe('local HTTP API', () => {
       serviceInstanceId: 'service-instance',
       projects,
       workspace,
-      projectService: new ProjectService(projects, workspace, templatePath),
+      projectService: new ProjectService(projects, templatePath),
     });
 
     const denied = await server.inject({ method: 'GET', url: '/api/v1/workspace' });
@@ -149,7 +149,7 @@ describe('local HTTP API', () => {
       serviceInstanceId: 'service-instance',
       projects,
       workspace,
-      projectService: new ProjectService(projects, workspace, templatePath),
+      projectService: new ProjectService(projects, templatePath),
     });
     const headers = {
       authorization: 'Bearer desktop-token',
@@ -220,7 +220,7 @@ describe('local HTTP API', () => {
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
     const workspace = new WorkspaceRepository(database);
-    const service = new ProjectService(projects, workspace, templatePath);
+    const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_project', directory);
     const server = createHttpServer({
       desktopToken: 'desktop-token',
@@ -290,8 +290,7 @@ describe('local HTTP API', () => {
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
-    const service = new ProjectService(projects, workspace, templatePath);
+    const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_existing', directory);
 
     const project = await service.openProject({ directoryGrantId: 'grant_existing' });

@@ -20,7 +20,8 @@ import {
 } from 'react';
 import { schemaService } from '../../services/schema';
 import { AttributePanel } from './mods/attribute-panel';
-import { DropIndicator, EditableElement } from './mods/canvas-tools';
+import { DropIndicator, EditableElement, EditorOverlay } from './mods/canvas-tools';
+import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MaterialPanel, type MaterialGroup } from './mods/material-panel';
 
 export interface EditorHandle {
@@ -53,6 +54,7 @@ function EditorCanvas(): React.JSX.Element {
               className='relative size-full overflow-auto p-4'
               renderDropIndicator={DropIndicator}
               renderElement={EditableElement}
+              renderOverlayContent={EditorOverlay}
             />
           </div>
         </main>
@@ -63,6 +65,7 @@ function EditorCanvas(): React.JSX.Element {
           {dragTitle}
         </div>
       </DragOverlay>
+      <InsertPositionIndicator />
     </>
   );
 }
@@ -195,7 +198,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   }
 
   return (
-    <div className='relative flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
+    <div className='relative border-t flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <EditorProvider
         key={providerKey}
         materials={materials}

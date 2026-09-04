@@ -39,8 +39,6 @@ export const PageRecordSchema = Type.Object({
 });
 
 export const WorkspaceSchema = Type.Object({
-  activeProjectId: Type.Union([Type.String(), Type.Null()]),
-  activePageId: Type.Union([Type.String(), Type.Null()]),
   theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
   sidebarCollapsed: Type.Boolean(),
   updatedAt: Type.String(),
@@ -61,8 +59,6 @@ export const CreatePageSchema = Type.Object({
 
 export const WorkspacePatchSchema = Type.Partial(
   Type.Object({
-    activeProjectId: Type.Union([Type.String(), Type.Null()]),
-    activePageId: Type.Union([Type.String(), Type.Null()]),
     theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
     sidebarCollapsed: Type.Boolean(),
   }),
@@ -98,8 +94,6 @@ export interface PageRecord {
 }
 
 export interface WorkspaceRecord {
-  activeProjectId: string | null;
-  activePageId: string | null;
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
   updatedAt: string;

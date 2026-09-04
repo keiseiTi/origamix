@@ -1,6 +1,6 @@
 # Origamix
 
-Local-first Electron low-code editor. Development uses custom tsup scripts and Vite; distribution uses electron-builder.
+Browser- and desktop-capable low-code editor. The Electron distribution integrates the UI, backend lifecycle, native directory access and template resources; the browser application can connect to a separately deployed backend and uses browser download/import flows for project templates.
 
 ## Workspace
 
@@ -35,13 +35,20 @@ Desktop development starts the server compiler, Renderer and Electron. Main/Prel
 pnpm dev:web
 ```
 
-Web development first builds the Server, then starts a local backend through Vite. Running `pnpm --filter @origamix/app dev` directly uses the same workflow, including on a clean checkout. Server/Shared changes rebuild the backend and restart Vite; Renderer changes retain Vite HMR. `/api/v1` is a same-origin proxy; its authentication token stays on the development host. State is stored in ignored `.origamix-web/`, separately from Electron user data. `ORIGAMIX_WEB_STATE_DIR` overrides that directory. To edit an existing project, explicitly provide its directory on the host:
+Web development first builds the Server, then starts a local backend through Vite. Running `pnpm --filter @origamix/app dev` directly uses the same workflow, including on a clean checkout. Server/Shared changes rebuild the backend and restart Vite; Renderer changes retain Vite HMR. `/api/v1` is a same-origin proxy; its authentication token stays on the development host. Backend data is stored in ignored `.origamix-web/`, separately from Electron user data. `ORIGAMIX_WEB_STATE_DIR` overrides that directory. To edit an existing project, explicitly provide its directory on the host:
 
 ```sh
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Native directory pickers, separate windows and desktop settings remain Electron-only. This is a local development mode, not a remotely deployable web service. It does not expose an HTTP endpoint that grants access to arbitrary filesystem paths.
+Project selection, open tabs, the active tab, each tab's chat/edit mode and unsent chat drafts belong to the current UI window and are restored from `sessionStorage` after refresh. They are not persisted by the backend. Authoritative Schema still comes from the configured backend/project files.
+
+Desktop and browser hosts expose different capabilities:
+
+- Desktop owns native directory pickers, bundled template installation, local backend startup, credentials and independent preview windows.
+- Browser deployments connect to a configured backend. Template/project acquisition must use explicit browser download/import APIs; it must not emulate native paths or depend on Electron bridges.
+
+The current `dev:web` command is the local browser-development composition of these boundaries. It does not itself expose arbitrary host filesystem access or constitute the production remote deployment configuration.
 
 For standalone backend development, set `ORIGAMIX_SERVER_TOKEN` and run `pnpm --filter @origamix/server dev`. It builds on startup, watches Server/Shared source and restarts after successful builds. The console reports the assigned loopback port and service instance ID after each restart; clients must send both the bearer token and `X-Origamix-Service` header. App and Server supervisors stop their workers and compiler on exit.
 
