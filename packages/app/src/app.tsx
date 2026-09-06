@@ -60,6 +60,7 @@ function App(): React.JSX.Element {
     pageDrafts,
   });
   const [transitionError, setTransitionError] = useState<string | null>(null);
+  const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const selectedPage = projects
     .flatMap((project) => project.pages)
     .find((page) => page.id === selectedPageId);
@@ -472,6 +473,11 @@ function App(): React.JSX.Element {
                 }
               }}
               supportsNativeProjectDirectories={supportsNativeProjectDirectories}
+              schemaRefreshKey={selectedPageId ? (schemaRefreshKeys[selectedPageId] ?? '') : ''}
+              onSchemaCommitted={(revisionId) => {
+                if (selectedPageId)
+                  setSchemaRefreshKeys((current) => ({ ...current, [selectedPageId]: revisionId }));
+              }}
               onCreateProject={() => setIsHomeProjectModalOpen(true)}
             />
           </div>

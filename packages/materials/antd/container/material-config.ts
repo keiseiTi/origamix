@@ -1,16 +1,14 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { containerManifest } from '../manifest';
 
 const ContainerMaterial: Material = {
   Component: lazy(() => import('./index')),
-  title: '容器',
-  type: 'container',
+  title: containerManifest.title,
+  type: containerManifest.type,
   dropTypes: ['basicPage', 'container'],
   isContainer: true,
-  defaultProps: {
-    heightConfig: 'fixed',
-    height: 200,
-  },
+  defaultProps: containerManifest.defaultProps,
   editorConfig: {
     panels: [
       {

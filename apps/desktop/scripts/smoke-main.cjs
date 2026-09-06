@@ -15,8 +15,10 @@ dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [projects] })
 dialog.showErrorBox = (title, content) => fail(new Error(`${title}: ${content}`));
 const fork = utilityProcess.fork.bind(utilityProcess);
 let backendExited = false;
+let currentBackend;
 utilityProcess.fork = (...args) => {
   const backend = fork(...args);
+  currentBackend = backend;
   backend.once('exit', (code) => {
     backendExited = code === 0;
   });
@@ -79,11 +81,28 @@ app
     await request('/workspace', { theme: 'light' }, 'PATCH');
     await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });
     await window.api.window.openPage({ projectId: project.id, pageId: pages[0].id, mode: 'preview' });
-    return { path: project.path, pageId: pages[0].id };
+    return { path: project.path, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
     assert.ok(existsSync(join(result.path, 'origamix.project.json')));
     assert.ok(!existsSync(join(result.path, 'node_modules')));
+    const interruptedBackend = currentBackend;
+    interruptedBackend.kill();
+    await waitFor(() => currentBackend !== interruptedBackend && currentBackend);
+    const recoveredConnection = await main.webContents.executeJavaScript(
+      'window.api.backend.getConnection()',
+    );
+    assert.notEqual(recoveredConnection.serviceInstanceId, result.serviceInstanceId);
+    const recoveredProjects = await main.webContents.executeJavaScript(`(async () => {
+      const connection = await window.api.backend.getConnection();
+      const response = await fetch(connection.baseUrl + '/projects', { headers: {
+        Authorization: 'Bearer ' + connection.token,
+        'X-Origamix-Service': connection.serviceInstanceId
+      }});
+      return response.json();
+    })()`);
+    assert.equal(recoveredProjects.success, true);
+    assert.equal(recoveredProjects.data.some((project) => project.id), true);
     const preview = await waitFor(() =>
       webContents
         .getAllWebContents()

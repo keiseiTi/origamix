@@ -31,6 +31,7 @@ export interface EditorHandle {
 interface EditorProps {
   projectId: string;
   pageId: string;
+  readOnly?: boolean;
 }
 
 const groups = materialGroups as MaterialGroup[];
@@ -71,7 +72,7 @@ function EditorCanvas(): React.JSX.Element {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
-  { projectId, pageId },
+  { projectId, pageId, readOnly = false },
   ref,
 ): React.JSX.Element {
   const [initial, setInitial] = useState<{
@@ -124,6 +125,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       const draft = draftRef.current;
       const draftHash = draft ? JSON.stringify(draft) : '';
       if (!draft || draftHash === savedHashRef.current) return;
+      if (readOnly) throw new Error('AI 正在修改当前页面，请等待本轮完成');
       setStatus('saving');
       setError(null);
       const operation = schemaService
@@ -147,13 +149,14 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       pendingRef.current = operation;
       await operation;
     }
-  }, [pageId, projectId]);
+  }, [pageId, projectId, readOnly]);
 
   useImperativeHandle(ref, () => ({ flush: commit }), [commit]);
 
   const onChange = useCallback(
     (schema: Schema): void => {
       if (!providerReadyRef.current) return;
+      if (readOnly) return;
       const next = schema as OrigamixPageSchema;
       const nextHash = JSON.stringify(next);
       draftRef.current = next;
@@ -166,7 +169,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => void commit().catch(() => undefined), 700);
     },
-    [commit],
+    [commit, readOnly],
   );
 
   useEffect(() => {
@@ -207,6 +210,16 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       >
         <EditorCanvas />
       </EditorProvider>
+      {readOnly && (
+        <div
+          className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
+          role='status'
+        >
+          <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
+            AI 正在修改，编辑暂时锁定
+          </span>
+        </div>
+      )}
       <div
         role={status === 'error' ? 'alert' : 'status'}
         className={`pointer-events-none absolute right-4 bottom-3 rounded-full border bg-white/90 px-2.5 py-1 text-[11px] shadow-sm backdrop-blur dark:bg-zinc-900/90 ${

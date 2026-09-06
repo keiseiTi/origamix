@@ -1,12 +1,12 @@
 import { isApiResultEnvelope } from '@origamix/shared/protocol/api';
 
-interface Connection {
+export interface ApiConnection {
   baseUrl: string;
   token: string;
   serviceInstanceId: string;
 }
 
-let connection: Connection | undefined;
+let connection: ApiConnection | undefined;
 
 export class ApiRequestError extends Error {
   constructor(
@@ -19,7 +19,8 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function getConnection(): Promise<Connection> {
+export async function getApiConnection(forceRefresh = false): Promise<ApiConnection> {
+  if (forceRefresh) connection = undefined;
   connection ??= await window.api?.backend?.getConnection?.();
   if (!connection && import.meta.env.DEV) {
     // The Vite host owns credentials and authenticates the same-origin proxy.
@@ -29,21 +30,52 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
+export async function refreshBackendConnection(): Promise<ApiConnection> {
+  return getApiConnection(true);
+}
+
+function headersFor(current: ApiConnection, init?: RequestInit & { projectId?: string }) {
+  return {
+    ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
+    ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
+    ...(init?.projectId ? { 'x-origamix-project-id': init.projectId } : {}),
+    ...(init?.body ? { 'content-type': 'application/json' } : {}),
+    ...init?.headers,
+  };
+}
+
+async function fetchWithConnection(
+  current: ApiConnection,
+  path: string,
+  init?: RequestInit & { projectId?: string },
+): Promise<Response> {
+  return fetch(`${current.baseUrl}${path}`, { ...init, headers: headersFor(current, init) });
+}
+
 export async function request<T>(
   path: string,
   init?: RequestInit & { projectId?: string },
 ): Promise<T> {
-  const current = await getConnection();
-  const response = await fetch(`${current.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
-      ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
-      ...(init?.projectId ? { 'x-origamix-project-id': init.projectId } : {}),
-      ...(init?.body ? { 'content-type': 'application/json' } : {}),
-      ...init?.headers,
-    },
-  });
+  const current = await getApiConnection();
+  let response: Response;
+  try {
+    response = await fetchWithConnection(current, path, init);
+  } catch (error) {
+    // Do not replay a mutation after an ambiguous network failure. Clearing the
+    // dead connection lets an explicit retry/SSE reconnect obtain fresh authority.
+    if (window.api?.backend?.getConnection) connection = undefined;
+    throw error;
+  }
+  if (response.status === 401 && window.api?.backend?.getConnection) {
+    const refreshed = await refreshBackendConnection();
+    if (
+      refreshed.serviceInstanceId !== current.serviceInstanceId ||
+      refreshed.baseUrl !== current.baseUrl ||
+      refreshed.token !== current.token
+    ) {
+      response = await fetchWithConnection(refreshed, path, init);
+    }
+  }
   const result = await response.json();
   if (!isApiResultEnvelope(result))
     throw new ApiRequestError('服务返回格式无效', 500, response.status);

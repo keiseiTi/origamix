@@ -20,7 +20,9 @@ interface PreviewEntry {
 }
 
 export function registerPageWindows(
-  getConnection: () => { baseUrl: string; token: string; serviceInstanceId: string },
+  getConnection: () =>
+    | { baseUrl: string; token: string; serviceInstanceId: string }
+    | Promise<{ baseUrl: string; token: string; serviceInstanceId: string }>,
   getRendererPath: () => string,
   getWorkbenchWindow: () => BrowserWindow | undefined,
 ): void {
@@ -31,7 +33,7 @@ export function registerPageWindows(
   let previewBounds: PreviewBounds = { x: 0, y: 0, width: 1, height: 1 };
 
   const read = async <T>(path: string, projectId?: string): Promise<T> => {
-    const connection = getConnection();
+    const connection = await getConnection();
     const response = await fetch(`${connection.baseUrl}${path}`, {
       signal: AbortSignal.timeout(10_000),
       headers: {

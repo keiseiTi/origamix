@@ -6,6 +6,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 - `antd/index.ts`: Ant Design runtime component registry.
 - `antd/group.ts`: editor-facing material groups and manifests.
+- `antd/manifest.ts`: serializable Agent/Server manifest catalog with no React or editor imports.
 - `antd/*/index.tsx`: thin Tangramino-compatible component adapters.
 - `antd/*/material-config.ts`: stable material metadata, defaults, context and editor controls.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.

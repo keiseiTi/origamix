@@ -2,44 +2,18 @@ import React from 'react';
 
 const Table = React.lazy(() => import('./index'));
 import type { Material } from '../../src/material';
+import { tableManifest } from '../manifest';
 // import { ColumnConfig } from '@/components/column-config';
 // import { PaginationConfig } from '@/components/pagination-config';
 
 const TableMaterial: Material = {
   Component: Table,
-  title: '表格',
-  type: 'table',
+  title: tableManifest.title,
+  type: tableManifest.type,
   // isBlock: true,
-  defaultProps: {
-    rowKey: 'id',
-    size: 'middle',
-    columns: [
-      {
-        title: '列1',
-        dataIndex: 'col1',
-      },
-      {
-        title: '列2',
-        dataIndex: 'col2',
-      },
-    ],
-    enabledPagination: false,
-  },
+  defaultProps: tableManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'dataSource',
-        description: '数据源',
-      },
-      {
-        name: 'loading',
-        description: '加载中',
-      },
-      {
-        name: 'bordered',
-        description: '是否显示边框',
-      },
-    ],
+    variables: [...tableManifest.context.variables],
   },
   editorConfig: {
     panels: [

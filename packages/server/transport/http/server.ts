@@ -13,7 +13,18 @@ import { commitSchema, getSchema, undoSchema } from '../../services/schema-servi
 import type { ProjectRepository } from '../../repositories/project-repository';
 import type { WorkspaceRepository } from '../../repositories/workspace-repository';
 import type { ProjectService } from '../../services/project-service';
-import { ApiError, invalid, notFound } from '../../errors';
+import { ApiError, conflict, invalid, notFound } from '../../errors';
+import {
+  CancelAgentRunRequestSchema,
+  CreateAgentRunRequestSchema,
+  type AgentRun,
+  type CreateAgentRunRequest,
+} from '@origamix/shared/protocol/agent';
+import type { ConversationService } from '../../services/conversation-service';
+import type { AgentRunService } from '../../services/agent-run-service';
+import type { AgentRunRecord } from '../../repositories/agent-run-repository';
+import type { AgentEventBroker } from '../../agent/agent-event-broker';
+import { deterministicRunMode, requestText } from '../../agent/deterministic-mvp-dispatcher';
 
 function requestId(value: unknown): string {
   return typeof value === 'string' && value.length <= 100 ? value : nanoid();
@@ -56,6 +67,13 @@ export function createHttpServer(input: {
   workspace: WorkspaceRepository;
   projectService: ProjectService;
   allowedOrigins?: readonly string[];
+  agent?: {
+    conversations: ConversationService;
+    runs: AgentRunService;
+    events: AgentEventBroker;
+    getCurrentRevision?: (projectId: string, pageId: string) => string | Promise<string>;
+    dispatch?: (input: { runId: string; request: CreateAgentRunRequest }) => void | Promise<void>;
+  };
 }): FastifyInstance {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
   const allowedOrigins = new Set(
@@ -79,7 +97,7 @@ export function createHttpServer(input: {
       reply.header('Vary', 'Origin');
       reply.header(
         'Access-Control-Allow-Headers',
-        'Authorization, Content-Type, X-Origamix-Service, X-Origamix-Project-Id, X-Request-Id',
+        'Authorization, Content-Type, Last-Event-ID, X-Origamix-Service, X-Origamix-Project-Id, X-Origamix-Page-Id, X-Origamix-After-Sequence, X-Request-Id',
       );
       reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     }
@@ -195,5 +213,222 @@ export function createHttpServer(input: {
       return undoSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
     }),
   );
+  if (input.agent) {
+    const agent = input.agent;
+    const requireProjectHeader = (request: RouteInput<unknown>): string => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      if (!projectId) throw invalid('缺少项目上下文');
+      return projectId;
+    };
+    const publicRun = (run: AgentRunRecord): AgentRun => ({
+      version: '1',
+      runId: run.id,
+      projectId: run.projectId,
+      pageId: run.pageId,
+      conversationId: run.conversationId,
+      userMessageId: run.userMessageId,
+      requestId: run.clientRequestId,
+      baseRevisionId: run.baseRevisionId,
+      mode: run.mode,
+      status: run.status,
+      budget: run.budget,
+      modelRef: run.modelRef,
+      promptVersion: run.promptVersion,
+      policyVersion: run.policyVersion,
+      toolsetVersion: run.toolsetVersion,
+      materialManifestVersion: run.materialManifestVersion,
+      ...(run.resultRevisionId ? { resultRevisionId: run.resultRevisionId } : {}),
+      ...(run.retryOfRunId ? { retryOfRunId: run.retryOfRunId } : {}),
+      createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
+    });
+    const requireOwnedRun = (projectId: string, runId: string) => {
+      const run = agent.runs.get(runId);
+      if (run.projectId !== projectId) throw notFound('Agent Run 不存在');
+      return run;
+    };
+
+    server.get(
+      '/api/v1/pages/:pageId/conversations',
+      route<void>((request) => {
+        const projectId = requireProjectHeader(request);
+        return {
+          version: '1',
+          conversations: agent.conversations.list(projectId, request.params.pageId).map((item) => ({
+            version: '1',
+            conversationId: item.id,
+            projectId: item.projectId,
+            pageId: item.pageId,
+            title: item.title,
+            status: item.status === 'archived' ? ('archived' as const) : ('active' as const),
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+          })),
+        };
+      }),
+    );
+    server.get(
+      '/api/v1/conversations/:conversationId/messages',
+      route<void>((request) => {
+        const projectId = requireProjectHeader(request);
+        const pageId = String(request.headers['x-origamix-page-id'] ?? '');
+        if (!pageId) throw invalid('缺少页面上下文');
+        const after = Number(request.headers['x-origamix-after-sequence'] ?? -1);
+        return {
+          version: '1',
+          messages: agent.conversations
+            .history(
+              projectId,
+              pageId,
+              request.params.conversationId,
+              Number.isSafeInteger(after) && after >= -1 ? after : -1,
+            )
+            .map((message) => ({
+              version: message.version,
+              messageId: message.messageId,
+              conversationId: message.conversationId,
+              ...(message.runId ? { runId: message.runId } : {}),
+              role: message.role,
+              content: message.content,
+              sequence: message.sequence,
+              createdAt: message.createdAt,
+            })),
+        };
+      }),
+    );
+    server.post(
+      '/api/v1/agent/runs',
+      { schema: { body: CreateAgentRunRequestSchema } },
+      route<CreateAgentRunRequest>(async (request) => {
+        const projectId = requireProjectHeader(request);
+        if (projectId !== request.body.projectId) throw notFound('项目上下文不匹配');
+        if (
+          agent.getCurrentRevision &&
+          (await agent.getCurrentRevision(projectId, request.body.pageId)) !==
+            request.body.baseRevisionId
+        ) {
+          throw conflict('页面版本已变化，请刷新后重试');
+        }
+        const started = agent.conversations.startRun({
+          projectId,
+          pageId: request.body.pageId,
+          conversationId: request.body.conversationId,
+          clientRequestId: request.body.clientRequestId,
+          baseRevisionId: request.body.baseRevisionId,
+          content: request.body.content,
+          retryOfRunId: request.body.retryOfRunId,
+          modelRef: 'fake/deferred-model',
+          mode: deterministicRunMode(requestText(request.body)),
+          budget: {
+            maxModelCalls: 6,
+            maxToolCalls: 12,
+            maxOutputTokens: 16_000,
+            maxDurationMs: 120_000,
+            maxSchemaBytes: 256 * 1024,
+            maxRepairAttempts: 1,
+          },
+          promptVersion: '1',
+          policyVersion: '1',
+          toolsetVersion: '1',
+          materialManifestVersion: 'official-antd@1.0.0',
+        });
+        if (started.created)
+          agent.events.publish({
+            type: 'run.queued',
+            runId: started.run.id,
+            pageId: started.run.pageId,
+            requestId: started.run.clientRequestId,
+            payload: { status: started.run.status },
+          });
+        if (started.created && started.run.status === 'queued' && agent.dispatch) {
+          void Promise.resolve(
+            agent.dispatch({ runId: started.run.id, request: request.body }),
+          ).catch(() => {
+            // Dispatch owns durable failure recording; HTTP already acknowledged the queued Run.
+          });
+        }
+        return {
+          version: '1',
+          runId: started.run.id,
+          conversationId: started.conversation.id,
+          userMessageId: started.message.messageId,
+          status: started.run.status,
+        };
+      }, 202),
+    );
+    server.get(
+      '/api/v1/agent/runs/:runId',
+      route<void>((request) => {
+        const projectId = requireProjectHeader(request);
+        return { version: '1', run: publicRun(requireOwnedRun(projectId, request.params.runId)) };
+      }),
+    );
+    server.post(
+      '/api/v1/agent/runs/:runId/cancel',
+      { schema: { body: CancelAgentRunRequestSchema } },
+      route<{ version: '1'; requestId: string }>((request) => {
+        const projectId = requireProjectHeader(request);
+        const run = requireOwnedRun(projectId, request.params.runId);
+        const cancelled = agent.runs.cancel(run.id);
+        const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(
+          cancelled.status,
+        );
+        agent.events.publish({
+          type: terminal ? `run.${cancelled.status}` : 'run.cancelling',
+          runId: run.id,
+          pageId: run.pageId,
+          requestId: request.body.requestId,
+          ...(run.resultRevisionId ? { revisionId: run.resultRevisionId } : {}),
+          payload: { status: cancelled.status },
+        });
+        return {
+          version: '1',
+          runId: run.id,
+          status:
+            cancelled.status === 'cancelled' ? ('cancelled' as const) : ('cancelling' as const),
+        };
+      }),
+    );
+    server.get('/api/v1/agent/runs/:runId/events', async (request, reply) => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      requireOwnedRun(projectId, (request.params as { runId: string }).runId);
+      const runId = (request.params as { runId: string }).runId;
+      const cursorHeader = request.headers['last-event-id'];
+      const cursorQuery = (request.query as { afterEventId?: string }).afterEventId;
+      const cursor = Number(cursorHeader ?? cursorQuery ?? -1);
+      reply.hijack();
+      reply.raw.writeHead(200, {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache, no-transform',
+        connection: 'keep-alive',
+        'x-accel-buffering': 'no',
+      });
+      const write = (event: import('@origamix/shared/protocol/agent').AgentEvent) => {
+        reply.raw.write(
+          `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+        );
+        if (
+          event.type.startsWith('run.') &&
+          ['completed', 'failed', 'cancelled', 'interrupted'].includes(event.type.slice(4))
+        ) {
+          subscription.close();
+          reply.raw.end();
+        }
+      };
+      const subscription = agent.events.subscribe(
+        runId,
+        Number.isSafeInteger(cursor) ? cursor : -1,
+        write,
+      );
+      for (const event of subscription.replay) write(event);
+      if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
+      const heartbeat = setInterval(() => reply.raw.write(': heartbeat\n\n'), 15_000);
+      heartbeat.unref();
+      request.raw.on('close', () => {
+        clearInterval(heartbeat);
+        subscription.close();
+      });
+    });
+  }
   return server;
 }

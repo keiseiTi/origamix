@@ -1,52 +1,20 @@
 // import { OptionsConfig } from '@/components/options-config';
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { selectManifest } from '../manifest';
 
 const SelectMaterial: Material = {
   Component: lazy(() => import('./index')),
-  title: '选择器',
-  type: 'select',
+  title: selectManifest.title,
+  type: selectManifest.type,
   dropTypes: ['form'],
-  defaultProps: {
-    placeholder: '请选择',
-    size: 'middle',
-    options: [
-      {
-        label: '选项一',
-        value: 'option1',
-      },
-      {
-        label: '选项二',
-        value: 'option2',
-      },
-    ],
-  },
+  defaultProps: selectManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'value',
-        description: '当前值',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
-      },
-      {
-        name: 'options',
-        description: '选项',
-      },
-    ],
-    methods: [
-      {
-        name: 'onChange',
-        description: '值改变时的回调',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-    ],
+    variables: [...selectManifest.context.variables],
+    methods: selectManifest.context.methods.map((method) => ({
+      ...method,
+      params: method.params?.map((param) => ({ description: param.description ?? '' })),
+    })),
   },
   editorConfig: {
     panels: [

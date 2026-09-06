@@ -2,38 +2,19 @@ import React from 'react';
 
 const Switch = React.lazy(() => import('./index'));
 import type { Material } from '../../src/material';
+import { switchManifest } from '../manifest';
 
 const SwitchMaterial: Material = {
   Component: Switch,
-  title: '开关',
-  type: 'switch',
+  title: switchManifest.title,
+  type: switchManifest.type,
   dropTypes: ['form'],
   contextConfig: {
-    variables: [
-      {
-        name: 'checked',
-        description: '是否选中',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
-      },
-      {
-        name: 'loading',
-        description: '加载中的开关',
-      },
-    ],
-    methods: [
-      {
-        name: 'onChange',
-        description: '值改变时的回调',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-    ],
+    variables: [...switchManifest.context.variables],
+    methods: switchManifest.context.methods.map((method) => ({
+      ...method,
+      params: method.params?.map((param) => ({ description: param.description ?? '' })),
+    })),
   },
   editorConfig: {
     panels: [

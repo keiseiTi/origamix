@@ -1,42 +1,17 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { formManifest } from '../manifest';
 
 const FormMaterial: Material = {
   Component: lazy(() => import('./index')),
-  title: '表单容器',
-  type: 'form',
+  title: formManifest.title,
+  type: formManifest.type,
   isContainer: true,
   dropTypes: ['basicPage', 'container'],
-  defaultProps: {
-    layout: 'horizontal',
-  },
+  defaultProps: formManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'value',
-        description: '表单值',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
-      },
-    ],
-    contextValues: [
-      {
-        name: 'value',
-        description: '表单值',
-      },
-      {
-        name: 'validateFields',
-        description: '表单校验',
-        isMethod: true,
-      },
-      {
-        name: 'resetFields',
-        description: '表单重置',
-        isMethod: true,
-      },
-    ],
+    variables: [...formManifest.context.variables],
+    contextValues: [...formManifest.context.values],
   },
   editorConfig: {
     panels: [

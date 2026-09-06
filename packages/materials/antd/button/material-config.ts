@@ -1,41 +1,18 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { buttonManifest } from '../manifest';
 
 const ButtonMaterial: Material = {
   Component: lazy(() => import('./index')),
-  title: '按钮',
-  type: 'button',
-  defaultProps: {
-    text: '按钮',
-    type: 'default',
-    size: 'middle',
-  },
+  title: buttonManifest.title,
+  type: buttonManifest.type,
+  defaultProps: buttonManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'text',
-        description: '按钮文本',
-      },
-      {
-        name: 'disabled',
-        description: '禁用按钮',
-      },
-      {
-        name: 'loading',
-        description: '按钮载入状态',
-      },
-    ],
-    methods: [
-      {
-        name: 'onClick',
-        description: '点击事件',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-    ],
+    variables: [...buttonManifest.context.variables],
+    methods: buttonManifest.context.methods.map((method) => ({
+      ...method,
+      params: method.params?.map((param) => ({ description: param.description ?? '' })),
+    })),
   },
   editorConfig: {
     panels: [

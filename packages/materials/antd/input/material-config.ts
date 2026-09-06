@@ -1,45 +1,19 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { inputManifest } from '../manifest';
 
 const InputMaterial: Material = {
   Component: lazy(() => import('./index')),
-  title: '输入框',
-  type: 'input',
+  title: inputManifest.title,
+  type: inputManifest.type,
   dropTypes: ['form'],
-  defaultProps: {
-    placeholder: '请输入内容',
-  },
+  defaultProps: inputManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'value',
-        description: '当前值',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
-      },
-    ],
-    methods: [
-      {
-        name: 'onChange',
-        description: '值改变时的回调',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-      {
-        name: 'onPressEnter',
-        description: '回车的回调',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-    ],
+    variables: [...inputManifest.context.variables],
+    methods: inputManifest.context.methods.map((method) => ({
+      ...method,
+      params: method.params?.map((param) => ({ description: param.description ?? '' })),
+    })),
   },
   editorConfig: {
     panels: [

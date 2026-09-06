@@ -75,8 +75,11 @@ function createWindow(): BrowserWindow {
 
 let backendProcess: UtilityProcess | undefined;
 let backendConnection: BackendConnection | undefined;
+let backendStartPromise: Promise<BackendConnection> | undefined;
+let backendStopped = false;
+let quitting = false;
 
-async function startBackend(): Promise<BackendConnection> {
+async function spawnBackend(): Promise<BackendConnection> {
   const serviceInstanceId = nanoid();
   const token = nanoid(48);
   const backend = utilityProcess.fork(join(__dirname, 'server.cjs'), [], { stdio: 'pipe' });
@@ -110,8 +113,16 @@ async function startBackend(): Promise<BackendConnection> {
     });
     backend.once('exit', (code) => {
       if (backendProcess === backend) backendProcess = undefined;
-      backendConnection = undefined;
+      if (backendConnection?.serviceInstanceId === serviceInstanceId) backendConnection = undefined;
       fail(new Error(`本地服务异常退出（退出码 ${code}）`));
+      if (settled && !quitting && !backendStopped) {
+        void ensureBackend().catch((error: unknown) => {
+          console.error(
+            '[Origamix Server] 自动恢复失败：',
+            error instanceof Error ? error.message : error,
+          );
+        });
+      }
     });
     backend.stdout?.on('data', (data) => {
       process.stdout.write(`[Server Log]: ${data.toString()}`);
@@ -131,6 +142,19 @@ async function startBackend(): Promise<BackendConnection> {
       });
     });
   });
+}
+
+/**
+ * Serializes Utility Process startup. After an unexpected exit callers wait for
+ * a fresh connection (and therefore a fresh service instance/token) instead of
+ * receiving credentials for the dead process.
+ */
+function ensureBackend(): Promise<BackendConnection> {
+  if (backendConnection) return Promise.resolve(backendConnection);
+  backendStartPromise ??= spawnBackend().finally(() => {
+    backendStartPromise = undefined;
+  });
+  return backendStartPromise;
 }
 
 function grantDirectory(path: string): { directoryGrantId: string; displayPath: string } {
@@ -247,20 +271,14 @@ app
     // Set app user model id for windows
     app.setAppUserModelId('com.origamix');
 
-    await startBackend();
+    await ensureBackend();
     registerPageWindows(
-      () => {
-        if (!backendConnection) throw new Error('本地服务不可用');
-        return backendConnection;
-      },
+      () => ensureBackend(),
       rendererIndexPath,
       () => workbenchWindow,
     );
 
-    ipcMain.handle('backend:get-connection', () => {
-      if (!backendConnection) throw new Error('本地服务不可用');
-      return backendConnection;
-    });
+    ipcMain.handle('backend:get-connection', () => ensureBackend());
     ipcMain.handle('dialog:choose-project-parent', async () => {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
@@ -307,13 +325,18 @@ app.on('window-all-closed', () => {
   }
 });
 
-let backendStopped = false;
-let quitting = false;
 app.on('before-quit', (event) => {
-  if (backendStopped || !backendProcess) return;
-  event.preventDefault();
-  if (quitting) return;
+  if (backendStopped) return;
+  if (quitting) {
+    event.preventDefault();
+    return;
+  }
   quitting = true;
+  if (!backendProcess) {
+    backendStopped = true;
+    return;
+  }
+  event.preventDefault();
   const backend = backendProcess;
   const timeout = setTimeout(() => backend.kill(), 3000);
   backend.once('exit', () => {

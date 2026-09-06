@@ -7,6 +7,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown.
 - `transport/http/server.ts`: authentication, validation and HTTP adaptation.
 - `services/project-service.ts`, `services/schema-service.ts`: project lifecycle and Schema/revision files.
+- `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
 
@@ -14,6 +15,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - Keep HTTP → services → repositories/filesystem ownership explicit. Do not add business mutations in transport or Electron Main. Server remains usable without Electron/React imports.
 - Server must not own browser-window navigation state such as the selected project, open/active tabs, per-tab mode or drafts. Those are App `sessionStorage` concerns in both browser and desktop hosts.
+- Server may consume the declared, serializable `@origamix/materials/*/manifest` exports for validation; it must not import material runtime components or editor modules.
 - Listen only on `127.0.0.1` with an assigned port. Preserve bearer-token, service-instance and Origin checks; CORS alone is not authorization. Directory grants come from the trusted host, never an arbitrary-path HTTP endpoint.
 - Validate payloads and project/page ownership before filesystem access. Resolve paths inside the authorized project and reject traversal/symlink escapes; client IDs/display paths are not authority.
 - HTTP JSON uses `{ success, code, data, message? }`: successful bodies use `code: 200`; failures use `data: null` and an HTTP/business code. Keep the HTTP status RESTful and expose request IDs through response headers.

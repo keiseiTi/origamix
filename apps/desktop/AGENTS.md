@@ -19,6 +19,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 - Current preview transport is `window.preview.readSnapshot()`: Main binds requests to a registered preview window and fetches its target Schema over authenticated HTTP. It exposes no backend connection to preview. HTTP/SSE preview capability sessions in the ADR are planned, not implemented; do not introduce a broad bridge to approximate them.
 - Use exported Server build/runtime entry points. Server compiles its own artifacts; Desktop assembles them. Do not import Server business implementation into Main or create another Server compiler configuration.
 - Clean up owned handlers, windows, timers, watchers and child processes on shutdown/restart. Never kill unrelated processes to free a port.
+- An unexpected Server Utility Process exit is recovered through the serialized backend bootstrap in Main. The replacement must receive a fresh token and service-instance ID; intentional application shutdown must never trigger that restart path.
 
 ## Build and package contract
 

@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid';
 import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
-import { initializePageSchema } from './schema-service';
+import { initializePageSchema, reconcilePageSchema } from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
 import { conflict, invalid, notFound } from '../errors';
 
@@ -105,7 +105,7 @@ export class ProjectService {
       await mkdir(join(temporaryPath, '.origamix', 'revisions'), { recursive: true });
       await atomicWrite(
         join(temporaryPath, 'origamix.project.json'),
-        `${JSON.stringify({ projectId: id, name, code, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official', version: '1' }] }, null, 2)}\n`,
+        `${JSON.stringify({ projectId: id, name, code, projectFormatVersion: '1', schemaVersion: '1', templateVersion: '1', materialSets: [{ id: 'official-antd', version: '1.0.0' }] }, null, 2)}\n`,
       );
       await atomicWrite(join(temporaryPath, 'README.md'), `# ${name}\n\n项目标识：\`${code}\`\n`);
       const packageJson = JSON.parse(
@@ -226,6 +226,7 @@ export class ProjectService {
     for (const item of registry) {
       const relativePath = join('src', 'pages', item.slug);
       const pagePath = join(path, relativePath);
+      await reconcilePageSchema({ projectPath: path, pageId: item.pageId, slug: item.slug });
       const meta = JSON.parse(
         await readFile(join(pagePath, 'page.meta.json'), 'utf8'),
       ) as RegistryItem;

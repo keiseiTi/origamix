@@ -5,7 +5,9 @@
   "private": true,
   "exports": {
     "./antd": "./antd/index.ts",
-    "./antd/group": "./antd/group.ts"
+    "./antd/group": "./antd/group.ts",
+    "./antd/manifest": "./antd/manifest.ts",
+    "./manifest": "./src/material-manifest.ts"
   },
   "scripts": {
     "lint": "eslint .",

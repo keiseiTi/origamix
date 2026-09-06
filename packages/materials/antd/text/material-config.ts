@@ -2,67 +2,19 @@ import React from 'react';
 
 const Text = React.lazy(() => import('./index'));
 import type { Material } from '../../src/material';
+import { textManifest } from '../manifest';
 
 const TextMaterial: Material = {
   Component: Text,
-  title: '文本',
-  type: 'text',
-  defaultProps: {
-    text: '文本',
-  },
+  title: textManifest.title,
+  type: textManifest.type,
+  defaultProps: textManifest.defaultProps,
   contextConfig: {
-    variables: [
-      {
-        name: 'text',
-        description: '文本内容',
-      },
-      {
-        name: 'type',
-        description: '文本类型',
-      },
-      {
-        name: 'copyable',
-        description: '是否可复制',
-      },
-      {
-        name: 'editable',
-        description: '是否可编辑',
-      },
-      {
-        name: 'underline',
-        description: '是否下划线',
-      },
-      {
-        name: 'strong',
-        description: '是否加粗',
-      },
-      {
-        name: 'italic',
-        description: '是否斜体',
-      },
-      {
-        name: 'textType',
-        description: '文本类型',
-      },
-      {
-        name: 'ellipsis',
-        description: '是否省略号',
-      },
-      {
-        name: 'code',
-        description: '是否代码样式',
-      },
-      {
-        name: 'mark',
-        description: '是否标记样式',
-      },
-    ],
-    methods: [
-      {
-        name: 'onClick',
-        description: '点击文本时触发',
-      },
-    ],
+    variables: [...textManifest.context.variables],
+    methods: textManifest.context.methods.map((method) => ({
+      ...method,
+      params: method.params?.map((param) => ({ description: param.description ?? '' })),
+    })),
   },
   editorConfig: {
     panels: [
