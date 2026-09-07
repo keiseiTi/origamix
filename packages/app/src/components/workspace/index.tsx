@@ -14,11 +14,12 @@ interface WorkspaceProps {
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
+  onUndo: () => Promise<void>;
   draft: string;
   onDraftChange: (draft: string) => void;
   supportsNativeProjectDirectories: boolean;
   schemaRefreshKey: string;
-  onSchemaCommitted: (revisionId: string) => void;
+  onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }
 
 export function Workspace({
@@ -30,6 +31,7 @@ export function Workspace({
   editorRef,
   onModeChange,
   onPreview,
+  onUndo,
   draft,
   onDraftChange,
   supportsNativeProjectDirectories,
@@ -40,12 +42,13 @@ export function Workspace({
   const agentRunning = page ? runningPages[page.id] === true : false;
   const chat = page && projectId && (
     <ChatWorkspace
+      key={`${projectId}:${page.id}`}
       projectId={projectId}
       pageId={page.id}
       pageName={page.name}
       draft={draft}
       onDraftChange={onDraftChange}
-      onSchemaCommitted={onSchemaCommitted}
+      onSchemaCommitted={(revisionId) => onSchemaCommitted(page.id, revisionId)}
       onRunningChange={(running) =>
         setRunningPages((current) =>
           current[page.id] === running ? current : { ...current, [page.id]: running },
@@ -62,6 +65,8 @@ export function Workspace({
           mode={mode}
           onModeChange={onModeChange}
           onPreview={onPreview}
+          onUndo={onUndo}
+          undoDisabled={agentRunning}
         />
       )}
       {!page ? (

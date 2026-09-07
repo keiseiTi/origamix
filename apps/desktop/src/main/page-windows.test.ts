@@ -220,6 +220,57 @@ describe('page preview WebContentsViews', () => {
     });
   });
 
+  it('reports render failures through Main and returns the last known good snapshot', async () => {
+    vi.mocked(fetch).mockImplementation(
+      async (url, init) =>
+        ({
+          json: async () => ({
+            success: true,
+            code: 200,
+            data: url.toString().endsWith('/pages')
+              ? [{ id: 'page_one', name: '页面一' }]
+              : url.toString().endsWith('/runtime-reports') && init?.method === 'POST'
+                ? {
+                    disposition: 'accepted',
+                    currentRevisionId: 'revision_bad',
+                    visualRevisionId: 'revision_good',
+                  }
+                : url.toString().endsWith('/workspace')
+                  ? { theme: 'dark' }
+                  : {
+                      schema: { elements: { good: { type: 'Text', props: {} } } },
+                      revisionId: 'revision_good',
+                    },
+          }),
+        }) as never,
+    );
+    await open();
+    const sender = mocks.views[0].webContents;
+    const event = { sender, senderFrame: sender.mainFrame };
+    const result = await mocks.handlers.get('preview:report-render')!(event, {
+      revisionId: 'revision_bad',
+      outcome: 'failed',
+      observedAt: '2026-01-01T00:00:00.000Z',
+      diagnostics: [
+        {
+          code: 'UNKNOWN_MATERIAL',
+          severity: 'error',
+          stage: 'material',
+          materialType: 'Missing',
+          safeMessage: '未注册物料',
+        },
+      ],
+    });
+    expect(result).toMatchObject({
+      disposition: 'accepted',
+      visualSnapshot: { revisionId: 'revision_good', theme: 'dark' },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/runtime-reports'),
+      expect.objectContaining({ method: 'POST', body: expect.stringContaining('project_one') }),
+    );
+  });
+
   it('destroys the page preview when its tab closes', async () => {
     await open();
     await mocks.handlers.get('window:close-preview')!(workbenchEvent(), {

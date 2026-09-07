@@ -11,6 +11,8 @@ import { getSchema } from './services/schema-service';
 import { createHttpServer } from './transport/http/server';
 import { AgentEventBroker } from './agent/agent-event-broker';
 import { DeterministicMvpDispatcher } from './agent/deterministic-mvp-dispatcher';
+import { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
+import { RuntimeDiagnosticService } from './services/runtime-diagnostic-service';
 
 export { createMvpPiModels, mvpModelReference } from './agent/pi-runtime';
 export * from './agent/agent-engine';
@@ -18,6 +20,9 @@ export * from './agent/pi-agent-engine';
 export * from './agent/agent-orchestrator';
 export * from './agent/agent-event-broker';
 export * from './agent/deterministic-mvp-dispatcher';
+export * from './agent/evaluation-harness';
+export * from './agent/mvp-gate';
+export * from './agent/security-audit';
 export * from './agent/domain-tools';
 export * from './agent/read-only-tools';
 export * from './agent/replace-page-schema-tool';
@@ -71,10 +76,22 @@ export async function startServer(input: {
   const conversationService = new ConversationService(database, projects, conversations, runs);
   const runService = new AgentRunService(runs);
   const agentEvents = new AgentEventBroker();
+  const runtimeDiagnostics = new RuntimeDiagnosticService(
+    projects,
+    new RuntimeDiagnosticRepository(database),
+    async (projectId, pageId) => {
+      const project = projects.getProject(projectId);
+      const page = projects.getPage(projectId, pageId);
+      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
+      return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
+        .revisionId;
+    },
+  );
   const dispatcher = new DeterministicMvpDispatcher({
     conversations: conversationService,
     runs: runService,
     events: agentEvents,
+    projects,
   });
   const projectService = new ProjectService(projects, input.templatePath);
   const server = createHttpServer({
@@ -82,6 +99,7 @@ export async function startServer(input: {
     projects,
     workspace,
     projectService,
+    runtimeDiagnostics,
     agent: {
       conversations: conversationService,
       runs: runService,

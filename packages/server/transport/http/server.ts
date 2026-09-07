@@ -9,7 +9,15 @@ import {
   type ApiResult,
 } from '@origamix/shared/protocol/api';
 import type { ChangeSet } from '@origamix/shared/protocol/schema';
-import { commitSchema, getSchema, undoSchema } from '../../services/schema-service';
+import {
+  commitSchema,
+  getSchema,
+  getSchemaRevision,
+  undoSchema,
+} from '../../services/schema-service';
+import type { RuntimeDiagnosticService } from '../../services/runtime-diagnostic-service';
+import { RuntimeRenderReportSchema } from '@origamix/shared/protocol/agent';
+import type { RuntimeRenderReport } from '@origamix/shared/protocol/agent';
 import type { ProjectRepository } from '../../repositories/project-repository';
 import type { WorkspaceRepository } from '../../repositories/workspace-repository';
 import type { ProjectService } from '../../services/project-service';
@@ -74,6 +82,7 @@ export function createHttpServer(input: {
     getCurrentRevision?: (projectId: string, pageId: string) => string | Promise<string>;
     dispatch?: (input: { runId: string; request: CreateAgentRunRequest }) => void | Promise<void>;
   };
+  runtimeDiagnostics?: RuntimeDiagnosticService;
 }): FastifyInstance {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
   const allowedOrigins = new Set(
@@ -188,6 +197,19 @@ export function createHttpServer(input: {
       return getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
     }),
   );
+  server.get(
+    '/api/v1/pages/:pageId/revisions/:revisionId/schema',
+    route<void>(async (request) => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      const page = input.projects.getPage(projectId, request.params.pageId);
+      const project = input.projects.getProject(projectId);
+      if (!page || !project) throw notFound('页面不存在');
+      return getSchemaRevision(
+        { projectPath: project.path, pageId: page.id, slug: page.slug },
+        request.params.revisionId,
+      );
+    }),
+  );
   server.post(
     '/api/v1/pages/:pageId/changesets',
     route<ChangeSetRequest>(async (request) => {
@@ -213,6 +235,25 @@ export function createHttpServer(input: {
       return undoSchema({ projectPath: project.path, pageId: page.id, slug: page.slug });
     }),
   );
+  if (input.runtimeDiagnostics) {
+    server.post(
+      '/api/v1/pages/:pageId/runtime-reports',
+      { schema: { body: RuntimeRenderReportSchema } },
+      route<RuntimeRenderReport>(async (request) => {
+        const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+        if (request.body.projectId !== projectId || request.body.pageId !== request.params.pageId)
+          throw invalid('Runtime 报告归属不匹配');
+        return input.runtimeDiagnostics!.report(request.body);
+      }),
+    );
+    server.get(
+      '/api/v1/pages/:pageId/runtime-state',
+      route<void>(async (request) => {
+        const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+        return input.runtimeDiagnostics!.getState(projectId, request.params.pageId);
+      }),
+    );
+  }
   if (input.agent) {
     const agent = input.agent;
     const requireProjectHeader = (request: RouteInput<unknown>): string => {
@@ -302,7 +343,13 @@ export function createHttpServer(input: {
       route<CreateAgentRunRequest>(async (request) => {
         const projectId = requireProjectHeader(request);
         if (projectId !== request.body.projectId) throw notFound('项目上下文不匹配');
+        const duplicate = agent.runs.findByClientRequest(
+          projectId,
+          request.body.pageId,
+          request.body.clientRequestId,
+        );
         if (
+          !duplicate &&
           agent.getCurrentRevision &&
           (await agent.getCurrentRevision(projectId, request.body.pageId)) !==
             request.body.baseRevisionId

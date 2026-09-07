@@ -97,6 +97,7 @@ describe('ContextAssembler', () => {
       new ProductDocsProvider([
         {
           id: 'hostile',
+          sectionId: 'main',
           version: '1',
           title: '表单',
           keywords: ['表单'],

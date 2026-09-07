@@ -32,7 +32,7 @@ try {
   await symlink(join(original, 'node_modules'), join(root, 'node_modules'), 'junction');
   for (const name of ['tsconfig.base.json', 'package.json', 'pnpm-workspace.yaml']) await cp(join(original, name), join(root, name));
   await mkdir(join(root, 'packages'));
-  for (const name of ['server', 'app', 'shared']) {
+  for (const name of ['server', 'app', 'shared', 'materials']) {
     const source = join(original, 'packages', name);
     await cp(source, join(root, 'packages', name), { recursive: true, verbatimSymlinks: true,
       filter: (path) => !relative(source, path).split(sep).some((part) => ['dist', '.vite', '.origamix-web'].includes(part)) });

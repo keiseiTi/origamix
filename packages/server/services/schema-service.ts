@@ -385,3 +385,16 @@ export async function undoSchema(
     );
   });
 }
+
+export async function getSchemaRevision(
+  page: SchemaPageRef,
+  revisionId: string,
+): Promise<SchemaReadResult> {
+  return withPageQueue(page, async () => {
+    await reconcileUnlocked(page);
+    const snapshot = await readJson<RevisionSnapshot>(revisionFile(page, revisionId));
+    validateSnapshot(snapshot);
+    if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
+    return { schema: snapshot.schema, revisionId: snapshot.revisionId };
+  });
+}

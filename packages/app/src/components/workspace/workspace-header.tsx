@@ -1,6 +1,6 @@
 import { Button, Tooltip } from '@heroui/react';
 import { useState } from 'react';
-import { Eye, SquarePen, MessageSquare } from 'lucide-react';
+import { Eye, SquarePen, MessageSquare, Undo2 } from 'lucide-react';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
@@ -10,6 +10,8 @@ interface WorkspaceHeaderProps {
   mode: WorkspaceMode;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
+  onUndo: () => Promise<void>;
+  undoDisabled?: boolean;
 }
 
 export function WorkspaceHeader({
@@ -18,8 +20,11 @@ export function WorkspaceHeader({
   mode,
   onModeChange,
   onPreview,
+  onUndo,
+  undoDisabled = false,
 }: WorkspaceHeaderProps): React.JSX.Element {
   const [opening, setOpening] = useState(false);
+  const [undoing, setUndoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const openWindow = async (): Promise<void> => {
     setOpening(true);
@@ -30,6 +35,17 @@ export function WorkspaceHeader({
       setError(reason instanceof Error ? reason.message : '无法打开预览标签');
     } finally {
       setOpening(false);
+    }
+  };
+  const undo = async (): Promise<void> => {
+    setUndoing(true);
+    setError(null);
+    try {
+      await onUndo();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '无法撤销页面修改');
+    } finally {
+      setUndoing(false);
     }
   };
   return (
@@ -45,6 +61,20 @@ export function WorkspaceHeader({
             {error}
           </span>
         )}
+        <Tooltip>
+          <Button
+            isIconOnly
+            size='sm'
+            aria-label='撤销页面修改'
+            variant='ghost'
+            className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
+            isDisabled={opening || undoing || undoDisabled}
+            onPress={() => void undo()}
+          >
+            <Undo2 size={15} />
+          </Button>
+          <Tooltip.Content placement='bottom'>撤销上一次页面修改</Tooltip.Content>
+        </Tooltip>
         <Tooltip>
           <Button
             isIconOnly

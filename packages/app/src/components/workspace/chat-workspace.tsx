@@ -141,7 +141,7 @@ export function ChatWorkspace({
         )}
         {state.committedRevisionId && (
           <p className='mt-2 text-xs text-success' role='status'>
-            页面已保存并刷新。
+            页面已提交，编辑器正在加载该版本。
           </p>
         )}
         {state.error && (

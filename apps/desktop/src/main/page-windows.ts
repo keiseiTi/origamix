@@ -6,6 +6,8 @@ import {
   type PageWindowInput,
   type PreviewBounds,
   PreviewBoundsSchema,
+  PreviewRenderReportSchema,
+  type PreviewRenderResult,
   type PreviewSnapshot,
 } from '@origamix/shared/page-window';
 import {
@@ -41,6 +43,24 @@ export function registerPageWindows(
         'x-origamix-service': connection.serviceInstanceId,
         ...(projectId ? { 'x-origamix-project-id': projectId } : {}),
       },
+    });
+    const result = await response.json();
+    if (!isApiResultEnvelope(result)) throw new Error('服务返回格式无效');
+    if (!result.success) throw new Error(result.message ?? `请求失败（${result.code}）`);
+    return result.data as T;
+  };
+  const post = async <T>(path: string, body: unknown, projectId: string): Promise<T> => {
+    const connection = await getConnection();
+    const response = await fetch(`${connection.baseUrl}${path}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        Authorization: `Bearer ${connection.token}`,
+        'x-origamix-service': connection.serviceInstanceId,
+        'x-origamix-project-id': projectId,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
     const result = await response.json();
     if (!isApiResultEnvelope(result)) throw new Error('服务返回格式无效');
@@ -102,6 +122,55 @@ export function registerPageWindows(
     ]);
     return { ...snapshot, theme: workspace.theme };
   });
+
+  ipcMain.handle(
+    'preview:report-render',
+    async (event, report: unknown): Promise<PreviewRenderResult> => {
+      const entry = [...views.values()].find(({ view }) => view.webContents === event.sender);
+      if (!entry || event.senderFrame !== event.sender.mainFrame) throw new Error('预览视图未授权');
+      if (
+        !Value.Check(PreviewRenderReportSchema, report) ||
+        Number.isNaN(Date.parse(report.observedAt))
+      )
+        throw new Error('预览诊断格式无效');
+      const { target } = entry;
+      const result = await post<{
+        disposition: 'accepted' | 'stale';
+        currentRevisionId: string;
+        visualRevisionId?: string;
+      }>(
+        `/pages/${target.pageId}/runtime-reports`,
+        {
+          version: '1',
+          projectId: target.projectId,
+          pageId: target.pageId,
+          ...report,
+          diagnostics: report.diagnostics.map((diagnostic) => ({
+            ...diagnostic,
+            pageId: target.pageId,
+            revisionId: report.revisionId,
+          })),
+        },
+        target.projectId,
+      );
+      let visualSnapshot: PreviewSnapshot | undefined;
+      if (result.visualRevisionId && result.visualRevisionId !== report.revisionId) {
+        const [snapshot, workspace] = await Promise.all([
+          read<Omit<PreviewSnapshot, 'theme'>>(
+            `/pages/${target.pageId}/revisions/${result.visualRevisionId}/schema`,
+            target.projectId,
+          ),
+          read<WorkspaceRecord>('/workspace'),
+        ]);
+        visualSnapshot = { ...snapshot, theme: workspace.theme };
+      }
+      return {
+        disposition: result.disposition,
+        currentRevisionId: result.currentRevisionId,
+        ...(visualSnapshot ? { visualSnapshot } : {}),
+      };
+    },
+  );
 
   ipcMain.handle('preview:exit', async (event): Promise<void> => {
     const entry = [...views.values()].find(({ view }) => view.webContents === event.sender);

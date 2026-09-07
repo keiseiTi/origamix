@@ -24,6 +24,7 @@ describe('AgentEventBroker', () => {
     subscription.close();
     broker.publish(input('run.completed'));
     expect(listener).toHaveBeenCalledTimes(1);
+    expect(broker.resourceSnapshot()).toMatchObject({ subscribers: 0, retainedEvents: 2 });
   });
 
   it('does not register new live subscribers after a terminal event', () => {
@@ -33,5 +34,14 @@ describe('AgentEventBroker', () => {
     expect(broker.subscribe('run_test', -1, listener).replay).toHaveLength(1);
     broker.publish(input('assistant.delta'));
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('bounds terminal channel retention while preserving active subscriptions', () => {
+    const broker = new AgentEventBroker(2, 2);
+    broker.publish({ ...input('run.completed'), runId: 'run_old' });
+    const active = broker.subscribe('run_active', -1, () => undefined);
+    broker.publish({ ...input('run.completed'), runId: 'run_new' });
+    expect(broker.resourceSnapshot()).toMatchObject({ channels: 2, subscribers: 1 });
+    active.close();
   });
 });

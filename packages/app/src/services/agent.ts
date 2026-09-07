@@ -7,8 +7,29 @@ import type {
   ListConversationsResponse,
   ListMessagesResponse,
 } from '@origamix/shared/protocol/agent';
-import { validateAgentEvent } from '@origamix/shared/protocol/agent-validation';
 import { getApiConnection, refreshBackendConnection, request } from './request';
+
+function isAgentEvent(value: unknown): value is AgentEvent {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const event = value as Record<string, unknown>;
+  return (
+    event['version'] === '1' &&
+    Number.isSafeInteger(event['eventId']) &&
+    Number(event['eventId']) >= 0 &&
+    Number.isSafeInteger(event['sequence']) &&
+    Number(event['sequence']) >= 0 &&
+    typeof event['type'] === 'string' &&
+    event['type'].length > 0 &&
+    typeof event['runId'] === 'string' &&
+    /^run_[A-Za-z0-9_-]+$/.test(event['runId']) &&
+    typeof event['pageId'] === 'string' &&
+    /^page_[A-Za-z0-9_-]+$/.test(event['pageId']) &&
+    typeof event['requestId'] === 'string' &&
+    event['requestId'].length > 0 &&
+    typeof event['occurredAt'] === 'string' &&
+    !Number.isNaN(Date.parse(event['occurredAt']))
+  );
+}
 
 export const listConversations = (projectId: string, pageId: string) =>
   request<ListConversationsResponse>(`/pages/${encodeURIComponent(pageId)}/conversations`, {
@@ -28,6 +49,24 @@ export const listMessages = (
       'x-origamix-after-sequence': String(afterSequence),
     },
   });
+
+export async function listAllMessages(
+  projectId: string,
+  pageId: string,
+  conversationId: string,
+): Promise<ListMessagesResponse> {
+  const messages: ListMessagesResponse['messages'] = [];
+  let afterSequence = -1;
+  while (true) {
+    const page = await listMessages(projectId, pageId, conversationId, afterSequence);
+    messages.push(...page.messages);
+    if (page.messages.length < 100) break;
+    const next = page.messages.at(-1)?.sequence;
+    if (next === undefined || next <= afterSequence) break;
+    afterSequence = next;
+  }
+  return { version: '1', messages };
+}
 
 export const createAgentRun = (input: CreateAgentRunRequest) =>
   request<CreateAgentRunResponse>('/agent/runs', {
@@ -102,8 +141,8 @@ export function subscribeAgentEvents(
         } catch {
           continue;
         }
-        if (!validateAgentEvent(value).valid) continue;
-        const event = value as AgentEvent;
+        if (!isAgentEvent(value)) continue;
+        const event = value;
         if (event.runId !== runId || event.eventId <= lastEventId) continue;
         lastEventId = event.eventId;
         options.onEvent(event);
@@ -124,6 +163,7 @@ export function subscribeAgentEvents(
 export const agentService = {
   listConversations,
   listMessages,
+  listAllMessages,
   createAgentRun,
   getAgentRun,
   cancelAgentRun,

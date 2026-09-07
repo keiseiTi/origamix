@@ -1,8 +1,8 @@
 import { Button, Spinner, Tooltip } from '@heroui/react';
 import { EyeOff } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import type { PreviewSnapshot } from '@origamix/shared/page-window';
+import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
 import { RuntimePreview } from '../editor/mods/runtime-preview';
 
 export function PageWindow(): React.JSX.Element {
@@ -13,6 +13,48 @@ export function PageWindow(): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false);
   const [exiting, setExiting] = useState(false);
   const refreshRef = useRef<() => void>(() => undefined);
+  const reportedRef = useRef(new Set<string>());
+  const reportRender = useCallback(
+    async (
+      revisionId: string,
+      outcome: 'success' | 'failed',
+      diagnostics: PreviewRenderDiagnostic[],
+    ): Promise<void> => {
+      const reportKey = `${revisionId}:${outcome}`;
+      if (reportedRef.current.has(reportKey)) return;
+      reportedRef.current.add(reportKey);
+      try {
+        const result = await window.preview?.reportRender({
+          revisionId,
+          outcome,
+          diagnostics,
+          observedAt: new Date().toISOString(),
+        });
+        if (!result) return;
+        if (result.visualSnapshot) {
+          setSnapshot(result.visualSnapshot);
+          setError('当前版本渲染失败，已回退到最近一次正常预览');
+        } else if (outcome === 'success') {
+          setError(null);
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : '无法记录页面渲染状态');
+      }
+    },
+    [],
+  );
+  const handleRenderOutcome = useCallback(
+    ({
+      outcome,
+      diagnostics,
+    }: {
+      outcome: 'success' | 'failed';
+      diagnostics: PreviewRenderDiagnostic[];
+    }) => {
+      if (snapshot) void reportRender(snapshot.revisionId, outcome, diagnostics);
+    },
+    [reportRender, snapshot],
+  );
   useEffect(() => {
     document.title = previewTitle;
     let active = true;
@@ -96,7 +138,11 @@ export function PageWindow(): React.JSX.Element {
         </div>
       )}
       {snapshot ? (
-        <RuntimePreview schema={snapshot.schema} revisionId={snapshot.revisionId} />
+        <RuntimePreview
+          schema={snapshot.schema}
+          revisionId={snapshot.revisionId}
+          onOutcome={handleRenderOutcome}
+        />
       ) : (
         !error && (
           <div className='grid flex-1 place-items-center'>

@@ -120,7 +120,8 @@ export function agentChatReducer(state: AgentChatState, action: AgentChatAction)
       streamedText: '',
       tools: [],
       lastEventId: changedRun ? -1 : state.lastEventId,
-      committedRevisionId: changedRun ? null : state.committedRevisionId,
+      committedRevisionId:
+        action.run?.resultRevisionId ?? (changedRun ? null : state.committedRevisionId),
       error:
         action.run?.status === 'interrupted'
           ? '上次生成因服务重启而中断，请重新描述并发送。'

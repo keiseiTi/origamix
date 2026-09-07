@@ -1,5 +1,6 @@
 export interface ProductDocument {
   id: string;
+  sectionId: string;
   version: string;
   title: string;
   keywords: readonly string[];
@@ -8,6 +9,7 @@ export interface ProductDocument {
 
 export interface ProductDocSnippet {
   documentId: string;
+  sectionId: string;
   version: string;
   title: string;
   snippet: string;
@@ -25,19 +27,30 @@ export interface ProductDocsSearchInput {
 export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
   {
     id: 'builder-page-basics',
+    sectionId: 'describe-page',
     version: '1.0.0',
     title: '在搭建器中创建页面内容',
     keywords: ['搭建器', '页面', '表单', '表格', '物料'],
     markdown:
-      '# 在搭建器中创建页面内容\n\n描述页面用途、字段和交互。Agent 会使用当前官方物料清单生成修改，并在服务端校验后提交。表单字段应放在表单容器中。',
+      '# 在搭建器中创建页面内容\n\n描述页面用途、字段和交互。Agent 会使用当前官方物料清单生成修改，并在服务端校验后提交。创建表单时请说明字段名称、字段类型、必填项和提交按钮；表单字段应放在表单容器中。创建表格时请说明列名、数据类型以及需要的排序、筛选或操作列。未说明的关键业务含义会先向你确认。',
   },
   {
     id: 'builder-agent-safety',
+    sectionId: 'revision-and-recovery',
     version: '1.0.0',
     title: 'Agent 修改与恢复',
     keywords: ['Agent', '修改', '校验', '撤销', '版本'],
     markdown:
-      '# Agent 修改与恢复\n\n每次修改基于当前页面 Revision。提交失败不会覆盖有效页面；成功修改会生成新 Revision，并可通过页面历史撤销。',
+      '# Agent 修改与恢复\n\n每次修改基于当前页面 Revision。提交失败不会覆盖有效页面；成功修改会生成新 Revision。可使用工作区顶部的撤销按钮恢复上一个版本。网络中断后可重试同一次请求，系统不会重复提交。页面修改会分别显示已提交、已加载和已渲染状态；若新版本渲染失败，预览会回退到最近一次正常渲染的版本。',
+  },
+  {
+    id: 'builder-agent-scope',
+    sectionId: 'supported-requests',
+    version: '1.0.0',
+    title: 'Agent 能处理的请求',
+    keywords: ['范围', '支持', '限制', '天气', '页面', '搭建'],
+    markdown:
+      '# Agent 能处理的请求\n\nAgent 只处理当前页面的搭建、修改和搭建器使用问题。闲聊、天气、新闻和与低代码搭建无关的问题不会执行。当前版本不支持跨页面修改、流程编排、外部数据源、发布和多人协作。',
   },
 ] as const;
 
@@ -102,6 +115,7 @@ export class ProductDocsProvider {
       .slice(0, limit)
       .map(({ document }) => ({
         documentId: document.id,
+        sectionId: document.sectionId,
         version: document.version,
         title: document.title,
         ...safeSnippet(document.markdown, maxSnippetChars),

@@ -14,6 +14,7 @@ interface RunChannel {
   events: AgentEvent[];
   subscribers: Set<(event: AgentEvent) => void>;
   terminal: boolean;
+  lastTouchedAt: number;
 }
 
 const terminalTypes = new Set(['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted']);
@@ -22,10 +23,14 @@ const terminalTypes = new Set(['run.completed', 'run.failed', 'run.cancelled', '
 export class AgentEventBroker {
   private readonly channels = new Map<string, RunChannel>();
 
-  constructor(private readonly replayLimit = 200) {}
+  constructor(
+    private readonly replayLimit = 200,
+    private readonly channelLimit = 500,
+  ) {}
 
   publish(input: EventInput): AgentEvent {
     const channel = this.channel(input.runId);
+    channel.lastTouchedAt = Date.now();
     const event: AgentEvent = {
       version: '1',
       eventId: channel.nextEventId,
@@ -64,10 +69,31 @@ export class AgentEventBroker {
     return this.channels.get(runId)?.terminal ?? false;
   }
 
+  resourceSnapshot(): { channels: number; subscribers: number; retainedEvents: number } {
+    const channels = [...this.channels.values()];
+    return {
+      channels: channels.length,
+      subscribers: channels.reduce((sum, channel) => sum + channel.subscribers.size, 0),
+      retainedEvents: channels.reduce((sum, channel) => sum + channel.events.length, 0),
+    };
+  }
+
   private channel(runId: string): RunChannel {
     let channel = this.channels.get(runId);
     if (!channel) {
-      channel = { nextEventId: 0, events: [], subscribers: new Set(), terminal: false };
+      if (this.channels.size >= this.channelLimit) {
+        const evictable = [...this.channels.entries()]
+          .filter(([, item]) => item.terminal && item.subscribers.size === 0)
+          .sort((left, right) => left[1].lastTouchedAt - right[1].lastTouchedAt)[0];
+        if (evictable) this.channels.delete(evictable[0]);
+      }
+      channel = {
+        nextEventId: 0,
+        events: [],
+        subscribers: new Set(),
+        terminal: false,
+        lastTouchedAt: Date.now(),
+      };
       this.channels.set(runId, channel);
     }
     return channel;

@@ -1,8 +1,37 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 beforeEach(() => vi.resetModules());
+afterEach(() => {
+  vi.doUnmock('./request');
+  vi.unstubAllGlobals();
+});
 
 describe('Agent service', () => {
+  it('loads every message page instead of stopping at the first 100 messages', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        version: '1',
+        messages: Array.from({ length: 100 }, (_, sequence) => ({ sequence })),
+      })
+      .mockResolvedValueOnce({ version: '1', messages: [{ sequence: 100 }] });
+    vi.doMock('./request', () => ({
+      request,
+      getApiConnection: vi.fn(),
+      refreshBackendConnection: vi.fn(),
+    }));
+    const { listAllMessages } = await import('./agent');
+    const result = await listAllMessages('project_test', 'page_test', 'conversation_test');
+    expect(result.messages).toHaveLength(101);
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      '/conversations/conversation_test/messages',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-origamix-after-sequence': '99' }),
+      }),
+    );
+  });
+
   it('parses authenticated SSE and deduplicates replayed event ids', async () => {
     vi.stubGlobal('window', {
       api: {

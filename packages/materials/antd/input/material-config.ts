@@ -21,6 +21,18 @@ const InputMaterial: Material = {
         title: '属性',
         configs: [
           {
+            label: '输入类型',
+            field: 'type',
+            uiType: 'select',
+            props: {
+              options: [
+                { label: '文本', value: 'text' },
+                { label: '密码', value: 'password' },
+                { label: '邮箱', value: 'email' },
+              ],
+            },
+          },
+          {
             label: '最大长度',
             field: 'maxLength',
             uiType: 'number',

@@ -208,6 +208,13 @@ export class ConversationRepository {
     return row && messageFromRow(row);
   }
 
+  findAssistantByRun(runId: string): StoredMessage | undefined {
+    const row = this.database.connection
+      .prepare("SELECT * FROM messages WHERE run_id = ? AND role = 'assistant' LIMIT 1")
+      .get(runId) as MessageRow | undefined;
+    return row && messageFromRow(row);
+  }
+
   nextSequence(conversationId: string): number {
     const row = this.database.connection
       .prepare(
@@ -224,6 +231,13 @@ export class ConversationRepository {
       )
       .all(conversationId, afterSequence, limit) as MessageRow[];
     return rows.map(messageFromRow);
+  }
+
+  listRecentMessages(conversationId: string, limit = 100): StoredMessage[] {
+    const rows = this.database.connection
+      .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY sequence DESC LIMIT ?')
+      .all(conversationId, limit) as MessageRow[];
+    return rows.reverse().map(messageFromRow);
   }
 
   listOrphanMessageIds(): string[] {

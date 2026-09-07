@@ -12,6 +12,7 @@ export interface ContextSchemaReader {
 
 export interface ContextHistoryProvider {
   listMessages(conversationId: string, afterSequence?: number, limit?: number): StoredMessage[];
+  listRecentMessages?(conversationId: string, limit?: number): StoredMessage[];
 }
 
 export interface ContextBudget {
@@ -147,7 +148,8 @@ export class ContextAssembler {
     }
 
     const historyResult = recentHistory(
-      this.historyProvider.listMessages(input.conversationId, -1, 500),
+      this.historyProvider.listRecentMessages?.(input.conversationId, 500) ??
+        this.historyProvider.listMessages(input.conversationId, -1, 500),
       this.budget,
     );
     const schema = cap(JSON.stringify(current.schema), this.budget.maxSchemaChars);

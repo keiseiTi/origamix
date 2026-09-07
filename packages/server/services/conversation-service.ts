@@ -157,9 +157,7 @@ export class ConversationService {
 
   checkpointAssistant(runId: string, content: MessageContent): StoredMessage {
     const run = this.requireRun(runId);
-    const existing = this.conversations
-      .listMessages(run.conversationId)
-      .find((message) => message.runId === runId && message.role === 'assistant');
+    const existing = this.conversations.findAssistantByRun(runId);
     const timestamp = now();
     if (existing) {
       this.conversations.updateMessage(existing.messageId, {
@@ -217,6 +215,17 @@ export class ConversationService {
     this.requirePage(projectId, pageId);
     this.requireConversation(conversationId, projectId, pageId);
     return this.conversations.listMessages(conversationId, afterSequence, limit);
+  }
+
+  recentHistory(
+    projectId: string,
+    pageId: string,
+    conversationId: string,
+    limit = 500,
+  ): StoredMessage[] {
+    this.requirePage(projectId, pageId);
+    this.requireConversation(conversationId, projectId, pageId);
+    return this.conversations.listRecentMessages(conversationId, Math.min(Math.max(limit, 1), 500));
   }
 
   private existingStartResult(run: AgentRunRecord, input: StartConversationRunInput) {

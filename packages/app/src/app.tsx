@@ -17,6 +17,7 @@ import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './store/use-view-session';
 import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
+import { schemaService } from './services/schema';
 
 function App(): React.JSX.Element {
   const isMacDesktop = window.api?.platform === 'darwin';
@@ -128,6 +129,13 @@ function App(): React.JSX.Element {
         : activeTab;
     updateWorkspace({ pageModes: { ...pageModes, [selectedPage.id]: 'preview' } });
     setActiveTab('preview');
+  };
+
+  const undoPage = async (): Promise<void> => {
+    if (!selectedProject || !selectedPage) throw new Error('请先选择需要撤销的页面');
+    await flushEditor();
+    const result = await schemaService.undo(selectedProject.id, selectedPage.id);
+    setSchemaRefreshKeys((current) => ({ ...current, [selectedPage.id]: result.revisionId }));
   };
 
   const selectPage = (pageId: string): void => {
@@ -466,6 +474,7 @@ function App(): React.JSX.Element {
               editorRef={editorRef}
               onModeChange={changeMode}
               onPreview={openPreview}
+              onUndo={undoPage}
               draft={selectedPageId ? (pageDrafts[selectedPageId] ?? '') : ''}
               onDraftChange={(draft) => {
                 if (selectedPageId) {
@@ -474,9 +483,8 @@ function App(): React.JSX.Element {
               }}
               supportsNativeProjectDirectories={supportsNativeProjectDirectories}
               schemaRefreshKey={selectedPageId ? (schemaRefreshKeys[selectedPageId] ?? '') : ''}
-              onSchemaCommitted={(revisionId) => {
-                if (selectedPageId)
-                  setSchemaRefreshKeys((current) => ({ ...current, [selectedPageId]: revisionId }));
+              onSchemaCommitted={(pageId, revisionId) => {
+                setSchemaRefreshKeys((current) => ({ ...current, [pageId]: revisionId }));
               }}
               onCreateProject={() => setIsHomeProjectModalOpen(true)}
             />

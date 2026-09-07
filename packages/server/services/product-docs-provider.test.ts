@@ -4,6 +4,7 @@ import { ProductDocsProvider, type ProductDocument } from './product-docs-provid
 const docs: ProductDocument[] = [
   {
     id: 'form-v1',
+    sectionId: 'fields',
     version: '1.0.0',
     title: '表单搭建',
     keywords: ['表单', '字段'],
@@ -11,6 +12,7 @@ const docs: ProductDocument[] = [
   },
   {
     id: 'form-v2',
+    sectionId: 'fields',
     version: '2.0.0',
     title: '表单搭建',
     keywords: ['表单'],
@@ -18,6 +20,7 @@ const docs: ProductDocument[] = [
   },
   {
     id: 'malicious',
+    sectionId: 'prompt-safety',
     version: '1.0.0',
     title: '安全说明',
     keywords: ['安全'],
@@ -29,6 +32,7 @@ describe('ProductDocsProvider', () => {
   const provider = new ProductDocsProvider(docs);
   it('searches title, keywords and full text', () => {
     expect(provider.search({ query: '如何搭建表单' })[0]?.documentId).toBe('form-v1');
+    expect(provider.search({ query: '如何搭建表单' })[0]?.sectionId).toBe('fields');
     expect(provider.search({ query: '添加字段' })[0]?.documentId).toBe('form-v1');
   });
   it('returns no result for an unrelated query', () =>

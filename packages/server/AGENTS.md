@@ -10,6 +10,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
+- `agent/evaluation-harness.ts`, `agent/security-audit.ts`, `agent/mvp-gate.ts`: fixed Agent evaluation, privacy evidence and internal-release thresholds.
 
 ## Service and security boundaries
 
@@ -42,6 +43,7 @@ pnpm --filter @origamix/server lint
 pnpm --filter @origamix/server typecheck
 pnpm --filter @origamix/server test
 pnpm --filter @origamix/server build
+pnpm --filter @origamix/server gate:agent
 ```
 
 - Extend `database/database.test.ts`, `services/schema-service.test.ts` and `transport/http/server.test.ts` for affected boundaries. Cover invalid input, stale revisions, cross-project access, authentication and recovery.

@@ -5,7 +5,7 @@ import {
   createAgentRun,
   getAgentRun,
   listConversations,
-  listMessages,
+  listAllMessages,
   subscribeAgentEvents,
 } from '../services/agent';
 import { schemaService } from '../services/schema';
@@ -27,12 +27,20 @@ export function useAgentChat(
 } {
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
+  const generation = useRef(0);
   const sending = useRef(false);
   const lastSubmittedText = useRef('');
+  const uncertainSubmission = useRef<{
+    text: string;
+    clientRequestId: string;
+    baseRevisionId?: string;
+    retryOfRunId?: string;
+  } | null>(null);
   const conversationId = useRef<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
+    const currentGeneration = generation.current;
     dispatch({ type: 'connection.changed', connection: 'recovering' });
     try {
       const listed = await listConversations(projectId, pageId);
@@ -42,13 +50,14 @@ export function useAgentChat(
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
-      const history = await listMessages(projectId, pageId, conversation.conversationId);
+      const history = await listAllMessages(projectId, pageId, conversation.conversationId);
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
-      if (mounted.current) dispatch({ type: 'history.loaded', messages: history.messages, run });
+      if (mounted.current && generation.current === currentGeneration)
+        dispatch({ type: 'history.loaded', messages: history.messages, run });
     } catch (error) {
-      if (mounted.current)
+      if (mounted.current && generation.current === currentGeneration)
         dispatch({
           type: 'history.failed',
           message: error instanceof Error ? error.message : '无法加载对话记录',
@@ -57,12 +66,14 @@ export function useAgentChat(
   }, [pageId, projectId]);
 
   useEffect(() => {
+    generation.current += 1;
     mounted.current = true;
     conversationId.current = null;
     dispatch({ type: 'reset' });
     void loadAuthority();
     return () => {
       mounted.current = false;
+      generation.current += 1;
     };
   }, [loadAuthority]);
 
@@ -82,35 +93,47 @@ export function useAgentChat(
           }
         }, 750);
       },
-      onClose: () => void loadAuthority(),
+      onClose: () => {
+        void loadAuthority().finally(() => setReconnectAttempt((current) => current + 1));
+      },
     });
     // Event ids are per Run. The current cursor is captured only when opening a stream;
     // received deltas must not tear down and recreate the same connection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRunId, loadAuthority, projectId, reconnectAttempt]);
 
-  const send = useCallback(
-    async (text: string): Promise<void> => {
-      const content = text.trim();
+  const submit = useCallback(
+    async (submission: {
+      text: string;
+      clientRequestId: string;
+      baseRevisionId?: string;
+      retryOfRunId?: string;
+    }): Promise<void> => {
+      const content = submission.text.trim();
       if (!content || sending.current || isRunActive(state.stage)) return;
       sending.current = true;
       lastSubmittedText.current = content;
       try {
-        const currentSchema = await schemaService.get(projectId, pageId);
+        const baseRevisionId =
+          submission.baseRevisionId ?? (await schemaService.get(projectId, pageId)).revisionId;
+        const stableSubmission = { ...submission, text: content, baseRevisionId };
+        uncertainSubmission.current = stableSubmission;
         const created = await createAgentRun({
           version: '1',
           projectId,
           pageId,
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
-          clientRequestId: requestId(),
-          baseRevisionId: currentSchema.revisionId,
+          clientRequestId: stableSubmission.clientRequestId,
+          baseRevisionId,
           content: { version: '1', blocks: [{ type: 'text', text: content }] },
+          ...(stableSubmission.retryOfRunId ? { retryOfRunId: stableSubmission.retryOfRunId } : {}),
         });
         conversationId.current = created.conversationId;
         const run = (await getAgentRun(projectId, created.runId)).run;
-        const history = await listMessages(projectId, pageId, created.conversationId);
+        const history = await listAllMessages(projectId, pageId, created.conversationId);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
         dispatch({ type: 'run.queued', run });
+        uncertainSubmission.current = null;
       } catch (error) {
         dispatch({
           type: 'history.failed',
@@ -124,6 +147,11 @@ export function useAgentChat(
     [pageId, projectId, state.stage],
   );
 
+  const send = useCallback(
+    (text: string) => submit({ text, clientRequestId: requestId() }),
+    [submit],
+  );
+
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
     await cancelAgentRun(projectId, state.run.runId, requestId());
@@ -131,9 +159,15 @@ export function useAgentChat(
   }, [loadAuthority, projectId, state.run, state.stage]);
 
   const retry = useCallback(async (): Promise<void> => {
-    if (lastSubmittedText.current) await send(lastSubmittedText.current);
+    if (uncertainSubmission.current) await submit(uncertainSubmission.current);
+    else if (lastSubmittedText.current)
+      await submit({
+        text: lastSubmittedText.current,
+        clientRequestId: requestId(),
+        ...(state.run ? { retryOfRunId: state.run.runId } : {}),
+      });
     else await loadAuthority();
-  }, [loadAuthority, send]);
+  }, [loadAuthority, state.run, submit]);
 
   return { state, send, cancel, retry, refresh: loadAuthority };
 }

@@ -14,6 +14,7 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "gate:internal": "pnpm --filter @origamix/server gate:agent",
     "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
   },
   "keywords": [

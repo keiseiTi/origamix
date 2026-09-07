@@ -123,6 +123,14 @@ export class AgentRunService {
     throw conflict(`Agent Run 状态已从 ${current.status} 变化`);
   }
 
+  findByClientRequest(
+    projectId: string,
+    pageId: string,
+    clientRequestId: string,
+  ): AgentRunRecord | undefined {
+    return this.runs.findByClientRequest(projectId, pageId, clientRequestId);
+  }
+
   async recover(
     isRevisionCommitted: (run: AgentRunRecord) => boolean | Promise<boolean>,
   ): Promise<AgentRunRecord[]> {

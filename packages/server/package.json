@@ -23,6 +23,7 @@
     "test:template": "pnpm build && node scripts/smoke-template.mjs",
     "test:dev": "node scripts/smoke-development.mjs",
     "probe:deepseek": "pnpm build && node scripts/probe-deepseek.mjs",
+    "gate:agent": "pnpm build && node scripts/gate-agent.mjs",
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs"
   },

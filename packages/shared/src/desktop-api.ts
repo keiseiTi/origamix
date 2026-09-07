@@ -1,4 +1,10 @@
-import type { PageWindowInput, PreviewBounds, PreviewSnapshot } from './page-window';
+import type {
+  PageWindowInput,
+  PreviewBounds,
+  PreviewRenderReport,
+  PreviewRenderResult,
+  PreviewSnapshot,
+} from './page-window';
 
 export interface BackendConnection {
   baseUrl: string;
@@ -42,5 +48,6 @@ export interface DesktopApi {
 }
 export interface PreviewApi {
   readSnapshot(): Promise<PreviewSnapshot>;
+  reportRender(report: PreviewRenderReport): Promise<PreviewRenderResult>;
   exit(): Promise<void>;
 }

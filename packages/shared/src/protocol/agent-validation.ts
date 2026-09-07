@@ -22,6 +22,7 @@ import {
   AgentErrorPayloadSchema,
   ListConversationsResponseSchema,
   ListMessagesResponseSchema,
+  AgentEvaluationReportSchema,
 } from './agent';
 
 export interface AgentProtocolValidationResult {
@@ -54,6 +55,7 @@ const validators = {
   errorPayload: ajv.compile(AgentErrorPayloadSchema),
   conversationsResponse: ajv.compile(ListConversationsResponseSchema),
   messagesResponse: ajv.compile(ListMessagesResponseSchema),
+  evaluationReport: ajv.compile(AgentEvaluationReportSchema),
 };
 
 function result(errors: ErrorObject[] | null | undefined): AgentProtocolValidationResult {
@@ -99,3 +101,5 @@ export const validateListConversationsResponse = (value: unknown) =>
   check(validators.conversationsResponse, value);
 export const validateListMessagesResponse = (value: unknown) =>
   check(validators.messagesResponse, value);
+export const validateAgentEvaluationReport = (value: unknown) =>
+  check(validators.evaluationReport, value);

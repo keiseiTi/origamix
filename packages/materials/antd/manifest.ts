@@ -122,6 +122,7 @@ export const inputManifest = defineManifest(
     acceptsChildren: false,
     allowedParentTypes: ['form'],
     propsSchema: objectSchema({
+      type: { type: 'string', enum: ['text', 'password', 'email'] },
       maxLength: { type: 'number', minimum: 0, maximum: 1000 },
       addonBefore: { type: 'string' },
       addonAfter: { type: 'string' },
@@ -129,7 +130,7 @@ export const inputManifest = defineManifest(
       allowClear: { type: 'boolean' },
       showCount: { type: 'boolean' },
     }),
-    usage: '用于姓名、标题等单行文本字段。',
+    usage: '用于姓名、标题、账号、邮箱或密码等单行字段；密码字段使用 type=password。',
     constraints: ['必须置于 form 中。'],
   },
 );

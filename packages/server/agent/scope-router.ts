@@ -30,6 +30,8 @@ const ambiguousAdd = /^(请)?(加|添加|增加)(一个|个)?[^，。！？!?]{1
 const obviousGeneral = /(写诗|讲笑话|翻译|新闻|股票|汇率|星座|百科|菜谱|电影推荐)/i;
 const promptInjection =
   /(忽略|无视|覆盖|绕过).{0,12}(系统|之前|以上|指令|规则|策略)|system\s*prompt|developer\s*message|把.{0,8}模式设为/i;
+const politeModification =
+  /(能否|是否|可以|可否).{0,24}(把|将)?.*(修改|调整|删除|移除|配置|设置|改成|添加|增加)/i;
 
 function normalized(message: string): string {
   return message.trim().replace(/\s+/g, ' ');
@@ -102,7 +104,10 @@ export class ScopeRouter {
       return clarification(pageId, '输入包含改变系统策略或运行模式的指令', text);
 
     // Page creation wins over subject-matter words: a weather display page is still page work.
-    if (explicitPageCreation.test(text)) {
+    if (
+      explicitPageCreation.test(text) &&
+      (!questionWords.test(text) || politeModification.test(text))
+    ) {
       return {
         mode: 'page_modify',
         scope: 'page',
@@ -133,18 +138,13 @@ export class ScopeRouter {
         requiresConfirmation: false,
       };
     }
-    if (pageNouns.test(text) && questionWords.test(text)) {
-      return {
-        mode: 'page_question',
-        scope: 'page',
-        targetPageIds: [pageId],
-        normalizedRequirement: text,
-        confidence: 0.95,
-        reason: '询问页面或搭建器信息',
-        requiresConfirmation: false,
-      };
-    }
-    if (pageNouns.test(text) && modifyVerbs.test(text)) {
+    // A concrete modification verb wins over polite question wording such as
+    // “能否把按钮改成主要按钮？”.
+    if (
+      pageNouns.test(text) &&
+      modifyVerbs.test(text) &&
+      (!questionWords.test(text) || politeModification.test(text))
+    ) {
       if (ambiguousAdd.test(text)) return clarification(pageId, '修改目标或用途不明确', text);
       return {
         mode: 'page_modify',
@@ -153,6 +153,17 @@ export class ScopeRouter {
         normalizedRequirement: text,
         confidence: 0.96,
         reason: '包含明确页面对象和修改动作',
+        requiresConfirmation: false,
+      };
+    }
+    if (pageNouns.test(text) && questionWords.test(text)) {
+      return {
+        mode: 'page_question',
+        scope: 'page',
+        targetPageIds: [pageId],
+        normalizedRequirement: text,
+        confidence: 0.95,
+        reason: '询问页面或搭建器信息',
         requiresConfirmation: false,
       };
     }
