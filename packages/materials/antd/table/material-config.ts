@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Table = React.lazy(() => import('./index'));
-import type { Material } from '../../src/material';
+import type { Material } from '@/material';
 import { tableManifest } from '../manifest';
 // import { ColumnConfig } from '@/components/column-config';
 // import { PaginationConfig } from '@/components/pagination-config';

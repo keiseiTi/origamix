@@ -1,6 +1,6 @@
 # `@origamix/materials`
 
-Origamix's source-only page material library. It currently provides Ant Design adapters and editor manifests for Tangramino.
+Origamix's bundled page material library. It provides Ant Design adapters and editor manifests for Tangramino.
 
 ## Public entries
 
@@ -12,9 +12,7 @@ import materialGroups from '@origamix/materials/antd/group';
 - `materialComponents` maps persisted material type names to runtime React components.
 - `materialGroups` supplies the editor palette and each material's defaults, context contract and property-panel configuration.
 
-The package is private and compiled by its workspace consumers. It does not produce a standalone `dist` directory yet.
-
-The imported package-local Manifest interfaces and editor helpers are still being supplied. Until those land, the new typecheck/build commands intentionally expose the missing modules instead of masking an incomplete package.
+The package is private. `pnpm build` uses tsup to emit ESM bundles, declarations, and source maps into `dist`.
 
 ## Development
 

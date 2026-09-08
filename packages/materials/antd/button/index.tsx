@@ -2,7 +2,7 @@ import React from 'react';
 import { Button as AntdButton, type ButtonProps } from 'antd';
 import type { MaterialComponentProps } from '@tangramino/base-editor';
 
-interface IProps
+export interface IProps
   extends
     Pick<
       ButtonProps,

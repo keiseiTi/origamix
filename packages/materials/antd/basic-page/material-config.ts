@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import type { Material } from '../../src/material';
+import type { Material } from '@/material';
 
 const BasicPageMaterial: Material = {
   title: '页面',

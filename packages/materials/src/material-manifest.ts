@@ -1,6 +1,6 @@
 export const MATERIAL_MANIFEST_FORMAT_VERSION = '1.0' as const;
 
-export type MaterialRole = 'layout' | 'input' | 'display' | 'action';
+export type MaterialRole = 'layout' | 'input' | 'display' | 'action' | 'overlay';
 
 export type JsonSchema = Readonly<Record<string, unknown>>;
 

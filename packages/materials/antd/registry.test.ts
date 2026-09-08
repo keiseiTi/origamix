@@ -43,7 +43,7 @@ describe('antd material registry', () => {
       id: 'official-antd',
       version: '1.0.0',
     });
-    expect(antdMaterialManifest.materials).toHaveLength(8);
+    expect(antdMaterialManifest.materials).toHaveLength(22);
     expect(() => JSON.stringify(antdMaterialManifest)).not.toThrow();
     expect(JSON.stringify(antdMaterialManifest)).not.toContain('Component');
     expectPureData(antdMaterialManifest);

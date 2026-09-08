@@ -2,7 +2,7 @@ import React from 'react';
 import { Radio as AntdRadio, type RadioProps } from 'antd';
 import type { MaterialComponentProps } from '@tangramino/base-editor';
 
-interface IProps extends RadioProps, MaterialComponentProps {
+export interface IProps extends RadioProps, MaterialComponentProps {
   label?: string;
   optionDisplayButton?: boolean;
 }

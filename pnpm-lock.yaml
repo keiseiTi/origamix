@@ -167,6 +167,9 @@ importers:
       react:
         specifier: ^19.2.8
         version: 19.2.8
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(typescript@6.0.3)(yaml@2.9.0)
 
   packages/server:
     dependencies:

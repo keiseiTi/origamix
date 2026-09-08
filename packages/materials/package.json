@@ -4,16 +4,28 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./antd": "./antd/index.ts",
-    "./antd/group": "./antd/group.ts",
-    "./antd/manifest": "./antd/manifest.ts",
-    "./manifest": "./src/material-manifest.ts"
+    "./antd": {
+      "types": "./dist/antd/index.d.ts",
+      "import": "./dist/antd/index.js"
+    },
+    "./antd/group": {
+      "types": "./dist/antd/group.d.ts",
+      "import": "./dist/antd/group.js"
+    },
+    "./antd/manifest": {
+      "types": "./dist/antd/manifest.d.ts",
+      "import": "./dist/antd/manifest.js"
+    },
+    "./manifest": {
+      "types": "./dist/src/material-manifest.d.ts",
+      "import": "./dist/src/material-manifest.js"
+    }
   },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "build": "tsc --noEmit -p tsconfig.json"
+    "build": "tsup"
   },
   "dependencies": {
     "@tangramino/base-editor": "^0.1.3",
@@ -24,7 +36,8 @@
     "@heroui/react": "^3.2.4",
     "@types/react": "^19.2.18",
     "antd": "^6.0.0",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "tsup": "^8.5.0"
   },
   "peerDependencies": {
     "@heroui/react": "^3.2.4",

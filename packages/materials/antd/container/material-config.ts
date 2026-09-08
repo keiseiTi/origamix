@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import type { Material } from '../../src/material';
+import type { Material } from '@/material';
 import { containerManifest } from '../manifest';
 
 const ContainerMaterial: Material = {

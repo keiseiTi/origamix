@@ -1,7 +1,7 @@
 import React from 'react';
 
 const TimePicker = React.lazy(() => import('./index'));
-import type { Material } from '../../src/material';
+import type { Material } from '@/material';
 
 const TimePickerMaterial: Material = {
   Component: TimePicker,

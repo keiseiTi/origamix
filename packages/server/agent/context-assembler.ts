@@ -191,6 +191,10 @@ export class ContextAssembler {
     if (totalSize(context) > this.budget.maxChars && context.productDocs.length) {
       context = { ...context, productDocs: [], truncated: { ...context.truncated, docs: true } };
     }
+    if (totalSize(context) > this.budget.maxChars) {
+      materialCatalog = cap(materialCatalog, 1_000).value;
+      context = { ...context, materialCatalog };
+    }
     if (totalSize(context) > this.budget.maxChars && context.history.length) {
       context = { ...context, history: [], truncated: { ...context.truncated, history: true } };
     }
@@ -200,10 +204,6 @@ export class ContextAssembler {
         summarySlot: undefined,
         truncated: { ...context.truncated, summary: true },
       };
-    }
-    if (totalSize(context) > this.budget.maxChars) {
-      materialCatalog = cap(materialCatalog, 1_000).value;
-      context = { ...context, materialCatalog };
     }
     if (totalSize(context) > this.budget.maxChars) {
       let fragment = context.schemaFragment;

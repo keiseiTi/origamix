@@ -5,7 +5,7 @@ import {
   type JsonSchema,
   type MaterialManifest,
   type MaterialManifestCatalog,
-} from '../src/material-manifest';
+} from '@/material-manifest';
 
 const objectSchema = (
   properties: Readonly<Record<string, JsonSchema>>,
@@ -365,15 +365,407 @@ export const textManifest = defineManifest(
   },
 );
 
+const emptyContext: MaterialManifest['context'] = { variables: [], values: [], methods: [] };
+const inputContext: MaterialManifest['context'] = {
+  variables: [
+    { name: 'value', description: '当前值' },
+    { name: 'disabled', description: '是否禁用' },
+  ],
+  values: [],
+  methods: [
+    {
+      name: 'onChange',
+      description: '值改变时的回调',
+      params: [{ description: '事件参数' }],
+    },
+  ],
+};
+const optionSchema = objectSchema(
+  { label: { type: 'string' }, value: { type: ['string', 'number', 'boolean'] } },
+  ['label', 'value'],
+);
+const optionsSchema: JsonSchema = { type: 'array', items: optionSchema };
+
+function defineSimpleManifest(
+  core: MaterialCore,
+  details: Omit<ManifestDetails, 'version'>,
+): MaterialManifest {
+  return defineManifest(core, { version: '1.0.0', ...details });
+}
+
+export const checkboxManifest = defineSimpleManifest(
+  {
+    type: 'checkbox',
+    title: '复选框',
+    defaultProps: {
+      options: [
+        { label: '选项1', value: '选项1' },
+        { label: '选项2', value: '选项2' },
+      ],
+    },
+    context: {
+      ...inputContext,
+      variables: [...inputContext.variables, { name: 'options', description: '选项' }],
+    },
+  },
+  {
+    description: '从一组选项中选择零个或多个值。',
+    keywords: ['复选框', '多选', '选项'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({ options: optionsSchema }),
+    usage: '用于多选字段。',
+    constraints: ['必须置于 form 中。'],
+  },
+);
+
+export const radioManifest = defineSimpleManifest(
+  {
+    type: 'radio',
+    title: '单选框',
+    defaultProps: {
+      options: [
+        { label: '选项一', value: 'option1' },
+        { label: '选项二', value: 'option2' },
+      ],
+    },
+    context: {
+      ...inputContext,
+      variables: [...inputContext.variables, { name: 'options', description: '选项' }],
+    },
+  },
+  {
+    description: '从一组选项中选择一个值。',
+    keywords: ['单选框', '单选', '选项'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({ options: optionsSchema, optionDisplayButton: { type: 'boolean' } }),
+    usage: '用于互斥选择字段。',
+    constraints: ['必须置于 form 中。'],
+  },
+);
+
+export const numberManifest = defineSimpleManifest(
+  {
+    type: 'number',
+    title: '数字框',
+    defaultProps: { placeholder: '请输入', size: 'middle' },
+    context: {
+      ...inputContext,
+      methods: [
+        ...inputContext.methods,
+        {
+          name: 'onPressEnter',
+          description: '回车的回调',
+          params: [{ description: '事件参数' }],
+        },
+      ],
+    },
+  },
+  {
+    description: '录入带范围和精度约束的数值。',
+    keywords: ['数字框', '数值', '金额'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({
+      defaultValue: { type: 'number' },
+      min: { type: 'number' },
+      max: { type: 'number' },
+      precision: { type: 'number', minimum: 0, maximum: 10 },
+      prefix: { type: 'string' },
+      suffix: { type: 'string' },
+      addonBefore: { type: 'string' },
+      addonAfter: { type: 'string' },
+      placeholder: { type: 'string' },
+      allowClear: { type: 'boolean' },
+      size: { type: 'string', enum: ['large', 'middle', 'small'] },
+    }),
+    usage: '用于数量、金额、比例等数值字段。',
+    constraints: ['必须置于 form 中。', 'min 不应大于 max。'],
+  },
+);
+
+export const textareaManifest = defineSimpleManifest(
+  {
+    type: 'textarea',
+    title: '文本域',
+    defaultProps: { placeholder: '请输入内容', size: 'middle' },
+    context: {
+      ...inputContext,
+      methods: [
+        ...inputContext.methods,
+        { name: 'onPressEnter', description: '回车的回调', params: [{ description: '事件参数' }] },
+      ],
+    },
+  },
+  {
+    description: '录入多行文本。',
+    keywords: ['文本域', '多行文本', '备注'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({
+      maxLength: { type: 'number', minimum: 0 },
+      showCount: { type: 'boolean' },
+      placeholder: { type: 'string' },
+      autoSize: { type: ['boolean', 'object'] },
+      size: { type: 'string', enum: ['large', 'middle', 'small'] },
+    }),
+    usage: '用于描述、备注等多行字段。',
+    constraints: ['必须置于 form 中。'],
+  },
+);
+
+function dateInputManifest(
+  type: 'datePicker' | 'datePickerRange' | 'timePicker',
+  title: string,
+  props: Readonly<Record<string, JsonSchema>>,
+): MaterialManifest {
+  return defineSimpleManifest(
+    { type, title, defaultProps: {}, context: type === 'timePicker' ? emptyContext : inputContext },
+    {
+      description: `用于选择${title.replace('选择器', '')}。`,
+      keywords: [title, '日期时间', '选择'],
+      role: 'input',
+      acceptsChildren: false,
+      allowedParentTypes: ['form'],
+      propsSchema: objectSchema(props),
+      usage: `用于表单中的${title}字段。`,
+      constraints: ['必须置于 form 中。'],
+    },
+  );
+}
+
+export const datePickerManifest = dateInputManifest('datePicker', '日期选择器', {
+  format: { type: 'string' },
+  picker: { type: 'string', enum: ['date', 'week', 'month', 'quarter', 'year'] },
+  placeholder: { type: 'string' },
+  allowClear: { type: 'boolean' },
+});
+export const datePickerRangeManifest = dateInputManifest('datePickerRange', '日期范围选择器', {
+  format: { type: 'string' },
+  placeholder: { type: 'string' },
+  showNow: { type: 'boolean' },
+  allowClear: { type: 'boolean' },
+});
+export const timePickerManifest = dateInputManifest('timePicker', '时间选择器', {
+  format: { type: 'string', enum: ['HH:mm:ss', 'HH:mm'] },
+  placeholder: { type: 'string' },
+  allowClear: { type: 'boolean' },
+});
+
+function optionInputManifest(
+  type: 'cascader' | 'treeSelect',
+  title: string,
+  variableName: 'options' | 'treeData',
+): MaterialManifest {
+  return defineSimpleManifest(
+    {
+      type,
+      title,
+      defaultProps: { options: [{ label: '示例1', value: '示例1' }] },
+      context: {
+        ...inputContext,
+        variables: [
+          ...inputContext.variables,
+          { name: variableName, description: type === 'cascader' ? '选项' : '树节点数据' },
+        ],
+      },
+    },
+    {
+      description: type === 'cascader' ? '从层级关联选项中选择值。' : '从树形数据中选择值。',
+      keywords: [title, '层级', '选择'],
+      role: 'input',
+      acceptsChildren: false,
+      allowedParentTypes: ['form'],
+      propsSchema: objectSchema({
+        options: optionsSchema,
+        treeData: { type: 'array', items: { type: 'object' } },
+        placeholder: { type: 'string' },
+        multiple: { type: 'boolean' },
+        allowClear: { type: 'boolean' },
+      }),
+      usage: `用于表单中的${title}字段。`,
+      constraints: ['必须置于 form 中。'],
+    },
+  );
+}
+
+export const cascaderManifest = optionInputManifest('cascader', '级联选择', 'options');
+export const treeSelectManifest = optionInputManifest('treeSelect', '树选择器', 'treeData');
+
+export const sliderManifest = defineSimpleManifest(
+  {
+    type: 'slider',
+    title: '滑动输入条',
+    defaultProps: {},
+    context: {
+      variables: [
+        { name: 'checked', description: '是否选中' },
+        { name: 'disabled', description: '是否禁用' },
+      ],
+      values: [],
+      methods: inputContext.methods,
+    },
+  },
+  {
+    description: '通过滑动在数值范围内选值。',
+    keywords: ['滑块', '数值', '范围'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({ min: { type: 'number' }, max: { type: 'number' } }),
+    usage: '用于直观调整数值。',
+    constraints: ['必须置于 form 中。', 'min 不应大于 max。'],
+  },
+);
+
+export const uploadManifest = defineSimpleManifest(
+  { type: 'upload', title: '上传', defaultProps: {}, context: emptyContext },
+  {
+    description: '选择并上传文件。',
+    keywords: ['上传', '文件', '图片'],
+    role: 'input',
+    acceptsChildren: false,
+    allowedParentTypes: ['form'],
+    propsSchema: objectSchema({
+      listType: { type: 'string', enum: ['text', 'picture', 'picture-card'] },
+      maxCount: { type: 'number', minimum: 1 },
+      multiple: { type: 'boolean' },
+      disabled: { type: 'boolean' },
+      drag: { type: 'boolean' },
+      showUploadList: { type: 'boolean' },
+      accept: { type: 'string' },
+      action: { type: 'string' },
+      headers: { type: 'object' },
+      data: { type: 'object' },
+      name: { type: 'string' },
+      withCredentials: { type: 'boolean' },
+    }),
+    usage: '用于表单中的文件提交。',
+    constraints: ['必须置于 form 中。', '上传地址必须使用安全 URL。'],
+  },
+);
+
+function overlayManifest(type: 'modal' | 'drawer', title: string): MaterialManifest {
+  return defineSimpleManifest(
+    {
+      type,
+      title,
+      defaultProps: { title: type === 'modal' ? '弹窗标题' : '抽屉标题' },
+      context: emptyContext,
+    },
+    {
+      description: type === 'modal' ? '在页面上方显示模态内容。' : '从页面边缘展开辅助内容。',
+      keywords: [title, '浮层', '容器'],
+      role: 'overlay',
+      acceptsChildren: true,
+      propsSchema: objectSchema(
+        type === 'modal'
+          ? {
+              title: { type: 'string' },
+              width: { type: 'number', minimum: 200, maximum: 1200 },
+              cancelText: { type: 'string' },
+              okText: { type: 'string' },
+              centered: { type: 'boolean' },
+              maskClosable: { type: 'boolean' },
+              forceRender: { type: 'boolean' },
+              mask: { type: 'boolean' },
+              keyboard: { type: 'boolean' },
+            }
+          : {
+              title: { type: 'string' },
+              width: { type: 'number', minimum: 200, maximum: 1200 },
+              placement: { type: 'string', enum: ['left', 'right', 'top', 'bottom'] },
+              closable: { type: 'boolean' },
+              maskClosable: { type: 'boolean' },
+              forceRender: { type: 'boolean' },
+            },
+      ),
+      usage: '承载需要临时展示的内容。',
+      constraints: ['子元素应保持可访问的阅读和操作顺序。'],
+    },
+  );
+}
+
+export const modalManifest = overlayManifest('modal', '弹窗容器');
+export const drawerManifest = overlayManifest('drawer', '抽屉容器');
+
+export const treeManifest = defineSimpleManifest(
+  {
+    type: 'tree',
+    title: '树',
+    defaultProps: {
+      treeData: [
+        {
+          title: '节点1',
+          key: '0-0',
+          children: [
+            { title: '子节点1', key: '0-0-0' },
+            { title: '子节点2', key: '0-0-1' },
+          ],
+        },
+        { title: '节点2', key: '0-1' },
+      ],
+    },
+    context: {
+      variables: [
+        { name: 'treeData', description: '树节点数据' },
+        { name: 'selectedKeys', description: '选中节点键数组' },
+        { name: 'checkedKeys', description: '勾选节点键数组' },
+      ],
+      values: [],
+      methods: [
+        { name: 'onSelect', description: '节点选中时触发的回调' },
+        { name: 'onCheck', description: '节点勾选时触发的回调' },
+      ],
+    },
+  },
+  {
+    description: '展示层级树形数据。',
+    keywords: ['树', '层级', '目录'],
+    role: 'display',
+    acceptsChildren: false,
+    propsSchema: objectSchema({
+      treeData: { type: 'array', items: { type: 'object' } },
+      checkable: { type: 'boolean' },
+      multiple: { type: 'boolean' },
+      defaultExpandAll: { type: 'boolean' },
+      checkStrictly: { type: 'boolean' },
+      showLine: { type: 'boolean' },
+      draggable: { type: 'boolean' },
+    }),
+    usage: '用于目录、组织或分类层级。',
+    constraints: ['每个节点应具有唯一 key。'],
+  },
+);
+
 const manifests = [
   containerManifest,
   formManifest,
   inputManifest,
+  numberManifest,
+  checkboxManifest,
+  radioManifest,
   selectManifest,
+  textareaManifest,
+  datePickerManifest,
+  datePickerRangeManifest,
+  timePickerManifest,
   switchManifest,
+  treeSelectManifest,
+  cascaderManifest,
+  sliderManifest,
+  uploadManifest,
   buttonManifest,
+  modalManifest,
+  drawerManifest,
   tableManifest,
   textManifest,
+  treeManifest,
 ] as const;
 
 export const antdMaterialManifest: MaterialManifestCatalog = {
