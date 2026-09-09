@@ -1,7 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
-import type { PageItem, ProjectItem } from '../components/sidebar';
-import type { ViewSession } from '../store/view-session';
-import { projectsService } from '../services/projects';
+import type { PageItem, ProjectItem } from '../sidebar';
+import type { ViewSession } from './state/view-session';
+import { projectsService } from '../../services/projects';
 
 interface ProjectActionsInput {
   projects: ProjectItem[];

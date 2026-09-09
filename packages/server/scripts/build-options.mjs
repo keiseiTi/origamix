@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const options = {
   tsconfig: `${root}tsconfig.json`,
-  entry: { server: `${root}index.ts`, runtime: `${root}runtime.ts`, template: `${root}template.ts` },
+  entry: { server: `${root}index.ts`, runtime: `${root}runtime.ts`, tooling: `${root}tooling.ts`, template: `${root}template.ts` },
   outDir: `${root}dist`,
   format: ['cjs'],
   outExtension: () => ({ js: '.cjs' }),

@@ -7,8 +7,8 @@ import {
   listConversations,
   listAllMessages,
   subscribeAgentEvents,
-} from '../services/agent';
-import { schemaService } from '../services/schema';
+} from '../../services/agent';
+import { schemaService } from '../../services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 
 const requestId = (): string =>

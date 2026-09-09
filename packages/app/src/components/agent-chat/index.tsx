@@ -1,8 +1,8 @@
 import { Button, Spinner, TextArea } from '@heroui/react';
 import { CircleStop, LayoutPanelLeft, RotateCcw, Send, Sparkles, Wrench } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { isRunActive, messageText } from '../../store/agent-chat-state';
-import { useAgentChat } from '../../store/use-agent-chat';
+import { isRunActive, messageText } from './agent-chat-state';
+import { useAgentChat } from './use-agent-chat';
 
 const stageLabels = {
   queued: '已排队',

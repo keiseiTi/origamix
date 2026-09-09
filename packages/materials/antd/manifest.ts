@@ -6,6 +6,9 @@ import {
   type MaterialManifest,
   type MaterialManifestCatalog,
 } from '@/material-manifest';
+import { containerManifest as colocatedContainerManifest } from './container/manifest';
+import { formManifest as colocatedFormManifest } from './form/manifest';
+import { inputManifest as colocatedInputManifest } from './input/manifest';
 
 const objectSchema = (
   properties: Readonly<Record<string, JsonSchema>>,
@@ -744,9 +747,9 @@ export const treeManifest = defineSimpleManifest(
 );
 
 const manifests = [
-  containerManifest,
-  formManifest,
-  inputManifest,
+  colocatedContainerManifest,
+  colocatedFormManifest,
+  colocatedInputManifest,
   numberManifest,
   checkboxManifest,
   radioManifest,

@@ -6,7 +6,8 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/app.tsx`, `src/components/`: React workbench and interactions.
 - `src/services/request.ts` and sibling services: typed HTTP requests and errors.
-- `src/store/view-session.ts`, `src/store/use-view-session.ts`: window-scoped workspace projections and editing sessions.
+- `src/components/workspace/state/`: window-scoped workspace projections and editing sessions.
+- `src/components/agent-chat/`, `src/components/editor/`, `src/components/settings/`: feature-owned UI and state.
 - `src/components/editor/`: editing UI and its save session; `src/runtime/` and `src/components/workspace/page-window.tsx`: reusable runtime rendering and the read-only preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
@@ -40,7 +41,7 @@ pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build
 ```
 
-- Extend `src/store/view-session.test.ts` and `src/services/request.test.ts` for affected transitions/transport; add focused tests beside new stateful logic.
+- Extend `src/components/workspace/state/view-session.test.ts` and `src/services/request.test.ts` for affected transitions/transport; add focused tests beside new stateful logic.
 - Web host/proxy changes: `pnpm --filter @origamix/app test:web`. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
 - Use `pnpm dev:web` for browser interaction checks. Directory pickers, settings and independent windows need `pnpm dev` and Desktop smoke checks, not only browser screenshots.
 - Run root gates before handoff and report both-theme interaction evidence. Existing unit/smoke tests are not complete visual coverage.

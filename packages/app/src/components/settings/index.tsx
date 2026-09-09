@@ -1,8 +1,8 @@
 import { Button, Card, Chip, Input, Radio, RadioGroup } from '@heroui/react';
 import { ArrowLeft, Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { AppTheme } from './sidebar';
-import type { UserProfile } from './sidebar';
+import type { AppTheme } from '../sidebar';
+import type { UserProfile } from '../sidebar';
 
 interface SettingsPageProps {
   theme: AppTheme;

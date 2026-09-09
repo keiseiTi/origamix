@@ -1,6 +1,6 @@
 import { useState, type RefObject } from 'react';
 import type { PageItem } from '../sidebar';
-import { ChatWorkspace } from './chat-workspace';
+import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';

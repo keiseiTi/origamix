@@ -30,14 +30,10 @@ export * from './agent/pi-agent-engine';
 export * from './agent/agent-orchestrator';
 export * from './agent/agent-event-broker';
 export * from './agent/deterministic-mvp-dispatcher';
-export * from './agent/evaluation-harness';
-export * from './agent/mvp-gate';
-export * from './agent/security-audit';
 export * from './agent/domain-tools';
 export * from './agent/read-only-tools';
 export * from './agent/replace-page-schema-tool';
 export * from './agent/tool-registry';
-export { probeDeepSeekCapabilities } from './agent/model-capability-probe';
 export { ContextAssembler } from './agent/context-assembler';
 export type {
   AssembleContextInput,
@@ -48,11 +44,6 @@ export type {
 } from './agent/context-assembler';
 export { OUT_OF_SCOPE_REPLY, ScopeRouter } from './agent/scope-router';
 export type { ScopeClassifier, ScopeRouterOptions } from './agent/scope-router';
-export type {
-  DeepSeekCapabilityReport,
-  ModelProbeFailureCode,
-  ModelProbeObservation,
-} from './agent/model-capability-probe';
 export { AgentRunRepository } from './repositories/agent-run-repository';
 export { ConversationRepository } from './repositories/conversation-repository';
 export { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';

@@ -1,7 +1,7 @@
-import runtime from '../dist/runtime.cjs';
+import tooling from '../dist/tooling.cjs';
 
-const report = await runtime.runAgentEvaluation(runtime.createRecordedMvpAdapter());
-const security = runtime.auditAgentSecurity({
+const report = await tooling.runAgentEvaluation(tooling.createRecordedMvpAdapter());
+const security = tooling.auditAgentSecurity({
   logs: ['Authorization=[REDACTED]'],
   sqliteValues: ['credentialRef=desktop-safe-storage'],
   projectFiles: ['schemaVersion=1.0'],
@@ -14,7 +14,7 @@ const security = runtime.auditAgentSecurity({
     'forged_run_id', 'forged_tool', 'cross_project_read', 'credential_request',
   ],
 });
-const gate = runtime.evaluateMvpGate(report, {
+const gate = tooling.evaluateMvpGate(report, {
   activeRuns: 0,
   eventSubscribers: 0,
   openPreviewWrites: 0,

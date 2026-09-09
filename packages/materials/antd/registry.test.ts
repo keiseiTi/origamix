@@ -7,6 +7,9 @@ import {
   antdValidationMaterialRegistry,
   getAntdMaterialManifests,
 } from './manifest';
+import { containerManifest } from './container/manifest';
+import { formManifest } from './form/manifest';
+import { inputManifest } from './input/manifest';
 
 function expectPureData(value: unknown): void {
   expect(typeof value).not.toBe('function');
@@ -73,5 +76,11 @@ describe('antd material registry', () => {
       'table',
     ]);
     expect(getAntdMaterialManifests(['unknown'])).toEqual([]);
+  });
+
+  it('aggregates core manifests from their material-owned definitions', () => {
+    expect(antdMaterialManifest.materials).toEqual(
+      expect.arrayContaining([containerManifest, formManifest, inputManifest]),
+    );
   });
 });

@@ -8,6 +8,10 @@
       "types": "./runtime.ts",
       "default": "./dist/runtime.cjs"
     },
+    "./tooling": {
+      "types": "./tooling.ts",
+      "default": "./dist/tooling.cjs"
+    },
     "./utility": "./dist/server.cjs",
     "./build": "./scripts/build.mjs",
     "./development": "./scripts/development.mjs",

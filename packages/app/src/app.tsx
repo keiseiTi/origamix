@@ -9,17 +9,17 @@ import {
   type UserProfile,
 } from './components/sidebar';
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
-import { SettingsPage } from './components/settings-page';
+import { SettingsPage } from './components/settings';
 import { Workspace } from './components/workspace';
 import { PageTabs } from './components/workspace/page-tabs';
 import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
-import { useViewSession } from './store/use-view-session';
+import { useViewSession } from './components/workspace/state/use-view-session';
 import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
 import { schemaService } from './services/schema';
-import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
-import { useProjectActions } from './hooks/use-project-actions';
+import { useWorkspaceTransitions } from './components/workspace/use-workspace-transitions';
+import { useProjectActions } from './components/workspace/use-project-actions';
 
 function App(): React.JSX.Element {
   const isMacDesktop = window.api?.platform === 'darwin';

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { WorkspaceMode } from '../components/workspace';
+import type { WorkspaceMode } from '../workspace-header';
 import { parseSession, restoreSidebar, type ViewSession } from './view-session';
 
 const storageKey = 'origamix:view-session';

@@ -11,7 +11,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
-- `agent/evaluation-harness.ts`, `agent/security-audit.ts`, `agent/mvp-gate.ts`: fixed Agent evaluation, privacy evidence and internal-release thresholds.
+- `tooling.ts`: separate export entry for Agent evaluation, capability probes, privacy evidence and internal-release thresholds.
 
 ## Service and security boundaries
 
