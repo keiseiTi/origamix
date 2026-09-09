@@ -3,7 +3,7 @@ import { EyeOff } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
-import { RuntimePreview } from '../editor/mods/runtime-preview';
+import { RuntimePreview } from '../../runtime/runtime-preview';
 
 export function PageWindow(): React.JSX.Element {
   const [searchParams] = useSearchParams();

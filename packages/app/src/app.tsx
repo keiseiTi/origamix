@@ -1,4 +1,4 @@
-import { Button, Spinner } from '@heroui/react';
+import { Button, Modal, Spinner } from '@heroui/react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -18,6 +18,8 @@ import { useViewSession } from './store/use-view-session';
 import { projectsService } from './services/projects';
 import { workspaceService } from './services/workspace';
 import { schemaService } from './services/schema';
+import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
+import { useProjectActions } from './hooks/use-project-actions';
 
 function App(): React.JSX.Element {
   const isMacDesktop = window.api?.platform === 'darwin';
@@ -51,7 +53,6 @@ function App(): React.JSX.Element {
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const editorRef = useRef<EditorHandle>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const transitionPending = useRef(false);
   const previousPreviewMode = useRef<Record<string, Exclude<WorkspaceMode, 'preview'>>>({});
   const initialWorkspaceSession = useRef({
     activeProjectId,
@@ -60,7 +61,6 @@ function App(): React.JSX.Element {
     pageModes,
     pageDrafts,
   });
-  const [transitionError, setTransitionError] = useState<string | null>(null);
   const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const selectedPage = projects
     .flatMap((project) => project.pages)
@@ -70,9 +70,10 @@ function App(): React.JSX.Element {
   );
   const sidebarVisible = !sidebarCollapsed || sidebarPeek;
 
-  const flushEditor = async (): Promise<void> => {
+  const flushEditor = useCallback(async (): Promise<void> => {
     await editorRef.current?.flush();
-  };
+  }, []);
+  const { transition, transitionError, setTransitionError } = useWorkspaceTransitions(flushEditor);
   const syncPreviewBounds = useCallback(async (): Promise<void> => {
     const element = workspaceRef.current;
     if (!element || !window.api?.window?.setPreviewBounds) return;
@@ -84,19 +85,6 @@ function App(): React.JSX.Element {
       height: Math.max(1, Math.round(bounds.height)),
     });
   }, []);
-  const transition = async (action: () => void | Promise<void>): Promise<void> => {
-    if (transitionPending.current) return;
-    transitionPending.current = true;
-    setTransitionError(null);
-    try {
-      await flushEditor();
-      await action();
-    } catch (error) {
-      setTransitionError(error instanceof Error ? error.message : '保存失败，请重试');
-    } finally {
-      transitionPending.current = false;
-    }
-  };
   const changeMode = async (mode: WorkspaceMode): Promise<void> =>
     transition(() => {
       if (mode === 'edit' && activeTab !== 'edit') {
@@ -317,34 +305,19 @@ function App(): React.JSX.Element {
       selectPage(page.id);
     });
   };
-
-  const openProject = async (): Promise<void> => {
-    await flushEditor();
-    const grant = await window.api?.dialog?.chooseExistingProject?.();
-    if (!grant) return;
-    const project = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
-    const pages = await projectsService.pages(project.id);
-    const result = {
-      project: {
-        id: project.id,
-        name: project.name,
-        path: project.path,
-        pages: pages.map((page) => ({ id: page.id, name: page.name, fileName: page.slug })),
-      },
-    };
-    setProjects((current) => [
-      ...current.filter((project) => project.path !== result.project.path),
-      result.project,
-    ]);
-    updateWorkspace({
-      activeProjectId: result.project.id,
-      activePageId: result.project.pages[0]?.id ?? null,
-      openPageIds: result.project.pages[0] ? [result.project.pages[0].id] : [],
-      pageModes: {},
-      pageDrafts: {},
-    });
-    setActiveTab('chat');
-  };
+  const projectActions = useProjectActions({
+    projects,
+    setProjects,
+    selectedPageId,
+    openPageIds,
+    pageModes,
+    pageDrafts,
+    updateWorkspace,
+    setActiveTab,
+    flushEditor,
+    onPageAdded: addPage,
+    onError: setTransitionError,
+  });
 
   const sidebar = (
     <Sidebar
@@ -363,11 +336,18 @@ function App(): React.JSX.Element {
       }
       onProjectCreated={(project) => setProjects((current) => [...current, project])}
       onOpenProject={() =>
-        void openProject().catch((error: unknown) =>
-          setTransitionError(error instanceof Error ? error.message : '打开失败'),
-        )
+        void projectActions
+          .openProject()
+          .catch((error: unknown) =>
+            setTransitionError(error instanceof Error ? error.message : '打开失败'),
+          )
       }
       onPageCreated={addPage}
+      onRenameProject={projectActions.renameProject}
+      onDeleteProject={projectActions.deleteProject}
+      onRenamePage={projectActions.renamePage}
+      onDeletePage={projectActions.deletePage}
+      onDuplicatePage={projectActions.duplicatePage}
       onSelectPage={(pageId) =>
         void transition(() => {
           selectPage(pageId);
@@ -497,6 +477,46 @@ function App(): React.JSX.Element {
         onClose={() => setIsHomeProjectModalOpen(false)}
         onCreated={(project) => setProjects((current) => [...current, project])}
       />
+      <Modal
+        isOpen={projectActions.pendingInitialization !== null}
+        onOpenChange={(open) => !open && projectActions.setPendingInitialization(null)}
+      >
+        <Modal.Backdrop>
+          <Modal.Container>
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading>初始化项目</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className='grid gap-3'>
+                <p className='text-sm text-zinc-700 dark:text-zinc-300'>
+                  选择的目录尚未初始化为 Origamix 项目。是否在该目录中建立项目索引？
+                </p>
+                <p className='break-all text-xs text-zinc-400 dark:text-zinc-500'>
+                  {projectActions.pendingInitialization?.displayPath}
+                </p>
+                <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                  将写入 Origamix 项目清单和页面 registry，不会删除目录中的现有文件。
+                </p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button
+                  variant='tertiary'
+                  onPress={() => projectActions.setPendingInitialization(null)}
+                >
+                  取消
+                </Button>
+                <Button
+                  isDisabled={projectActions.initializing}
+                  onPress={() => void projectActions.initializePendingProject()}
+                >
+                  {projectActions.initializing ? '初始化中…' : '初始化并打开'}
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </main>
   );
 }

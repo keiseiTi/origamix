@@ -9,7 +9,9 @@ import { WorkspaceRepository } from '../../repositories/workspace-repository';
 import { AgentRunService } from '../../services/agent-run-service';
 import { ConversationService } from '../../services/conversation-service';
 import { ProjectService } from '../../services/project-service';
+import type { AgentApplicationService } from '../../services/agent-application-service';
 import { createHttpServer } from './server';
+import type { CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
 
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 const auth = { authorization: 'Bearer desktop-token', 'x-origamix-service': 'service-instance' };
@@ -59,13 +61,51 @@ function setup() {
   const runService = new AgentRunService(runs);
   const events = new AgentEventBroker();
   const dispatch = vi.fn();
+  const application = {
+    start: vi.fn(async (request: CreateAgentRunRequest) => {
+      const started = conversationService.startRun({
+        ...request,
+        modelRef: 'fake/test',
+        mode: 'page_modify',
+        budget: {
+          maxModelCalls: 1,
+          maxToolCalls: 1,
+          maxOutputTokens: 1_000,
+          maxDurationMs: 1_000,
+          maxSchemaBytes: 10_000,
+          maxRepairAttempts: 0,
+        },
+        promptVersion: '1',
+        policyVersion: '1',
+        toolsetVersion: '1',
+        materialManifestVersion: 'test',
+      });
+      if (started.created) {
+        events.publish({
+          type: 'run.queued',
+          runId: started.run.id,
+          pageId: started.run.pageId,
+          requestId: started.run.clientRequestId,
+          payload: { status: started.run.status },
+        });
+        dispatch();
+      }
+      return {
+        run: started.run,
+        conversationId: started.conversation.id,
+        userMessageId: started.message.messageId,
+      };
+    }),
+    get: (runId: string) => runService.get(runId),
+    cancel: (runId: string) => runService.cancel(runId),
+  } as unknown as AgentApplicationService;
   const server = createHttpServer({
     desktopToken: 'desktop-token',
     serviceInstanceId: 'service-instance',
     projects,
     workspace: new WorkspaceRepository(database),
     projectService: new ProjectService(projects, templatePath),
-    agent: { conversations: conversationService, runs: runService, events, dispatch },
+    agent: { conversations: conversationService, runs: runService, events, application },
   });
   return { database, server, events, dispatch };
 }

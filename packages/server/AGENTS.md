@@ -6,7 +6,8 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown.
 - `transport/http/server.ts`: authentication, validation and HTTP adaptation.
-- `services/project-service.ts`, `services/schema-service.ts`: project lifecycle and Schema/revision files.
+- `services/project-service.ts`: project use-case facade; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization.
+- `services/schema-service.ts`: Schema/revision files and the authoritative write pipeline.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.

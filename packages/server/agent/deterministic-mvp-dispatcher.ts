@@ -9,6 +9,7 @@ import type { ProjectRepository } from '../repositories/project-repository';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { commitSchema, getSchema } from '../services/schema-service';
 import type { AgentEventBroker } from './agent-event-broker';
+import { FakeAgentEngine, type AgentEngine } from './agent-engine';
 
 const textContent = (text: string): MessageContent => ({
   version: '1',
@@ -129,6 +130,50 @@ export function deterministicSchema(
   }
   structure[root] = children;
   return { ...schema, elements, layout: { ...schema.layout, structure } };
+}
+
+/** Deterministic test/MVP engine. It uses the same Orchestrator and Tool Registry as real models. */
+export function createDeterministicFakeAgentEngine(): AgentEngine {
+  return new FakeAgentEngine(async (request) => {
+    const contextMatch = request.systemPrompt.match(
+      /<ORIGAMIX_CONTEXT>([\s\S]*)<\/ORIGAMIX_CONTEXT>/u,
+    );
+    const context = contextMatch
+      ? (JSON.parse(contextMatch[1]!) as { schemaFragment?: string })
+      : undefined;
+    const schema = context?.schemaFragment
+      ? (JSON.parse(context.schemaFragment) as OrigamixPageSchema)
+      : undefined;
+    const replace = request.tools?.find((tool) => tool.name === 'replace_page_schema');
+    if (replace && schema) {
+      const runId = `run_${Date.now()}`;
+      const candidate = deterministicSchema(schema, request.prompt, runId);
+      await request.onEvent?.({
+        type: 'tool_start',
+        toolCallId: `tool_${runId}`,
+        toolName: replace.name,
+        input: { schema: candidate },
+      });
+      const result = await replace.execute(
+        { schema: candidate },
+        request.signal ?? new AbortController().signal,
+      );
+      await request.onEvent?.({
+        type: 'tool_end',
+        toolCallId: `tool_${runId}`,
+        toolName: replace.name,
+        result,
+        isError: false,
+      });
+      const text = 'Fake Engine 已生成并提交候选页面，请在编辑器中检查结果。';
+      await request.onEvent?.({ type: 'text_delta', delta: text });
+      return { text, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
+    }
+    const text =
+      '请描述目标字段、校验规则、表格列和交互行为；Agent 会基于可用物料生成并校验页面 Schema。当前真实模型与工具能力尚未启用。';
+    await request.onEvent?.({ type: 'text_delta', delta: text });
+    return { text, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
+  });
 }
 
 /** Temporary executable closure until the real model/tool capability matrix is approved. */

@@ -1,6 +1,7 @@
 import type { TSchema } from '@sinclair/typebox';
 
 export const MVP_MODEL_ID = 'deepseek/deepseek-v4-flash' as const;
+export const FAKE_MODEL_ID = 'fake/deterministic-mvp' as const;
 
 export type AgentEngineErrorCode =
   | 'MODEL_NOT_FOUND'
@@ -36,6 +37,15 @@ export interface AgentModelDefinition {
 }
 
 const models = new Map<string, AgentModelDefinition>([
+  [
+    FAKE_MODEL_ID,
+    {
+      id: FAKE_MODEL_ID,
+      provider: 'fake',
+      model: 'deterministic-mvp',
+      capabilities: { streaming: true, tools: true, abort: true },
+    },
+  ],
   [
     MVP_MODEL_ID,
     {

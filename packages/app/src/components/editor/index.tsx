@@ -8,21 +8,12 @@ import {
 } from '@tangramino/base-editor';
 import type { Schema } from '@tangramino/engine';
 import materialGroups from '@origamix/materials/antd/group';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { schemaService } from '../../services/schema';
+import { forwardRef, useImperativeHandle } from 'react';
 import { AttributePanel } from './mods/attribute-panel';
 import { DropIndicator, EditableElement, EditorOverlay } from './mods/canvas-tools';
 import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MaterialPanel, type MaterialGroup } from './mods/material-panel';
+import { useEditorSession } from './use-editor-session';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
@@ -75,115 +66,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   { projectId, pageId, readOnly = false },
   ref,
 ): React.JSX.Element {
-  const [initial, setInitial] = useState<{
-    schema: OrigamixPageSchema;
-    revisionId: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved');
-  const [error, setError] = useState<string | null>(null);
-  const draftRef = useRef<OrigamixPageSchema | null>(null);
-  const savedHashRef = useRef('');
-  const revisionRef = useRef('');
-  const pendingRef = useRef<Promise<void> | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const providerReadyRef = useRef(false);
+  const session = useEditorSession(projectId, pageId, readOnly);
+  const { initial, loading, status, error, flush, onChange, providerKey } = session;
 
-  useEffect(() => {
-    let active = true;
-    schemaService
-      .get(projectId, pageId)
-      .then((result) => {
-        if (!active) return;
-        const hash = JSON.stringify(result.schema);
-        draftRef.current = result.schema;
-        savedHashRef.current = hash;
-        revisionRef.current = result.revisionId;
-        setInitial(result);
-        setStatus('saved');
-      })
-      .catch((reason) => {
-        if (active) {
-          setError(reason instanceof Error ? reason.message : '无法读取 Schema');
-          setStatus('error');
-        }
-      })
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    };
-  }, [projectId, pageId]);
-
-  const commit = useCallback(async (): Promise<void> => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    while (true) {
-      if (pendingRef.current) await pendingRef.current;
-      const draft = draftRef.current;
-      const draftHash = draft ? JSON.stringify(draft) : '';
-      if (!draft || draftHash === savedHashRef.current) return;
-      if (readOnly) throw new Error('AI 正在修改当前页面，请等待本轮完成');
-      setStatus('saving');
-      setError(null);
-      const operation = schemaService
-        .replace(projectId, pageId, {
-          baseRevisionId: revisionRef.current,
-          schema: draft,
-        })
-        .then((result) => {
-          revisionRef.current = result.revisionId;
-          savedHashRef.current = JSON.stringify(result.schema);
-          setStatus(JSON.stringify(draftRef.current) === savedHashRef.current ? 'saved' : 'dirty');
-        })
-        .catch((reason) => {
-          setError(reason instanceof Error ? reason.message : '保存 Schema 失败');
-          setStatus('error');
-          throw reason;
-        })
-        .finally(() => {
-          pendingRef.current = null;
-        });
-      pendingRef.current = operation;
-      await operation;
-    }
-  }, [pageId, projectId, readOnly]);
-
-  useImperativeHandle(ref, () => ({ flush: commit }), [commit]);
-
-  const onChange = useCallback(
-    (schema: Schema): void => {
-      if (!providerReadyRef.current) return;
-      if (readOnly) return;
-      const next = schema as OrigamixPageSchema;
-      const nextHash = JSON.stringify(next);
-      draftRef.current = next;
-      if (nextHash === savedHashRef.current) {
-        setStatus('saved');
-        return;
-      }
-      setStatus('dirty');
-      setError(null);
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => void commit().catch(() => undefined), 700);
-    },
-    [commit, readOnly],
-  );
-
-  useEffect(() => {
-    if (!initial) return;
-    const timer = window.setTimeout(() => {
-      providerReadyRef.current = true;
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [initial]);
-
-  const providerKey = useMemo(
-    () => (initial ? `${projectId}:${pageId}:${initial.revisionId}` : ''),
-    [initial, pageId, projectId],
-  );
+  useImperativeHandle(ref, () => ({ flush }), [flush]);
 
   if (loading) {
     return (

@@ -102,6 +102,16 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE removed_pages (
+        project_id TEXT NOT NULL, page_id TEXT NOT NULL, removed_at TEXT NOT NULL,
+        PRIMARY KEY(project_id, page_id)
+      );
+      CREATE INDEX idx_removed_pages_project ON removed_pages(project_id, removed_at);
+    `,
+  },
 ];
 
 export function assertMigrationSafety(sql: string): void {

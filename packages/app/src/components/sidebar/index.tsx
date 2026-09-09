@@ -3,6 +3,9 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  Copy,
+  Pencil,
+  Trash2,
   MessageSquareText,
   Plus,
   Settings,
@@ -11,6 +14,7 @@ import {
 import { useState } from 'react';
 import { CreatePageModal } from './mod/create-page-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
+import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 
 export type AppTheme = 'light' | 'dark';
 
@@ -45,6 +49,11 @@ interface SidebarProps {
   onOpenProject: () => void;
   onPageCreated: (projectId: string, page: PageItem) => void;
   onSelectPage: (pageId: string) => void;
+  onRenameProject: (projectId: string, name: string) => Promise<void>;
+  onDeleteProject: (projectId: string) => Promise<void>;
+  onRenamePage: (projectId: string, pageId: string, name: string) => Promise<void>;
+  onDeletePage: (projectId: string, pageId: string) => Promise<void>;
+  onDuplicatePage: (projectId: string, pageId: string) => Promise<void>;
   supportsNativeProjectDirectories: boolean;
 }
 
@@ -61,10 +70,17 @@ export function Sidebar({
   onOpenProject,
   onPageCreated,
   onSelectPage,
+  onRenameProject,
+  onDeleteProject,
+  onRenamePage,
+  onDeletePage,
+  onDuplicatePage,
   supportsNativeProjectDirectories,
 }: SidebarProps): React.JSX.Element {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
+  const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const pageProject = projects.find((project) => project.id === pageProjectId) ?? null;
 
   const keepSidebarOpen = (): void => {
@@ -147,6 +163,38 @@ export function Sidebar({
                   isIconOnly
                   size='sm'
                   variant='ghost'
+                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
+                  aria-label={`修改项目 ${project.name} 名称`}
+                  onPress={() =>
+                    setLifecycleTarget({
+                      kind: 'rename-project',
+                      id: project.id,
+                      name: project.name,
+                    })
+                  }
+                >
+                  <Pencil size={13} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size='sm'
+                  variant='ghost'
+                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 text-danger'
+                  aria-label={`删除项目 ${project.name}`}
+                  onPress={() =>
+                    setLifecycleTarget({
+                      kind: 'delete-project',
+                      id: project.id,
+                      name: project.name,
+                    })
+                  }
+                >
+                  <Trash2 size={13} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size='sm'
+                  variant='ghost'
                   className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
                   onPress={() => openPageModal(project.id)}
                   aria-label={`在 ${project.name} 中新建页面`}
@@ -155,19 +203,68 @@ export function Sidebar({
                 </Button>
               </div>
               {project.pages.map((page) => (
-                <Button
-                  key={page.id}
-                  variant='ghost'
-                  onPress={() => onSelectPage(page.id)}
-                  className={`ml-2.5 h-8.5 w-[calc(100%-0.625rem)] justify-start gap-2 px-4 text-left ${
-                    selectedPageId === page.id
-                      ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                      : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
-                  }`}
-                >
-                  <MessageSquareText size={13} />
-                  <span className='truncate'>{page.name}</span>
-                </Button>
+                <div key={page.id} className='group flex items-center'>
+                  <Button
+                    variant='ghost'
+                    onPress={() => onSelectPage(page.id)}
+                    className={`ml-2.5 h-8.5 min-w-0 flex-1 justify-start gap-2 px-4 text-left ${
+                      selectedPageId === page.id
+                        ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                        : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+                    }`}
+                  >
+                    <MessageSquareText size={13} />
+                    <span className='truncate'>{page.name}</span>
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size='sm'
+                    variant='ghost'
+                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
+                    aria-label={`复制页面 ${page.name}`}
+                    onPress={() =>
+                      void onDuplicatePage(project.id, page.id).catch((reason: unknown) =>
+                        setActionError(reason instanceof Error ? reason.message : '复制页面失败'),
+                      )
+                    }
+                  >
+                    <Copy size={12} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size='sm'
+                    variant='ghost'
+                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
+                    aria-label={`修改页面 ${page.name} 名称`}
+                    onPress={() =>
+                      setLifecycleTarget({
+                        kind: 'rename-page',
+                        projectId: project.id,
+                        id: page.id,
+                        name: page.name,
+                      })
+                    }
+                  >
+                    <Pencil size={12} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size='sm'
+                    variant='ghost'
+                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 text-danger'
+                    aria-label={`删除页面 ${page.name}`}
+                    onPress={() =>
+                      setLifecycleTarget({
+                        kind: 'delete-page',
+                        projectId: project.id,
+                        id: page.id,
+                        name: page.name,
+                      })
+                    }
+                  >
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
               ))}
             </section>
           ))}
@@ -198,6 +295,29 @@ export function Sidebar({
         onClose={() => setPageProjectId(null)}
         onCreated={onPageCreated}
       />
+      <LifecycleModal
+        key={lifecycleTarget ? `${lifecycleTarget.kind}:${lifecycleTarget.id}` : 'closed'}
+        target={lifecycleTarget}
+        onClose={() => setLifecycleTarget(null)}
+        onConfirm={async (target, name) => {
+          if (target.kind === 'rename-project') await onRenameProject(target.id, name!);
+          else if (target.kind === 'delete-project') await onDeleteProject(target.id);
+          else if (target.kind === 'rename-page')
+            await onRenamePage(target.projectId, target.id, name!);
+          else await onDeletePage(target.projectId, target.id);
+        }}
+      />
+      {actionError && (
+        <div
+          role='alert'
+          className='fixed bottom-4 left-4 z-50 rounded-lg bg-danger p-3 text-sm text-danger-foreground'
+        >
+          {actionError}
+          <Button size='sm' variant='ghost' onPress={() => setActionError(null)}>
+            关闭
+          </Button>
+        </div>
+      )}
     </>
   );
 }

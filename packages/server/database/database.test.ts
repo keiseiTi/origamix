@@ -33,6 +33,7 @@ describe('ApplicationDatabase', () => {
         'agent_runs',
         'runtime_diagnostics',
         'page_runtime_state',
+        'removed_pages',
       ]),
     );
     const workspace = new WorkspaceRepository(database);
@@ -87,7 +88,7 @@ describe('ApplicationDatabase', () => {
     const reopened = new ApplicationDatabase(path);
     expect(
       reopened.connection.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get(),
-    ).toMatchObject({ value: '3' });
+    ).toMatchObject({ value: '4' });
     reopened.close();
   });
 });

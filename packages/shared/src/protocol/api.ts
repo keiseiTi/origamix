@@ -50,11 +50,30 @@ export const CreateProjectSchema = Type.Object({
   directoryGrantId: Type.String({ minLength: 1 }),
 });
 
-export const OpenProjectSchema = Type.Object({ directoryGrantId: Type.String({ minLength: 1 }) });
+export const OpenProjectSchema = Type.Object({
+  directoryGrantId: Type.String({ minLength: 1 }),
+  initializeIfNeeded: Type.Optional(Type.Boolean()),
+});
+
+export const RenameProjectSchema = Type.Object({
+  name: Type.String({ minLength: 1, maxLength: 80 }),
+});
+
+export const DeleteDesktopRecordSchema = Type.Object({
+  scope: Type.Literal('desktop_record'),
+});
 
 export const CreatePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
+});
+
+export const RenamePageSchema = Type.Object({
+  name: Type.String({ minLength: 1, maxLength: 80 }),
+});
+
+export const DuplicatePageSchema = Type.Object({
+  name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
 });
 
 export const WorkspacePatchSchema = Type.Partial(
@@ -81,6 +100,10 @@ export interface ProjectRecord {
   createdAt: string;
   lastOpenedAt: string;
 }
+
+export type OpenProjectResult =
+  | { status: 'opened'; project: ProjectRecord }
+  | { status: 'initialization_required'; displayPath: string };
 
 export interface PageRecord {
   id: string;

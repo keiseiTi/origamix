@@ -6,8 +6,8 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/app.tsx`, `src/components/`: React workbench and interactions.
 - `src/services/request.ts` and sibling services: typed HTTP requests and errors.
-- `src/store/workspace-store.ts`, `src/store/view-session.ts`: workspace projections and editing sessions.
-- `src/components/editor/`, `src/components/workspace/page-window.tsx`: editing and embedded read-only preview surfaces.
+- `src/store/view-session.ts`, `src/store/use-view-session.ts`: window-scoped workspace projections and editing sessions.
+- `src/components/editor/`: editing UI and its save session; `src/runtime/` and `src/components/workspace/page-window.tsx`: reusable runtime rendering and the read-only preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
 ## Runtime boundaries

@@ -10,9 +10,19 @@ import { ProjectService } from './services/project-service';
 import { getSchema } from './services/schema-service';
 import { createHttpServer } from './transport/http/server';
 import { AgentEventBroker } from './agent/agent-event-broker';
-import { DeterministicMvpDispatcher } from './agent/deterministic-mvp-dispatcher';
+import { createDeterministicFakeAgentEngine } from './agent/deterministic-mvp-dispatcher';
 import { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
 import { RuntimeDiagnosticService } from './services/runtime-diagnostic-service';
+import { AgentApplicationService } from './services/agent-application-service';
+import { AgentRunOrchestrator } from './agent/agent-orchestrator';
+import { ScopeRouter } from './agent/scope-router';
+import { ContextAssembler } from './agent/context-assembler';
+import { ProductDocsProvider } from './services/product-docs-provider';
+import { createReadOnlyAgentTools } from './agent/read-only-tools';
+import { createDomainAgentTools } from './agent/domain-tools';
+import { createReplacePageSchemaTool } from './agent/replace-page-schema-tool';
+import { createDefaultAgentToolEntries } from './agent/tool-registry';
+import { FAKE_MODEL_ID } from './agent/agent-engine';
 
 export { createMvpPiModels, mvpModelReference } from './agent/pi-runtime';
 export * from './agent/agent-engine';
@@ -47,6 +57,7 @@ export { AgentRunRepository } from './repositories/agent-run-repository';
 export { ConversationRepository } from './repositories/conversation-repository';
 export { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
 export { AgentRunService } from './services/agent-run-service';
+export { AgentApplicationService } from './services/agent-application-service';
 export { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
 export { ConversationService } from './services/conversation-service';
 export { DEFAULT_PRODUCT_DOCS, ProductDocsProvider } from './services/product-docs-provider';
@@ -87,13 +98,50 @@ export async function startServer(input: {
         .revisionId;
     },
   );
-  const dispatcher = new DeterministicMvpDispatcher({
-    conversations: conversationService,
-    runs: runService,
-    events: agentEvents,
-    projects,
-  });
   const projectService = new ProjectService(projects, input.templatePath);
+  const productDocs = new ProductDocsProvider();
+  const context = new ContextAssembler({ getCurrent: getSchema }, conversations, productDocs);
+  const orchestrator = new AgentRunOrchestrator({
+    projects,
+    runs,
+    conversations: conversationService,
+    runService,
+    router: new ScopeRouter(),
+    context,
+    engine: createDeterministicFakeAgentEngine(),
+    modelRef: FAKE_MODEL_ID,
+    createTools: (scope) =>
+      createDefaultAgentToolEntries([
+        ...createReadOnlyAgentTools(
+          {
+            runId: scope.runId,
+            projectId: scope.projectId,
+            pageId: scope.pageId,
+            revisionId: scope.baseRevisionId,
+          },
+          { projects },
+        ),
+        ...createDomainAgentTools(
+          { projectId: scope.projectId, pageId: scope.pageId },
+          { projects, docs: productDocs, diagnostics: runtimeDiagnostics },
+        ),
+        createReplacePageSchemaTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
+      ]),
+  });
+  const agentApplication = new AgentApplicationService({
+    conversations: conversationService,
+    runs,
+    runService,
+    events: agentEvents,
+    orchestrator,
+    getCurrentRevision: async (projectId, pageId) => {
+      const project = projects.getProject(projectId);
+      const page = projects.getPage(projectId, pageId);
+      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
+      return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
+        .revisionId;
+    },
+  });
   const server = createHttpServer({
     ...input,
     projects,
@@ -104,14 +152,7 @@ export async function startServer(input: {
       conversations: conversationService,
       runs: runService,
       events: agentEvents,
-      getCurrentRevision: async (projectId, pageId) => {
-        const project = projects.getProject(projectId);
-        const page = projects.getPage(projectId, pageId);
-        if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-        return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
-          .revisionId;
-      },
-      dispatch: (dispatchInput) => dispatcher.dispatch(dispatchInput),
+      application: agentApplication,
     },
   });
   try {

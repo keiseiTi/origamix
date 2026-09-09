@@ -1,25 +1,18 @@
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { copyTemplate } from '../template';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { nanoid } from 'nanoid';
-import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
+import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
-import { initializePageSchema, reconcilePageSchema } from './schema-service';
+import { getSchema, initializePageSchema, reconcilePageSchema } from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
 import { conflict, invalid, notFound } from '../errors';
+import { ProjectFormatService, type ProjectRegistryItem } from './project-format-service';
+import { ProjectLifecycleService } from './project-lifecycle-service';
+import { ProjectScaffoldService } from './project-scaffold-service';
 
-interface ProjectManifest {
-  projectId: string;
-  name: string;
-  code?: string;
-  projectFormatVersion?: string;
-}
-interface RegistryItem {
-  pageId: string;
-  name: string;
-  slug: string;
-}
+type RegistryItem = ProjectRegistryItem;
 
 const now = (): string => new Date().toISOString();
 const schemaTemplate = (): OrigamixPageSchema => ({
@@ -60,7 +53,9 @@ function routerSource(registry: RegistryItem[]): string {
 }
 
 export class ProjectService {
-  private readonly grants = new Map<string, string>();
+  private readonly lifecycle = new ProjectLifecycleService();
+  private readonly format = new ProjectFormatService();
+  private readonly scaffold = new ProjectScaffoldService();
 
   constructor(
     private readonly projects: ProjectRepository,
@@ -68,14 +63,15 @@ export class ProjectService {
   ) {}
 
   registerGrant(id: string, path: string): void {
-    this.grants.set(id, path);
+    this.lifecycle.registerGrant(id, path);
   }
 
   private consumeGrant(id: string): string {
-    const path = this.grants.get(id);
-    if (!path) throw invalid('目录授权已失效，请重新选择目录');
-    this.grants.delete(id);
-    return path;
+    return this.lifecycle.consumeGrant(id);
+  }
+
+  private resolveGrant(id: string): string {
+    return this.lifecycle.resolveGrant(id);
   }
 
   async createProject(input: {
@@ -151,11 +147,31 @@ export class ProjectService {
     return this.reconcile(path);
   }
 
-  async openProject(input: { directoryGrantId: string }): Promise<ProjectRecord> {
-    return this.reconcile(this.consumeGrant(input.directoryGrantId));
+  async openProject(input: {
+    directoryGrantId: string;
+    initializeIfNeeded?: boolean;
+  }): Promise<OpenProjectResult> {
+    const path = this.resolveGrant(input.directoryGrantId);
+    try {
+      await access(join(path, 'origamix.project.json'));
+    } catch {
+      if (!input.initializeIfNeeded)
+        return { status: 'initialization_required', displayPath: path };
+      await this.scaffold.initializeExistingDirectory(path);
+    }
+    this.consumeGrant(input.directoryGrantId);
+    return { status: 'opened', project: await this.reconcile(path) };
   }
 
   async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
+    return this.createPageWithSchema(projectId, input, schemaTemplate());
+  }
+
+  private async createPageWithSchema(
+    projectId: string,
+    input: { name: string; slug: string },
+    schema: OrigamixPageSchema,
+  ): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
     if (!project || project.status !== 'available') throw notFound('项目不存在或不可用');
     const name = input.name.trim();
@@ -173,7 +189,6 @@ export class ProjectService {
       join(pagePath, 'page.meta.json'),
       `${JSON.stringify({ pageId: id, name, slug: input.slug }, null, 2)}\n`,
     );
-    const schema = schemaTemplate();
     await atomicWrite(join(pagePath, 'schema.json'), `${JSON.stringify(schema, null, 2)}\n`);
     await atomicWrite(join(pagePath, 'index.tsx'), pageComponentSource(name, input.slug));
     await initializePageSchema({ projectPath: project.path, pageId: id, slug: input.slug }, schema);
@@ -193,37 +208,80 @@ export class ProjectService {
     return page;
   }
 
+  async renameProject(projectId: string, nameInput: string): Promise<ProjectRecord> {
+    const project = this.projects.getProject(projectId);
+    if (!project) throw notFound('项目不存在');
+    const name = nameInput.trim();
+    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    await this.format.renameProject(project.path, name);
+    return this.reconcile(project.path);
+  }
+
+  async renamePage(projectId: string, pageId: string, nameInput: string): Promise<PageRecord> {
+    const project = this.projects.getProject(projectId);
+    const page = this.projects.getPage(projectId, pageId);
+    if (!project || !page) throw notFound('页面不存在');
+    const name = nameInput.trim();
+    if (!name) throw invalid('页面名称无效');
+    await this.format.renamePage(project.path, page.relativePath, pageId, name);
+    await this.reconcile(project.path);
+    return this.projects.getPage(projectId, pageId)!;
+  }
+
+  async duplicatePage(
+    projectId: string,
+    pageId: string,
+    requestedName?: string,
+  ): Promise<PageRecord> {
+    const project = this.projects.getProject(projectId);
+    const page = this.projects.getPage(projectId, pageId);
+    if (!project || !page) throw notFound('页面不存在');
+    const current = await getSchema({
+      projectPath: project.path,
+      pageId: page.id,
+      slug: page.slug,
+    });
+    const pages = this.projects.listPages(projectId);
+    const baseSlug = `${page.slug}-copy`;
+    let slug = baseSlug;
+    let suffix = 2;
+    while (true) {
+      let directoryExists = false;
+      try {
+        await access(join(project.path, 'src', 'pages', slug));
+        directoryExists = true;
+      } catch {
+        // A missing directory is available for the copy.
+      }
+      if (!directoryExists && !pages.some((item) => item.slug === slug)) break;
+      slug = `${baseSlug}-${suffix++}`;
+    }
+    return this.createPageWithSchema(
+      projectId,
+      { name: requestedName?.trim() || `${page.name} 副本`, slug },
+      current.schema,
+    );
+  }
+
+  deletePage(projectId: string, pageId: string): void {
+    if (this.projects.hasActiveRuns(projectId, pageId))
+      throw conflict('页面 Agent 正在运行，请先停止后再删除');
+    if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
+  }
+
+  deleteProject(projectId: string): void {
+    if (this.projects.hasActiveRuns(projectId))
+      throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
+    if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+  }
+
   reconcile = async (path: string): Promise<ProjectRecord> => {
-    const manifestPath = join(path, 'origamix.project.json');
-    let manifest: ProjectManifest;
-    try {
-      manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ProjectManifest;
-    } catch (error) {
-      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
-      const directoryName = basename(path);
-      manifest = {
-        projectId: `project_${nanoid()}`,
-        name: directoryName,
-        code: directoryName,
-        projectFormatVersion: '1',
-      };
-      await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-    }
-    if (!manifest.projectId || !manifest.name) throw invalid('项目清单无效');
-    const registryPath = join(path, 'src', 'pages', 'registry.json');
-    let registry: RegistryItem[];
-    try {
-      registry = JSON.parse(await readFile(registryPath, 'utf8')) as RegistryItem[];
-    } catch (error) {
-      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error;
-      await mkdir(join(path, 'src', 'pages'), { recursive: true });
-      registry = [];
-      await atomicWrite(registryPath, '[]\n');
-    }
-    if (!Array.isArray(registry)) throw invalid('页面注册表无效');
+    const manifest = await this.format.readManifest(path);
+    const registry = await this.format.readRegistry(path);
     const timestamp = now();
     const pages: PageRecord[] = [];
     for (const item of registry) {
+      if (this.projects.isPageRemoved(manifest.projectId, item.pageId)) continue;
       const relativePath = join('src', 'pages', item.slug);
       const pagePath = join(path, relativePath);
       await reconcilePageSchema({ projectPath: path, pageId: item.pageId, slug: item.slug });

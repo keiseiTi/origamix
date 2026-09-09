@@ -72,6 +72,94 @@ export class ProjectRepository {
     ).map(pageRecord);
   }
 
+  isPageRemoved(projectId: string, pageId: string): boolean {
+    return Boolean(
+      this.database.connection
+        .prepare('SELECT 1 FROM removed_pages WHERE project_id = ? AND page_id = ?')
+        .get(projectId, pageId),
+    );
+  }
+
+  deletePageRecord(projectId: string, pageId: string): boolean {
+    const db = this.database.connection;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const page = db
+        .prepare('SELECT id FROM pages WHERE project_id = ? AND id = ?')
+        .get(projectId, pageId);
+      if (!page) {
+        db.exec('ROLLBACK');
+        return false;
+      }
+      db.prepare(
+        'INSERT OR REPLACE INTO removed_pages (project_id, page_id, removed_at) VALUES (?, ?, ?)',
+      ).run(projectId, pageId, new Date().toISOString());
+      db.prepare('DELETE FROM runtime_diagnostics WHERE project_id = ? AND page_id = ?').run(
+        projectId,
+        pageId,
+      );
+      db.prepare('DELETE FROM page_runtime_state WHERE project_id = ? AND page_id = ?').run(
+        projectId,
+        pageId,
+      );
+      db.prepare('DELETE FROM agent_runs WHERE project_id = ? AND page_id = ?').run(
+        projectId,
+        pageId,
+      );
+      db.prepare(
+        'DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = ? AND page_id = ?)',
+      ).run(projectId, pageId);
+      db.prepare('DELETE FROM conversations WHERE project_id = ? AND page_id = ?').run(
+        projectId,
+        pageId,
+      );
+      db.prepare('DELETE FROM pages WHERE project_id = ? AND id = ?').run(projectId, pageId);
+      db.exec('COMMIT');
+      return true;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  hasActiveRuns(projectId: string, pageId?: string): boolean {
+    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
+    const sql = `SELECT 1 FROM agent_runs WHERE project_id = ?${
+      pageId ? ' AND page_id = ?' : ''
+    } AND status NOT IN (${terminal.map(() => '?').join(', ')}) LIMIT 1`;
+    return Boolean(
+      this.database.connection
+        .prepare(sql)
+        .get(projectId, ...(pageId ? [pageId] : []), ...terminal),
+    );
+  }
+
+  deleteProjectRecord(projectId: string): boolean {
+    const db = this.database.connection;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId)) {
+        db.exec('ROLLBACK');
+        return false;
+      }
+      db.prepare('DELETE FROM runtime_diagnostics WHERE project_id = ?').run(projectId);
+      db.prepare('DELETE FROM page_runtime_state WHERE project_id = ?').run(projectId);
+      db.prepare('DELETE FROM agent_runs WHERE project_id = ?').run(projectId);
+      db.prepare(
+        'DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = ?)',
+      ).run(projectId);
+      db.prepare('DELETE FROM conversations WHERE project_id = ?').run(projectId);
+      db.prepare('DELETE FROM removed_pages WHERE project_id = ?').run(projectId);
+      db.prepare('DELETE FROM pages WHERE project_id = ?').run(projectId);
+      db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
+      db.exec('COMMIT');
+      return true;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   reconcile(project: ProjectRecord, pages: PageRecord[]): void {
     const db = this.database.connection;
     db.exec('BEGIN IMMEDIATE');

@@ -350,7 +350,7 @@ describe('Agent Run state and recovery', () => {
     const version = reopened.connection
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string };
-    expect(version.value).toBe('3');
+    expect(version.value).toBe('4');
     reopened.close();
   });
 });

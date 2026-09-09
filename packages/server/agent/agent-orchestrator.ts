@@ -3,6 +3,7 @@ import type { AgentRunRepository } from '../repositories/agent-run-repository';
 import type { ProjectRepository } from '../repositories/project-repository';
 import type { AgentRunService } from '../services/agent-run-service';
 import type { ConversationService } from '../services/conversation-service';
+import type { StartConversationRunInput } from '../services/conversation-service';
 import { AgentEngineError, type AgentEngine, type AgentEngineEvent } from './agent-engine';
 import type { ContextAssembler } from './context-assembler';
 import { OUT_OF_SCOPE_REPLY, type ScopeRouter } from './scope-router';
@@ -53,9 +54,10 @@ export interface AgentOrchestratorDependencies {
   }) => RegisteredAgentTool[];
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
   budget?: RunBudget;
+  modelRef?: string;
 }
 
-const DEFAULT_BUDGET: RunBudget = {
+export const DEFAULT_AGENT_RUN_BUDGET: RunBudget = {
   maxModelCalls: 6,
   maxToolCalls: 12,
   maxOutputTokens: 16_000,
@@ -77,15 +79,31 @@ export class AgentRunOrchestrator {
     const started = this.dependencies.conversations.startRun({
       ...input,
       content: textContent(input.message),
-      modelRef: 'deepseek/deepseek-v4-flash',
+      modelRef: this.dependencies.modelRef ?? 'deepseek/deepseek-v4-flash',
       mode: intent.mode,
-      budget: this.dependencies.budget ?? DEFAULT_BUDGET,
+      budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
       promptVersion: '1',
       policyVersion: '1',
       toolsetVersion: '1',
       materialManifestVersion: 'official-antd@1.0.0',
     });
+    return this.executePrepared(input, intent, started);
+  }
+
+  async executePrepared(
+    input: AgentOrchestratorInput,
+    intent: PageIntent,
+    started: ReturnType<ConversationService['startRun']>,
+  ): Promise<AgentOrchestratorResult> {
+    const project = this.dependencies.projects.getProject(input.projectId);
+    const page = this.dependencies.projects.getPage(input.projectId, input.pageId);
+    if (!project || !page) throw new Error('页面不存在或不属于当前项目');
     const runId = started.run.id;
+    const currentBeforeStart = this.dependencies.runs.get(runId);
+    if (currentBeforeStart?.status === 'cancelling') {
+      this.dependencies.runService.transition(runId, 'cancelled');
+      return { runId, mode: intent.mode, status: 'cancelled', text: '' };
+    }
     if (['completed', 'failed', 'cancelled'].includes(started.run.status)) {
       return {
         runId,
@@ -232,6 +250,24 @@ export class AgentRunOrchestrator {
     } finally {
       this.active.delete(runId);
     }
+  }
+
+  prepareRunInput(input: AgentOrchestratorInput, intent: PageIntent): StartConversationRunInput {
+    return {
+      ...input,
+      content: textContent(input.message),
+      modelRef: this.dependencies.modelRef ?? 'deepseek/deepseek-v4-flash',
+      mode: intent.mode,
+      budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
+      promptVersion: '1',
+      policyVersion: '1',
+      toolsetVersion: '1',
+      materialManifestVersion: 'official-antd@1.0.0',
+    };
+  }
+
+  route(message: string, pageId: string): Promise<PageIntent> {
+    return this.dependencies.router.route(message, pageId);
   }
 
   cancel(runId: string): void {

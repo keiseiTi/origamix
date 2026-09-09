@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -293,7 +293,17 @@ describe('local HTTP API', () => {
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_existing', directory);
 
-    const project = await service.openProject({ directoryGrantId: 'grant_existing' });
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    expect(pending.status).toBe('initialization_required');
+    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    const opened = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      initializeIfNeeded: true,
+    });
+    if (opened.status !== 'opened') throw new Error('expected opened project');
+    const project = opened.project;
     const manifest = JSON.parse(
       await readFile(join(directory, 'origamix.project.json'), 'utf8'),
     ) as { name: string; code: string };
@@ -301,6 +311,153 @@ describe('local HTTP API', () => {
     expect(manifest).toMatchObject({ name: basename(directory), code: basename(directory) });
     expect(project.name).toBe(basename(directory));
     expect(await readFile(join(directory, 'src', 'pages', 'registry.json'), 'utf8')).toBe('[]\n');
+    database.close();
+  });
+
+  it('renames and duplicates records while desktop deletion preserves project files', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-lifecycle-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const workspace = new WorkspaceRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '原项目',
+      code: 'lifecycle-project',
+      directoryGrantId: 'grant_project',
+    });
+    const originalPage = projects.listPages(project.id)[0]!;
+    const server = createHttpServer({
+      desktopToken: 'desktop-token',
+      serviceInstanceId: 'service-instance',
+      projects,
+      workspace,
+      projectService: service,
+    });
+    const headers = {
+      authorization: 'Bearer desktop-token',
+      'x-origamix-service': 'service-instance',
+      'x-origamix-project-id': project.id,
+    };
+    expect(
+      (
+        await server.inject({
+          method: 'PATCH',
+          url: `/api/v1/projects/${project.id}`,
+          headers,
+          payload: { name: '新项目名' },
+        })
+      ).json().data,
+    ).toMatchObject({ name: '新项目名' });
+    expect(
+      (
+        await server.inject({
+          method: 'PATCH',
+          url: `/api/v1/pages/${originalPage.id}`,
+          headers,
+          payload: { name: '新页面名' },
+        })
+      ).json().data,
+    ).toMatchObject({ name: '新页面名', slug: 'home' });
+    const duplicate = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${originalPage.id}/duplicate`,
+      headers,
+      payload: {},
+    });
+    expect(duplicate.statusCode).toBe(201);
+    const duplicatePage = duplicate.json().data as { id: string; slug: string };
+    expect(duplicatePage.slug).toBe('home-copy');
+    const duplicatePath = join(project.path, 'src', 'pages', duplicatePage.slug, 'schema.json');
+    await access(duplicatePath);
+    const timestamp = new Date().toISOString();
+    database.connection
+      .prepare(
+        'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'conversation_lifecycle',
+        project.id,
+        duplicatePage.id,
+        'test',
+        'active',
+        timestamp,
+        timestamp,
+      );
+    database.connection
+      .prepare(
+        'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'message_lifecycle',
+        'conversation_lifecycle',
+        'user',
+        '{"version":"1","blocks":[]}',
+        'completed',
+        0,
+        timestamp,
+        timestamp,
+      );
+    database.connection
+      .prepare(
+        'INSERT INTO agent_runs (id, project_id, page_id, conversation_id, model_ref, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'run_lifecycle',
+        project.id,
+        duplicatePage.id,
+        'conversation_lifecycle',
+        'fake/model',
+        'completed',
+        timestamp,
+      );
+    database.connection
+      .prepare(
+        'INSERT INTO runtime_diagnostics (project_id, page_id, revision_id, code, severity, stage, safe_message, observed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        project.id,
+        duplicatePage.id,
+        'revision_test',
+        'TEST',
+        'warning',
+        'render',
+        'test',
+        timestamp,
+      );
+    expect(
+      (
+        await server.inject({
+          method: 'DELETE',
+          url: `/api/v1/pages/${duplicatePage.id}`,
+          headers,
+          payload: { scope: 'desktop_record' },
+        })
+      ).json().data,
+    ).toEqual({ deleted: true });
+    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    for (const table of ['conversations', 'messages', 'agent_runs', 'runtime_diagnostics']) {
+      expect(
+        database.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get(),
+      ).toMatchObject({ count: 0 });
+    }
+    await access(duplicatePath);
+    await service.renameProject(project.id, '再次改名');
+    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    expect(
+      (
+        await server.inject({
+          method: 'DELETE',
+          url: `/api/v1/projects/${project.id}`,
+          headers,
+          payload: { scope: 'desktop_record' },
+        })
+      ).json().data,
+    ).toEqual({ deleted: true });
+    expect(projects.getProject(project.id)).toBeUndefined();
+    await access(join(project.path, 'origamix.project.json'));
+    await server.close();
     database.close();
   });
 });

@@ -4,7 +4,11 @@ import { nanoid } from 'nanoid';
 import {
   CreatePageSchema,
   CreateProjectSchema,
+  DeleteDesktopRecordSchema,
+  DuplicatePageSchema,
   OpenProjectSchema,
+  RenamePageSchema,
+  RenameProjectSchema,
   WorkspacePatchSchema,
   type ApiResult,
 } from '@origamix/shared/protocol/api';
@@ -21,7 +25,7 @@ import type { RuntimeRenderReport } from '@origamix/shared/protocol/agent';
 import type { ProjectRepository } from '../../repositories/project-repository';
 import type { WorkspaceRepository } from '../../repositories/workspace-repository';
 import type { ProjectService } from '../../services/project-service';
-import { ApiError, conflict, invalid, notFound } from '../../errors';
+import { ApiError, invalid, notFound } from '../../errors';
 import {
   CancelAgentRunRequestSchema,
   CreateAgentRunRequestSchema,
@@ -32,7 +36,7 @@ import type { ConversationService } from '../../services/conversation-service';
 import type { AgentRunService } from '../../services/agent-run-service';
 import type { AgentRunRecord } from '../../repositories/agent-run-repository';
 import type { AgentEventBroker } from '../../agent/agent-event-broker';
-import { deterministicRunMode, requestText } from '../../agent/deterministic-mvp-dispatcher';
+import type { AgentApplicationService } from '../../services/agent-application-service';
 
 function requestId(value: unknown): string {
   return typeof value === 'string' && value.length <= 100 ? value : nanoid();
@@ -63,6 +67,10 @@ function failure(error: unknown, fallbackStatus = 500): ApiResult<never> {
 type CreateProject = Static<typeof CreateProjectSchema>;
 type OpenProject = Static<typeof OpenProjectSchema>;
 type CreatePage = Static<typeof CreatePageSchema>;
+type RenameProject = Static<typeof RenameProjectSchema>;
+type RenamePage = Static<typeof RenamePageSchema>;
+type DuplicatePage = Static<typeof DuplicatePageSchema>;
+type DeleteDesktopRecord = Static<typeof DeleteDesktopRecordSchema>;
 type WorkspacePatch = Static<typeof WorkspacePatchSchema>;
 type WithoutChangeSetId<T> = T extends unknown ? Omit<T, 'changeSetId'> : never;
 type ChangeSetRequest = WithoutChangeSetId<ChangeSet>;
@@ -79,8 +87,7 @@ export function createHttpServer(input: {
     conversations: ConversationService;
     runs: AgentRunService;
     events: AgentEventBroker;
-    getCurrentRevision?: (projectId: string, pageId: string) => string | Promise<string>;
-    dispatch?: (input: { runId: string; request: CreateAgentRunRequest }) => void | Promise<void>;
+    application: AgentApplicationService;
   };
   runtimeDiagnostics?: RuntimeDiagnosticService;
 }): FastifyInstance {
@@ -108,7 +115,7 @@ export function createHttpServer(input: {
         'Access-Control-Allow-Headers',
         'Authorization, Content-Type, Last-Event-ID, X-Origamix-Service, X-Origamix-Project-Id, X-Origamix-Page-Id, X-Origamix-After-Sequence, X-Request-Id',
       );
-      reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+      reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     }
     if (request.method === 'OPTIONS') return reply.code(204).send();
     const authorization = request.headers.authorization;
@@ -175,6 +182,21 @@ export function createHttpServer(input: {
     { schema: { body: OpenProjectSchema } },
     route<OpenProject>((request) => input.projectService.openProject(request.body)),
   );
+  server.patch(
+    '/api/v1/projects/:projectId',
+    { schema: { body: RenameProjectSchema } },
+    route<RenameProject>((request) =>
+      input.projectService.renameProject(request.params.projectId, request.body.name),
+    ),
+  );
+  server.delete(
+    '/api/v1/projects/:projectId',
+    { schema: { body: DeleteDesktopRecordSchema } },
+    route<DeleteDesktopRecord>((request) => {
+      input.projectService.deleteProject(request.params.projectId);
+      return { deleted: true as const };
+    }),
+  );
   server.get(
     '/api/v1/projects/:projectId/pages',
     route<void>(async (request) => input.projects.listPages(request.params.projectId)),
@@ -186,6 +208,35 @@ export function createHttpServer(input: {
       (request) => input.projectService.createPage(request.params.projectId, request.body),
       201,
     ),
+  );
+  server.patch(
+    '/api/v1/pages/:pageId',
+    { schema: { body: RenamePageSchema } },
+    route<RenamePage>((request) => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      return input.projectService.renamePage(projectId, request.params.pageId, request.body.name);
+    }),
+  );
+  server.post(
+    '/api/v1/pages/:pageId/duplicate',
+    { schema: { body: DuplicatePageSchema } },
+    route<DuplicatePage>((request) => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      return input.projectService.duplicatePage(
+        projectId,
+        request.params.pageId,
+        request.body.name,
+      );
+    }, 201),
+  );
+  server.delete(
+    '/api/v1/pages/:pageId',
+    { schema: { body: DeleteDesktopRecordSchema } },
+    route<DeleteDesktopRecord>((request) => {
+      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+      input.projectService.deletePage(projectId, request.params.pageId);
+      return { deleted: true as const };
+    }),
   );
   server.get(
     '/api/v1/pages/:pageId/schema',
@@ -343,62 +394,12 @@ export function createHttpServer(input: {
       route<CreateAgentRunRequest>(async (request) => {
         const projectId = requireProjectHeader(request);
         if (projectId !== request.body.projectId) throw notFound('项目上下文不匹配');
-        const duplicate = agent.runs.findByClientRequest(
-          projectId,
-          request.body.pageId,
-          request.body.clientRequestId,
-        );
-        if (
-          !duplicate &&
-          agent.getCurrentRevision &&
-          (await agent.getCurrentRevision(projectId, request.body.pageId)) !==
-            request.body.baseRevisionId
-        ) {
-          throw conflict('页面版本已变化，请刷新后重试');
-        }
-        const started = agent.conversations.startRun({
-          projectId,
-          pageId: request.body.pageId,
-          conversationId: request.body.conversationId,
-          clientRequestId: request.body.clientRequestId,
-          baseRevisionId: request.body.baseRevisionId,
-          content: request.body.content,
-          retryOfRunId: request.body.retryOfRunId,
-          modelRef: 'fake/deferred-model',
-          mode: deterministicRunMode(requestText(request.body)),
-          budget: {
-            maxModelCalls: 6,
-            maxToolCalls: 12,
-            maxOutputTokens: 16_000,
-            maxDurationMs: 120_000,
-            maxSchemaBytes: 256 * 1024,
-            maxRepairAttempts: 1,
-          },
-          promptVersion: '1',
-          policyVersion: '1',
-          toolsetVersion: '1',
-          materialManifestVersion: 'official-antd@1.0.0',
-        });
-        if (started.created)
-          agent.events.publish({
-            type: 'run.queued',
-            runId: started.run.id,
-            pageId: started.run.pageId,
-            requestId: started.run.clientRequestId,
-            payload: { status: started.run.status },
-          });
-        if (started.created && started.run.status === 'queued' && agent.dispatch) {
-          void Promise.resolve(
-            agent.dispatch({ runId: started.run.id, request: request.body }),
-          ).catch(() => {
-            // Dispatch owns durable failure recording; HTTP already acknowledged the queued Run.
-          });
-        }
+        const started = await agent.application.start(request.body);
         return {
           version: '1',
           runId: started.run.id,
-          conversationId: started.conversation.id,
-          userMessageId: started.message.messageId,
+          conversationId: started.conversationId,
+          userMessageId: started.userMessageId,
           status: started.run.status,
         };
       }, 202),
@@ -416,18 +417,7 @@ export function createHttpServer(input: {
       route<{ version: '1'; requestId: string }>((request) => {
         const projectId = requireProjectHeader(request);
         const run = requireOwnedRun(projectId, request.params.runId);
-        const cancelled = agent.runs.cancel(run.id);
-        const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(
-          cancelled.status,
-        );
-        agent.events.publish({
-          type: terminal ? `run.${cancelled.status}` : 'run.cancelling',
-          runId: run.id,
-          pageId: run.pageId,
-          requestId: request.body.requestId,
-          ...(run.resultRevisionId ? { revisionId: run.resultRevisionId } : {}),
-          payload: { status: cancelled.status },
-        });
+        const cancelled = agent.application.cancel(run.id, request.body.requestId);
         return {
           version: '1',
           runId: run.id,
