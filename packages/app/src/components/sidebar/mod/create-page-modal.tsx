@@ -16,12 +16,14 @@ export function CreatePageModal({
 }: CreatePageModalProps): React.JSX.Element {
   const [name, setName] = useState('');
   const [fileName, setFileName] = useState('');
+  const [route, setRoute] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const close = (): void => {
     setName('');
     setFileName('');
+    setRoute('');
     setError(null);
     onClose();
   };
@@ -36,6 +38,7 @@ export function CreatePageModal({
       const page = await projectsService.createPage(project.id, {
         name: name.trim(),
         slug: fileName.trim(),
+        route: route.trim() || `/${fileName.trim()}`,
       });
       onCreated(project.id, { id: page.id, name: page.name, fileName: page.slug });
       close();
@@ -71,6 +74,15 @@ export function CreatePageModal({
                     placeholder='请输入'
                     autoFocus
                     required
+                  />
+                </TextField>
+                <TextField fullWidth>
+                  <Label>页面路由</Label>
+                  <Input
+                    name='route'
+                    value={route}
+                    onChange={(event) => setRoute(event.target.value)}
+                    placeholder={fileName.trim() ? `/${fileName.trim()}` : '/customer-list'}
                   />
                 </TextField>
                 <TextField fullWidth isRequired>

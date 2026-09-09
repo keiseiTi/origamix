@@ -27,6 +27,23 @@ function setup(responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSe
 }
 
 describe('PiAgentEngine', () => {
+  it('requires a configured provider credential instead of falling back to a fake model', async () => {
+    const faux = fauxProvider({ provider: 'deepseek' });
+    const models = createModels();
+    models.setProvider(faux.provider);
+    const engine = new PiAgentEngine({
+      resolveModel: () => faux.getModel(),
+      stream: models.streamSimple.bind(models),
+      getCredential: async () => undefined,
+    });
+    await expect(
+      engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: '请先在设置中配置 DeepSeek API Key',
+    });
+  });
+
   it('maps text stream, usage, and completion to product events', async () => {
     const { engine, getCredentialReads } = setup([fauxAssistantMessage('hello')]);
     const events: AgentEngineEvent[] = [];

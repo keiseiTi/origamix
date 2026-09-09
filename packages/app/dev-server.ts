@@ -27,6 +27,8 @@ export function localWebServer(): Plugin {
         serviceInstanceId,
         allowedOrigins: [...hosts].map((host) => `http://${host}`),
         projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR,
+        getModelCredential: async (provider) =>
+          provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY?.trim() : undefined,
       });
       vite.middlewares.use((request, response, next) => {
         if (!/^\/api\/v1(?:\/|$)/.test(request.url ?? '')) return next();

@@ -1,4 +1,5 @@
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { ApplyPageResult, PageApplyState } from '@origamix/shared/protocol/api';
 import { request } from './request';
 
 interface SchemaResult {
@@ -46,4 +47,19 @@ export const schemaService = {
     }),
   undo: (projectId: string, pageId: string): Promise<SchemaResult> =>
     request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' }),
+  applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
+    request<PageApplyState>(`/pages/${pageId}/apply-state`, { projectId }),
+  apply: (
+    projectId: string,
+    pageId: string,
+    expectedRevisionId: string,
+  ): Promise<ApplyPageResult> =>
+    request<ApplyPageResult>(`/pages/${pageId}/apply`, {
+      projectId,
+      method: 'POST',
+      body: JSON.stringify({
+        expectedRevisionId,
+        clientRequestId: crypto.randomUUID(),
+      }),
+    }),
 };

@@ -7,6 +7,7 @@ import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../repositories/project-repository';
 import { WorkspaceRepository } from '../../repositories/workspace-repository';
 import { ProjectService } from '../../services/project-service';
+import { ProjectApplyService } from '../../services/project-apply-service';
 import { createHttpServer } from './server';
 
 const directories: string[] = [];
@@ -228,6 +229,7 @@ describe('local HTTP API', () => {
       projects,
       workspace,
       projectService: service,
+      projectApplyService: new ProjectApplyService(projects),
     });
     const headers = {
       authorization: 'Bearer desktop-token',
@@ -277,10 +279,14 @@ describe('local HTTP API', () => {
     expect(page.slug).toBe('customer-list');
     expect(
       await readFile(join(project.path, 'src', 'pages', page.slug, 'index.tsx'), 'utf8'),
-    ).toContain('客户列表');
-    expect(await readFile(join(project.path, 'src', 'router.ts'), 'utf8')).toContain(
-      '/customer-list',
-    );
+    ).toContain('OrigamixPage');
+    expect(
+      JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
+    ).toMatchObject({
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [{ pageId: expect.any(String), route: '/customer-list' }],
+    });
     await server.close();
     database.close();
   });
@@ -310,7 +316,11 @@ describe('local HTTP API', () => {
 
     expect(manifest).toMatchObject({ name: basename(directory), code: basename(directory) });
     expect(project.name).toBe(basename(directory));
-    expect(await readFile(join(directory, 'src', 'pages', 'registry.json'), 'utf8')).toBe('[]\n');
+    expect(manifest).toMatchObject({
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [],
+    });
     database.close();
   });
 
@@ -327,7 +337,11 @@ describe('local HTTP API', () => {
       code: 'lifecycle-project',
       directoryGrantId: 'grant_project',
     });
-    const originalPage = projects.listPages(project.id)[0]!;
+    const originalPage = await service.createPage(project.id, {
+      name: '首页',
+      slug: 'home',
+      route: '/',
+    });
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',

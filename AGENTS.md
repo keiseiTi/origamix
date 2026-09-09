@@ -11,14 +11,15 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Repository map
 
-| Package guidance                          | Owns                                                      | Start reading                                                                       |
-| ----------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging               | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                           |
-| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
-| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests            | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`              |
-| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits | `packages/server/runtime.ts`, `packages/server/services/`                           |
-| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                 | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
-| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                       | `packages/template/package.json`, `packages/template/src/`                          |
+| Package guidance                          | Owns                                                        | Start reading                                                                       |
+| ----------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                 | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                           |
+| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                  | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
+| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests              | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`              |
+| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages | `packages/runtime/react.tsx`                                                        |
+| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits   | `packages/server/runtime.ts`, `packages/server/services/`                           |
+| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                   | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
+| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                         | `packages/template/package.json`, `packages/template/src/`                          |
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - [PRD and architecture](_doc/PRD-AND-ARCHITECTURE.md): product intent and phased scope.

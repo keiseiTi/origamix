@@ -7,10 +7,10 @@ import { AgentRunService } from './services/agent-run-service';
 import { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
 import { ConversationService } from './services/conversation-service';
 import { ProjectService } from './services/project-service';
+import { ProjectApplyService } from './services/project-apply-service';
 import { getSchema } from './services/schema-service';
 import { createHttpServer } from './transport/http/server';
 import { AgentEventBroker } from './agent/agent-event-broker';
-import { createDeterministicFakeAgentEngine } from './agent/deterministic-mvp-dispatcher';
 import { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
 import { RuntimeDiagnosticService } from './services/runtime-diagnostic-service';
 import { AgentApplicationService } from './services/agent-application-service';
@@ -22,7 +22,9 @@ import { createReadOnlyAgentTools } from './agent/read-only-tools';
 import { createDomainAgentTools } from './agent/domain-tools';
 import { createReplacePageSchemaTool } from './agent/replace-page-schema-tool';
 import { createDefaultAgentToolEntries } from './agent/tool-registry';
-import { FAKE_MODEL_ID } from './agent/agent-engine';
+import { MVP_MODEL_ID } from './agent/agent-engine';
+import { PiAgentEngine } from './agent/pi-agent-engine';
+import { createMvpPiModels } from './agent/pi-runtime';
 
 export { createMvpPiModels, mvpModelReference } from './agent/pi-runtime';
 export * from './agent/agent-engine';
@@ -69,6 +71,7 @@ export async function startServer(input: {
   serviceInstanceId: string;
   projectPath?: string;
   allowedOrigins?: readonly string[];
+  getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
 }) {
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
@@ -90,8 +93,10 @@ export async function startServer(input: {
     },
   );
   const projectService = new ProjectService(projects, input.templatePath);
+  const projectApplyService = new ProjectApplyService(projects);
   const productDocs = new ProductDocsProvider();
   const context = new ContextAssembler({ getCurrent: getSchema }, conversations, productDocs);
+  const pi = createMvpPiModels();
   const orchestrator = new AgentRunOrchestrator({
     projects,
     runs,
@@ -99,8 +104,15 @@ export async function startServer(input: {
     runService,
     router: new ScopeRouter(),
     context,
-    engine: createDeterministicFakeAgentEngine(),
-    modelRef: FAKE_MODEL_ID,
+    engine: new PiAgentEngine({
+      resolveModel: (provider, model) => pi.models.getModel(provider, model),
+      stream: pi.models.streamSimple.bind(pi.models),
+      getCredential: async (provider) => {
+        if (provider !== 'deepseek') return undefined;
+        return input.getModelCredential?.('deepseek');
+      },
+    }),
+    modelRef: MVP_MODEL_ID,
     createTools: (scope) =>
       createDefaultAgentToolEntries([
         ...createReadOnlyAgentTools(
@@ -138,6 +150,7 @@ export async function startServer(input: {
     projects,
     workspace,
     projectService,
+    projectApplyService,
     runtimeDiagnostics,
     agent: {
       conversations: conversationService,

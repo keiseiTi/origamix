@@ -77,6 +77,7 @@ app
     };
     const grant = await window.api.dialog.chooseProjectParent();
     const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project' });
+    await request('/projects/' + project.id + '/pages', { name: 'Home', slug: 'home', route: '/' });
     const pages = await request('/projects/' + project.id + '/pages');
     await request('/workspace', { theme: 'light' }, 'PATCH');
     await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });
@@ -102,7 +103,10 @@ app
       return response.json();
     })()`);
     assert.equal(recoveredProjects.success, true);
-    assert.equal(recoveredProjects.data.some((project) => project.id), true);
+    assert.equal(
+      recoveredProjects.data.some((project) => project.id),
+      true,
+    );
     const preview = await waitFor(() =>
       webContents
         .getAllWebContents()

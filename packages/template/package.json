@@ -10,12 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.4",
+    "@origamix/materials": "workspace:*",
+    "@origamix/runtime": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@tangramino/engine": "^0.1.3",
     "@tangramino/react": "^0.1.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.3.1",
+    "antd": "^6.0.0",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

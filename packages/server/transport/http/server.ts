@@ -3,6 +3,7 @@ import type { Static } from '@sinclair/typebox';
 import { nanoid } from 'nanoid';
 import {
   CreatePageSchema,
+  ApplyPageSchema,
   CreateProjectSchema,
   DeleteDesktopRecordSchema,
   DuplicatePageSchema,
@@ -25,6 +26,7 @@ import type { RuntimeRenderReport } from '@origamix/shared/protocol/agent';
 import type { ProjectRepository } from '../../repositories/project-repository';
 import type { WorkspaceRepository } from '../../repositories/workspace-repository';
 import type { ProjectService } from '../../services/project-service';
+import type { ProjectApplyService } from '../../services/project-apply-service';
 import { ApiError, invalid, notFound } from '../../errors';
 import {
   CancelAgentRunRequestSchema,
@@ -67,6 +69,7 @@ function failure(error: unknown, fallbackStatus = 500): ApiResult<never> {
 type CreateProject = Static<typeof CreateProjectSchema>;
 type OpenProject = Static<typeof OpenProjectSchema>;
 type CreatePage = Static<typeof CreatePageSchema>;
+type ApplyPage = Static<typeof ApplyPageSchema>;
 type RenameProject = Static<typeof RenameProjectSchema>;
 type RenamePage = Static<typeof RenamePageSchema>;
 type DuplicatePage = Static<typeof DuplicatePageSchema>;
@@ -82,6 +85,7 @@ export function createHttpServer(input: {
   projects: ProjectRepository;
   workspace: WorkspaceRepository;
   projectService: ProjectService;
+  projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];
   agent?: {
     conversations: ConversationService;
@@ -177,6 +181,23 @@ export function createHttpServer(input: {
     { schema: { body: CreateProjectSchema } },
     route<CreateProject>((request) => input.projectService.createProject(request.body), 201),
   );
+  if (input.projectApplyService) {
+    server.get(
+      '/api/v1/pages/:pageId/apply-state',
+      route<void>((request) => {
+        const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+        return input.projectApplyService!.getState(projectId, request.params.pageId);
+      }),
+    );
+    server.post(
+      '/api/v1/pages/:pageId/apply',
+      { schema: { body: ApplyPageSchema } },
+      route<ApplyPage>((request) => {
+        const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+        return input.projectApplyService!.apply(projectId, request.params.pageId, request.body);
+      }),
+    );
+  }
   server.post(
     '/api/v1/projects/open',
     { schema: { body: OpenProjectSchema } },

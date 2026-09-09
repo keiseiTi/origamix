@@ -1,0 +1,7 @@
+{
+  "projectId": "project_template",
+  "name": "Origamix Project",
+  "framework": "react",
+  "uiLibrary": "antd",
+  "pages": []
+}

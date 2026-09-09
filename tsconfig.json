@@ -4,6 +4,7 @@
     { "path": "./apps/desktop" },
     { "path": "./packages/app" },
     { "path": "./packages/materials" },
+    { "path": "./packages/runtime" },
     { "path": "./packages/server" },
     { "path": "./packages/shared" },
     { "path": "./packages/template" }

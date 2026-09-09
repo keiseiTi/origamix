@@ -27,14 +27,16 @@ async function createPageFixture(): Promise<{
   const slug = 'test-page';
   const pagePath = join(projectPath, 'src', 'pages', slug);
   await mkdir(pagePath, { recursive: true });
-  await writeFile(
-    join(pagePath, 'page.meta.json'),
-    JSON.stringify({ pageId, name: '测试页面', slug }),
-  );
   await writeFile(join(pagePath, 'schema.json'), JSON.stringify(schema));
   await writeFile(
     join(projectPath, 'origamix.project.json'),
-    JSON.stringify({ materialSets: [{ id: 'official-antd', version: '1.0.0' }] }),
+    JSON.stringify({
+      projectId: 'project_test',
+      name: 'Test',
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [{ pageId, name: '测试页面', slug, route: '/test-page' }],
+    }),
   );
   return { projectPath, pageId, slug };
 }

@@ -11,6 +11,8 @@ interface WorkspaceHeaderProps {
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
   onUndo: () => Promise<void>;
+  onApply: () => Promise<void>;
+  applyStatus: 'loading' | 'in_sync' | 'pending' | 'external_change' | 'error';
   undoDisabled?: boolean;
 }
 
@@ -21,10 +23,13 @@ export function WorkspaceHeader({
   onModeChange,
   onPreview,
   onUndo,
+  onApply,
+  applyStatus,
   undoDisabled = false,
 }: WorkspaceHeaderProps): React.JSX.Element {
   const [opening, setOpening] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const openWindow = async (): Promise<void> => {
     setOpening(true);
@@ -48,6 +53,17 @@ export function WorkspaceHeader({
       setUndoing(false);
     }
   };
+  const apply = async (): Promise<void> => {
+    setApplying(true);
+    setError(null);
+    try {
+      await onApply();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '应用到项目失败');
+    } finally {
+      setApplying(false);
+    }
+  };
   return (
     <header className='relative z-10 flex h-9 min-h-9 items-center justify-between gap-3 px-3 text-xs'>
       <div className='min-w-0 font-medium text-zinc-500 dark:text-zinc-400'>
@@ -56,11 +72,40 @@ export function WorkspaceHeader({
         </span>
       </div>
       <div className='flex shrink-0 items-center gap-1'>
+        <span
+          className={
+            applyStatus === 'external_change' || applyStatus === 'error'
+              ? 'text-danger'
+              : 'text-zinc-500 dark:text-zinc-400'
+          }
+        >
+          {applyStatus === 'loading'
+            ? '检查状态…'
+            : applyStatus === 'in_sync'
+              ? '与项目一致'
+              : applyStatus === 'pending'
+                ? '已保存 · 待应用'
+                : applyStatus === 'external_change'
+                  ? '项目文件已变化'
+                  : '状态不可用'}
+        </span>
         {error && (
           <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
             {error}
           </span>
         )}
+        <Tooltip>
+          <Button
+            size='sm'
+            variant='secondary'
+            className='h-7 min-h-7 px-2 text-xs'
+            isDisabled={opening || undoing || applying || undoDisabled || applyStatus !== 'pending'}
+            onPress={() => void apply()}
+          >
+            {applying ? '应用中…' : '应用到项目'}
+          </Button>
+          <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
+        </Tooltip>
         <Tooltip>
           <Button
             isIconOnly

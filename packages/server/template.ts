@@ -12,6 +12,7 @@ const rootFiles = new Set([
   'tsconfig.node.json',
   'README.md',
   '.gitignore',
+  'origamix.project.json',
 ]);
 const excluded = new Set(['node_modules', 'dist', '.git', '.cache', '.DS_Store']);
 

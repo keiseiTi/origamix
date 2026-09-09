@@ -38,7 +38,8 @@ export interface MaterialValidationRuntime {
 }
 
 interface ProjectDescriptor {
-  materialSets?: Array<{ id?: unknown; version?: unknown }>;
+  framework?: string;
+  uiLibrary?: string;
 }
 
 const ajv = new Ajv({ allErrors: true, strict: true });
@@ -320,9 +321,9 @@ export async function validateProjectPageAgainstMaterials(
   const descriptor = JSON.parse(
     await readFile(join(projectPath, 'origamix.project.json'), 'utf8'),
   ) as ProjectDescriptor;
-  const materialSets = (descriptor.materialSets ?? []).filter(
-    (set): set is { id: string; version: string } =>
-      typeof set.id === 'string' && typeof set.version === 'string',
-  );
+  const materialSets =
+    descriptor.framework === 'react' && descriptor.uiLibrary === 'antd'
+      ? [{ id: 'official-antd', version: '1.0.0' }]
+      : [];
   return validatePageAgainstMaterials(schema, materialSets, runtime);
 }

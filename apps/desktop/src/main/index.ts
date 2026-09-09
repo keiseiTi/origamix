@@ -94,23 +94,43 @@ async function spawnBackend(): Promise<BackendConnection> {
       reject(error);
     };
     const timeout = setTimeout(() => fail(new Error('本地服务启动超时')), 10_000);
-    backend.on('message', (message: { kind?: string; port?: number; message?: string }) => {
-      if (message.kind === 'error') {
-        fail(new Error(message.message ?? '本地服务启动失败'));
-        return;
-      }
-      if (message.kind !== 'ready' || !message.port) return;
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      backendConnection = {
-        baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
-        token,
-        serviceInstanceId,
-      };
-      console.info('[Origamix Server] 已就绪');
-      resolve(backendConnection);
-    });
+    backend.on(
+      'message',
+      (message: {
+        kind?: string;
+        port?: number;
+        message?: string;
+        requestId?: string;
+        provider?: string;
+      }) => {
+        if (message.kind === 'credential-request' && message.requestId) {
+          void readModelApiKey(message.provider).then((credential) => {
+            if (backendProcess !== backend) return;
+            backend.postMessage({
+              kind: 'credential-response',
+              requestId: message.requestId,
+              ...(credential ? { credential } : {}),
+            });
+          });
+          return;
+        }
+        if (message.kind === 'error') {
+          fail(new Error(message.message ?? '本地服务启动失败'));
+          return;
+        }
+        if (message.kind !== 'ready' || !message.port) return;
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        backendConnection = {
+          baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
+          token,
+          serviceInstanceId,
+        };
+        console.info('[Origamix Server] 已就绪');
+        resolve(backendConnection);
+      },
+    );
     backend.once('exit', (code) => {
       if (backendProcess === backend) backendProcess = undefined;
       if (backendConnection?.serviceInstanceId === serviceInstanceId) backendConnection = undefined;
@@ -233,6 +253,17 @@ async function readModelSettings(): Promise<StoredModelSettings> {
     };
   } catch {
     return { provider: 'deepseek', model: 'deepseek-v4-flash' };
+  }
+}
+
+async function readModelApiKey(provider?: string): Promise<string | undefined> {
+  if (provider !== 'deepseek' || !safeStorage.isEncryptionAvailable()) return undefined;
+  const settings = await readModelSettings();
+  if (!settings.encryptedApiKey) return undefined;
+  try {
+    return safeStorage.decryptString(Buffer.from(settings.encryptedApiKey, 'base64'));
+  } catch {
+    return undefined;
   }
 }
 

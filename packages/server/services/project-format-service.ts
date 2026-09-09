@@ -6,14 +6,16 @@ import { invalid, notFound } from '../errors';
 export interface ProjectManifest {
   projectId: string;
   name: string;
-  code?: string;
-  projectFormatVersion?: string;
+  framework: 'react';
+  uiLibrary: 'antd';
+  pages: ProjectPageItem[];
 }
 
-export interface ProjectRegistryItem {
+export interface ProjectPageItem {
   pageId: string;
   name: string;
   slug: string;
+  route: string;
 }
 
 async function atomicWrite(path: string, contents: string): Promise<void> {
@@ -35,22 +37,32 @@ export class ProjectFormatService {
       throw error;
     }
     if (!manifest.projectId || !manifest.name) throw invalid('项目清单无效');
+    if (manifest.framework !== 'react' || manifest.uiLibrary !== 'antd')
+      throw invalid('MVP 仅支持 React + Ant Design 项目');
+    if (!Array.isArray(manifest.pages)) throw invalid('项目页面清单无效');
+    const ids = new Set<string>();
+    const slugs = new Set<string>();
+    const routes = new Set<string>();
+    for (const page of manifest.pages) {
+      if (
+        !page.pageId ||
+        !page.name ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug) ||
+        !/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.route) ||
+        ids.has(page.pageId) ||
+        slugs.has(page.slug) ||
+        routes.has(page.route)
+      )
+        throw invalid('项目页面清单存在无效或重复的页面');
+      ids.add(page.pageId);
+      slugs.add(page.slug);
+      routes.add(page.route);
+    }
     return manifest;
   }
 
-  async readRegistry(projectPath: string): Promise<ProjectRegistryItem[]> {
-    let registry: ProjectRegistryItem[];
-    try {
-      registry = JSON.parse(
-        await readFile(join(projectPath, 'src', 'pages', 'registry.json'), 'utf8'),
-      ) as ProjectRegistryItem[];
-    } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-        throw invalid('项目缺少页面注册表');
-      throw error;
-    }
-    if (!Array.isArray(registry)) throw invalid('页面注册表无效');
-    return registry;
+  async readPages(projectPath: string): Promise<ProjectPageItem[]> {
+    return (await this.readManifest(projectPath)).pages;
   }
 
   async renameProject(projectPath: string, name: string): Promise<void> {
@@ -61,21 +73,13 @@ export class ProjectFormatService {
     );
   }
 
-  async renamePage(
-    projectPath: string,
-    relativePath: string,
-    pageId: string,
-    name: string,
-  ): Promise<void> {
-    const registry = await this.readRegistry(projectPath);
-    const next = registry.map((item) => (item.pageId === pageId ? { ...item, name } : item));
-    if (!next.some((item) => item.pageId === pageId)) throw notFound('页面注册信息不存在');
+  async renamePage(projectPath: string, pageId: string, name: string): Promise<void> {
+    const manifest = await this.readManifest(projectPath);
+    const pages = manifest.pages.map((item) => (item.pageId === pageId ? { ...item, name } : item));
+    if (!pages.some((item) => item.pageId === pageId)) throw notFound('页面注册信息不存在');
     await atomicWrite(
-      join(projectPath, 'src', 'pages', 'registry.json'),
-      `${JSON.stringify(next, null, 2)}\n`,
+      join(projectPath, 'origamix.project.json'),
+      `${JSON.stringify({ ...manifest, pages }, null, 2)}\n`,
     );
-    const metaPath = join(projectPath, relativePath, 'page.meta.json');
-    const meta = JSON.parse(await readFile(metaPath, 'utf8')) as ProjectRegistryItem;
-    await atomicWrite(metaPath, `${JSON.stringify({ ...meta, name }, null, 2)}\n`);
   }
 }

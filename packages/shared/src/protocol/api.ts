@@ -66,6 +66,12 @@ export const DeleteDesktopRecordSchema = Type.Object({
 export const CreatePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
+  route: Type.Optional(Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' })),
+});
+
+export const ApplyPageSchema = Type.Object({
+  expectedRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
+  clientRequestId: Type.String({ minLength: 1, maxLength: 100 }),
 });
 
 export const RenamePageSchema = Type.Object({
@@ -110,10 +116,28 @@ export interface PageRecord {
   projectId: string;
   name: string;
   slug: string;
+  route?: string;
   relativePath: string;
   status: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PageApplyState {
+  pageId: string;
+  workingRevisionId: string;
+  status: 'in_sync' | 'pending' | 'external_change';
+  workingSchemaHash: string;
+  targetSchemaHash: string;
+  baselineHash: string;
+}
+
+export interface ApplyPageResult {
+  pageId: string;
+  revisionId: string;
+  schemaHash: string;
+  appliedAt: string;
+  status: 'applied';
 }
 
 export interface WorkspaceRecord {

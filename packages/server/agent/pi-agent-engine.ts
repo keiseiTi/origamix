@@ -57,6 +57,9 @@ export class PiAgentEngine implements AgentEngine {
     if (request.tools?.length) requireModelCapability(definition, 'tools');
     const model = this.options.resolveModel(definition.provider, definition.model);
     if (!model) throw new AgentEngineError('MODEL_NOT_FOUND', '所选模型不可用');
+    const credential = await this.options.getCredential(definition.provider);
+    if (!credential)
+      throw new AgentEngineError('PROVIDER_ERROR', '请先在设置中配置 DeepSeek API Key');
 
     const controller = new AbortController();
     let timedOut = false;
@@ -80,7 +83,8 @@ export class PiAgentEngine implements AgentEngine {
         tools: request.tools?.map(adaptTool),
       },
       streamFn: this.options.stream,
-      getApiKey: (provider) => this.options.getCredential(provider),
+      getApiKey: async (provider) =>
+        provider === definition.provider ? credential : this.options.getCredential(provider),
       toolExecution: 'sequential',
     });
     const unsubscribe = agent.subscribe(async (event) => {

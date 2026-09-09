@@ -28,16 +28,18 @@ async function setup() {
   directories.push(projectPath);
   await mkdir(join(projectPath, 'src', 'pages', 'home'), { recursive: true });
   await writeFile(
-    join(projectPath, 'src', 'pages', 'home', 'page.meta.json'),
-    JSON.stringify({ pageId: 'page_home', name: 'Home', slug: 'home' }),
-  );
-  await writeFile(
     join(projectPath, 'src', 'pages', 'home', 'schema.json'),
     JSON.stringify(pageSchema()),
   );
   await writeFile(
     join(projectPath, 'origamix.project.json'),
-    JSON.stringify({ materialSets: [{ id: 'official-antd', version: '1.0.0' }] }),
+    JSON.stringify({
+      projectId: 'project_home',
+      name: 'Home',
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [{ pageId: 'page_home', name: 'Home', slug: 'home', route: '/' }],
+    }),
   );
   const pageRef = { projectPath, pageId: 'page_home', slug: 'home' };
   const initialRevisionId = await initializePageSchema(pageRef, pageSchema());

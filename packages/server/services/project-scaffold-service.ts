@@ -18,13 +18,14 @@ export class ProjectScaffoldService {
           projectId: `project_${nanoid()}`,
           name: directoryName,
           code: directoryName,
-          projectFormatVersion: '1',
+          framework: 'react',
+          uiLibrary: 'antd',
+          pages: [],
         },
         null,
         2,
       )}\n`,
     );
     await mkdir(join(path, 'src', 'pages'), { recursive: true });
-    await atomicWrite(join(path, 'src', 'pages', 'registry.json'), '[]\n');
   }
 }
