@@ -7,7 +7,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown.
 - `transport/http/server.ts`: authentication, validation and HTTP adaptation.
 - `services/project-service.ts`: project use-case facade; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization.
-- `services/schema-service.ts`: Schema/revision files and the authoritative write pipeline.
+- `services/schema-service.ts`: Working Schema/revision files and the authoritative edit pipeline. The future Project Apply service exclusively writes the real project's target `schema.json`.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
@@ -26,7 +26,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Persistence invariants
 
-- SQLite holds application records/indexes; project Schema and Revision files are authoritative page data. Keep Schema initialization, edits and undo in `services/schema-service.ts`.
+- SQLite holds application records/indexes; Working Schema and Revision files are authoritative editable page data. Keep initialization, edits and undo in `services/schema-service.ts`. Applied target Schema is a managed projection: saving, undoing or completing an Agent Run must not write it implicitly.
 - Normal edits validate ChangeSet, match page/base revision, validate candidates, create Revision and write atomically. Preserve valid data on rejection/failure.
 - A single-file rename does not make multiple files plus SQLite one transaction. Changes to this path need explicit recovery/concurrency tests; do not claim existing code is crash-safe solely because it uses atomic rename.
 - **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in migrations.** Keep `assertMigrationSafety` and tests effective; do not disable checks or hide equivalent relationships in triggers.

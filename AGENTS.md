@@ -30,7 +30,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Architecture invariants
 
-- Origamix is an AI-first, local-first Electron low-code product. Tangramino Schema in project files is the persistent page source of truth; Zustand holds projections and transient state, not a second database.
+- Origamix is an AI-first, local-first Electron low-code product. Working Schema/Revision is the sole editable page source of truth; the real project's target `schema.json` is a managed projection written only by the explicit Apply-to-Project pipeline. The current direct Schema write is transitional: do not add another writer. Zustand holds projections and transient state, not a second database.
 - User and Agent Schema edits must use the typed ChangeSet → validation → revision check → snapshot/atomic-write pipeline in Server. Initialization and undo stay in the same service ownership; never add another file-writing path in UI or Main.
 - SQLite belongs to Server. **Never add `FOREIGN KEY`, `REFERENCES`, or cascading database actions.** Services enforce relationships and deletion order through explicit checks, transactions and reconciliation.
 - Renderer business operations use typed HTTP APIs. IPC is limited to named desktop capabilities; never expose raw `ipcRenderer`, filesystem, shell or arbitrary-path operations. Validate inputs and caller authority at the privileged boundary.

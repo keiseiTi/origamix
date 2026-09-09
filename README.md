@@ -41,7 +41,7 @@ Web development first builds the Server, then starts a local backend through Vit
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Project selection, open tabs, the active tab, each tab's chat/edit mode and unsent chat drafts belong to the current UI window and are restored from `sessionStorage` after refresh. They are not persisted by the backend. Authoritative Schema still comes from the configured backend/project files.
+Project selection, open tabs, the active tab, each tab's chat/edit mode and unsent chat drafts belong to the current UI window and are restored from `sessionStorage` after refresh. They are not persisted by the backend. Current builds still edit project Schema files directly; the target workflow separates editable Working Revisions from the managed target `schema.json`, which changes only when the user chooses “应用到项目”. See `_doc/PROJECT-APPLY-ARCHITECTURE.md`.
 
 Desktop and browser hosts expose different capabilities:
 
