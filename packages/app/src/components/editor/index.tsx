@@ -8,12 +8,12 @@ import {
 } from '@tangramino/base-editor';
 import type { Schema } from '@tangramino/engine';
 import materialGroups from '@origamix/materials/antd/group';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle } from 'react';
 import { AttributePanel } from './mods/attribute-panel';
 import { DropIndicator, EditableElement, EditorOverlay } from './mods/canvas-tools';
 import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MaterialPanel, type MaterialGroup } from './mods/material-panel';
-import { useEditorSession } from './use-editor-session';
+import { useEditorSession, type EditorSaveStatus } from './use-editor-session';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
@@ -23,6 +23,7 @@ interface EditorProps {
   projectId: string;
   pageId: string;
   readOnly?: boolean;
+  onSaveStatusChange?: (status: EditorSaveStatus, error: string | null) => void;
 }
 
 const groups = materialGroups as MaterialGroup[];
@@ -63,11 +64,13 @@ function EditorCanvas(): React.JSX.Element {
 }
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
-  { projectId, pageId, readOnly = false },
+  { projectId, pageId, readOnly = false, onSaveStatusChange },
   ref,
 ): React.JSX.Element {
   const session = useEditorSession(projectId, pageId, readOnly);
   const { initial, loading, status, error, flush, onChange, providerKey } = session;
+
+  useEffect(() => onSaveStatusChange?.(status, error), [error, onSaveStatusChange, status]);
 
   useImperativeHandle(ref, () => ({ flush }), [flush]);
 

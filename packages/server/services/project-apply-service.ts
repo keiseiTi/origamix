@@ -10,6 +10,7 @@ import {
   applyWorkingSchemaOperation,
   getWorkingSchemaState,
   hashSchema,
+  reloadWorkingSchemaFromTarget,
   updateWorkingBaseline,
   type SchemaPageRef,
 } from './schema-service';
@@ -99,6 +100,12 @@ export class ProjectApplyService {
       targetSchemaHash,
       baselineHash: working.baselineHash,
     };
+  }
+
+  async reloadFromProject(projectId: string, pageId: string) {
+    const page = this.resolve(projectId, pageId);
+    const target = await this.readTarget(page);
+    return reloadWorkingSchemaFromTarget(page, target);
   }
 
   async apply(

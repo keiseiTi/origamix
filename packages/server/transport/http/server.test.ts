@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -353,6 +353,53 @@ describe('local HTTP API', () => {
       uiLibrary: 'antd',
       pages: [],
     });
+    await access(join(directory, 'src', 'router.ts'));
+    await access(join(directory, 'vite.config.ts'));
+    database.close();
+  });
+
+  it('discovers only standard Schema pages while initializing an existing React Vite project', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-react-'));
+    directories.push(directory);
+    await writeFile(
+      join(directory, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          react: '^19.0.0',
+          '@origamix/runtime': 'workspace:*',
+          '@origamix/materials': 'workspace:*',
+        },
+        devDependencies: { vite: '^8.0.0' },
+      }),
+    );
+    await mkdir(join(directory, 'src'), { recursive: true });
+    await writeFile(join(directory, 'src', 'router.ts'), 'export default [];');
+    const pagePath = join(directory, 'src', 'pages', 'customers');
+    await mkdir(pagePath, { recursive: true });
+    await writeFile(join(pagePath, 'index.tsx'), 'export default function Page() { return null; }');
+    await writeFile(
+      join(pagePath, 'schema.json'),
+      JSON.stringify({
+        elements: { element_root: { type: 'container', props: {} } },
+        layout: { root: 'element_root', structure: { element_root: [] } },
+        flows: {},
+        bindElements: [],
+        context: { globalVariables: [] },
+        extensions: { origamix: { schemaVersion: '1.0' } },
+      }),
+    );
+    const database = new ApplicationDatabase(join(directory, 'app.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_existing', directory);
+    const opened = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      initializeIfNeeded: true,
+    });
+    if (opened.status !== 'opened') throw new Error('expected opened project');
+    expect(projects.listPages(opened.project.id)).toEqual([
+      expect.objectContaining({ name: 'customers', slug: 'customers', route: '/customers' }),
+    ]);
     database.close();
   });
 

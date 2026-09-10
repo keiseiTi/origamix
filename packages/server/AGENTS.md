@@ -9,6 +9,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `services/project-service.ts`: project use-case facade and orchestration; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization. Keep generated source and target-file mechanics out of the facade as they are extracted.
 - `services/schema-service.ts`: authoritative edit pipeline and per-page serialization. Working/Revision persistence may be extracted behind a file store without creating another commit entry.
 - `services/project-apply-service.ts`: apply orchestration. Initial target creation and explicit apply must share one Target Schema Store; `ProjectService` must not retain a separate target `schema.json` writer.
+- `origamix.project.json.pages` is the project page standard. `pageId` is the stable identity; opening a project may rebuild the SQLite index from the manifest, but SQLite must never rewrite the manifest.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
@@ -30,6 +31,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - SQLite holds application records/indexes; Working Schema and Revision files are authoritative editable page data. Keep initialization, edits and undo in `services/schema-service.ts`. Applied target Schema is a managed projection: saving, undoing or completing an Agent Run must not write it implicitly.
 - Normal edits validate ChangeSet, match page/base revision, validate candidates, create Revision and write atomically. Preserve valid data on rejection/failure.
+- External target changes must not be imported during reconciliation. Reloading from the project is an explicit, confirmed operation that replaces the affected page's Working Schema; missing, moved or invalid manifest-owned files stop only that page's operation with an actionable error. Do not scan for a guessed replacement path, silently recreate files or overwrite user changes.
 - A single-file rename does not make multiple files plus SQLite one transaction. Changes to this path need explicit recovery/concurrency tests; do not claim existing code is crash-safe solely because it uses atomic rename.
 - **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in migrations.** Keep `assertMigrationSafety` and tests effective; do not disable checks or hide equivalent relationships in triggers.
 - Services enforce parent existence, ownership, deletion order and orphan handling. Use indexes, uniqueness constraints and SQL transactions for related database changes.

@@ -414,6 +414,28 @@ export async function synchronizeWorkingSchemaFromTarget(page: SchemaPageRef): P
   });
 }
 
+export async function reloadWorkingSchemaFromTarget(
+  page: SchemaPageRef,
+  schema: OrigamixPageSchema,
+): Promise<SchemaReadResult> {
+  return withSchemaPageQueue(page, async () => {
+    await reconcileUnlocked(page);
+    await validateWritableSchema(page, schema);
+    const current = await getSchemaUnlocked(page);
+    const updated = await finishSnapshot(
+      page,
+      createRevisionSnapshot(schema, { kind: 'user', actorId: 'system' }, current.revisionId),
+      {},
+    );
+    const working = await readWorking(page);
+    await writeJsonAtomically(workingFile(page), {
+      ...working,
+      baselineHash: hashSchema(schema),
+    });
+    return updated;
+  });
+}
+
 export async function hasValidRevision(page: SchemaPageRef, revisionId: string): Promise<boolean> {
   return withSchemaPageQueue(page, async () => {
     try {

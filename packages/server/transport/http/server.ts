@@ -197,6 +197,13 @@ export function createHttpServer(input: {
         return input.projectApplyService!.apply(projectId, request.params.pageId, request.body);
       }),
     );
+    server.post(
+      '/api/v1/pages/:pageId/reload-from-project',
+      route<void>((request) => {
+        const projectId = String(request.headers['x-origamix-project-id'] ?? '');
+        return input.projectApplyService!.reloadFromProject(projectId, request.params.pageId);
+      }),
+    );
   }
   server.post(
     '/api/v1/projects/open',

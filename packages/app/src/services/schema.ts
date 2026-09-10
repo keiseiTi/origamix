@@ -49,6 +49,11 @@ export const schemaService = {
     request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' }),
   applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
     request<PageApplyState>(`/pages/${pageId}/apply-state`, { projectId }),
+  reloadFromProject: (projectId: string, pageId: string): Promise<SchemaResult> =>
+    request<SchemaResult>(`/pages/${pageId}/reload-from-project`, {
+      projectId,
+      method: 'POST',
+    }),
   apply: (
     projectId: string,
     pageId: string,

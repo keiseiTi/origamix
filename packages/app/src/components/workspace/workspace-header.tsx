@@ -1,6 +1,7 @@
 import { Button, Tooltip } from '@heroui/react';
 import { useState } from 'react';
-import { Eye, SquarePen, MessageSquare, Undo2 } from 'lucide-react';
+import { Eye, SquarePen, MessageSquare, RefreshCw, Undo2 } from 'lucide-react';
+import type { EditorSaveStatus } from '../editor/use-editor-session';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
@@ -12,7 +13,9 @@ interface WorkspaceHeaderProps {
   onPreview: () => Promise<void>;
   onUndo: () => Promise<void>;
   onApply: () => Promise<void>;
-  applyStatus: 'loading' | 'in_sync' | 'pending' | 'external_change' | 'error';
+  onReloadFromProject: () => Promise<void>;
+  applyStatus: 'loading' | 'in_sync' | 'pending' | 'external_change' | 'result_pending' | 'error';
+  saveStatus: EditorSaveStatus;
   undoDisabled?: boolean;
 }
 
@@ -24,12 +27,15 @@ export function WorkspaceHeader({
   onPreview,
   onUndo,
   onApply,
+  onReloadFromProject,
   applyStatus,
+  saveStatus,
   undoDisabled = false,
 }: WorkspaceHeaderProps): React.JSX.Element {
   const [opening, setOpening] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const openWindow = async (): Promise<void> => {
     setOpening(true);
@@ -64,6 +70,18 @@ export function WorkspaceHeader({
       setApplying(false);
     }
   };
+  const reload = async (): Promise<void> => {
+    if (!window.confirm('重新读取项目内容会放弃当前未应用修改，是否继续？')) return;
+    setReloading(true);
+    setError(null);
+    try {
+      await onReloadFromProject();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '重新读取项目内容失败');
+    } finally {
+      setReloading(false);
+    }
+  };
   return (
     <header className='relative z-10 flex h-9 min-h-9 items-center justify-between gap-3 px-3 text-xs'>
       <div className='min-w-0 font-medium text-zinc-500 dark:text-zinc-400'>
@@ -79,15 +97,23 @@ export function WorkspaceHeader({
               : 'text-zinc-500 dark:text-zinc-400'
           }
         >
-          {applyStatus === 'loading'
-            ? '检查状态…'
-            : applyStatus === 'in_sync'
-              ? '与项目一致'
-              : applyStatus === 'pending'
-                ? '已保存 · 待应用'
-                : applyStatus === 'external_change'
-                  ? '项目文件已变化'
-                  : '状态不可用'}
+          {saveStatus === 'error'
+            ? '保存失败'
+            : saveStatus === 'saving'
+              ? '保存中…'
+              : saveStatus === 'dirty'
+                ? '待保存'
+                : applyStatus === 'loading'
+                  ? '检查状态…'
+                  : applyStatus === 'in_sync'
+                    ? '与项目一致'
+                    : applyStatus === 'pending'
+                      ? '已保存 · 待应用'
+                      : applyStatus === 'external_change'
+                        ? '项目文件已变化'
+                        : applyStatus === 'result_pending'
+                          ? '应用结果待确认'
+                          : '状态不可用'}
         </span>
         {error && (
           <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
@@ -99,13 +125,35 @@ export function WorkspaceHeader({
             size='sm'
             variant='secondary'
             className='h-7 min-h-7 px-2 text-xs'
-            isDisabled={opening || undoing || applying || undoDisabled || applyStatus !== 'pending'}
+            isDisabled={
+              opening ||
+              undoing ||
+              applying ||
+              undoDisabled ||
+              saveStatus !== 'saved' ||
+              applyStatus !== 'pending'
+            }
             onPress={() => void apply()}
           >
             {applying ? '应用中…' : '应用到项目'}
           </Button>
           <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
         </Tooltip>
+        {applyStatus === 'external_change' && (
+          <Tooltip>
+            <Button
+              isIconOnly
+              size='sm'
+              variant='ghost'
+              aria-label='重新读取项目内容'
+              isDisabled={reloading || applying || undoDisabled}
+              onPress={() => void reload()}
+            >
+              <RefreshCw size={15} />
+            </Button>
+            <Tooltip.Content placement='bottom'>放弃草稿并重新读取项目 Schema</Tooltip.Content>
+          </Tooltip>
+        )}
         <Tooltip>
           <Button
             isIconOnly

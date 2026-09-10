@@ -165,6 +165,29 @@ describe('ProjectApplyService', () => {
     fixture.database.close();
   });
 
+  it('reloads a valid external target only after an explicit request', async () => {
+    const fixture = await setup();
+    const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
+    const current = await getSchema({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
+    const external = structuredClone(current.schema);
+    external.elements.element_root!.props = { padding: 36 };
+    await writeFile(target, JSON.stringify(external));
+
+    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
+      'external_change',
+    );
+    const reloaded = await fixture.apply.reloadFromProject(fixture.project.id, fixture.page.id);
+    expect(reloaded.schema).toEqual(external);
+    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
+      'in_sync',
+    );
+    fixture.database.close();
+  });
+
   it('reports a moved or missing target schema instead of recreating it', async () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');

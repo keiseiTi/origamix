@@ -5,12 +5,7 @@ import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
-import {
-  getSchema,
-  initializePageSchema,
-  reconcilePageSchema,
-  synchronizeWorkingSchemaFromTarget,
-} from './schema-service';
+import { getSchema, initializePageSchema, reconcilePageSchema } from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
 import { conflict, invalid, notFound } from '../errors';
 import { ProjectFormatService } from './project-format-service';
@@ -63,13 +58,15 @@ function pageComponentSource(slug: string): string {
 export class ProjectService {
   private readonly lifecycle = new ProjectLifecycleService();
   private readonly format = new ProjectFormatService();
-  private readonly scaffold = new ProjectScaffoldService();
+  private readonly scaffold: ProjectScaffoldService;
 
   constructor(
     private readonly projects: ProjectRepository,
     private readonly templatePath: string,
     private readonly projectApply = new ProjectApplyService(projects),
-  ) {}
+  ) {
+    this.scaffold = new ProjectScaffoldService(templatePath);
+  }
 
   registerGrant(id: string, path: string): void {
     this.lifecycle.registerGrant(id, path);
@@ -111,7 +108,10 @@ export class ProjectService {
         join(temporaryPath, 'origamix.project.json'),
         `${JSON.stringify({ projectId: id, name, framework: 'react', uiLibrary: 'antd', pages: [] }, null, 2)}\n`,
       );
-      await atomicWrite(join(temporaryPath, 'README.md'), `# ${name}\n\n项目标识：\`${code}\`\n`);
+      await atomicWrite(
+        join(temporaryPath, 'README.md'),
+        `# ${name}\n\n项目标识：\`${code}\`\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`。项目使用浏览器历史路由，静态服务器需要把未知子路由回退到 \`index.html\`，以支持页面直接访问和刷新。\n`,
+      );
       const packageJson = JSON.parse(
         await readFile(join(temporaryPath, 'package.json'), 'utf8'),
       ) as Record<string, unknown>;
@@ -294,7 +294,6 @@ export class ProjectService {
         ) as OrigamixPageSchema;
         await initializePageSchema(pageRef, target);
       }
-      await synchronizeWorkingSchemaFromTarget(pageRef);
       const schema = JSON.parse(
         await readFile(join(pagePath, 'schema.json'), 'utf8'),
       ) as OrigamixPageSchema;
