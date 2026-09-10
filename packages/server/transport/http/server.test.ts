@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -288,6 +288,38 @@ describe('local HTTP API', () => {
       pages: [{ pageId: expect.any(String), route: '/customer-list' }],
     });
     await server.close();
+    database.close();
+  });
+
+  it('serializes page creation and keeps route/index projection aligned with an empty manifest', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-page-index-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '页面索引',
+      code: 'page-index',
+      directoryGrantId: 'grant_project',
+    });
+
+    await Promise.all([
+      service.createPage(project.id, { name: '页面 A', slug: 'page-a', route: '/custom-a' }),
+      service.createPage(project.id, { name: '页面 B', slug: 'page-b', route: '/custom-b' }),
+    ]);
+    expect(projects.listPages(project.id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slug: 'page-a', route: '/custom-a' }),
+        expect.objectContaining({ slug: 'page-b', route: '/custom-b' }),
+      ]),
+    );
+
+    const manifestPath = join(project.path, 'origamix.project.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
+    await writeFile(manifestPath, `${JSON.stringify({ ...manifest, pages: [] }, null, 2)}\n`);
+    await service.reconcile(project.path);
+    expect(projects.listPages(project.id)).toEqual([]);
     database.close();
   });
 

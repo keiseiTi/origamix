@@ -15,6 +15,7 @@ type PageRow = {
   project_id: string;
   slug: string;
   name: string;
+  route: string | null;
   relative_path: string;
   status: string;
   created_at: string;
@@ -34,6 +35,7 @@ const pageRecord = (row: PageRow): PageRecord => ({
   projectId: row.project_id,
   slug: row.slug,
   name: row.name,
+  ...(row.route ? { route: row.route } : {}),
   relativePath: row.relative_path,
   status: row.status,
   createdAt: row.created_at,
@@ -176,7 +178,7 @@ export class ProjectRepository {
         project.lastOpenedAt,
       );
       const upsertPage = db.prepare(
-        'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, name = excluded.name, relative_path = excluded.relative_path, status = excluded.status, updated_at = excluded.updated_at',
+        'INSERT INTO pages (id, project_id, slug, name, route, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, name = excluded.name, route = excluded.route, relative_path = excluded.relative_path, status = excluded.status, updated_at = excluded.updated_at',
       );
       for (const page of pages)
         upsertPage.run(
@@ -184,6 +186,7 @@ export class ProjectRepository {
           page.projectId,
           page.slug,
           page.name,
+          page.route ?? null,
           page.relativePath,
           page.status,
           page.createdAt,
@@ -194,6 +197,11 @@ export class ProjectRepository {
         db.prepare(
           `UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ? AND id NOT IN (${ids.map(() => '?').join(', ')})`,
         ).run(new Date().toISOString(), project.id, ...ids);
+      else
+        db.prepare("UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ?").run(
+          new Date().toISOString(),
+          project.id,
+        );
       db.exec('COMMIT');
     } catch (error) {
       db.exec('ROLLBACK');

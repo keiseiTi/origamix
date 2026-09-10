@@ -10,6 +10,7 @@ import {
   applyWorkingSchemaOperation,
   getWorkingSchemaState,
   hashSchema,
+  updateWorkingBaseline,
   type SchemaPageRef,
 } from './schema-service';
 import { validateProjectPageAgainstMaterials } from './schema-material-validation';
@@ -70,10 +71,20 @@ export class ProjectApplyService {
     if (hashSchema(verified) !== hashSchema(schema)) throw invalid('页面初始化后校验失败');
   }
 
+  private async readTarget(page: SchemaPageRef): Promise<OrigamixPageSchema> {
+    try {
+      return await this.targets.read(page);
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+        throw conflict('页面目标 Schema 路径已变化或文件不存在，请检查项目页面路径');
+      throw error;
+    }
+  }
+
   async getState(projectId: string, pageId: string): Promise<PageApplyState> {
     const page = this.resolve(projectId, pageId);
     const working = await getWorkingSchemaState(page);
-    const targetSchema = await this.targets.read(page);
+    const targetSchema = await this.readTarget(page);
     const targetSchemaHash = hashSchema(targetSchema);
     return {
       pageId,
@@ -95,6 +106,7 @@ export class ProjectApplyService {
     pageId: string,
     input: { expectedRevisionId: string; clientRequestId: string },
   ): Promise<ApplyPageResult> {
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(input.clientRequestId)) throw invalid('应用请求 ID 无效');
     const page = this.resolve(projectId, pageId);
     const requestHash = createHash('sha256')
       .update(JSON.stringify({ pageId, expectedRevisionId: input.expectedRevisionId }))
@@ -109,6 +121,12 @@ export class ProjectApplyService {
     const receipt = await readJsonIfPresent<ApplyReceipt>(receiptPath);
     if (receipt) {
       if (receipt.requestHash !== requestHash) throw conflict('请求 ID 已用于其他应用操作');
+      const working = await getWorkingSchemaState(page);
+      const target = await this.readTarget(page);
+      if (hashSchema(target) !== receipt.schemaHash)
+        throw conflict('应用回执与项目文件不一致，请检查页面目标文件');
+      if (working.revisionId === receipt.revisionId && working.baselineHash !== receipt.schemaHash)
+        await updateWorkingBaseline(page, receipt.revisionId, receipt.schemaHash);
       return {
         pageId: receipt.pageId,
         revisionId: receipt.revisionId,
@@ -118,7 +136,7 @@ export class ProjectApplyService {
       };
     }
     return applyWorkingSchemaOperation(page, input.expectedRevisionId, async (working) => {
-      const targetSchema = await this.targets.read(page);
+      const targetSchema = await this.readTarget(page);
       const targetHash = hashSchema(targetSchema);
       if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)
         throw conflict('项目文件已变化，请重新读取后再应用');

@@ -17,6 +17,8 @@ await rm(`${desktopRoot}dist/template`, { recursive: true, force: true });
 await copyTemplate(`${workspaceRoot}packages/template`, `${desktopRoot}dist/template`);
 const templateTarget = `${desktopRoot}dist/template`;
 const vendorTarget = `${templateTarget}/vendor`;
+// TODO(post-MVP): publish @origamix/runtime and @origamix/materials to npm, then replace
+// these vendored file dependencies with pinned registry versions in the generated template.
 await mkdir(vendorTarget, { recursive: true });
 for (const [packageDirectory, prefix, targetName] of [
   [`${workspaceRoot}packages/runtime`, 'origamix-runtime-', 'runtime.tgz'],

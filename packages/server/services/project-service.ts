@@ -19,6 +19,23 @@ import { ProjectScaffoldService } from './project-scaffold-service';
 import { ProjectApplyService } from './project-apply-service';
 
 const now = (): string => new Date().toISOString();
+const projectQueues = new Map<string, Promise<void>>();
+
+async function withProjectQueue<T>(projectId: string, action: () => Promise<T>): Promise<T> {
+  const previous = projectQueues.get(projectId) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  projectQueues.set(projectId, current);
+  await previous;
+  try {
+    return await action();
+  } finally {
+    release();
+    if (projectQueues.get(projectId) === current) projectQueues.delete(projectId);
+  }
+}
 const schemaTemplate = (): OrigamixPageSchema => ({
   elements: { element_root: { type: 'container', props: {} } },
   layout: { root: 'element_root', structure: { element_root: [] } },
@@ -140,6 +157,16 @@ export class ProjectService {
   }
 
   private async createPageWithSchema(
+    projectId: string,
+    input: { name: string; slug: string; route?: string },
+    schema: OrigamixPageSchema,
+  ): Promise<PageRecord> {
+    return withProjectQueue(projectId, () =>
+      this.createPageWithSchemaUnlocked(projectId, input, schema),
+    );
+  }
+
+  private async createPageWithSchemaUnlocked(
     projectId: string,
     input: { name: string; slug: string; route?: string },
     schema: OrigamixPageSchema,

@@ -88,7 +88,7 @@ describe('ApplicationDatabase', () => {
     const reopened = new ApplicationDatabase(path);
     expect(
       reopened.connection.prepare("SELECT value FROM app_meta WHERE key = 'schema_version'").get(),
-    ).toMatchObject({ value: '4' });
+    ).toMatchObject({ value: '5' });
     reopened.close();
   });
 });

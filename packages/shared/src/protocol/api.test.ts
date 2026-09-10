@@ -1,6 +1,6 @@
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
-import { ApiResultSchema, isApiResultEnvelope } from './api';
+import { ApiResultSchema, ApplyPageSchema, isApiResultEnvelope } from './api';
 
 describe('API result protocol', () => {
   it('accepts the success and failure envelopes', () => {
@@ -25,5 +25,22 @@ describe('API result protocol', () => {
     expect(Value.Check(ApiResultSchema, { success: false, code: 404, data: { stale: true } })).toBe(
       false,
     );
+  });
+});
+
+describe('Apply request protocol', () => {
+  it('accepts opaque safe IDs and rejects path characters', () => {
+    expect(
+      Value.Check(ApplyPageSchema, {
+        expectedRevisionId: 'revision_one',
+        clientRequestId: 'request_One-2',
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(ApplyPageSchema, {
+        expectedRevisionId: 'revision_one',
+        clientRequestId: '../../outside',
+      }),
+    ).toBe(false);
   });
 });

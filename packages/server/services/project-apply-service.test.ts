@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../database/database';
@@ -36,6 +36,22 @@ async function setup() {
 }
 
 describe('ProjectApplyService', () => {
+  it('rejects request IDs that could escape the receipt directory', async () => {
+    const fixture = await setup();
+    const current = await getSchema({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
+    await expect(
+      fixture.apply.apply(fixture.project.id, fixture.page.id, {
+        expectedRevisionId: current.revisionId,
+        clientRequestId: '../../../outside',
+      }),
+    ).rejects.toThrow('应用请求 ID 无效');
+    fixture.database.close();
+  });
+
   it('uses the apply target writer when initializing a page target', async () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
@@ -92,6 +108,15 @@ describe('ProjectApplyService', () => {
       expectedRevisionId: changed.revisionId,
       clientRequestId: 'request_apply',
     });
+    const workingPath = join(
+      fixture.project.path,
+      '.origamix',
+      'pages',
+      fixture.page.id,
+      'working.json',
+    );
+    const working = JSON.parse(await readFile(workingPath, 'utf8')) as Record<string, unknown>;
+    await writeFile(workingPath, JSON.stringify({ ...working, baselineHash: 'stale-baseline' }));
     const second = await fixture.apply.apply(fixture.project.id, fixture.page.id, {
       expectedRevisionId: changed.revisionId,
       clientRequestId: 'request_apply',
@@ -137,6 +162,46 @@ describe('ProjectApplyService', () => {
     expect(JSON.parse(await readFile(target, 'utf8'))).toMatchObject({
       elements: { element_root: { props: { padding: 12 } } },
     });
+    fixture.database.close();
+  });
+
+  it('reports a moved or missing target schema instead of recreating it', async () => {
+    const fixture = await setup();
+    const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
+    await rm(target);
+    const current = await getSchema({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
+
+    await expect(
+      fixture.apply.apply(fixture.project.id, fixture.page.id, {
+        expectedRevisionId: current.revisionId,
+        clientRequestId: 'request_missing_target',
+      }),
+    ).rejects.toThrow('页面目标 Schema 路径已变化或文件不存在');
+    await expect(readFile(target, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    fixture.database.close();
+  });
+
+  it('rejects a page directory symlink that leaves the project', async () => {
+    const fixture = await setup();
+    const pageDirectory = join(fixture.project.path, fixture.page.relativePath);
+    const outside = join(dirname(fixture.project.path), 'outside-page');
+    const current = await getSchema({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
+    await rm(pageDirectory, { recursive: true });
+    await mkdir(outside);
+    await writeFile(join(outside, 'schema.json'), JSON.stringify(current.schema));
+    await symlink(outside, pageDirectory, 'dir');
+
+    await expect(fixture.apply.getState(fixture.project.id, fixture.page.id)).rejects.toThrow(
+      '页面目标路径不属于当前项目',
+    );
     fixture.database.close();
   });
 });

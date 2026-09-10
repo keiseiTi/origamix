@@ -45,7 +45,7 @@ export class ProjectFormatService {
     const routes = new Set<string>();
     for (const page of manifest.pages) {
       if (
-        !page.pageId ||
+        !/^page_[A-Za-z0-9_-]+$/.test(page.pageId) ||
         !page.name ||
         !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug) ||
         !/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.route) ||

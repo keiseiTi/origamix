@@ -32,6 +32,7 @@ export const PageRecordSchema = Type.Object({
   projectId: Type.String(),
   name: Type.String(),
   slug: Type.String(),
+  route: Type.Optional(Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' })),
   relativePath: Type.String(),
   status: Type.String(),
   createdAt: Type.String(),
@@ -71,7 +72,7 @@ export const CreatePageSchema = Type.Object({
 
 export const ApplyPageSchema = Type.Object({
   expectedRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
-  clientRequestId: Type.String({ minLength: 1, maxLength: 100 }),
+  clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
 });
 
 export const RenamePageSchema = Type.Object({

@@ -112,6 +112,12 @@ export const migrations: Migration[] = [
       CREATE INDEX idx_removed_pages_project ON removed_pages(project_id, removed_at);
     `,
   },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE pages ADD COLUMN route TEXT;
+    `,
+  },
 ];
 
 export function assertMigrationSafety(sql: string): void {
