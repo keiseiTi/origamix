@@ -13,6 +13,7 @@ import {
   type SchemaPageRef,
 } from './schema-service';
 import { validateProjectPageAgainstMaterials } from './schema-material-validation';
+import { TargetSchemaStore } from '../storage/target-schema-store';
 
 interface ApplyReceipt extends ApplyPageResult {
   requestHash: string;
@@ -50,20 +51,29 @@ async function writeJsonAtomically(path: string, value: unknown): Promise<void> 
 }
 
 export class ProjectApplyService {
-  constructor(private readonly projects: ProjectRepository) {}
+  constructor(
+    private readonly projects: ProjectRepository,
+    private readonly targets = new TargetSchemaStore(),
+  ) {}
 
-  private resolve(projectId: string, pageId: string): { page: SchemaPageRef; target: string } {
+  private resolve(projectId: string, pageId: string): SchemaPageRef {
     const project = this.projects.getProject(projectId);
     const record = this.projects.getPage(projectId, pageId);
     if (!project || !record) throw notFound('页面不存在');
     const page = { projectPath: project.path, pageId: record.id, slug: record.slug };
-    return { page, target: join(project.path, record.relativePath, 'schema.json') };
+    return page;
+  }
+
+  async initializeTarget(page: SchemaPageRef, schema: OrigamixPageSchema): Promise<void> {
+    await this.targets.write(page, schema);
+    const verified = await this.targets.read(page);
+    if (hashSchema(verified) !== hashSchema(schema)) throw invalid('页面初始化后校验失败');
   }
 
   async getState(projectId: string, pageId: string): Promise<PageApplyState> {
-    const { page, target } = this.resolve(projectId, pageId);
+    const page = this.resolve(projectId, pageId);
     const working = await getWorkingSchemaState(page);
-    const targetSchema = await readJson<OrigamixPageSchema>(target);
+    const targetSchema = await this.targets.read(page);
     const targetSchemaHash = hashSchema(targetSchema);
     return {
       pageId,
@@ -85,7 +95,7 @@ export class ProjectApplyService {
     pageId: string,
     input: { expectedRevisionId: string; clientRequestId: string },
   ): Promise<ApplyPageResult> {
-    const { page, target } = this.resolve(projectId, pageId);
+    const page = this.resolve(projectId, pageId);
     const requestHash = createHash('sha256')
       .update(JSON.stringify({ pageId, expectedRevisionId: input.expectedRevisionId }))
       .digest('hex');
@@ -108,7 +118,7 @@ export class ProjectApplyService {
       };
     }
     return applyWorkingSchemaOperation(page, input.expectedRevisionId, async (working) => {
-      const targetSchema = await readJson<OrigamixPageSchema>(target);
+      const targetSchema = await this.targets.read(page);
       const targetHash = hashSchema(targetSchema);
       if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)
         throw conflict('项目文件已变化，请重新读取后再应用');
@@ -117,8 +127,8 @@ export class ProjectApplyService {
         working.schema,
       );
       if (!validation.valid) throw invalid(validation.errors[0]?.message ?? 'Schema 物料校验失败');
-      if (targetHash !== working.schemaHash) await writeJsonAtomically(target, working.schema);
-      const verified = await readJson<OrigamixPageSchema>(target);
+      if (targetHash !== working.schemaHash) await this.targets.write(page, working.schema);
+      const verified = await this.targets.read(page);
       if (hashSchema(verified) !== working.schemaHash) throw invalid('应用后校验失败');
       const result: ApplyPageResult = {
         pageId,

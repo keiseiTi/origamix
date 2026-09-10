@@ -6,8 +6,9 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown.
 - `transport/http/server.ts`: authentication, validation and HTTP adaptation.
-- `services/project-service.ts`: project use-case facade; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization.
-- `services/schema-service.ts`: Working Schema/revision files and the authoritative edit pipeline. The future Project Apply service exclusively writes the real project's target `schema.json`.
+- `services/project-service.ts`: project use-case facade and orchestration; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization. Keep generated source and target-file mechanics out of the facade as they are extracted.
+- `services/schema-service.ts`: authoritative edit pipeline and per-page serialization. Working/Revision persistence may be extracted behind a file store without creating another commit entry.
+- `services/project-apply-service.ts`: apply orchestration. Initial target creation and explicit apply must share one Target Schema Store; `ProjectService` must not retain a separate target `schema.json` writer.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - `repositories/`, `database/`: SQLite access, migrations and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
@@ -16,6 +17,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 ## Service and security boundaries
 
 - Keep HTTP → services → repositories/filesystem ownership explicit. Do not add business mutations in transport or Electron Main. Server remains usable without Electron/React imports.
+- Split HTTP registration by Project, Schema, Apply and Agent domains when changing the monolithic server; share authentication, project context, error mapping and response envelopes instead of duplicating them in route files.
 - Server must not own browser-window navigation state such as the selected project, open/active tabs, per-tab mode or drafts. Those are App `sessionStorage` concerns in both browser and desktop hosts.
 - Server may consume the declared, serializable `@origamix/materials/*/manifest` exports for validation; it must not import material runtime components or editor modules.
 - Listen only on `127.0.0.1` with an assigned port. Preserve bearer-token, service-instance and Origin checks; CORS alone is not authorization. Directory grants come from the trusted host, never an arbitrary-path HTTP endpoint.

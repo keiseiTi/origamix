@@ -36,6 +36,32 @@ async function setup() {
 }
 
 describe('ProjectApplyService', () => {
+  it('uses the apply target writer when initializing a page target', async () => {
+    const fixture = await setup();
+    const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
+    const current = await getSchema({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
+    await writeFile(
+      target,
+      JSON.stringify({ ...current.schema, flows: { stale: { nodes: [], edges: [] } } }),
+    );
+
+    await fixture.apply.initializeTarget(
+      {
+        projectPath: fixture.project.path,
+        pageId: fixture.page.id,
+        slug: fixture.page.slug,
+      },
+      current.schema,
+    );
+
+    expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(current.schema);
+    fixture.database.close();
+  });
+
   it('keeps target schema unchanged until an explicit idempotent apply', async () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');

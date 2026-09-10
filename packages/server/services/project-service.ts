@@ -16,6 +16,7 @@ import { conflict, invalid, notFound } from '../errors';
 import { ProjectFormatService } from './project-format-service';
 import { ProjectLifecycleService } from './project-lifecycle-service';
 import { ProjectScaffoldService } from './project-scaffold-service';
+import { ProjectApplyService } from './project-apply-service';
 
 const now = (): string => new Date().toISOString();
 const schemaTemplate = (): OrigamixPageSchema => ({
@@ -50,6 +51,7 @@ export class ProjectService {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly templatePath: string,
+    private readonly projectApply = new ProjectApplyService(projects),
   ) {}
 
   registerGrant(id: string, path: string): void {
@@ -161,7 +163,10 @@ export class ProjectService {
     }
     const id = `page_${nanoid()}`;
     await mkdir(pagePath);
-    await atomicWrite(join(pagePath, 'schema.json'), `${JSON.stringify(schema, null, 2)}\n`);
+    await this.projectApply.initializeTarget(
+      { projectPath: project.path, pageId: id, slug: input.slug },
+      schema,
+    );
     await atomicWrite(join(pagePath, 'index.tsx'), pageComponentSource(input.slug));
     await initializePageSchema({ projectPath: project.path, pageId: id, slug: input.slug }, schema);
     const nextPage = { pageId: id, name, slug: input.slug, route };

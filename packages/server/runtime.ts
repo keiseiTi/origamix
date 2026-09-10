@@ -92,8 +92,8 @@ export async function startServer(input: {
         .revisionId;
     },
   );
-  const projectService = new ProjectService(projects, input.templatePath);
   const projectApplyService = new ProjectApplyService(projects);
+  const projectService = new ProjectService(projects, input.templatePath, projectApplyService);
   const productDocs = new ProductDocsProvider();
   const context = new ContextAssembler({ getCurrent: getSchema }, conversations, productDocs);
   const pi = createMvpPiModels();
