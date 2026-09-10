@@ -1,8 +1,10 @@
 allowBuilds:
+  '@google/genai': set this to true or false
   electron: true
   electron-winstaller: true
   esbuild: true
   lefthook: true
+  protobufjs: set this to true or false
 
 minimumReleaseAgeExclude:
   - '@tangramino/base-editor@0.1.2'

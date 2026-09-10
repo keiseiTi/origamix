@@ -2,15 +2,27 @@
   "name": "@origamix/shared",
   "version": "1.0.0",
   "type": "module",
-  "private": true,
+  "files": [
+    "dist"
+  ],
   "exports": {
     "./*": "./src/*.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./*": {
+        "types": "./dist/*.d.mts",
+        "import": "./dist/*.js"
+      }
+    }
   },
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "tsc --noEmit -p tsconfig.json"
+    "build": "pnpm --dir ../.. exec tsup --config packages/shared/tsup.config.ts",
+    "pack:npm": "pnpm pack --pack-destination ../../release/npm"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.52",

@@ -2,18 +2,24 @@
   "name": "@origamix/runtime",
   "version": "1.0.0",
   "type": "module",
-  "private": true,
+  "files": [
+    "dist"
+  ],
   "exports": {
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "build": "tsup"
+    "build": "tsup",
+    "pack:npm": "pnpm pack --pack-destination ../../release/npm"
   },
   "dependencies": {
     "@tangramino/engine": "^0.1.3",

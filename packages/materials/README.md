@@ -12,7 +12,7 @@ import materialGroups from '@origamix/materials/antd/group';
 - `materialComponents` maps persisted material type names to runtime React components.
 - `materialGroups` supplies the editor palette and each material's defaults, context contract and property-panel configuration.
 
-The package is private. `pnpm build` uses tsup to emit ESM bundles, declarations, and source maps into `dist`.
+The package is publishable. `pnpm build` uses tsup to emit ESM bundles, declarations, and source maps into `dist`; after building, `pnpm pack:npm` creates the npm tarball under the repository's `release/npm` directory. The root `pnpm package:npm` performs both phases in order.
 
 ## Development
 

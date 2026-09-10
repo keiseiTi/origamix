@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "pnpm --filter @origamix/desktop dev",
     "dev:web": "pnpm --filter @origamix/app dev",
-    "build": "pnpm -r --filter \"!@origamix/desktop\" build && pnpm --filter @origamix/desktop build:assemble && pnpm --filter @origamix/desktop build:app",
+    "build": "pnpm build:desktop",
+    "build:desktop": "pnpm build:libs && pnpm --filter @origamix/app build && pnpm --filter @origamix/server build && pnpm --filter @origamix/desktop build:assemble && pnpm --filter @origamix/desktop build:app",
+    "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
+    "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
+    "build:npm": "pnpm build:libs",
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
@@ -15,7 +19,9 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "gate:internal": "pnpm --filter @origamix/server gate:agent",
-    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
+    "package:npm": "pnpm build:npm && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
+    "package:desktop": "pnpm lint && pnpm typecheck && pnpm test && pnpm build:desktop && pnpm --filter @origamix/desktop package:assemble",
+    "package": "pnpm package:desktop"
   },
   "keywords": [
     "lowCode",
@@ -33,6 +39,7 @@
     "globals": "^17.11.0",
     "lefthook": "^2.1.12",
     "prettier": "^3.9.6",
+    "tsup": "^8.5.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.0"
