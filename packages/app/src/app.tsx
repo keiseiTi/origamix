@@ -373,7 +373,7 @@ function App(): React.JSX.Element {
       <button
         type='button'
         className={`window-no-drag-region fixed top-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
-          isMacDesktop ? 'left-[76px]' : 'left-1.5'
+          isMacDesktop ? 'left-21' : 'left-1.5'
         } grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary`}
         onMouseEnter={() => sidebarCollapsed && sidebarPeekEnabled && setSidebarPeek(true)}
         onMouseLeave={() => sidebarCollapsed && setSidebarPeekEnabled(true)}
@@ -440,7 +440,7 @@ function App(): React.JSX.Element {
               className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
             >
               {sidebarCollapsed && isMacDesktop && (
-                <span className='window-no-drag-region w-[108px] shrink-0' />
+                <span className='window-no-drag-region w-27 shrink-0' />
               )}
               <span className='window-drag-region min-w-0 flex-1' />
             </div>
@@ -479,7 +479,7 @@ function App(): React.JSX.Element {
       />
       <Modal
         isOpen={projectActions.pendingInitialization !== null}
-        onOpenChange={(open) => !open && projectActions.setPendingInitialization(null)}
+        onOpenChange={(open: boolean) => !open && projectActions.setPendingInitialization(null)}
       >
         <Modal.Backdrop>
           <Modal.Container>

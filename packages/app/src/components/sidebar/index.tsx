@@ -119,7 +119,7 @@ export function Sidebar({
       >
         <header
           className={`window-drag-region flex h-10 shrink-0 items-center gap-2 pr-1 ${
-            isMacDesktop ? 'pl-[76px]' : 'pl-1'
+            isMacDesktop ? 'pl-19' : 'pl-1'
           }`}
         >
           <span aria-hidden='true' className='h-7 w-7 shrink-0' />

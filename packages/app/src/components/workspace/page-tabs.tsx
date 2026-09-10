@@ -27,7 +27,7 @@ export function PageTabs({
       {sidebarCollapsed && isMacDesktop && (
         <span
           aria-hidden='true'
-          className='window-no-drag-region w-[108px] shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
+          className='window-no-drag-region w-27 shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
         />
       )}
       {sidebarCollapsed && !isMacDesktop && (

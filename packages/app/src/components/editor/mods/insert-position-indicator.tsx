@@ -51,7 +51,7 @@ export function InsertPositionIndicator(): React.JSX.Element | null {
       };
 
   return createPortal(
-    <div className='pointer-events-none fixed inset-0 z-[9998]' aria-hidden='true'>
+    <div className='pointer-events-none fixed inset-0 z-9998' aria-hidden='true'>
       <div
         className='absolute rounded-sm bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.85)]'
         style={lineStyle}
