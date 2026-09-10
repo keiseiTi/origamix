@@ -1,6 +1,6 @@
 import React from 'react';
 import { TimePicker as AntdTimePicker, type TimePickerProps } from 'antd';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 export type IProps = TimePickerProps & MaterialComponentProps & {};
 

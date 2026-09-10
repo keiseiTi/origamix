@@ -1,7 +1,7 @@
 import React from 'react';
 import { DatePicker as AntdDatePicker } from 'antd';
 import type { RangePickerProps } from 'antd/es/date-picker';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 export interface IProps extends RangePickerProps, MaterialComponentProps {}
 

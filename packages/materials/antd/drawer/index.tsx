@@ -1,6 +1,6 @@
 import React from 'react';
 import { Drawer as AntdDrawer, type DrawerProps } from 'antd';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 export interface IProps extends MaterialComponentProps, DrawerProps {}
 

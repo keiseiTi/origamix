@@ -15,7 +15,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - Do not import Electron, the desktop bridge, Origamix's local backend or privileged credentials. Generated runtime is independent of the editor.
 - Generated page code is a stable shell: it loads the page's managed `schema.json`, registers the declared `@origamix/materials/*` package and renders through `@origamix/runtime`. Origamix applies Schema only; it must not regenerate or overwrite the shell during ordinary editing.
 - Keep Tangramino page data compatible with Shared Schema without a runtime dependency on `@origamix/shared`. Coordinate format changes with Server project/page generation and the Apply-to-Project pipeline.
-- Use strict TypeScript and Tailwind. Follow root HeroUI/Lucide requirements when adding controls/icons and declare dependencies locally; they are not currently installed here. Do not add packages for unused future plans.
+- Use strict TypeScript and Tailwind. Follow root HeroUI/Lucide requirements when adding controls/icons and declare imported packages directly, including stylesheet entry packages such as `@heroui/styles`. Do not add packages for unused future plans.
 - Changed pages support light/dark themes and accessible states. Do not copy workbench navigation, editor chrome or mock persistence into generated applications.
 - Keep source-only content: no installed dependencies, private files, caches, app databases, compiled output or user projects.
 - The Server copier excludes this `AGENTS.md` via its root allowlist. Shipping guidance into generated projects is a separate product change requiring standalone instructions without monorepo-only paths/commands.

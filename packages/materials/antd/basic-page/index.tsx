@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 import { cn } from '@/cn';
 
 interface BasicPageProps extends MaterialComponentProps {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Checkbox as AntdCheckbox } from 'antd';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 type AntdCheckboxGroupProps = React.ComponentProps<typeof AntdCheckbox.Group>;
 export interface IProps extends AntdCheckboxGroupProps, MaterialComponentProps {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { DatePicker as AntdDatePicker, type DatePickerProps } from 'antd';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 export type IProps = DatePickerProps & MaterialComponentProps & {};
 

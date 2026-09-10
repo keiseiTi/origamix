@@ -1,6 +1,6 @@
 import React from 'react';
 import { Radio as AntdRadio, type RadioProps } from 'antd';
-import type { MaterialComponentProps } from '@tangramino/base-editor';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
 export interface IProps extends RadioProps, MaterialComponentProps {
   label?: string;

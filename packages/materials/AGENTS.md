@@ -18,6 +18,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
 - A registry key, manifest `type` and persisted Schema type form a compatibility boundary. Renames and removals require a migration plan and coordinated Shared/Server/App/Template changes.
 - Runtime adapters should forward supported props and Tangramino context deliberately. Do not leak editor-only props to DOM elements, mutate Schema or add persistence/network side effects.
+- Runtime components use the package-local minimal runtime props contract; do not import editor contracts solely for injected render props. Editor metadata and controls may continue to depend on the editor package through editor-facing entries.
 - Keep manifests serializable except for documented component/render references used by the editor. Defaults must be deterministic and safe to render without project data.
 - Declare every imported library directly. React and Ant Design remain peer dependencies for consumers; local dependency entries support workspace development and verification.
 - Use Ant Design controls for material implementations and `lucide-react` for any additional icons. Do not hand-write SVG icons.

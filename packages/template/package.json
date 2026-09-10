@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@heroui/react": "^3.2.4",
+    "@heroui/styles": "^3.2.4",
     "@origamix/materials": "workspace:*",
     "@origamix/runtime": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
