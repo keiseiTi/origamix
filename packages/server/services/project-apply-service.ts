@@ -21,6 +21,11 @@ interface ApplyReceipt extends ApplyPageResult {
   requestHash: string;
 }
 
+export interface ProjectApplyOptions {
+  /** Test/host hook used to simulate interruption after a durable apply stage. */
+  afterStage?: (stage: 'target' | 'receipt') => void | Promise<void>;
+}
+
 const readJson = async <T>(path: string): Promise<T> => {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 };
@@ -56,6 +61,7 @@ export class ProjectApplyService {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly targets = new TargetSchemaStore(),
+    private readonly options: ProjectApplyOptions = {},
   ) {}
 
   private resolve(projectId: string, pageId: string): SchemaPageRef {
@@ -143,6 +149,23 @@ export class ProjectApplyService {
       };
     }
     return applyWorkingSchemaOperation(page, input.expectedRevisionId, async (working) => {
+      const queuedReceipt = await readJsonIfPresent<ApplyReceipt>(receiptPath);
+      if (queuedReceipt) {
+        if (queuedReceipt.requestHash !== requestHash) throw conflict('请求 ID 已用于其他应用操作');
+        const target = await this.readTarget(page);
+        if (hashSchema(target) !== queuedReceipt.schemaHash)
+          throw conflict('应用回执与项目文件不一致，请检查页面目标文件');
+        return {
+          result: {
+            pageId: queuedReceipt.pageId,
+            revisionId: queuedReceipt.revisionId,
+            schemaHash: queuedReceipt.schemaHash,
+            appliedAt: queuedReceipt.appliedAt,
+            status: queuedReceipt.status,
+          },
+          baselineHash: queuedReceipt.schemaHash,
+        };
+      }
       const targetSchema = await this.readTarget(page);
       const targetHash = hashSchema(targetSchema);
       if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)
@@ -153,6 +176,7 @@ export class ProjectApplyService {
       );
       if (!validation.valid) throw invalid(validation.errors[0]?.message ?? 'Schema 物料校验失败');
       if (targetHash !== working.schemaHash) await this.targets.write(page, working.schema);
+      await this.options.afterStage?.('target');
       const verified = await this.targets.read(page);
       if (hashSchema(verified) !== working.schemaHash) throw invalid('应用后校验失败');
       const result: ApplyPageResult = {
@@ -163,6 +187,7 @@ export class ProjectApplyService {
         status: 'applied',
       };
       await writeJsonAtomically(receiptPath, { ...result, requestHash } satisfies ApplyReceipt);
+      await this.options.afterStage?.('receipt');
       return { result, baselineHash: working.schemaHash };
     });
   }

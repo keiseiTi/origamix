@@ -39,8 +39,8 @@ export const AttributePanel = (): React.JSX.Element => {
 
   const update = (field: string, value: unknown): void => {
     if (!activeElement) return;
-    // @ts-expect-error not-check
-    setSchema(SchemaUtils.setElementProps(schema, activeElement.id, { [field]: value }));
+    const result = SchemaUtils.setElementProps(schema, activeElement.id, { [field]: value });
+    setSchema(result.schema);
   };
 
   const renderField = (config: AttributeConfig): React.JSX.Element | null => {

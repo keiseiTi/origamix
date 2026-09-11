@@ -1,22 +1,14 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
+import {
+  isProjectManifest,
+  type ProjectManifest,
+  type ProjectPageManifest,
+} from '@origamix/shared/protocol/project-manifest';
 import { invalid, notFound } from '../errors';
 
-export interface ProjectManifest {
-  projectId: string;
-  name: string;
-  framework: 'react';
-  uiLibrary: 'antd';
-  pages: ProjectPageItem[];
-}
-
-export interface ProjectPageItem {
-  pageId: string;
-  name: string;
-  slug: string;
-  route: string;
-}
+export type ProjectPageItem = ProjectPageManifest;
 
 const atomicWrite = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
@@ -45,20 +37,15 @@ export class ProjectFormatService {
   }
 
   async readManifest(projectPath: string): Promise<ProjectManifest> {
-    let manifest: ProjectManifest;
+    let manifest: unknown;
     try {
-      manifest = JSON.parse(
-        await readFile(join(projectPath, 'origamix.project.json'), 'utf8'),
-      ) as ProjectManifest;
+      manifest = JSON.parse(await readFile(join(projectPath, 'origamix.project.json'), 'utf8'));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
         throw invalid('目录尚未初始化为 Origamix 项目');
-      throw error;
+      throw invalid('项目清单不是有效的 JSON');
     }
-    if (!manifest.projectId || !manifest.name) throw invalid('项目清单无效');
-    if (manifest.framework !== 'react' || manifest.uiLibrary !== 'antd')
-      throw invalid('MVP 仅支持 React + Ant Design 项目');
-    if (!Array.isArray(manifest.pages)) throw invalid('项目页面清单无效');
+    if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     const ids = new Set<string>();
     const slugs = new Set<string>();
     const routes = new Set<string>();

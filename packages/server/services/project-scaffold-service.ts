@@ -109,7 +109,7 @@ export class ProjectScaffoldService {
     if (!hasApplicationFiles)
       await atomicWrite(
         join(path, 'README.md'),
-        `# ${directoryName}\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`，并配置未知子路由回退到 \`index.html\`。\n`,
+        `# ${directoryName}\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`，并配置未知子路由回退到 \`index.html\`。\n\n\`.origamix/\` 是不参与运行和部署的本机编辑状态，默认不提交到版本库。真实运行页面只读取 \`src/pages/*/schema.json\`。\n`,
       );
   }
 }

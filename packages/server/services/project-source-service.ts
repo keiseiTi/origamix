@@ -26,7 +26,7 @@ export class ProjectSourceService {
     await mkdir(join(path, '.origamix', 'revisions'), { recursive: true });
     await atomicWrite(
       join(path, 'README.md'),
-      `# ${input.name}\n\n项目标识：\`${input.code}\`\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`。项目使用浏览器历史路由，静态服务器需要把未知子路由回退到 \`index.html\`，以支持页面直接访问和刷新。\n`,
+      `# ${input.name}\n\n项目标识：\`${input.code}\`\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`。项目使用浏览器历史路由，静态服务器需要把未知子路由回退到 \`index.html\`，以支持页面直接访问和刷新。\n\n\`.origamix/\` 保存本机编辑工作副本、修订和操作回执，运行及部署不需要该目录，默认不提交到版本库。真实运行页面只读取 \`src/pages/*/schema.json\`。\n`,
     );
     const packageJson = JSON.parse(await readFile(join(path, 'package.json'), 'utf8')) as Record<
       string,

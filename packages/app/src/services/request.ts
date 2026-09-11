@@ -55,6 +55,7 @@ const fetchWithConnection = async (
 export const request = async <T>(
   path: string,
   init?: RequestInit & { projectId?: string },
+  validate?: (value: unknown) => value is T,
 ): Promise<T> => {
   const current = await getApiConnection();
   let response: Response;
@@ -81,5 +82,7 @@ export const request = async <T>(
     throw new ApiRequestError('服务返回格式无效', 500, response.status);
   if (!result.success)
     throw new ApiRequestError(result.message ?? '请求失败', result.code, response.status);
+  if (validate && !validate(result.data))
+    throw new ApiRequestError('服务返回数据无效', 500, response.status);
   return result.data as T;
 };

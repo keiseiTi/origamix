@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../database/database';
 import { ProjectRepository } from '../repositories/project-repository';
-import { commitSchema, getSchema } from './schema-service';
+import { commitSchema, getSchema, hashSchema } from './schema-service';
 import { ProjectApplyService } from './project-apply-service';
 import { ProjectService } from './project-service';
 
@@ -127,6 +127,88 @@ describe('ProjectApplyService', () => {
     });
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
       'in_sync',
+    );
+    fixture.database.close();
+  });
+
+  it('serializes concurrent requests with the same ID into one stable result', async () => {
+    const fixture = await setup();
+    const ref = {
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    };
+    const current = await getSchema(ref);
+    const changed = await commitSchema(ref, {
+      changeSetId: 'change_concurrent_apply',
+      pageId: fixture.page.id,
+      baseRevisionId: current.revisionId,
+      source: { kind: 'user' },
+      createdAt: new Date().toISOString(),
+      operation: 'updateElementProps',
+      elementId: 'element_root',
+      props: { padding: 30 },
+    });
+    const input = {
+      expectedRevisionId: changed.revisionId,
+      clientRequestId: 'request_concurrent_apply',
+    };
+    const [first, second] = await Promise.all([
+      fixture.apply.apply(fixture.project.id, fixture.page.id, input),
+      fixture.apply.apply(fixture.project.id, fixture.page.id, input),
+    ]);
+    expect(second).toEqual(first);
+    fixture.database.close();
+  });
+
+  it('repairs the baseline after interruption following a durable receipt', async () => {
+    const fixture = await setup();
+    const ref = {
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    };
+    const current = await getSchema(ref);
+    const changed = await commitSchema(ref, {
+      changeSetId: 'change_interrupted_apply',
+      pageId: fixture.page.id,
+      baseRevisionId: current.revisionId,
+      source: { kind: 'user' },
+      createdAt: new Date().toISOString(),
+      operation: 'updateElementProps',
+      elementId: 'element_root',
+      props: { padding: 44 },
+    });
+    const interrupted = new ProjectApplyService(fixture.projects, undefined, {
+      afterStage: (stage) => {
+        if (stage === 'receipt') throw new Error('simulated process interruption');
+      },
+    });
+    const input = {
+      expectedRevisionId: changed.revisionId,
+      clientRequestId: 'request_interrupted_apply',
+    };
+    await expect(interrupted.apply(fixture.project.id, fixture.page.id, input)).rejects.toThrow(
+      'simulated process interruption',
+    );
+    const workingPath = join(
+      fixture.project.path,
+      '.origamix',
+      'pages',
+      fixture.page.id,
+      'working.json',
+    );
+    expect(JSON.parse(await readFile(workingPath, 'utf8')).baselineHash).not.toBe(
+      hashSchema(changed.schema),
+    );
+    await expect(fixture.apply.apply(fixture.project.id, fixture.page.id, input)).resolves.toEqual(
+      expect.objectContaining({ revisionId: changed.revisionId, status: 'applied' }),
+    );
+    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
+      'in_sync',
+    );
+    expect(JSON.parse(await readFile(workingPath, 'utf8')).baselineHash).toBe(
+      hashSchema(changed.schema),
     );
     fixture.database.close();
   });

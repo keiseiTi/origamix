@@ -5,6 +5,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `src/protocol/api.ts`: HTTP shapes and domain records.
+- `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
 - `src/protocol/schema.ts`: page Schema, IDs and ChangeSet variants.
 - `src/protocol/validation.ts`: structural and semantic validators.
 - `src/desktop-api.ts`, `src/page-window.ts`: workbench/preview bridge contracts and window inputs.

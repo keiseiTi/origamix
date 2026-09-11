@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
+import { RevisionIdSchema } from './schema';
 
 export const ApiResultSchema = Type.Union([
   Type.Object(
@@ -75,6 +76,35 @@ export const ApplyPageSchema = Type.Object({
   clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
 });
 
+const SchemaHashSchema = Type.String({ pattern: '^[a-f0-9]{64}$' });
+
+export const PageApplyStateSchema = Type.Object(
+  {
+    pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
+    workingRevisionId: RevisionIdSchema,
+    status: Type.Union([
+      Type.Literal('in_sync'),
+      Type.Literal('pending'),
+      Type.Literal('external_change'),
+    ]),
+    workingSchemaHash: SchemaHashSchema,
+    targetSchemaHash: SchemaHashSchema,
+    baselineHash: SchemaHashSchema,
+  },
+  { additionalProperties: false },
+);
+
+export const ApplyPageResultSchema = Type.Object(
+  {
+    pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
+    revisionId: RevisionIdSchema,
+    schemaHash: SchemaHashSchema,
+    appliedAt: Type.String({ minLength: 1 }),
+    status: Type.Literal('applied'),
+  },
+  { additionalProperties: false },
+);
+
 export const RenamePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
 });
@@ -97,6 +127,12 @@ export type ApiResult<T> =
 export const isApiResultEnvelope = (value: unknown): value is ApiResult<unknown> => {
   return Value.Check(ApiResultSchema, value);
 };
+
+export const isPageApplyState = (value: unknown): value is PageApplyState =>
+  Value.Check(PageApplyStateSchema, value);
+
+export const isApplyPageResult = (value: unknown): value is ApplyPageResult =>
+  Value.Check(ApplyPageResultSchema, value);
 
 export interface ProjectRecord {
   id: string;

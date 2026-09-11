@@ -1,6 +1,12 @@
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
-import { ApiResultSchema, ApplyPageSchema, isApiResultEnvelope } from './api';
+import {
+  ApiResultSchema,
+  ApplyPageSchema,
+  isApiResultEnvelope,
+  isApplyPageResult,
+  isPageApplyState,
+} from './api';
 
 describe('API result protocol', () => {
   it('accepts the success and failure envelopes', () => {
@@ -42,5 +48,38 @@ describe('Apply request protocol', () => {
         clientRequestId: '../../outside',
       }),
     ).toBe(false);
+  });
+
+  it('validates apply state and result response data', () => {
+    const hash = 'a'.repeat(64);
+    expect(
+      isPageApplyState({
+        pageId: 'page_one',
+        workingRevisionId: 'revision_one',
+        status: 'pending',
+        workingSchemaHash: hash,
+        targetSchemaHash: hash,
+        baselineHash: hash,
+      }),
+    ).toBe(true);
+    expect(
+      isPageApplyState({
+        pageId: 'page_one',
+        workingRevisionId: 'revision_one',
+        status: 'unknown',
+        workingSchemaHash: hash,
+        targetSchemaHash: hash,
+        baselineHash: hash,
+      }),
+    ).toBe(false);
+    expect(
+      isApplyPageResult({
+        pageId: 'page_one',
+        revisionId: 'revision_one',
+        schemaHash: hash,
+        appliedAt: '2026-09-11T00:00:00.000Z',
+        status: 'applied',
+      }),
+    ).toBe(true);
   });
 });

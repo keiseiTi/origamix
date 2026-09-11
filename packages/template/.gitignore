@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Origamix local editing state; runtime pages use src/pages/*/schema.json.
+.origamix/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

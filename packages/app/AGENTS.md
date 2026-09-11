@@ -20,6 +20,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Associate asynchronous work with page identity and revision; stale results must not overwrite another page. Preserve pending edits on failure.
 - Resolve edit, preview, Agent, Apply and explicit project reload actions with `projectId` plus stable `pageId`; page names are display labels, not identity. A reload that discards Working Schema needs an explicit user confirmation, and late responses from another page must be ignored.
 - Keep Workspace polling, save and Apply projections in the page-bound application-state hook keyed by projectId/pageId and, where relevant, revisionId. Ignore late responses for inactive pages instead of letting view components reconcile them ad hoc.
+- Retain one Apply request ID for the same page Revision until the result is known; an ambiguous transport failure must not turn an explicit retry into a different logical operation.
 - Renderer transports cache backend authority only as a convenience. After a desktop Server restart, refresh it through the named connection bridge; never replay an ambiguous failed mutation automatically, and recover Agent views from durable Run/Message/Schema state.
 - Preview uses the read-only preview bridge, never a fallback that requests desktop credentials. Rendering errors must remain visible without corrupting the editing session.
 

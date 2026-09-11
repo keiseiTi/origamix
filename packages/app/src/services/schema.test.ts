@@ -39,4 +39,30 @@ describe('schema service', () => {
       schema,
     });
   });
+
+  it('uses the caller-provided stable apply request ID and response validator', async () => {
+    request.mockResolvedValue({
+      pageId: 'page_one',
+      revisionId: 'revision_next',
+      schemaHash: 'a'.repeat(64),
+      appliedAt: '2026-09-11T00:00:00.000Z',
+      status: 'applied',
+    });
+    const { schemaService } = await import('./schema');
+
+    await schemaService.apply('project_one', 'page_one', 'revision_next', 'request_stable');
+
+    expect(request).toHaveBeenCalledWith(
+      '/pages/page_one/apply',
+      expect.objectContaining({
+        projectId: 'project_one',
+        method: 'POST',
+        body: JSON.stringify({
+          expectedRevisionId: 'revision_next',
+          clientRequestId: 'request_stable',
+        }),
+      }),
+      expect.any(Function),
+    );
+  });
 });

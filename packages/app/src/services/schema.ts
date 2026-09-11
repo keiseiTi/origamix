@@ -1,5 +1,10 @@
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import type { ApplyPageResult, PageApplyState } from '@origamix/shared/protocol/api';
+import {
+  isApplyPageResult,
+  isPageApplyState,
+  type ApplyPageResult,
+  type PageApplyState,
+} from '@origamix/shared/protocol/api';
 import { request } from './request';
 
 interface SchemaResult {
@@ -48,7 +53,7 @@ export const schemaService = {
   undo: (projectId: string, pageId: string): Promise<SchemaResult> =>
     request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' }),
   applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
-    request<PageApplyState>(`/pages/${pageId}/apply-state`, { projectId }),
+    request<PageApplyState>(`/pages/${pageId}/apply-state`, { projectId }, isPageApplyState),
   reloadFromProject: (projectId: string, pageId: string): Promise<SchemaResult> =>
     request<SchemaResult>(`/pages/${pageId}/reload-from-project`, {
       projectId,
@@ -58,13 +63,18 @@ export const schemaService = {
     projectId: string,
     pageId: string,
     expectedRevisionId: string,
+    clientRequestId: string = crypto.randomUUID(),
   ): Promise<ApplyPageResult> =>
-    request<ApplyPageResult>(`/pages/${pageId}/apply`, {
-      projectId,
-      method: 'POST',
-      body: JSON.stringify({
-        expectedRevisionId,
-        clientRequestId: crypto.randomUUID(),
-      }),
-    }),
+    request<ApplyPageResult>(
+      `/pages/${pageId}/apply`,
+      {
+        projectId,
+        method: 'POST',
+        body: JSON.stringify({
+          expectedRevisionId,
+          clientRequestId,
+        }),
+      },
+      isApplyPageResult,
+    ),
 };

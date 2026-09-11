@@ -96,6 +96,26 @@ describe('renderer transport', () => {
     expect(error).toMatchObject({ message: '服务返回格式无效', code: 500, status: 200 });
   });
 
+  it('rejects malformed endpoint data when a response validator is provided', async () => {
+    vi.stubEnv('DEV', true);
+    vi.stubGlobal('window', {});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({ success: true, code: 200, data: { status: 'unexpected' } }),
+      }),
+    );
+    const { ApiRequestError, request } = await import('./request');
+    const isExpected = (value: unknown): value is { status: 'expected' } =>
+      typeof value === 'object' && value !== null && Reflect.get(value, 'status') === 'expected';
+    const error = await request('/validated', undefined, isExpected).catch(
+      (reason: unknown) => reason,
+    );
+    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toMatchObject({ message: '服务返回数据无效', code: 500, status: 200 });
+  });
+
   it('refreshes stale desktop authority once after a service-instance rejection', async () => {
     const getConnection = vi
       .fn()

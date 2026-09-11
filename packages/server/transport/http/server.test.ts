@@ -272,7 +272,7 @@ describe('local HTTP API', () => {
     const pageResult = createPage.json() as {
       success: true;
       code: 200;
-      data: { slug: string };
+      data: { id: string; slug: string };
     };
     expect(pageResult).toMatchObject({ success: true, code: 200 });
     const page = pageResult.data;
@@ -286,6 +286,49 @@ describe('local HTTP API', () => {
       framework: 'react',
       uiLibrary: 'antd',
       pages: [{ pageId: expect.any(String), route: '/customer-list' }],
+    });
+
+    const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
+    const targetPath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
+    const targetBeforeEdit = await readFile(targetPath, 'utf8');
+    const schemaResponse = await server.inject({
+      method: 'GET',
+      url: `/api/v1/pages/${page.id}/schema`,
+      headers: projectHeaders,
+    });
+    const current = schemaResponse.json() as {
+      success: true;
+      data: { revisionId: string };
+    };
+    const saveResponse = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/changesets`,
+      headers: projectHeaders,
+      payload: {
+        pageId: page.id,
+        baseRevisionId: current.data.revisionId,
+        source: { kind: 'user' },
+        createdAt: new Date().toISOString(),
+        operation: 'updateElementProps',
+        elementId: 'element_root',
+        props: { padding: 28 },
+      },
+    });
+    expect(saveResponse.statusCode).toBe(200);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetBeforeEdit);
+    const saved = saveResponse.json() as { success: true; data: { revisionId: string } };
+    const applyResponse = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/apply`,
+      headers: projectHeaders,
+      payload: {
+        expectedRevisionId: saved.data.revisionId,
+        clientRequestId: 'deterministic_product_flow',
+      },
+    });
+    expect(applyResponse.statusCode).toBe(200);
+    expect(JSON.parse(await readFile(targetPath, 'utf8'))).toMatchObject({
+      elements: { element_root: { props: { padding: 28 } } },
     });
     await server.close();
     database.close();
