@@ -18,7 +18,8 @@
     "./template": {
       "types": "./template.ts",
       "default": "./dist/template.cjs"
-    }
+    },
+    "./template-artifact": "./scripts/prepare-template-artifact.mjs"
   },
   "scripts": {
     "lint": "eslint .",

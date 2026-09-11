@@ -7,7 +7,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 - `src/main/index.ts`: application lifecycle, directory grants, settings/credentials and backend bootstrap.
 - `src/main/page-windows.ts`: page preview `WebContentsView` ownership, reuse and read authorization.
 - `src/preload/index.ts`: workbench bridge; `src/preload/preview.ts`: separate read-only preview bridge.
-- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/tsup-options.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly.
+- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/tsup-options.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template vendor preparation comes from Server tooling rather than a Desktop-owned recipe.
 
 ## Boundaries
 

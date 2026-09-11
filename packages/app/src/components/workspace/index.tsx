@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import type { PageItem } from '../sidebar';
 import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
-import { schemaService } from '../../services/schema';
-import { ApiRequestError } from '../../services/request';
-import type { EditorSaveStatus } from '../editor/use-editor-session';
+import { usePageApplicationState } from './state/use-page-application-state';
 
 interface WorkspaceProps {
   page?: PageItem;
@@ -42,54 +40,15 @@ export const Workspace = ({
   onSchemaCommitted,
 }: WorkspaceProps): React.JSX.Element => {
   const [runningPages, setRunningPages] = useState<Record<string, boolean>>({});
-  const [applyStatus, setApplyStatus] = useState<
-    'loading' | 'in_sync' | 'pending' | 'external_change' | 'result_pending' | 'error'
-  >('loading');
-  const [saveStatus, setSaveStatus] = useState<EditorSaveStatus>('saved');
-  const pageKeyRef = useRef('');
-  const pageKey = `${projectId ?? ''}:${page?.id ?? ''}`;
-  useEffect(() => {
-    pageKeyRef.current = pageKey;
-  }, [pageKey]);
+  const { applyStatus, saveStatus, setSaveStatus, applyPage, reloadFromProject } =
+    usePageApplicationState({
+      projectId,
+      pageId: page?.id,
+      schemaRefreshKey,
+      editorRef,
+      onSchemaCommitted,
+    });
   const agentRunning = page ? runningPages[page.id] === true : false;
-  const refreshApplyState = useCallback(async (): Promise<void> => {
-    if (!page || !projectId) return;
-    const requestPageKey = `${projectId}:${page.id}`;
-    try {
-      const state = await schemaService.applyState(projectId, page.id);
-      if (pageKeyRef.current === requestPageKey) setApplyStatus(state.status);
-    } catch {
-      if (pageKeyRef.current === requestPageKey) setApplyStatus('error');
-    }
-  }, [page, projectId]);
-  useEffect(() => {
-    const initial = window.setTimeout(() => void refreshApplyState(), 0);
-    const timer = window.setInterval(() => void refreshApplyState(), 1500);
-    return () => {
-      window.clearTimeout(initial);
-      window.clearInterval(timer);
-    };
-  }, [refreshApplyState, schemaRefreshKey]);
-  const applyPage = async (): Promise<void> => {
-    if (!page || !projectId) return;
-    await editorRef.current?.flush();
-    const current = await schemaService.get(projectId, page.id);
-    try {
-      await schemaService.apply(projectId, page.id, current.revisionId);
-      await refreshApplyState();
-    } catch (error) {
-      setApplyStatus(
-        !(error instanceof ApiRequestError) || error.status >= 500 ? 'result_pending' : 'error',
-      );
-      throw error;
-    }
-  };
-  const reloadFromProject = async (): Promise<void> => {
-    if (!page || !projectId) return;
-    const result = await schemaService.reloadFromProject(projectId, page.id);
-    onSchemaCommitted(page.id, result.revisionId);
-    await refreshApplyState();
-  };
   const chat = page && projectId && (
     <ChatWorkspace
       key={`${projectId}:${page.id}`}

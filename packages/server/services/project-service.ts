@@ -1,5 +1,4 @@
-import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { copyTemplate } from '../template';
+import { access, mkdir, readFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
@@ -11,6 +10,7 @@ import { conflict, invalid, notFound } from '../errors';
 import { ProjectFormatService } from './project-format-service';
 import { ProjectLifecycleService } from './project-lifecycle-service';
 import { ProjectScaffoldService } from './project-scaffold-service';
+import { ProjectSourceService } from './project-source-service';
 import { ProjectApplyService } from './project-apply-service';
 
 const now = (): string => new Date().toISOString();
@@ -40,32 +40,19 @@ const schemaTemplate = (): OrigamixPageSchema => ({
   extensions: { origamix: { schemaVersion: '1.0' } },
 });
 
-const atomicWrite = async (path: string, contents: string): Promise<void> => {
-  const temporary = `${path}.${nanoid()}.tmp`;
-  await writeFile(temporary, contents, { mode: 0o600 });
-  await rename(temporary, path);
-};
-
-const pageComponentName = (slug: string): string => {
-  return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
-};
-
-const pageComponentSource = (slug: string): string => {
-  const componentName = pageComponentName(slug);
-  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
-};
-
 export class ProjectService {
   private readonly lifecycle = new ProjectLifecycleService();
   private readonly format = new ProjectFormatService();
   private readonly scaffold: ProjectScaffoldService;
+  private readonly source: ProjectSourceService;
 
   constructor(
     private readonly projects: ProjectRepository,
-    private readonly templatePath: string,
+    templatePath: string,
     private readonly projectApply = new ProjectApplyService(projects),
   ) {
     this.scaffold = new ProjectScaffoldService(templatePath);
+    this.source = new ProjectSourceService(templatePath);
   }
 
   registerGrant(id: string, path: string): void {
@@ -102,29 +89,8 @@ export class ProjectService {
     const temporaryPath = join(parentPath, `.${code}.${nanoid()}.tmp`);
     const id = `project_${nanoid()}`;
     try {
-      await copyTemplate(this.templatePath, temporaryPath);
-      await mkdir(join(temporaryPath, '.origamix', 'revisions'), { recursive: true });
-      await atomicWrite(
-        join(temporaryPath, 'origamix.project.json'),
-        `${JSON.stringify({ projectId: id, name, framework: 'react', uiLibrary: 'antd', pages: [] }, null, 2)}\n`,
-      );
-      await atomicWrite(
-        join(temporaryPath, 'README.md'),
-        `# ${name}\n\n项目标识：\`${code}\`\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`。项目使用浏览器历史路由，静态服务器需要把未知子路由回退到 \`index.html\`，以支持页面直接访问和刷新。\n`,
-      );
-      const packageJson = JSON.parse(
-        await readFile(join(temporaryPath, 'package.json'), 'utf8'),
-      ) as Record<string, unknown>;
-      await atomicWrite(
-        join(temporaryPath, 'package.json'),
-        `${JSON.stringify({ ...packageJson, name: code }, null, 2)}\n`,
-      );
-      await atomicWrite(
-        join(temporaryPath, 'index.html'),
-        (await readFile(join(temporaryPath, 'index.html'), 'utf8'))
-          .replace('<html lang="en">', '<html lang="zh-CN">')
-          .replace('<title>template</title>', `<title>${name}</title>`),
-      );
+      await this.source.prepareNewProject(temporaryPath, { name, code });
+      await this.format.initializeManifest(temporaryPath, { projectId: id, name });
       await rename(temporaryPath, path);
     } catch (error) {
       await rm(temporaryPath, { recursive: true, force: true });
@@ -177,7 +143,6 @@ export class ProjectService {
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
     const route = input.route ?? `/${input.slug}`;
     if (!/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(route)) throw invalid('页面路由无效');
-    const manifest = await this.format.readManifest(project.path);
     const pages = await this.format.readPages(project.path);
     if (pages.some((item) => item.slug === input.slug || item.route === route))
       throw conflict('页面标识或路由已存在');
@@ -194,13 +159,10 @@ export class ProjectService {
       { projectPath: project.path, pageId: id, slug: input.slug },
       schema,
     );
-    await atomicWrite(join(pagePath, 'index.tsx'), pageComponentSource(input.slug));
+    await this.source.createPageEntry(project.path, input.slug);
     await initializePageSchema({ projectPath: project.path, pageId: id, slug: input.slug }, schema);
     const nextPage = { pageId: id, name, slug: input.slug, route };
-    await atomicWrite(
-      join(project.path, 'origamix.project.json'),
-      `${JSON.stringify({ ...manifest, pages: [...pages, nextPage] }, null, 2)}\n`,
-    );
+    await this.format.addPage(project.path, nextPage);
     await this.reconcile(project.path);
     const page = this.projects.getPage(projectId, id);
     if (!page) throw new Error('页面索引失败');

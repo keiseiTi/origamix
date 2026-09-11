@@ -5,9 +5,9 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown.
-- `transport/http/server.ts`: authentication, validation and HTTP adaptation.
-- `services/project-service.ts`: project use-case facade and orchestration; `project-lifecycle-service.ts`, `project-format-service.ts` and `project-scaffold-service.ts` own grants, format validation and initialization. Keep generated source and target-file mechanics out of the facade as they are extracted.
-- `services/schema-service.ts`: authoritative edit pipeline and per-page serialization. Working/Revision persistence may be extracted behind a file store without creating another commit entry.
+- `transport/http/server.ts`: shared authentication, error mapping and HTTP response adaptation; `transport/http/routes/` registers business domains.
+- `services/project-service.ts`: project use-case facade and orchestration; lifecycle, format, scaffold and source services own grants, manifest changes, initialization and generated source respectively.
+- `services/schema-service.ts`: authoritative edit pipeline, per-page serialization and recovery orchestration. `storage/working-schema-store.ts` owns Working/Revision/journal/ChangeSet-receipt paths and atomic JSON persistence.
 - `services/project-apply-service.ts`: apply orchestration. Initial target creation and explicit apply must share one Target Schema Store; `ProjectService` must not retain a separate target `schema.json` writer.
 - `origamix.project.json.pages` is the project page standard. `pageId` is the stable identity; opening a project may rebuild the SQLite index from the manifest, but SQLite must never rewrite the manifest.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
@@ -18,7 +18,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 ## Service and security boundaries
 
 - Keep HTTP → services → repositories/filesystem ownership explicit. Do not add business mutations in transport or Electron Main. Server remains usable without Electron/React imports.
-- Split HTTP registration by Project, Schema, Apply and Agent domains when changing the monolithic server; share authentication, project context, error mapping and response envelopes instead of duplicating them in route files.
+- Keep HTTP registration split by Project, Schema, Apply, Runtime and Agent domains; share authentication, project context, error mapping and response envelopes instead of duplicating them in route files.
 - Server must not own browser-window navigation state such as the selected project, open/active tabs, per-tab mode or drafts. Those are App `sessionStorage` concerns in both browser and desktop hosts.
 - Server may consume the declared, serializable `@origamix/materials/*/manifest` exports for validation; it must not import material runtime components or editor modules.
 - Listen only on `127.0.0.1` with an assigned port. Preserve bearer-token, service-instance and Origin checks; CORS alone is not authorization. Directory grants come from the trusted host, never an arbitrary-path HTTP endpoint.

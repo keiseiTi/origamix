@@ -25,6 +25,25 @@ const atomicWrite = async (path: string, contents: string): Promise<void> => {
 };
 
 export class ProjectFormatService {
+  async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
+    await atomicWrite(
+      join(projectPath, 'origamix.project.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
+  }
+
+  async initializeManifest(
+    projectPath: string,
+    input: Pick<ProjectManifest, 'projectId' | 'name'>,
+  ): Promise<void> {
+    await this.writeManifest(projectPath, {
+      ...input,
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [],
+    });
+  }
+
   async readManifest(projectPath: string): Promise<ProjectManifest> {
     let manifest: ProjectManifest;
     try {
@@ -65,21 +84,20 @@ export class ProjectFormatService {
     return (await this.readManifest(projectPath)).pages;
   }
 
+  async addPage(projectPath: string, page: ProjectPageItem): Promise<void> {
+    const manifest = await this.readManifest(projectPath);
+    await this.writeManifest(projectPath, { ...manifest, pages: [...manifest.pages, page] });
+  }
+
   async renameProject(projectPath: string, name: string): Promise<void> {
     const manifest = await this.readManifest(projectPath);
-    await atomicWrite(
-      join(projectPath, 'origamix.project.json'),
-      `${JSON.stringify({ ...manifest, name }, null, 2)}\n`,
-    );
+    await this.writeManifest(projectPath, { ...manifest, name });
   }
 
   async renamePage(projectPath: string, pageId: string, name: string): Promise<void> {
     const manifest = await this.readManifest(projectPath);
     const pages = manifest.pages.map((item) => (item.pageId === pageId ? { ...item, name } : item));
     if (!pages.some((item) => item.pageId === pageId)) throw notFound('页面注册信息不存在');
-    await atomicWrite(
-      join(projectPath, 'origamix.project.json'),
-      `${JSON.stringify({ ...manifest, pages }, null, 2)}\n`,
-    );
+    await this.writeManifest(projectPath, { ...manifest, pages });
   }
 }

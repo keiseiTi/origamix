@@ -7,7 +7,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - `src/main.tsx`, `src/router.ts`, `src/pages/`: portable React/Tangramino scaffold.
 - `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`: standalone tools and build configuration.
 - Copying is owned by `../server/template.ts`; coverage starts in `../server/template.test.ts` and `../server/scripts/smoke-template.mjs`.
-- Runtime/Materials package preparation and dependency rewriting must have one reusable pipeline consumed by development, template smoke and Desktop resource assembly; do not maintain separate packing recipes in each entry point.
+- Runtime/Materials package preparation and dependency rewriting use Server template-artifact tooling from template smoke and Desktop resource assembly; do not reintroduce separate packing recipes.
 
 ## Portability contract
 
