@@ -1,7 +1,7 @@
 // import { OptionsConfig } from '@/components/options-config';
 import { lazy } from 'react';
 import type { Material } from '@/material';
-import { selectManifest } from '../manifest';
+import { selectManifest } from './manifest';
 
 const SelectMaterial: Material = {
   Component: lazy(() => import('./index')),

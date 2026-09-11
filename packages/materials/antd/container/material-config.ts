@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import type { Material } from '@/material';
-import { containerManifest } from '../manifest';
+import { containerManifest } from './manifest';
 
 const ContainerMaterial: Material = {
   Component: lazy(() => import('./index')),

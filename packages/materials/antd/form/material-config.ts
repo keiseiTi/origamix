@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import type { Material } from '@/material';
-import { formManifest } from '../manifest';
+import { formManifest } from './manifest';
 
 const FormMaterial: Material = {
   Component: lazy(() => import('./index')),

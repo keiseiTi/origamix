@@ -7,9 +7,53 @@ import {
   antdValidationMaterialRegistry,
   getAntdMaterialManifests,
 } from './manifest';
+import { buttonManifest } from './button/manifest';
+import { cascaderManifest } from './cascader/manifest';
+import { checkboxManifest } from './checkbox/manifest';
 import { containerManifest } from './container/manifest';
+import { datePickerManifest } from './date-picker/manifest';
+import { datePickerRangeManifest } from './date-picker-range/manifest';
+import { drawerManifest } from './drawer/manifest';
 import { formManifest } from './form/manifest';
 import { inputManifest } from './input/manifest';
+import { modalManifest } from './modal/manifest';
+import { numberManifest } from './number/manifest';
+import { radioManifest } from './radio/manifest';
+import { selectManifest } from './select/manifest';
+import { sliderManifest } from './slider/manifest';
+import { switchManifest } from './switch/manifest';
+import { tableManifest } from './table/manifest';
+import { textManifest } from './text/manifest';
+import { textareaManifest } from './textarea/manifest';
+import { timePickerManifest } from './time-picker/manifest';
+import { treeManifest } from './tree/manifest';
+import { treeSelectManifest } from './tree-select/manifest';
+import { uploadManifest } from './upload/manifest';
+
+const materialOwnedManifests = [
+  containerManifest,
+  formManifest,
+  inputManifest,
+  numberManifest,
+  checkboxManifest,
+  radioManifest,
+  selectManifest,
+  textareaManifest,
+  datePickerManifest,
+  datePickerRangeManifest,
+  timePickerManifest,
+  switchManifest,
+  treeSelectManifest,
+  cascaderManifest,
+  sliderManifest,
+  uploadManifest,
+  buttonManifest,
+  modalManifest,
+  drawerManifest,
+  tableManifest,
+  textManifest,
+  treeManifest,
+] as const;
 
 const expectPureData = (value: unknown): void => {
   expect(typeof value).not.toBe('function');
@@ -78,9 +122,7 @@ describe('antd material registry', () => {
     expect(getAntdMaterialManifests(['unknown'])).toEqual([]);
   });
 
-  it('aggregates core manifests from their material-owned definitions', () => {
-    expect(antdMaterialManifest.materials).toEqual(
-      expect.arrayContaining([containerManifest, formManifest, inputManifest]),
-    );
+  it('aggregates every manifest from its material-owned definition', () => {
+    expect(antdMaterialManifest.materials).toEqual(materialOwnedManifests);
   });
 });

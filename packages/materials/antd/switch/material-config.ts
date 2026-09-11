@@ -2,7 +2,7 @@ import React from 'react';
 
 const Switch = React.lazy(() => import('./index'));
 import type { Material } from '@/material';
-import { switchManifest } from '../manifest';
+import { switchManifest } from './manifest';
 
 const SwitchMaterial: Material = {
   Component: Switch,
