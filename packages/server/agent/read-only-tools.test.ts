@@ -24,7 +24,7 @@ const schema: OrigamixPageSchema = {
   extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
-function setup(readSchema = vi.fn(async () => ({ schema, revisionId }))) {
+const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
   const projects = {
     getProject: vi.fn((id: string) =>
       id === 'project_one'
@@ -69,7 +69,7 @@ function setup(readSchema = vi.fn(async () => ({ schema, revisionId }))) {
     return tool.execute(input, new AbortController().signal);
   };
   return { execute, projects, readSchema, tools };
-}
+};
 
 const scope = { projectId: 'project_one', pageId: 'page_one', revisionId };
 

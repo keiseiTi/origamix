@@ -7,10 +7,10 @@ import { hasValidRevision } from './schema-service';
  * Reconciles durable Run state during Server startup. It only inspects already
  * committed Schema state and never resumes a provider request.
  */
-export async function recoverAgentRunsOnStartup(
+export const recoverAgentRunsOnStartup = async (
   runs: AgentRunRepository,
   projects: ProjectRepository,
-): Promise<void> {
+): Promise<void> => {
   const service = new AgentRunService(runs);
   await service.recover(async (run) => {
     if (!run.resultRevisionId) return false;
@@ -26,4 +26,4 @@ export async function recoverAgentRunsOnStartup(
       return false;
     }
   });
-}
+};

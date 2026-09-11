@@ -70,7 +70,7 @@ type RunRow = {
   finished_at: string | null;
 };
 
-function fromRow(row: RunRow): AgentRunRecord {
+const fromRow = (row: RunRow): AgentRunRecord => {
   let budget: unknown;
   try {
     budget = JSON.parse(row.budget_json);
@@ -115,7 +115,7 @@ function fromRow(row: RunRow): AgentRunRecord {
     updatedAt: row.updated_at ?? row.started_at,
     ...(row.finished_at ? { finishedAt: row.finished_at } : {}),
   };
-}
+};
 
 export class AgentRunRepository {
   constructor(private readonly database: ApplicationDatabase) {}

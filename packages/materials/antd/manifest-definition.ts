@@ -13,6 +13,6 @@ export const objectSchema = (
 type MaterialCore = Pick<MaterialManifest, 'type' | 'title' | 'defaultProps' | 'context'>;
 type ManifestDetails = Omit<MaterialManifest, keyof MaterialCore>;
 
-export function defineManifest(core: MaterialCore, details: ManifestDetails): MaterialManifest {
+export const defineManifest = (core: MaterialCore, details: ManifestDetails): MaterialManifest => {
   return { ...core, ...details };
-}
+};

@@ -63,7 +63,7 @@ const conversationFromRow = (row: ConversationRow): ConversationRecord => ({
   ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
 });
 
-function messageFromRow(row: MessageRow): StoredMessage {
+const messageFromRow = (row: MessageRow): StoredMessage => {
   let content: unknown;
   try {
     content = JSON.parse(row.content_json);
@@ -89,7 +89,7 @@ function messageFromRow(row: MessageRow): StoredMessage {
     updatedAt: row.updated_at,
     ...(row.error_code ? { errorCode: row.error_code } : {}),
   };
-}
+};
 
 export class ConversationRepository {
   constructor(private readonly database: ApplicationDatabase) {}

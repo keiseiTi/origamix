@@ -24,14 +24,14 @@ export interface ReplacePageSchemaToolDependencies {
 
 const parameters = Type.Object({ schema: PageSchema }, { additionalProperties: false });
 
-function assertNotCancelled(signal: AbortSignal): void {
+const assertNotCancelled = (signal: AbortSignal): void => {
   if (signal.aborted) throw new AgentEngineError('CANCELLED', '页面修改已取消');
-}
+};
 
-export function createReplacePageSchemaTool(
+export const createReplacePageSchemaTool = (
   dependencies: ReplacePageSchemaToolDependencies,
   context: ReplacePageSchemaToolContext,
-): AgentEngineTool {
+): AgentEngineTool => {
   return {
     name: 'replace_page_schema',
     description: 'Replace the complete current page Schema after authoritative server validation.',
@@ -76,4 +76,4 @@ export function createReplacePageSchemaTool(
       return { revisionId: result.revisionId };
     },
   };
-}
+};

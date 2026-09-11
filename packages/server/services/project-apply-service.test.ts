@@ -16,7 +16,7 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true })));
 });
 
-async function setup() {
+const setup = async () => {
   const parent = await mkdtemp(join(tmpdir(), 'origamix-apply-'));
   directories.push(parent);
   const database = new ApplicationDatabase(join(parent, 'app.db'));
@@ -33,7 +33,7 @@ async function setup() {
     slug: 'customers',
   });
   return { database, projects, project, page, apply: new ProjectApplyService(projects) };
-}
+};
 
 describe('ProjectApplyService', () => {
   it('rejects request IDs that could escape the receipt directory', async () => {

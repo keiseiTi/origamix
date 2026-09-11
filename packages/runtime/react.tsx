@@ -20,14 +20,14 @@ export type RuntimeOutcome =
   | { outcome: 'success'; diagnostics: RuntimeDiagnostic[] }
   | { outcome: 'failed'; diagnostics: RuntimeDiagnostic[] };
 
-export function findUnknownMaterialTypes(
+export const findUnknownMaterialTypes = (
   schema: Schema,
   materials: NonNullable<ComponentProps<typeof ReactView>['components']>,
-): string[] {
+): string[] => {
   return [...new Set(Object.values(schema.elements).map((element) => element.type))].filter(
     (type) => !(type in materials),
   );
-}
+};
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -67,7 +67,7 @@ class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error 
   }
 }
 
-function RuntimeCanvas({
+const RuntimeCanvas = ({
   schema,
   materials,
   onOutcome,
@@ -75,7 +75,7 @@ function RuntimeCanvas({
   schema: Schema;
   materials: NonNullable<ComponentProps<typeof ReactView>['components']>;
   onOutcome?: (outcome: RuntimeOutcome) => void;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   const engine = useMemo(() => createEngine(schema), [schema]);
   const unknownTypes = useMemo(
     () => findUnknownMaterialTypes(schema, materials),
@@ -98,9 +98,9 @@ function RuntimeCanvas({
   }, [onOutcome, unknownTypes]);
   if (unknownTypes.length) return <main role='alert'>未知物料：{unknownTypes.join('、')}</main>;
   return <ReactView engine={engine} components={materials} />;
-}
+};
 
-export function OrigamixPage({
+export const OrigamixPage = ({
   schema,
   materials,
   resetKey = JSON.stringify(schema),
@@ -112,10 +112,10 @@ export function OrigamixPage({
   resetKey?: string;
   onOutcome?: (outcome: RuntimeOutcome) => void;
   renderError?: (error: Error, retry: () => void) => ReactNode;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   return (
     <RuntimeErrorBoundary resetKey={resetKey} onOutcome={onOutcome} renderError={renderError}>
       <RuntimeCanvas schema={schema} materials={materials} onOutcome={onOutcome} />
     </RuntimeErrorBoundary>
   );
-}
+};

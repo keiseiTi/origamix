@@ -33,11 +33,11 @@ const promptInjection =
 const politeModification =
   /(能否|是否|可以|可否).{0,24}(把|将)?.*(修改|调整|删除|移除|配置|设置|改成|添加|增加)/i;
 
-function normalized(message: string): string {
+const normalized = (message: string): string => {
   return message.trim().replace(/\s+/g, ' ');
-}
+};
 
-function clarification(pageId: string, reason: string, requirement?: string): PageIntent {
+const clarification = (pageId: string, reason: string, requirement?: string): PageIntent => {
   return {
     mode: 'clarification_required',
     scope: 'page',
@@ -48,13 +48,13 @@ function clarification(pageId: string, reason: string, requirement?: string): Pa
     suggestedQuestion: '请说明要添加或修改的具体页面内容、用途和字段。',
     requiresConfirmation: false,
   };
-}
+};
 
-function fromClassification(
+const fromClassification = (
   result: ScopeClassifierResult,
   pageId: string,
   threshold: number,
-): PageIntent {
+): PageIntent => {
   if (result.confidence < threshold) return clarification(pageId, '意图置信度不足，需要补充说明');
   if (result.mode === 'out_of_scope') {
     return {
@@ -89,7 +89,7 @@ function fromClassification(
     reason: result.reason,
     requiresConfirmation: false,
   };
-}
+};
 
 export class ScopeRouter {
   private readonly threshold: number;

@@ -4,21 +4,21 @@ import { parseSession, restoreSidebar, type ViewSession } from './view-session';
 
 const storageKey = 'origamix:view-session';
 
-function readSession(): ViewSession {
+const readSession = (): ViewSession => {
   try {
     return parseSession(sessionStorage.getItem(storageKey));
   } catch {
     return parseSession(null);
   }
-}
+};
 
-export function useViewSession(): ViewSession & {
+export const useViewSession = (): ViewSession & {
   setActiveTab: (activeTab: WorkspaceMode) => void;
   setIsSettingsOpen: (isSettingsOpen: boolean) => void;
   setSidebarCollapsed: (sidebarCollapsed: boolean) => void;
   restoreSidebarCollapsed: (sidebarCollapsed: boolean) => void;
   updateWorkspace: (workspace: Partial<ViewSession>) => void;
-} {
+} => {
   const [state, setState] = useState<ViewSession>(readSession);
   const restoreSidebarCollapsed = useCallback((sidebarCollapsed: boolean) => {
     // The current window's state takes precedence over an older server snapshot.
@@ -54,4 +54,4 @@ export function useViewSession(): ViewSession & {
     setIsSettingsOpen,
     updateWorkspace,
   };
-}
+};

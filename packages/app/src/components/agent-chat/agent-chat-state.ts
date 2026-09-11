@@ -50,23 +50,23 @@ const terminalStatuses = new Set<AgentRunStatus>([
   'interrupted',
 ]);
 
-export function isRunActive(status?: AgentRunStatus | null): boolean {
+export const isRunActive = (status?: AgentRunStatus | null): boolean => {
   return Boolean(status && !terminalStatuses.has(status));
-}
+};
 
-function payloadRecord(payload: unknown): Record<string, unknown> {
+const payloadRecord = (payload: unknown): Record<string, unknown> => {
   return payload && typeof payload === 'object' && !Array.isArray(payload)
     ? (payload as Record<string, unknown>)
     : {};
-}
+};
 
-function payloadString(payload: unknown, keys: string[]): string | undefined {
+const payloadString = (payload: unknown, keys: string[]): string | undefined => {
   const record = payloadRecord(payload);
   for (const key of keys) if (typeof record[key] === 'string') return record[key];
   return undefined;
-}
+};
 
-function statusFromEvent(event: AgentEvent): AgentRunStatus | undefined {
+const statusFromEvent = (event: AgentEvent): AgentRunStatus | undefined => {
   const value = payloadString(event.payload, ['status']);
   const statuses: AgentRunStatus[] = [
     'queued',
@@ -87,9 +87,9 @@ function statusFromEvent(event: AgentEvent): AgentRunStatus | undefined {
   if (event.type === 'run.failed') return 'failed';
   if (event.type === 'run.cancelled') return 'cancelled';
   return undefined;
-}
+};
 
-function updateTool(tools: ToolActivity[], event: AgentEvent): ToolActivity[] {
+const updateTool = (tools: ToolActivity[], event: AgentEvent): ToolActivity[] => {
   const record = payloadRecord(event.payload);
   const id = payloadString(record, ['toolCallId', 'id']);
   if (!id) return tools;
@@ -102,10 +102,13 @@ function updateTool(tools: ToolActivity[], event: AgentEvent): ToolActivity[] {
         ? 'failed'
         : 'completed';
   return [...tools.filter((tool) => tool.id !== id), { id, name, status }];
-}
+};
 
 /** Applies replayable SSE events. Duplicate and out-of-order events are intentionally ignored. */
-export function agentChatReducer(state: AgentChatState, action: AgentChatAction): AgentChatState {
+export const agentChatReducer = (
+  state: AgentChatState,
+  action: AgentChatAction,
+): AgentChatState => {
   if (action.type === 'reset') return initialAgentChatState;
   if (action.type === 'connection.changed') return { ...state, connection: action.connection };
   if (action.type === 'history.failed')
@@ -172,11 +175,11 @@ export function agentChatReducer(state: AgentChatState, action: AgentChatAction)
     error,
     connection: status && terminalStatuses.has(status) ? 'idle' : 'connected',
   };
-}
+};
 
-export function messageText(message: AgentMessage): string {
+export const messageText = (message: AgentMessage): string => {
   return message.content.blocks
     .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
     .map((block) => block.text)
     .join('\n');
-}
+};

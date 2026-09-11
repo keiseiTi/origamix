@@ -23,12 +23,12 @@ const objectSchema = (
 type MaterialCore = Pick<MaterialManifest, 'type' | 'title' | 'defaultProps' | 'context'>;
 type ManifestDetails = Omit<MaterialManifest, keyof MaterialCore>;
 
-function defineManifest(core: MaterialCore, details: ManifestDetails): MaterialManifest {
+const defineManifest = (core: MaterialCore, details: ManifestDetails): MaterialManifest => {
   return {
     ...core,
     ...details,
   };
-}
+};
 
 export const containerManifest = defineManifest(
   {
@@ -389,12 +389,12 @@ const optionSchema = objectSchema(
 );
 const optionsSchema: JsonSchema = { type: 'array', items: optionSchema };
 
-function defineSimpleManifest(
+const defineSimpleManifest = (
   core: MaterialCore,
   details: Omit<ManifestDetails, 'version'>,
-): MaterialManifest {
+): MaterialManifest => {
   return defineManifest(core, { version: '1.0.0', ...details });
-}
+};
 
 export const checkboxManifest = defineSimpleManifest(
   {
@@ -522,11 +522,11 @@ export const textareaManifest = defineSimpleManifest(
   },
 );
 
-function dateInputManifest(
+const dateInputManifest = (
   type: 'datePicker' | 'datePickerRange' | 'timePicker',
   title: string,
   props: Readonly<Record<string, JsonSchema>>,
-): MaterialManifest {
+): MaterialManifest => {
   return defineSimpleManifest(
     { type, title, defaultProps: {}, context: type === 'timePicker' ? emptyContext : inputContext },
     {
@@ -540,7 +540,7 @@ function dateInputManifest(
       constraints: ['必须置于 form 中。'],
     },
   );
-}
+};
 
 export const datePickerManifest = dateInputManifest('datePicker', '日期选择器', {
   format: { type: 'string' },
@@ -560,11 +560,11 @@ export const timePickerManifest = dateInputManifest('timePicker', '时间选择�
   allowClear: { type: 'boolean' },
 });
 
-function optionInputManifest(
+const optionInputManifest = (
   type: 'cascader' | 'treeSelect',
   title: string,
   variableName: 'options' | 'treeData',
-): MaterialManifest {
+): MaterialManifest => {
   return defineSimpleManifest(
     {
       type,
@@ -595,7 +595,7 @@ function optionInputManifest(
       constraints: ['必须置于 form 中。'],
     },
   );
-}
+};
 
 export const cascaderManifest = optionInputManifest('cascader', '级联选择', 'options');
 export const treeSelectManifest = optionInputManifest('treeSelect', '树选择器', 'treeData');
@@ -653,7 +653,7 @@ export const uploadManifest = defineSimpleManifest(
   },
 );
 
-function overlayManifest(type: 'modal' | 'drawer', title: string): MaterialManifest {
+const overlayManifest = (type: 'modal' | 'drawer', title: string): MaterialManifest => {
   return defineSimpleManifest(
     {
       type,
@@ -692,7 +692,7 @@ function overlayManifest(type: 'modal' | 'drawer', title: string): MaterialManif
       constraints: ['子元素应保持可访问的阅读和操作顺序。'],
     },
   );
-}
+};
 
 export const modalManifest = overlayManifest('modal', '弹窗容器');
 export const drawerManifest = overlayManifest('drawer', '抽屉容器');
@@ -786,9 +786,9 @@ export const antdValidationMaterialRegistry = Object.fromEntries(
   manifests.map((manifest) => [manifest.type, toValidationMaterialManifest(manifest)]),
 ) as Readonly<Record<string, ReturnType<typeof toValidationMaterialManifest>>>;
 
-export function getAntdMaterialManifests(types: readonly string[]) {
+export const getAntdMaterialManifests = (types: readonly string[]) => {
   const requestedTypes = new Set(types);
   return manifests.filter((manifest) => requestedTypes.has(manifest.type));
-}
+};
 
 export default antdMaterialManifest;

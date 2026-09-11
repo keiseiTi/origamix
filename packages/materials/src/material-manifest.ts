@@ -57,7 +57,7 @@ export type AgentMaterialSummary = Readonly<{
   keywords: readonly string[];
 }>;
 
-export function toAgentMaterialSummary(manifest: MaterialManifest): AgentMaterialSummary {
+export const toAgentMaterialSummary = (manifest: MaterialManifest): AgentMaterialSummary => {
   return {
     type: manifest.type,
     title: manifest.title,
@@ -65,11 +65,11 @@ export function toAgentMaterialSummary(manifest: MaterialManifest): AgentMateria
     role: manifest.role,
     keywords: manifest.keywords,
   };
-}
+};
 
-export function toValidationMaterialManifest(
+export const toValidationMaterialManifest = (
   manifest: MaterialManifest,
-): ValidationMaterialManifest {
+): ValidationMaterialManifest => {
   return {
     type: manifest.type,
     version: manifest.version,
@@ -78,4 +78,4 @@ export function toValidationMaterialManifest(
     allowedParentTypes: manifest.allowedParentTypes,
     context: manifest.context,
   } as const;
-}
+};

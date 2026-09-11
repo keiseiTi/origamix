@@ -21,7 +21,7 @@ import { schemaService } from './services/schema';
 import { useWorkspaceTransitions } from './components/workspace/use-workspace-transitions';
 import { useProjectActions } from './components/workspace/use-project-actions';
 
-function App(): React.JSX.Element {
+const App = (): React.JSX.Element => {
   const isMacDesktop = window.api?.platform === 'darwin';
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -519,6 +519,6 @@ function App(): React.JSX.Element {
       </Modal>
     </main>
   );
-}
+};
 
 export default App;

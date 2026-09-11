@@ -42,6 +42,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 ## Engineering and interface rules
 
 - Use strict TypeScript and pnpm. Read tool/runtime versions from the root manifest; declare dependencies where imported. Do not rely on accidental hoisting or relative imports into another package's source.
+- Define React components and ordinary standalone functions with arrow-function expressions (`const name = (...) => ...`), not `function` declarations or expressions. Class/object methods, constructors, generators, TypeScript overload signatures and callbacks that intentionally require dynamic `this` are semantic exceptions; document any local lint suppression.
 - Keep transport adapters thin, business rules in services, persistence in repositories/filesystem services and shared contracts platform-neutral. Prefer domain-specific modules over speculative frameworks.
 - Use Tailwind utilities for styling (`clsx`/`tailwind-merge` are allowed), `lucide-react` for icons, and `@heroui/react` for foundational components it provides. Do not hand-write SVG icons or replace available HeroUI controls.
 - Default to light mode and HeroUI tokens. Every changed page, overlay and UI state must support and be verified in both light and dark modes.

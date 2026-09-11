@@ -17,7 +17,7 @@ interface ProjectActionsInput {
   onError: (message: string) => void;
 }
 
-export function useProjectActions(input: ProjectActionsInput) {
+export const useProjectActions = (input: ProjectActionsInput) => {
   const [pendingInitialization, setPendingInitialization] = useState<{
     directoryGrantId: string;
     displayPath: string;
@@ -173,4 +173,4 @@ export function useProjectActions(input: ProjectActionsInput) {
     deletePage,
     duplicatePage,
   };
-}
+};

@@ -57,7 +57,7 @@ interface SidebarProps {
   supportsNativeProjectDirectories: boolean;
 }
 
-export function Sidebar({
+export const Sidebar = ({
   projects,
   selectedPageId,
   isTemporary,
@@ -76,7 +76,7 @@ export function Sidebar({
   onDeletePage,
   onDuplicatePage,
   supportsNativeProjectDirectories,
-}: SidebarProps): React.JSX.Element {
+}: SidebarProps): React.JSX.Element => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
@@ -320,4 +320,4 @@ export function Sidebar({
       )}
     </>
   );
-}
+};

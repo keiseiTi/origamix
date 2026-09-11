@@ -19,7 +19,7 @@ interface WorkspaceHeaderProps {
   undoDisabled?: boolean;
 }
 
-export function WorkspaceHeader({
+export const WorkspaceHeader = ({
   projectName,
   pageName,
   mode,
@@ -31,7 +31,7 @@ export function WorkspaceHeader({
   applyStatus,
   saveStatus,
   undoDisabled = false,
-}: WorkspaceHeaderProps): React.JSX.Element {
+}: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -201,4 +201,4 @@ export function WorkspaceHeader({
       </div>
     </header>
   );
-}
+};

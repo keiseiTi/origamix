@@ -15,7 +15,7 @@ const requestId = (): string =>
   globalThis.crypto?.randomUUID?.() ??
   `request-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-export function useAgentChat(
+export const useAgentChat = (
   projectId: string,
   pageId: string,
 ): {
@@ -24,7 +24,7 @@ export function useAgentChat(
   cancel: () => Promise<void>;
   retry: () => Promise<void>;
   refresh: () => Promise<void>;
-} {
+} => {
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
   const generation = useRef(0);
@@ -170,4 +170,4 @@ export function useAgentChat(
   }, [loadAuthority, state.run, submit]);
 
   return { state, send, cancel, retry, refresh: loadAuthority };
-}
+};

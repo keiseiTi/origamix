@@ -8,14 +8,14 @@ interface OptionItem {
   value: unknown;
 }
 
-function isNotEmpty(value: unknown): boolean {
+const isNotEmpty = (value: unknown): boolean => {
   if (value == null) return false;
   if (typeof value === 'string') return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   return true;
-}
+};
 
-function isVisible(config: AttributeConfig, values: Record<string, unknown>): boolean {
+const isVisible = (config: AttributeConfig, values: Record<string, unknown>): boolean => {
   return (config.linkageShow ?? []).every((rule) => {
     const value = values[rule.field];
     if (rule.isNotEmpty) return isNotEmpty(value);
@@ -23,14 +23,14 @@ function isVisible(config: AttributeConfig, values: Record<string, unknown>): bo
       ? value === rule.value
       : isNotEmpty(value);
   });
-}
+};
 
-function optionsOf(config: AttributeConfig): OptionItem[] {
+const optionsOf = (config: AttributeConfig): OptionItem[] => {
   const props = config as AttributeConfig & { props?: { options?: OptionItem[] } };
   return Array.isArray(props.props?.options) ? props.props.options : [];
-}
+};
 
-export function AttributePanel(): React.JSX.Element {
+export const AttributePanel = (): React.JSX.Element => {
   const { activeElement, schema, setSchema } = useEditorCore();
   const material = activeElement?.material;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
@@ -219,4 +219,4 @@ export function AttributePanel(): React.JSX.Element {
       )}
     </aside>
   );
-}
+};

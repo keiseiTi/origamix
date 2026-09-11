@@ -19,7 +19,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-export async function getApiConnection(forceRefresh = false): Promise<ApiConnection> {
+export const getApiConnection = async (forceRefresh = false): Promise<ApiConnection> => {
   if (forceRefresh) connection = undefined;
   connection ??= await window.api?.backend?.getConnection?.();
   if (!connection && import.meta.env.DEV) {
@@ -28,13 +28,13 @@ export async function getApiConnection(forceRefresh = false): Promise<ApiConnect
   }
   if (!connection) throw new Error('当前环境不支持本地服务，请在桌面应用中打开。');
   return connection;
-}
+};
 
-export async function refreshBackendConnection(): Promise<ApiConnection> {
+export const refreshBackendConnection = async (): Promise<ApiConnection> => {
   return getApiConnection(true);
-}
+};
 
-function headersFor(current: ApiConnection, init?: RequestInit & { projectId?: string }) {
+const headersFor = (current: ApiConnection, init?: RequestInit & { projectId?: string }) => {
   return {
     ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
     ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
@@ -42,20 +42,20 @@ function headersFor(current: ApiConnection, init?: RequestInit & { projectId?: s
     ...(init?.body ? { 'content-type': 'application/json' } : {}),
     ...init?.headers,
   };
-}
+};
 
-async function fetchWithConnection(
+const fetchWithConnection = async (
   current: ApiConnection,
   path: string,
   init?: RequestInit & { projectId?: string },
-): Promise<Response> {
+): Promise<Response> => {
   return fetch(`${current.baseUrl}${path}`, { ...init, headers: headersFor(current, init) });
-}
+};
 
-export async function request<T>(
+export const request = async <T>(
   path: string,
   init?: RequestInit & { projectId?: string },
-): Promise<T> {
+): Promise<T> => {
   const current = await getApiConnection();
   let response: Response;
   try {
@@ -82,4 +82,4 @@ export async function request<T>(
   if (!result.success)
     throw new ApiRequestError(result.message ?? '请求失败', result.code, response.status);
   return result.data as T;
-}
+};

@@ -60,11 +60,11 @@ const toolContext: Context = {
   ],
 };
 
-function classifyFailure(
+const classifyFailure = (
   message: string,
   didTimeout: boolean,
   didCancel: boolean,
-): ModelProbeFailureCode {
+): ModelProbeFailureCode => {
   if (didTimeout) return 'TIMEOUT';
   if (didCancel) return 'CANCELLED';
   const normalized = message.toLowerCase();
@@ -73,12 +73,12 @@ function classifyFailure(
   }
   if (normalized.includes('429') || normalized.includes('rate limit')) return 'RATE_LIMITED';
   return 'PROVIDER_ERROR';
-}
+};
 
-async function observeStream(
+const observeStream = async (
   stream: AssistantMessageEventStream,
   control: { didTimeout: () => boolean; didCancel: () => boolean },
-): Promise<ModelProbeObservation> {
+): Promise<ModelProbeObservation> => {
   let textDeltaCount = 0;
   let toolCallCount = 0;
   let toolCall: ToolCall | undefined;
@@ -127,14 +127,14 @@ async function observeStream(
       failureCode: classifyFailure(message, control.didTimeout(), control.didCancel()),
     };
   }
-}
+};
 
-async function runObservation(
+const runObservation = async (
   model: Model<Api>,
   streamFn: ProbeStream,
   context: Context,
   options: Required<Pick<ProbeOptions, 'apiKey' | 'timeoutMs'>> & Pick<ProbeOptions, 'signal'>,
-): Promise<ModelProbeObservation> {
+): Promise<ModelProbeObservation> => {
   const controller = new AbortController();
   let timedOut = false;
   let cancelled = false;
@@ -162,15 +162,15 @@ async function runObservation(
     clearTimeout(timer);
     options.signal?.removeEventListener('abort', onCancel);
   }
-}
+};
 
 /**
  * Runs two narrowly-scoped provider requests and returns metadata only. The API key,
  * prompts, response text and tool arguments are deliberately absent from the report.
  */
-export async function probeDeepSeekCapabilities(
+export const probeDeepSeekCapabilities = async (
   options: ProbeOptions,
-): Promise<DeepSeekCapabilityReport> {
+): Promise<DeepSeekCapabilityReport> => {
   if (!options.apiKey.trim()) throw new Error('DeepSeek API Key is required');
   const { model, models } = createMvpPiModels();
   const streamFn = options.stream ?? (models.streamSimple.bind(models) as ProbeStream);
@@ -194,4 +194,4 @@ export async function probeDeepSeekCapabilities(
   }
   const structuredToolCall = await runObservation(model, streamFn, toolContext, requestOptions);
   return { ...mvpModelReference, textStreaming, structuredToolCall };
-}
+};

@@ -9,11 +9,11 @@ interface CreatePageModalProps {
   onCreated: (projectId: string, page: PageItem) => void;
 }
 
-export function CreatePageModal({
+export const CreatePageModal = ({
   project,
   onClose,
   onCreated,
-}: CreatePageModalProps): React.JSX.Element {
+}: CreatePageModalProps): React.JSX.Element => {
   const [name, setName] = useState('');
   const [fileName, setFileName] = useState('');
   const [route, setRoute] = useState('');
@@ -111,4 +111,4 @@ export function CreatePageModal({
       </Modal.Backdrop>
     </Modal>
   );
-}
+};

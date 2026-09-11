@@ -23,7 +23,7 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true })));
 });
 
-async function setup() {
+const setup = async () => {
   const projectPath = await mkdtemp(join(tmpdir(), 'origamix-replace-tool-'));
   directories.push(projectPath);
   await mkdir(join(projectPath, 'src', 'pages', 'home'), { recursive: true });
@@ -100,7 +100,7 @@ async function setup() {
     },
   );
   return { database, pageRef, initialRevisionId, runs, tool };
-}
+};
 
 describe('replace_page_schema tool', () => {
   it('commits through SchemaService and makes identical retries idempotent', async () => {

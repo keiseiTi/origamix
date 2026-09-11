@@ -19,21 +19,21 @@ const emptySession: ViewSession = {
   pageDrafts: {},
 };
 
-function stringRecord(value: unknown): Record<string, string> {
+const stringRecord = (value: unknown): Record<string, string> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(
     Object.entries(value).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string',
     ),
   );
-}
+};
 
-function stringArray(value: unknown): string[] {
+const stringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter((id): id is string => typeof id === 'string'))];
-}
+};
 
-export function parseSession(raw: string | null): ViewSession {
+export const parseSession = (raw: string | null): ViewSession => {
   try {
     const value = JSON.parse(raw ?? 'null');
     const modes = stringRecord(value?.pageModes);
@@ -53,8 +53,8 @@ export function parseSession(raw: string | null): ViewSession {
   } catch {
     return emptySession;
   }
-}
+};
 
-export function restoreSidebar(state: ViewSession, collapsed: boolean): ViewSession {
+export const restoreSidebar = (state: ViewSession, collapsed: boolean): ViewSession => {
   return state.sidebarCollapsed === undefined ? { ...state, sidebarCollapsed: collapsed } : state;
-}
+};

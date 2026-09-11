@@ -376,7 +376,7 @@ describe('local HTTP API', () => {
     await writeFile(join(directory, 'src', 'router.ts'), 'export default [];');
     const pagePath = join(directory, 'src', 'pages', 'customers');
     await mkdir(pagePath, { recursive: true });
-    await writeFile(join(pagePath, 'index.tsx'), 'export default function Page() { return null; }');
+    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
     await writeFile(
       join(pagePath, 'schema.json'),
       JSON.stringify({

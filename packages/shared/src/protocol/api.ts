@@ -94,9 +94,9 @@ export type ApiResult<T> =
   | { success: true; code: 200; data: T }
   | { success: false; code: number; data: null; message?: string };
 
-export function isApiResultEnvelope(value: unknown): value is ApiResult<unknown> {
+export const isApiResultEnvelope = (value: unknown): value is ApiResult<unknown> => {
   return Value.Check(ApiResultSchema, value);
-}
+};
 
 export interface ProjectRecord {
   id: string;

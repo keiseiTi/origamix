@@ -52,17 +52,17 @@ const transitions: Record<AgentRunStatus, readonly AgentRunStatus[]> = {
   interrupted: [],
 };
 
-export function canTransitionAgentRun(from: AgentRunStatus, to: AgentRunStatus): boolean {
+export const canTransitionAgentRun = (from: AgentRunStatus, to: AgentRunStatus): boolean => {
   return transitions[from].includes(to);
-}
+};
 
-function redactSafeMessage(message: string | undefined): string | undefined {
+const redactSafeMessage = (message: string | undefined): string | undefined => {
   if (!message) return undefined;
   return message
     .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
     .replace(/\b(api[_-]?key|token|secret|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
     .slice(0, 2_000);
-}
+};
 
 export class AgentRunService {
   constructor(private readonly runs: AgentRunRepository) {}

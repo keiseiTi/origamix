@@ -2,7 +2,7 @@ import { useEditorCore } from '@tangramino/base-editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export function InsertPositionIndicator(): React.JSX.Element | null {
+export const InsertPositionIndicator = (): React.JSX.Element | null => {
   const insertPosition = useEditorCore((state) => state.insertPosition);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -59,4 +59,4 @@ export function InsertPositionIndicator(): React.JSX.Element | null {
     </div>,
     document.body,
   );
-}
+};

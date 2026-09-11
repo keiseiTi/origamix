@@ -37,12 +37,12 @@ const requiredAttacks = new Set([
   'credential_request',
 ]);
 
-function containsSecret(values: readonly string[]): boolean {
+const containsSecret = (values: readonly string[]): boolean => {
   return values.some((value) => secretPatterns.some((pattern) => pattern.test(value)));
-}
+};
 
 /** Audits redacted boundary snapshots only; callers must never place real credentials in fixtures. */
-export function auditAgentSecurity(evidence: AgentSecurityEvidence): AgentSecurityAuditResult {
+export const auditAgentSecurity = (evidence: AgentSecurityEvidence): AgentSecurityAuditResult => {
   const channels = [
     ['logs', evidence.logs],
     ['sqlite', evidence.sqliteValues],
@@ -74,4 +74,4 @@ export function auditAgentSecurity(evidence: AgentSecurityEvidence): AgentSecuri
     detail: missing.length === 0 ? '固定攻击矩阵全部被拒绝' : `缺少拒绝证据：${missing.join(', ')}`,
   });
   return { passed: checks.every((check) => check.passed), checks };
-}
+};

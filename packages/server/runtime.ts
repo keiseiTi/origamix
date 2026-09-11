@@ -64,7 +64,7 @@ export {
   redactRuntimeMessage,
 } from './services/runtime-diagnostic-service';
 
-export async function startServer(input: {
+export const startServer = async (input: {
   databasePath: string;
   templatePath: string;
   desktopToken: string;
@@ -72,7 +72,7 @@ export async function startServer(input: {
   projectPath?: string;
   allowedOrigins?: readonly string[];
   getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
-}) {
+}) => {
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
   const workspace = new WorkspaceRepository(database);
@@ -184,4 +184,4 @@ export async function startServer(input: {
     database.close();
     throw error;
   }
-}
+};

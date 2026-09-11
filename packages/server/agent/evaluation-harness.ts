@@ -37,6 +37,30 @@ export interface AgentEvaluationAdapter {
   run(testCase: AgentEvaluationCase): Promise<AgentEvaluationObservation>;
 }
 
+const observation = (
+  mode: RunMode,
+  status: AgentRunStatus,
+  revision = false,
+  toolTrace: string[] = [],
+  errorCode?: string,
+): AgentEvaluationObservation => {
+  return {
+    mode,
+    status,
+    firstEventMs: 20,
+    durationMs: 120,
+    inputTokens: 0,
+    outputTokens: 0,
+    modelCalls: 0,
+    toolCalls: toolTrace.length,
+    schemaBytes: revision ? 4_096 : 0,
+    repairAttempts: 0,
+    toolTrace,
+    ...(revision ? { resultRevisionId: `revision_recorded_${mode}` } : {}),
+    ...(errorCode ? { errorCode } : {}),
+  };
+};
+
 const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservation>> = {
   eval_login_form: observation('page_modify', 'completed', true, ['replace_page_schema']),
   eval_customer_form_table: observation('page_modify', 'completed', true, ['replace_page_schema']),
@@ -55,32 +79,8 @@ const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservat
   eval_cancelled: { ...observation('page_modify', 'cancelled'), durationMs: 80 },
 };
 
-function observation(
-  mode: RunMode,
-  status: AgentRunStatus,
-  revision = false,
-  toolTrace: string[] = [],
-  errorCode?: string,
-): AgentEvaluationObservation {
-  return {
-    mode,
-    status,
-    firstEventMs: 20,
-    durationMs: 120,
-    inputTokens: 0,
-    outputTokens: 0,
-    modelCalls: 0,
-    toolCalls: toolTrace.length,
-    schemaBytes: revision ? 4_096 : 0,
-    repairAttempts: 0,
-    toolTrace,
-    ...(revision ? { resultRevisionId: `revision_recorded_${mode}` } : {}),
-    ...(errorCode ? { errorCode } : {}),
-  };
-}
-
 /** Recorded CI adapter. It contains no provider credentials or captured user content. */
-export function createRecordedMvpAdapter(): AgentEvaluationAdapter {
+export const createRecordedMvpAdapter = (): AgentEvaluationAdapter => {
   return {
     kind: 'recorded',
     run: async (testCase) => {
@@ -89,7 +89,7 @@ export function createRecordedMvpAdapter(): AgentEvaluationAdapter {
       return { ...recorded, toolTrace: [...recorded.toolTrace] };
     },
   };
-}
+};
 
 export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
   {
@@ -187,16 +187,16 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
   },
 ] as const;
 
-function percentile95(values: readonly number[]): number {
+const percentile95 = (values: readonly number[]): number => {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)]!;
-}
+};
 
-function failuresFor(
+const failuresFor = (
   testCase: AgentEvaluationCase,
   observation: AgentEvaluationObservation,
-): string[] {
+): string[] => {
   const failures: string[] = [];
   if (observation.mode !== testCase.expectedMode)
     failures.push(`意图应为 ${testCase.expectedMode}`);
@@ -210,13 +210,13 @@ function failuresFor(
   if (testCase.expectedErrorCode && observation.errorCode !== testCase.expectedErrorCode)
     failures.push(`错误码应为 ${testCase.expectedErrorCode}`);
   return failures;
-}
+};
 
-export async function runAgentEvaluation(
+export const runAgentEvaluation = async (
   adapter: AgentEvaluationAdapter,
   cases: readonly AgentEvaluationCase[] = FIXED_AGENT_EVALUATION_CASES,
   now: () => Date = () => new Date(),
-): Promise<AgentEvaluationReport> {
+): Promise<AgentEvaluationReport> => {
   const startedAt = now().toISOString();
   const results: AgentEvaluationCaseResult[] = [];
   for (const testCase of cases) {
@@ -261,4 +261,4 @@ export async function runAgentEvaluation(
     },
     cases: results,
   };
-}
+};

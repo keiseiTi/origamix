@@ -15,11 +15,11 @@ import { copyTemplate } from '../template';
 import { invalid } from '../errors';
 import { validatePage } from '@origamix/shared/protocol/validation';
 
-async function atomicWrite(path: string, contents: string): Promise<void> {
+const atomicWrite = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
   await writeFile(temporary, contents, { mode: 0o600 });
   await rename(temporary, path);
-}
+};
 
 export class ProjectScaffoldService {
   constructor(private readonly templatePath: string) {}

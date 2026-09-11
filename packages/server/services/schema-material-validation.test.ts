@@ -8,7 +8,7 @@ import {
 
 const supportedSet = [{ id: 'official-antd', version: '1.0.0' }] as const;
 
-function page(): OrigamixPageSchema {
+const page = (): OrigamixPageSchema => {
   return {
     elements: {
       element_root: { type: 'basicPage', props: {} },
@@ -30,14 +30,14 @@ function page(): OrigamixPageSchema {
     context: { globalVariables: [] },
     extensions: { origamix: { schemaVersion: '1.0' } },
   };
-}
+};
 
-function codes(
+const codes = (
   schema: OrigamixPageSchema,
   sets: readonly { id: string; version: string }[] = supportedSet,
-): string[] {
+): string[] => {
   return validatePageAgainstMaterials(schema, sets).errors.map((item) => item.code);
-}
+};
 
 describe('Manifest-driven Schema validation', () => {
   it('accepts declared props, hierarchy, event, binding and safe URL', () => {

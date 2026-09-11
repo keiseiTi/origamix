@@ -40,18 +40,18 @@ import type { AgentRunRecord } from '../../repositories/agent-run-repository';
 import type { AgentEventBroker } from '../../agent/agent-event-broker';
 import type { AgentApplicationService } from '../../services/agent-application-service';
 
-function requestId(value: unknown): string {
+const requestId = (value: unknown): string => {
   return typeof value === 'string' && value.length <= 100 ? value : nanoid();
-}
-function errorStatus(error: unknown): number {
+};
+const errorStatus = (error: unknown): number => {
   if (error instanceof ApiError) return error.statusCode;
   const statusCode =
     typeof error === 'object' && error !== null && 'statusCode' in error
       ? error.statusCode
       : undefined;
   return typeof statusCode === 'number' && statusCode >= 400 ? statusCode : 500;
-}
-function failure(error: unknown, fallbackStatus = 500): ApiResult<never> {
+};
+const failure = (error: unknown, fallbackStatus = 500): ApiResult<never> => {
   const statusCode = error instanceof ApiError ? error.statusCode : fallbackStatus;
   return {
     success: false,
@@ -64,7 +64,7 @@ function failure(error: unknown, fallbackStatus = 500): ApiResult<never> {
           ? error.message
           : '服务器内部错误',
   };
-}
+};
 
 type CreateProject = Static<typeof CreateProjectSchema>;
 type OpenProject = Static<typeof OpenProjectSchema>;
@@ -79,7 +79,7 @@ type WithoutChangeSetId<T> = T extends unknown ? Omit<T, 'changeSetId'> : never;
 type ChangeSetRequest = WithoutChangeSetId<ChangeSet>;
 type RouteInput<T> = { body: T; params: Record<string, string>; headers: Record<string, unknown> };
 
-export function createHttpServer(input: {
+export const createHttpServer = (input: {
   desktopToken: string;
   serviceInstanceId: string;
   projects: ProjectRepository;
@@ -94,7 +94,7 @@ export function createHttpServer(input: {
     application: AgentApplicationService;
   };
   runtimeDiagnostics?: RuntimeDiagnosticService;
-}): FastifyInstance {
+}): FastifyInstance => {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
   const allowedOrigins = new Set(
     input.allowedOrigins ?? ['null', 'http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -496,4 +496,4 @@ export function createHttpServer(input: {
     });
   }
   return server;
-}
+};

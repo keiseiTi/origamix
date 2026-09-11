@@ -5,7 +5,7 @@ import { schemaService } from '../../services/schema';
 
 export type EditorSaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
-export function useEditorSession(projectId: string, pageId: string, readOnly: boolean) {
+export const useEditorSession = (projectId: string, pageId: string, readOnly: boolean) => {
   const [initial, setInitial] = useState<{
     schema: OrigamixPageSchema;
     revisionId: string;
@@ -112,4 +112,4 @@ export function useEditorSession(projectId: string, pageId: string, readOnly: bo
   );
 
   return { initial, loading, status, error, flush, onChange, providerKey };
-}
+};

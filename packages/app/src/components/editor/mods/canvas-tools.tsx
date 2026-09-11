@@ -8,7 +8,10 @@ import {
 import { GripVertical, Trash2 } from 'lucide-react';
 import { removeEditorElement } from './editor-schema';
 
-export function DropIndicator({ material, isDragOver }: DropPlaceholderProps): React.JSX.Element {
+export const DropIndicator = ({
+  material,
+  isDragOver,
+}: DropPlaceholderProps): React.JSX.Element => {
   return (
     <div
       className={`grid size-full min-h-20 place-items-center rounded-md border border-dashed px-4 text-xs transition-colors ${isDragOver ? 'border-blue-500 bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'border-zinc-300 bg-zinc-50 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400'}`}
@@ -16,13 +19,13 @@ export function DropIndicator({ material, isDragOver }: DropPlaceholderProps): R
       将物料拖入“{material.title}”
     </div>
   );
-}
+};
 
-export function EditableElement({ children }: EnhancedComponentProps): React.JSX.Element {
+export const EditableElement = ({ children }: EnhancedComponentProps): React.JSX.Element => {
   return children;
-}
+};
 
-export function EditorOverlay(): React.JSX.Element | null {
+export const EditorOverlay = (): React.JSX.Element | null => {
   const { activeElement, schema, setSchema, setActiveElement } = useEditorCore();
 
   if (!activeElement) return null;
@@ -70,4 +73,4 @@ export function EditorOverlay(): React.JSX.Element | null {
       )}
     </>
   );
-}
+};

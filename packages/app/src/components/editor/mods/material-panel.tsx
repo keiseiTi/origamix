@@ -6,7 +6,7 @@ export interface MaterialGroup {
   children: Material[];
 }
 
-export function MaterialPanel({ groups }: { groups: MaterialGroup[] }): React.JSX.Element {
+export const MaterialPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.Element => {
   return (
     <aside
       className='flex w-58 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'
@@ -40,4 +40,4 @@ export function MaterialPanel({ groups }: { groups: MaterialGroup[] }): React.JS
       </div>
     </aside>
   );
-}
+};

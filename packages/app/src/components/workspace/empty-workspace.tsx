@@ -1,13 +1,13 @@
 import { Button } from '@heroui/react';
 import { Plus, Sparkles } from 'lucide-react';
 
-export function EmptyWorkspace({
+export const EmptyWorkspace = ({
   onCreateProject,
   supportsNativeProjectDirectories,
 }: {
   onCreateProject: () => void;
   supportsNativeProjectDirectories: boolean;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   return (
     <div className='flex flex-1 flex-col items-center justify-center pb-12 text-center'>
       <div className='mb-4 grid h-11 w-11 place-items-center rounded-xl border border-zinc-200 bg-zinc-50 text-blue-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-blue-400'>
@@ -29,4 +29,4 @@ export function EmptyWorkspace({
       </Button>
     </div>
   );
-}
+};

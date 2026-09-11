@@ -53,39 +53,39 @@ export const defaultMaterialValidationRuntime: MaterialValidationRuntime = {
   registry: antdValidationMaterialRegistry,
 };
 
-function error(
+const error = (
   code: MaterialValidationErrorCode,
   path: string,
   message: string,
   elementId?: string,
   materialType?: string,
-): MaterialValidationError {
+): MaterialValidationError => {
   return { code, path, message, elementId: elementId ?? null, materialType: materialType ?? null };
-}
+};
 
-function propsValidator(manifest: ValidationMaterialManifest): ValidateFunction {
+const propsValidator = (manifest: ValidationMaterialManifest): ValidateFunction => {
   const cached = validatorCache.get(manifest.propsSchema);
   if (cached) return cached;
   const compiled = ajv.compile(manifest.propsSchema);
   validatorCache.set(manifest.propsSchema, compiled);
   return compiled;
-}
+};
 
-function propertyPath(elementId: string, ajvError: ErrorObject): string {
+const propertyPath = (elementId: string, ajvError: ErrorObject): string => {
   const suffix =
     ajvError.keyword === 'additionalProperties'
       ? `/${String(ajvError.params['additionalProperty'])}`
       : ajvError.instancePath;
   return `/elements/${elementId}/props${suffix}`;
-}
+};
 
-function inspectSafeValues(
+const inspectSafeValues = (
   value: unknown,
   path: string,
   elementId: string,
   materialType: string,
   errors: MaterialValidationError[],
-): void {
+): void => {
   if (Array.isArray(value)) {
     value.forEach((item, index) =>
       inspectSafeValues(item, `${path}/${index}`, elementId, materialType, errors),
@@ -136,13 +136,13 @@ function inspectSafeValues(
     }
     inspectSafeValues(child, `${path}/${key}`, elementId, materialType, errors);
   }
-}
+};
 
-export function validatePageAgainstMaterials(
+export const validatePageAgainstMaterials = (
   schema: OrigamixPageSchema,
   projectMaterialSets: readonly { id: string; version: string }[],
   runtime: MaterialValidationRuntime = defaultMaterialValidationRuntime,
-): MaterialValidationResult {
+): MaterialValidationResult => {
   const errors: MaterialValidationError[] = [];
   if (
     !projectMaterialSets.some(
@@ -311,13 +311,13 @@ export function validatePageAgainstMaterials(
     errors,
   );
   return { valid: errors.length === 0, errors };
-}
+};
 
-export async function validateProjectPageAgainstMaterials(
+export const validateProjectPageAgainstMaterials = async (
   projectPath: string,
   schema: OrigamixPageSchema,
   runtime: MaterialValidationRuntime = defaultMaterialValidationRuntime,
-): Promise<MaterialValidationResult> {
+): Promise<MaterialValidationResult> => {
   const descriptor = JSON.parse(
     await readFile(join(projectPath, 'origamix.project.json'), 'utf8'),
   ) as ProjectDescriptor;
@@ -326,4 +326,4 @@ export async function validateProjectPageAgainstMaterials(
       ? [{ id: 'official-antd', version: '1.0.0' }]
       : [];
   return validatePageAgainstMaterials(schema, materialSets, runtime);
-}
+};

@@ -19,7 +19,7 @@ const credentialRequests = new Map<
   { resolve: (credential: string | undefined) => void; timeout: NodeJS.Timeout }
 >();
 
-function requestCredential(provider: 'deepseek'): Promise<string | undefined> {
+const requestCredential = (provider: 'deepseek'): Promise<string | undefined> => {
   const requestId = `credential_${nanoid()}`;
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
@@ -29,7 +29,7 @@ function requestCredential(provider: 'deepseek'): Promise<string | undefined> {
     credentialRequests.set(requestId, { resolve, timeout });
     controlPort!.postMessage({ kind: 'credential-request', requestId, provider });
   });
-}
+};
 
 controlPort.on('message', async ({ data }) => {
   if (!data || typeof data !== 'object') return;

@@ -20,7 +20,7 @@ export interface PiAgentEngineOptions {
   getCredential: (provider: string) => Promise<string | undefined>;
 }
 
-function normalizeError(error: unknown, timedOut: boolean, aborted: boolean): AgentEngineError {
+const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): AgentEngineError => {
   if (timedOut) return new AgentEngineError('TIMEOUT', '模型请求超时', true);
   if (aborted) return new AgentEngineError('CANCELLED', '模型请求已取消');
   if (error instanceof AgentEngineError) return error;
@@ -29,9 +29,9 @@ function normalizeError(error: unknown, timedOut: boolean, aborted: boolean): Ag
     return new AgentEngineError('RATE_LIMITED', '模型服务当前繁忙，请稍后重试', true);
   }
   return new AgentEngineError('PROVIDER_ERROR', '模型服务调用失败', true);
-}
+};
 
-function adaptTool(tool: AgentEngineTool): AgentTool {
+const adaptTool = (tool: AgentEngineTool): AgentTool => {
   return {
     name: tool.name,
     label: tool.name,
@@ -45,7 +45,7 @@ function adaptTool(tool: AgentEngineTool): AgentTool {
       };
     },
   };
-}
+};
 
 export class PiAgentEngine implements AgentEngine {
   constructor(private readonly options: PiAgentEngineOptions) {}

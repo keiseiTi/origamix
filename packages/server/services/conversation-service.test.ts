@@ -24,7 +24,7 @@ const budget: RunBudget = {
   maxRepairAttempts: 1,
 };
 
-function setup(path?: string) {
+const setup = (path?: string) => {
   const database = new ApplicationDatabase(path ?? ':memory:');
   const timestamp = new Date().toISOString();
   database.connection
@@ -56,9 +56,9 @@ function setup(path?: string) {
     ),
     runService: new AgentRunService(runs),
   };
-}
+};
 
-function input(overrides: Partial<StartConversationRunInput> = {}): StartConversationRunInput {
+const input = (overrides: Partial<StartConversationRunInput> = {}): StartConversationRunInput => {
   return {
     projectId: 'project_a',
     pageId: 'page_a',
@@ -74,7 +74,7 @@ function input(overrides: Partial<StartConversationRunInput> = {}): StartConvers
     materialManifestVersion: 'official-antd@1.0.0',
     ...overrides,
   };
-}
+};
 
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));

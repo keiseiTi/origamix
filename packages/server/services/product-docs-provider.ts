@@ -54,7 +54,7 @@ export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
   },
 ] as const;
 
-function terms(value: string): string[] {
+const terms = (value: string): string[] => {
   const normalized = value.toLocaleLowerCase().trim();
   if (!normalized) return [];
   const chunks = normalized.match(/[\p{Script=Han}]{2,}|[a-z0-9_-]{2,}/gu) ?? [];
@@ -66,9 +66,9 @@ function terms(value: string): string[] {
     }
   }
   return [...result];
-}
+};
 
-function score(document: ProductDocument, queryTerms: readonly string[]): number {
+const score = (document: ProductDocument, queryTerms: readonly string[]): number => {
   const title = document.title.toLocaleLowerCase();
   const keywords = document.keywords.join(' ').toLocaleLowerCase();
   const body = document.markdown.toLocaleLowerCase();
@@ -80,9 +80,12 @@ function score(document: ProductDocument, queryTerms: readonly string[]): number
       (body.includes(term) ? 1 : 0),
     0,
   );
-}
+};
 
-function safeSnippet(markdown: string, maxChars: number): { snippet: string; truncated: boolean } {
+const safeSnippet = (
+  markdown: string,
+  maxChars: number,
+): { snippet: string; truncated: boolean } => {
   // Strip invisible control characters and neutralize our context delimiter. The text remains explicitly untrusted.
   const cleaned = markdown
     .split('')
@@ -94,7 +97,7 @@ function safeSnippet(markdown: string, maxChars: number): { snippet: string; tru
     .replaceAll('<<<END_UNTRUSTED_PRODUCT_DOC>>>', '[escaped document delimiter]');
   if (cleaned.length <= maxChars) return { snippet: cleaned, truncated: false };
   return { snippet: `${cleaned.slice(0, Math.max(0, maxChars - 1))}…`, truncated: true };
-}
+};
 
 export class ProductDocsProvider {
   constructor(private readonly documents: readonly ProductDocument[] = DEFAULT_PRODUCT_DOCS) {}

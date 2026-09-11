@@ -18,11 +18,11 @@ export interface ProjectPageItem {
   route: string;
 }
 
-async function atomicWrite(path: string, contents: string): Promise<void> {
+const atomicWrite = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
   await writeFile(temporary, contents, { mode: 0o600 });
   await rename(temporary, path);
-}
+};
 
 export class ProjectFormatService {
   async readManifest(projectPath: string): Promise<ProjectManifest> {

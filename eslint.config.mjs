@@ -19,6 +19,18 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [1],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'FunctionDeclaration[body.type="BlockStatement"]:not([generator=true])',
+          message: 'Use an arrow-function expression for standalone functions.',
+        },
+        {
+          selector: 'VariableDeclarator > FunctionExpression:not([generator=true])',
+          message: 'Use an arrow-function expression for standalone functions.',
+        },
+      ],
+      'prefer-arrow-callback': 'error',
     },
   },
   {
@@ -64,6 +76,13 @@ export default defineConfig([
   {
     files: ['apps/desktop/src/**/*.ts', 'packages/server/**/*.ts', 'packages/app/*.ts'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['**/*.config.ts'],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: { project: false },
+    },
   },
   {
     files: ['**/*.d.ts'],

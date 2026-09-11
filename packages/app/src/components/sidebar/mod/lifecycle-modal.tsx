@@ -7,7 +7,7 @@ export type LifecycleTarget =
   | { kind: 'rename-page'; projectId: string; id: string; name: string }
   | { kind: 'delete-page'; projectId: string; id: string; name: string };
 
-export function LifecycleModal({
+export const LifecycleModal = ({
   target,
   onClose,
   onConfirm,
@@ -15,7 +15,7 @@ export function LifecycleModal({
   target: LifecycleTarget | null;
   onClose: () => void;
   onConfirm: (target: LifecycleTarget, name?: string) => Promise<void>;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   const [name, setName] = useState(target?.name ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,4 +104,4 @@ export function LifecycleModal({
       </Modal.Backdrop>
     </Modal>
   );
-}
+};

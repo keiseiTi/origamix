@@ -52,10 +52,10 @@ export type CredentialPurpose = Static<typeof CredentialPurposeSchema>;
 export type CredentialRequest = Static<typeof CredentialRequestSchema>;
 export type CredentialResponse = Static<typeof CredentialResponseSchema>;
 
-export function isCredentialRequest(value: unknown): value is CredentialRequest {
+export const isCredentialRequest = (value: unknown): value is CredentialRequest => {
   return Value.Check(CredentialRequestSchema, value);
-}
+};
 
-export function isCredentialResponse(value: unknown): value is CredentialResponse {
+export const isCredentialResponse = (value: unknown): value is CredentialResponse => {
   return Value.Check(CredentialResponseSchema, value);
-}
+};

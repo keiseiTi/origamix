@@ -19,7 +19,7 @@ const stageLabels = {
   interrupted: '已中断',
 } as const;
 
-export function ChatWorkspace({
+export const ChatWorkspace = ({
   projectId,
   pageId,
   pageName,
@@ -35,7 +35,7 @@ export function ChatWorkspace({
   onDraftChange: (draft: string) => void;
   onSchemaCommitted: (revisionId: string) => void;
   onRunningChange: (running: boolean) => void;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   const { state, send, cancel, retry } = useAgentChat(projectId, pageId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const notifiedRevisionRef = useRef<string | null>(null);
@@ -207,4 +207,4 @@ export function ChatWorkspace({
       </p>
     </div>
   );
-}
+};

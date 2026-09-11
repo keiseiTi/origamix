@@ -21,20 +21,20 @@ interface ApplyReceipt extends ApplyPageResult {
   requestHash: string;
 }
 
-async function readJson<T>(path: string): Promise<T> {
+const readJson = async <T>(path: string): Promise<T> => {
   return JSON.parse(await readFile(path, 'utf8')) as T;
-}
+};
 
-async function readJsonIfPresent<T>(path: string): Promise<T | undefined> {
+const readJsonIfPresent = async <T>(path: string): Promise<T | undefined> => {
   try {
     return await readJson<T>(path);
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
     throw error;
   }
-}
+};
 
-async function writeJsonAtomically(path: string, value: unknown): Promise<void> {
+const writeJsonAtomically = async (path: string, value: unknown): Promise<void> => {
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${nanoid()}.tmp`;
   const handle = await open(temporary, 'w', 0o600);
@@ -50,7 +50,7 @@ async function writeJsonAtomically(path: string, value: unknown): Promise<void> 
     await rm(temporary, { force: true });
     throw error;
   }
-}
+};
 
 export class ProjectApplyService {
   constructor(

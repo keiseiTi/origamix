@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { MVP_MODEL_ID, type AgentEngineEvent } from './agent-engine';
 import { PiAgentEngine } from './pi-agent-engine';
 
-function setup(responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) {
+const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) => {
   const faux = fauxProvider({ provider: 'deepseek', tokensPerSecond });
   faux.setResponses(responses);
   const models = createModels();
@@ -24,7 +24,7 @@ function setup(responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSe
     },
   });
   return { engine, getCredentialReads: () => credentialReads };
-}
+};
 
 describe('PiAgentEngine', () => {
   it('requires a configured provider credential instead of falling back to a fake model', async () => {

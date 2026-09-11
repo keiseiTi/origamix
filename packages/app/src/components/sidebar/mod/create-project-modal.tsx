@@ -9,11 +9,11 @@ interface CreateProjectModalProps {
   onCreated: (project: ProjectItem) => void;
 }
 
-export function CreateProjectModal({
+export const CreateProjectModal = ({
   isOpen,
   onClose,
   onCreated,
-}: CreateProjectModalProps): React.JSX.Element {
+}: CreateProjectModalProps): React.JSX.Element => {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [directory, setDirectory] = useState('');
@@ -128,4 +128,4 @@ export function CreateProjectModal({
       </Modal.Backdrop>
     </Modal>
   );
-}
+};

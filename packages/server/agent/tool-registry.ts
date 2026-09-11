@@ -25,9 +25,9 @@ const READ_TOOL_NAMES = new Set([
   'get_page_diagnostics',
 ]);
 
-export function createDefaultAgentToolEntries(
+export const createDefaultAgentToolEntries = (
   tools: readonly AgentEngineTool[],
-): RegisteredAgentTool[] {
+): RegisteredAgentTool[] => {
   return tools.map((tool) => {
     if (READ_TOOL_NAMES.has(tool.name)) {
       return {
@@ -53,7 +53,7 @@ export function createDefaultAgentToolEntries(
     }
     throw new AgentEngineError('POLICY_DENIED', '工具不在领域白名单中');
   });
-}
+};
 
 const writeModes = new Set<RunMode>(['page_modify']);
 

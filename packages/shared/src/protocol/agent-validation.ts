@@ -58,17 +58,17 @@ const validators = {
   evaluationReport: ajv.compile(AgentEvaluationReportSchema),
 };
 
-function result(errors: ErrorObject[] | null | undefined): AgentProtocolValidationResult {
+const result = (errors: ErrorObject[] | null | undefined): AgentProtocolValidationResult => {
   return { valid: !errors, errors: errors ? [...errors] : [] };
-}
+};
 
-function check(
+const check = (
   validator: (value: unknown) => boolean,
   value: unknown,
-): AgentProtocolValidationResult {
+): AgentProtocolValidationResult => {
   validator(value);
   return result((validator as typeof validators.run).errors);
-}
+};
 
 export const validatePageIntent = (value: unknown) => check(validators.intent, value);
 export const validateAgentRun = (value: unknown) => check(validators.run, value);

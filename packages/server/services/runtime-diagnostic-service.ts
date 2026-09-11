@@ -16,11 +16,11 @@ const SECRET_PATTERNS = [
   /(?:file:\/\/)?\/(?:Users|home)\/[^\s]+/g,
 ];
 
-export function redactRuntimeMessage(message: string): string {
+export const redactRuntimeMessage = (message: string): string => {
   let safe = message;
   for (const pattern of SECRET_PATTERNS) safe = safe.replace(pattern, '[REDACTED]');
   return safe.slice(0, 2_000) || '运行时错误';
-}
+};
 
 export class RuntimeDiagnosticService {
   constructor(

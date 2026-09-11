@@ -17,7 +17,7 @@ const rootFiles = new Set([
 const excluded = new Set(['node_modules', 'dist', '.git', '.cache', '.DS_Store']);
 
 // Use the same source-only template in development and packaged applications.
-export async function copyTemplate(source: string, target: string): Promise<void> {
+export const copyTemplate = async (source: string, target: string): Promise<void> => {
   await cp(source, target, {
     recursive: true,
     errorOnExist: true,
@@ -29,4 +29,4 @@ export async function copyTemplate(source: string, target: string): Promise<void
       return !(await lstat(path)).isSymbolicLink();
     },
   });
-}
+};

@@ -17,7 +17,7 @@ const budget: RunBudget = {
   maxRepairAttempts: 1,
 };
 
-function registry() {
+const registry = () => {
   const value = new AgentToolRegistry();
   value.register({
     tool: {
@@ -34,7 +34,7 @@ function registry() {
     },
   });
   return value;
-}
+};
 
 describe('Agent tool policy and budget', () => {
   it('does not expose tools for non-Agent modes or writes for question mode', () => {

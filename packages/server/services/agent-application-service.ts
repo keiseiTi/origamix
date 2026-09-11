@@ -6,13 +6,13 @@ import type { AgentRunService } from './agent-run-service';
 import type { ConversationService } from './conversation-service';
 import { conflict } from '../errors';
 
-export function agentRequestText(request: CreateAgentRunRequest): string {
+export const agentRequestText = (request: CreateAgentRunRequest): string => {
   return request.content.blocks
     .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
     .map((block) => block.text)
     .join('\n')
     .trim();
-}
+};
 
 export class AgentApplicationService {
   constructor(

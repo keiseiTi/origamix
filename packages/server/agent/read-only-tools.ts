@@ -58,12 +58,12 @@ const MAX_RESULT_BYTES = 24 * 1024;
 const MAX_PROP_KEYS = 24;
 const MAX_STRING_LENGTH = 400;
 
-function assertInput<T>(schema: TSchema, input: unknown): T {
+const assertInput = <T>(schema: TSchema, input: unknown): T => {
   if (!Value.Check(schema, input)) throw invalid('只读工具参数无效');
   return input as T;
-}
+};
 
-function compactValue(value: unknown, depth = 0): unknown {
+const compactValue = (value: unknown, depth = 0): unknown => {
   if (typeof value === 'string')
     return value.length > MAX_STRING_LENGTH
       ? `${value.slice(0, MAX_STRING_LENGTH)}…[truncated]`
@@ -82,9 +82,9 @@ function compactValue(value: unknown, depth = 0): unknown {
   );
   if (entries.length > MAX_PROP_KEYS) result.$omittedKeys = entries.length - MAX_PROP_KEYS;
   return result;
-}
+};
 
-function boundedResult(value: JsonObject): JsonObject {
+const boundedResult = (value: JsonObject): JsonObject => {
   const compact = compactValue(value) as JsonObject;
   const serialized = JSON.stringify(compact);
   if (Buffer.byteLength(serialized, 'utf8') <= MAX_RESULT_BYTES) return compact;
@@ -94,9 +94,9 @@ function boundedResult(value: JsonObject): JsonObject {
     byteLimit: MAX_RESULT_BYTES,
     preview: serialized.slice(0, MAX_RESULT_BYTES / 2),
   };
-}
+};
 
-function elementSummary(schema: OrigamixPageSchema, elementId: string): JsonObject {
+const elementSummary = (schema: OrigamixPageSchema, elementId: string): JsonObject => {
   const element = schema.elements[elementId]!;
   return {
     id: elementId,
@@ -104,13 +104,13 @@ function elementSummary(schema: OrigamixPageSchema, elementId: string): JsonObje
     props: compactValue(element.props),
     childIds: schema.layout.structure[elementId] ?? [],
   };
-}
+};
 
 /** Creates read-only tools whose project/page/revision authority is fixed for one Agent Run. */
-export function createReadOnlyAgentTools(
+export const createReadOnlyAgentTools = (
   scope: ReadOnlyToolScope,
   dependencies: ReadOnlyToolDependencies,
-): AgentEngineTool[] {
+): AgentEngineTool[] => {
   const cache = new Map<string, Promise<unknown>>();
   let schemaPromise: Promise<SchemaReadResult> | undefined;
 
@@ -290,4 +290,4 @@ export function createReadOnlyAgentTools(
       },
     },
   ];
-}
+};

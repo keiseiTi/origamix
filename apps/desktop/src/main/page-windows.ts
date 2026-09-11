@@ -21,13 +21,13 @@ interface PreviewEntry {
   target: PageWindowInput;
 }
 
-export function registerPageWindows(
+export const registerPageWindows = (
   getConnection: () =>
     | { baseUrl: string; token: string; serviceInstanceId: string }
     | Promise<{ baseUrl: string; token: string; serviceInstanceId: string }>,
   getRendererPath: () => string,
   getWorkbenchWindow: () => BrowserWindow | undefined,
-): void {
+): void => {
   const views = new Map<string, PreviewEntry>();
   const pending = new Map<string, Promise<void>>();
   let activeKey: string | undefined;
@@ -281,4 +281,4 @@ export function registerPageWindows(
       if (pending.get(key) === operation) pending.delete(key);
     }
   });
-}
+};

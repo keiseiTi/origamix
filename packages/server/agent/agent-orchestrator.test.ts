@@ -12,7 +12,7 @@ import { AgentRunOrchestrator } from './agent-orchestrator';
 import type { ContextAssembler } from './context-assembler';
 import { ScopeRouter } from './scope-router';
 
-function setup(
+const setup = (
   handler: (
     request: AgentEngineRequest,
     call: number,
@@ -20,7 +20,7 @@ function setup(
     text: string;
     usage: { inputTokens: number; outputTokens: number; totalTokens: number };
   }>,
-) {
+) => {
   const database = new ApplicationDatabase(':memory:');
   const timestamp = new Date().toISOString();
   database.connection
@@ -91,7 +91,7 @@ function setup(
     message,
   });
   return { database, runs, orchestrator, input, calls: () => calls };
-}
+};
 
 const usage = { inputTokens: 2, outputTokens: 3, totalTokens: 5 };
 

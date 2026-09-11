@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
 // Development-only host integration. No secret is injected into client bundles.
-export function localWebServer(): Plugin {
+export const localWebServer = (): Plugin => {
   return {
     name: 'origamix-local-web-server',
     apply: 'serve',
@@ -58,4 +58,4 @@ export function localWebServer(): Plugin {
       });
     },
   };
-}
+};

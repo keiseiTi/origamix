@@ -23,11 +23,11 @@ addFormats(ajv);
 const validatePageSchema = ajv.compile<OrigamixPageSchema>(PageSchema);
 const validateChangeSetSchema = ajv.compile<ChangeSet>(ChangeSetSchema);
 
-function result(errors: ErrorObject[] | null | undefined): ValidationResult {
+const result = (errors: ErrorObject[] | null | undefined): ValidationResult => {
   return { valid: !errors, errors: errors ? [...errors] : [] };
-}
+};
 
-function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
+const validatePageSemantics = (page: OrigamixPageSchema): SemanticError[] => {
   const errors: SemanticError[] = [];
   const elementIds = new Set(Object.keys(page.elements));
 
@@ -42,7 +42,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
   const visited = new Set<string>();
   const active = new Set<string>();
 
-  function visit(elementId: string): void {
+  const visit = (elementId: string): void => {
     if (active.has(elementId)) {
       errors.push({
         code: 'LAYOUT_CYCLE',
@@ -67,7 +67,7 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
       visit(childId);
     }
     active.delete(elementId);
-  }
+  };
 
   for (const elementId of Object.keys(page.layout.structure)) {
     if (!elementIds.has(elementId)) {
@@ -82,9 +82,9 @@ function validatePageSemantics(page: OrigamixPageSchema): SemanticError[] {
   }
 
   return errors;
-}
+};
 
-export function validatePage(value: unknown): PageValidationResult {
+export const validatePage = (value: unknown): PageValidationResult => {
   const structurallyValid = validatePageSchema(value);
   const structuralResult = result(validatePageSchema.errors);
   const semanticErrors = structurallyValid ? validatePageSemantics(value) : [];
@@ -93,9 +93,9 @@ export function validatePage(value: unknown): PageValidationResult {
     valid: structuralResult.valid && semanticErrors.length === 0,
     semanticErrors,
   };
-}
+};
 
-export function validateChangeSet(value: unknown): ValidationResult {
+export const validateChangeSet = (value: unknown): ValidationResult => {
   validateChangeSetSchema(value);
   return result(validateChangeSetSchema.errors);
-}
+};

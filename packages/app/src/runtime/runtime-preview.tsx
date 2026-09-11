@@ -9,14 +9,14 @@ type RenderOutcome =
   | { outcome: 'success'; diagnostics: PreviewRenderDiagnostic[] }
   | { outcome: 'failed'; diagnostics: PreviewRenderDiagnostic[] };
 
-function toPreviewOutcome(outcome: RuntimeOutcome): RenderOutcome {
+const toPreviewOutcome = (outcome: RuntimeOutcome): RenderOutcome => {
   return {
     outcome: outcome.outcome,
     diagnostics: outcome.diagnostics.map((diagnostic) => ({ ...diagnostic, severity: 'error' })),
   };
-}
+};
 
-export function RuntimePreview({
+export const RuntimePreview = ({
   schema,
   revisionId,
   onOutcome,
@@ -24,7 +24,7 @@ export function RuntimePreview({
   schema: OrigamixPageSchema;
   revisionId: string;
   onOutcome?: (outcome: RenderOutcome) => void;
-}): React.JSX.Element {
+}): React.JSX.Element => {
   return (
     <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
       <OrigamixPage
@@ -47,4 +47,4 @@ export function RuntimePreview({
       />
     </div>
   );
-}
+};

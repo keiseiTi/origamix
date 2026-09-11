@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-export function useWorkspaceTransitions(flush: () => Promise<void>) {
+export const useWorkspaceTransitions = (flush: () => Promise<void>) => {
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,4 +22,4 @@ export function useWorkspaceTransitions(flush: () => Promise<void>) {
   );
 
   return { transition, transitionError: error, setTransitionError: setError };
-}
+};

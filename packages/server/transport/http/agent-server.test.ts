@@ -16,7 +16,7 @@ import type { CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 const auth = { authorization: 'Bearer desktop-token', 'x-origamix-service': 'service-instance' };
 
-function setup() {
+const setup = () => {
   const database = new ApplicationDatabase(':memory:');
   const projects = new ProjectRepository(database);
   const timestamp = new Date().toISOString();
@@ -108,7 +108,7 @@ function setup() {
     agent: { conversations: conversationService, runs: runService, events, application },
   });
   return { database, server, events, dispatch };
-}
+};
 
 const payload = {
   version: '1',

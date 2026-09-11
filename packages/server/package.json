@@ -23,6 +23,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "pretest": "pnpm --filter @origamix/materials build",
     "test": "vitest run",
     "test:template": "pnpm build && node scripts/smoke-template.mjs",
     "test:dev": "node scripts/smoke-development.mjs",

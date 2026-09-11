@@ -120,8 +120,8 @@ export const migrations: Migration[] = [
   },
 ];
 
-export function assertMigrationSafety(sql: string): void {
+export const assertMigrationSafety = (sql: string): void => {
   if (/\b(foreign\s+key|references)\b/i.test(sql)) {
     throw new Error('Migration 不能包含外键约束');
   }
-}
+};

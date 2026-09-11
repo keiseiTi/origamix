@@ -36,27 +36,30 @@ export interface DomainToolDependencies {
   maxResultBytes?: number;
 }
 
-function assertScope(scope: DomainToolScope, input: { projectId: string; pageId: string }): void {
+const assertScope = (
+  scope: DomainToolScope,
+  input: { projectId: string; pageId: string },
+): void => {
   if (scope.projectId !== input.projectId || scope.pageId !== input.pageId) {
     throw notFound('页面不属于当前 Agent Run');
   }
-}
+};
 
-function parse<T>(schema: TSchema, value: unknown): T {
+const parse = <T>(schema: TSchema, value: unknown): T => {
   if (!Value.Check(schema, value)) throw invalid('领域工具参数无效');
   return value as T;
-}
+};
 
-function bounded(value: unknown, maxBytes: number): unknown {
+const bounded = (value: unknown, maxBytes: number): unknown => {
   const json = JSON.stringify(value);
   if (Buffer.byteLength(json, 'utf8') <= maxBytes) return value;
   return { truncated: true, preview: json.slice(0, Math.floor(maxBytes / 2)) };
-}
+};
 
-export function createDomainAgentTools(
+export const createDomainAgentTools = (
   scope: DomainToolScope,
   dependencies: DomainToolDependencies,
-): AgentEngineTool[] {
+): AgentEngineTool[] => {
   const maxBytes = dependencies.maxResultBytes ?? 16 * 1024;
   const assertPage = (): void => {
     if (
@@ -141,4 +144,4 @@ export function createDomainAgentTools(
       },
     },
   ];
-}
+};

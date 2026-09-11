@@ -11,14 +11,14 @@ interface PageTabsProps {
   onClose: (pageId: string) => void;
 }
 
-export function PageTabs({
+export const PageTabs = ({
   pages,
   activePageId,
   sidebarCollapsed,
   isMacDesktop,
   onSelect,
   onClose,
-}: PageTabsProps): React.JSX.Element {
+}: PageTabsProps): React.JSX.Element => {
   return (
     <nav
       aria-label='已打开页面'
@@ -77,4 +77,4 @@ export function PageTabs({
       />
     </nav>
   );
-}
+};

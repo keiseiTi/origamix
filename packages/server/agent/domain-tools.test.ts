@@ -13,7 +13,7 @@ const schema: OrigamixPageSchema = {
   extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
-function tools(maxResultBytes?: number) {
+const tools = (maxResultBytes?: number) => {
   const diagnostics = {
     getState: async () => ({
       version: '1',
@@ -38,7 +38,7 @@ function tools(maxResultBytes?: number) {
       maxResultBytes,
     },
   );
-}
+};
 
 describe('documentation, validation and diagnostic tools', () => {
   it('returns safe product documentation and no result for an unknown query', async () => {

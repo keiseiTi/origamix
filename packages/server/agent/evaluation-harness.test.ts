@@ -6,9 +6,9 @@ import {
   type AgentEvaluationObservation,
 } from './evaluation-harness';
 
-function recordedObservation(
+const recordedObservation = (
   testCase: (typeof FIXED_AGENT_EVALUATION_CASES)[number],
-): AgentEvaluationObservation {
+): AgentEvaluationObservation => {
   return {
     mode: testCase.expectedMode,
     status: testCase.expectedStatus,
@@ -24,7 +24,7 @@ function recordedObservation(
     ...(testCase.expectRevision ? { resultRevisionId: `revision_${testCase.id}` } : {}),
     ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
   };
-}
+};
 
 describe('fixed Agent evaluation harness', () => {
   it('covers every MVP behavior with a versioned, aggregate report', async () => {

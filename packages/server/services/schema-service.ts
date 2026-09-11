@@ -58,10 +58,10 @@ export interface SchemaReadResult {
 
 const pageQueues = new Map<string, Promise<void>>();
 
-export async function withSchemaPageQueue<T>(
+export const withSchemaPageQueue = async <T>(
   page: SchemaPageRef,
   action: () => Promise<T>,
-): Promise<T> {
+): Promise<T> => {
   const key = `${page.projectPath}\0${page.pageId}`;
   const previous = pageQueues.get(key) ?? Promise.resolve();
   let release!: () => void;
@@ -76,9 +76,9 @@ export async function withSchemaPageQueue<T>(
     release();
     if (pageQueues.get(key) === current) pageQueues.delete(key);
   }
-}
+};
 
-async function writeJsonAtomically(path: string, value: unknown): Promise<void> {
+const writeJsonAtomically = async (path: string, value: unknown): Promise<void> => {
   const temporaryPath = `${path}.${nanoid()}.tmp`;
   const handle = await open(temporaryPath, 'w', 0o600);
   try {
@@ -93,51 +93,51 @@ async function writeJsonAtomically(path: string, value: unknown): Promise<void> 
     await rm(temporaryPath, { force: true });
     throw error;
   }
-}
+};
 
-function pageDirectory(page: SchemaPageRef): string {
+const pageDirectory = (page: SchemaPageRef): string => {
   return join(page.projectPath, 'src', 'pages', page.slug);
-}
-function schemaFile(page: SchemaPageRef): string {
+};
+const schemaFile = (page: SchemaPageRef): string => {
   return join(pageDirectory(page), 'schema.json');
-}
-function workingDirectory(page: SchemaPageRef): string {
+};
+const workingDirectory = (page: SchemaPageRef): string => {
   return join(page.projectPath, '.origamix', 'pages', page.pageId);
-}
-function workingFile(page: SchemaPageRef): string {
+};
+const workingFile = (page: SchemaPageRef): string => {
   return join(workingDirectory(page), 'working.json');
-}
-function revisionsDirectory(page: SchemaPageRef): string {
+};
+const revisionsDirectory = (page: SchemaPageRef): string => {
   return join(page.projectPath, '.origamix', 'revisions', page.pageId);
-}
-function revisionFile(page: SchemaPageRef, revisionId: string): string {
+};
+const revisionFile = (page: SchemaPageRef, revisionId: string): string => {
   return join(revisionsDirectory(page), `${revisionId}.json`);
-}
-function transactionDirectory(page: SchemaPageRef): string {
+};
+const transactionDirectory = (page: SchemaPageRef): string => {
   return join(page.projectPath, '.origamix', 'transactions');
-}
-function journalFile(page: SchemaPageRef): string {
+};
+const journalFile = (page: SchemaPageRef): string => {
   return join(transactionDirectory(page), `${page.pageId}.json`);
-}
-function receiptDirectory(page: SchemaPageRef): string {
+};
+const receiptDirectory = (page: SchemaPageRef): string => {
   return join(page.projectPath, '.origamix', 'changesets', page.pageId);
-}
-function receiptFile(page: SchemaPageRef, changeSetId: string): string {
+};
+const receiptFile = (page: SchemaPageRef, changeSetId: string): string => {
   return join(receiptDirectory(page), `${changeSetId}.json`);
-}
+};
 
-async function readJson<T>(path: string): Promise<T> {
+const readJson = async <T>(path: string): Promise<T> => {
   return JSON.parse(await readFile(path, 'utf8')) as T;
-}
-async function readJsonIfPresent<T>(path: string): Promise<T | undefined> {
+};
+const readJsonIfPresent = async <T>(path: string): Promise<T | undefined> => {
   try {
     return await readJson<T>(path);
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
     throw error;
   }
-}
-export function hashSchema(schema: OrigamixPageSchema): string {
+};
+export const hashSchema = (schema: OrigamixPageSchema): string => {
   const normalize = (value: unknown): unknown =>
     Array.isArray(value)
       ? value.map(normalize)
@@ -151,14 +151,14 @@ export function hashSchema(schema: OrigamixPageSchema): string {
   return createHash('sha256')
     .update(JSON.stringify(normalize(schema)))
     .digest('hex');
-}
-function validationMessage(result: ReturnType<typeof validatePage>): string {
+};
+const validationMessage = (result: ReturnType<typeof validatePage>): string => {
   return result.semanticErrors[0]?.message ?? result.errors[0]?.message ?? 'Schema 校验失败';
-}
-async function validateWritableSchema(
+};
+const validateWritableSchema = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
-): Promise<void> {
+): Promise<void> => {
   const structural = validatePage(schema);
   if (!structural.valid) throw invalid(validationMessage(structural));
   const material = await validateProjectPageAgainstMaterials(page.projectPath, schema);
@@ -166,14 +166,14 @@ async function validateWritableSchema(
     const first = material.errors[0]!;
     throw invalid(`${first.code} at ${first.path}: ${first.message}`);
   }
-}
-function validateSnapshot(snapshot: RevisionSnapshot): void {
+};
+const validateSnapshot = (snapshot: RevisionSnapshot): void => {
   if (!snapshot.revisionId || hashSchema(snapshot.schema) !== snapshot.schemaHash)
     throw invalid('Revision 内容校验失败');
   const validation = validatePage(snapshot.schema);
   if (!validation.valid) throw invalid(validationMessage(validation));
-}
-async function readWorking(page: SchemaPageRef): Promise<WorkingSchemaFile> {
+};
+const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
   const working = await readJson<WorkingSchemaFile>(workingFile(page));
   if (
     working.version !== 1 ||
@@ -183,13 +183,13 @@ async function readWorking(page: SchemaPageRef): Promise<WorkingSchemaFile> {
   )
     throw invalid('页面工作副本无效');
   return working;
-}
-function createRevisionSnapshot(
+};
+const createRevisionSnapshot = (
   schema: OrigamixPageSchema,
   source: ChangeSet['source'],
   parentRevisionId: string | null,
   changeSet?: ChangeSet,
-): RevisionSnapshot {
+): RevisionSnapshot => {
   return {
     revisionId: `revision_${nanoid()}`,
     parentRevisionId,
@@ -201,11 +201,11 @@ function createRevisionSnapshot(
     schemaHash: hashSchema(schema),
     schema,
   };
-}
-function hashValue(value: unknown): string {
+};
+const hashValue = (value: unknown): string => {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
-}
-async function writeReceipt(page: SchemaPageRef, snapshot: RevisionSnapshot): Promise<void> {
+};
+const writeReceipt = async (page: SchemaPageRef, snapshot: RevisionSnapshot): Promise<void> => {
   if (!snapshot.changeSetId) return;
   await mkdir(receiptDirectory(page), { recursive: true });
   await writeJsonAtomically(receiptFile(page, snapshot.changeSetId), {
@@ -214,13 +214,13 @@ async function writeReceipt(page: SchemaPageRef, snapshot: RevisionSnapshot): Pr
     revisionId: snapshot.revisionId,
     schemaHash: snapshot.schemaHash,
   } satisfies ChangeSetReceipt);
-}
+};
 
-async function finishSnapshot(
+const finishSnapshot = async (
   page: SchemaPageRef,
   snapshot: RevisionSnapshot,
   options: SchemaWriteOptions,
-): Promise<SchemaReadResult> {
+): Promise<SchemaReadResult> => {
   await mkdir(transactionDirectory(page), { recursive: true });
   await writeJsonAtomically(journalFile(page), {
     version: 1,
@@ -250,9 +250,9 @@ async function finishSnapshot(
   await options.afterStage?.('receipt');
   await rm(journalFile(page), { force: true });
   return { schema: snapshot.schema, revisionId: snapshot.revisionId };
-}
+};
 
-async function reconcileUnlocked(page: SchemaPageRef): Promise<void> {
+const reconcileUnlocked = async (page: SchemaPageRef): Promise<void> => {
   const journal = await readJsonIfPresent<CommitJournal>(journalFile(page));
   if (journal) {
     if (journal.version !== 1 || journal.pageId !== page.pageId) throw invalid('页面恢复记录无效');
@@ -300,17 +300,17 @@ async function reconcileUnlocked(page: SchemaPageRef): Promise<void> {
   validateSnapshot(snapshot);
   if (hashSchema(working.schema) !== snapshot.schemaHash)
     throw invalid('页面工作副本与 Revision 不一致');
-}
+};
 
-export async function reconcilePageSchema(page: SchemaPageRef): Promise<void> {
+export const reconcilePageSchema = async (page: SchemaPageRef): Promise<void> => {
   return withSchemaPageQueue(page, () => reconcileUnlocked(page));
-}
+};
 
-export async function initializePageSchema(
+export const initializePageSchema = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
   options: SchemaWriteOptions = {},
-): Promise<string> {
+): Promise<string> => {
   return withSchemaPageQueue(page, async () => {
     await reconcileUnlocked(page);
     await validateWritableSchema(page, schema);
@@ -322,22 +322,22 @@ export async function initializePageSchema(
       )
     ).revisionId;
   });
-}
+};
 
-async function getSchemaUnlocked(page: SchemaPageRef): Promise<SchemaReadResult> {
+const getSchemaUnlocked = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
   await reconcileUnlocked(page);
   const working = await readWorking(page);
   const validation = validatePage(working.schema);
   if (!validation.valid) throw invalid(validationMessage(validation));
   return { schema: working.schema, revisionId: working.revisionId };
-}
-export async function getSchema(page: SchemaPageRef): Promise<SchemaReadResult> {
+};
+export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, () => getSchemaUnlocked(page));
-}
+};
 
-export async function getWorkingSchemaState(
+export const getWorkingSchemaState = async (
   page: SchemaPageRef,
-): Promise<SchemaReadResult & { baselineHash: string; schemaHash: string }> {
+): Promise<SchemaReadResult & { baselineHash: string; schemaHash: string }> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     const working = await readWorking(page);
@@ -347,28 +347,28 @@ export async function getWorkingSchemaState(
       schemaHash: hashSchema(current.schema),
     };
   });
-}
+};
 
-export async function updateWorkingBaseline(
+export const updateWorkingBaseline = async (
   page: SchemaPageRef,
   revisionId: string,
   baselineHash: string,
-): Promise<void> {
+): Promise<void> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     if (current.revisionId !== revisionId) throw conflict('页面已更新，请重新应用');
     const working = await readWorking(page);
     await writeJsonAtomically(workingFile(page), { ...working, baselineHash });
   });
-}
+};
 
-export async function applyWorkingSchemaOperation<T>(
+export const applyWorkingSchemaOperation = async <T>(
   page: SchemaPageRef,
   expectedRevisionId: string,
   operation: (
     current: SchemaReadResult & { baselineHash: string; schemaHash: string },
   ) => Promise<{ result: T; baselineHash: string }>,
-): Promise<T> {
+): Promise<T> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     if (current.revisionId !== expectedRevisionId) throw conflict('页面已更新，请重新应用');
@@ -384,9 +384,9 @@ export async function applyWorkingSchemaOperation<T>(
     });
     return completed.result;
   });
-}
+};
 
-export async function synchronizeWorkingSchemaFromTarget(page: SchemaPageRef): Promise<void> {
+export const synchronizeWorkingSchemaFromTarget = async (page: SchemaPageRef): Promise<void> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     const working = await readWorking(page);
@@ -412,12 +412,12 @@ export async function synchronizeWorkingSchemaFromTarget(page: SchemaPageRef): P
       baselineHash: targetHash,
     });
   });
-}
+};
 
-export async function reloadWorkingSchemaFromTarget(
+export const reloadWorkingSchemaFromTarget = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
-): Promise<SchemaReadResult> {
+): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     await reconcileUnlocked(page);
     await validateWritableSchema(page, schema);
@@ -434,9 +434,12 @@ export async function reloadWorkingSchemaFromTarget(
     });
     return updated;
   });
-}
+};
 
-export async function hasValidRevision(page: SchemaPageRef, revisionId: string): Promise<boolean> {
+export const hasValidRevision = async (
+  page: SchemaPageRef,
+  revisionId: string,
+): Promise<boolean> => {
   return withSchemaPageQueue(page, async () => {
     try {
       const snapshot = await readJson<RevisionSnapshot>(revisionFile(page, revisionId));
@@ -446,8 +449,8 @@ export async function hasValidRevision(page: SchemaPageRef, revisionId: string):
       return false;
     }
   });
-}
-function applyChangeSet(schema: OrigamixPageSchema, changeSet: ChangeSet): OrigamixPageSchema {
+};
+const applyChangeSet = (schema: OrigamixPageSchema, changeSet: ChangeSet): OrigamixPageSchema => {
   if (changeSet.operation === 'replaceSchema') return changeSet.schema;
   const element = schema.elements[changeSet.elementId];
   if (!element) throw notFound('目标元素不存在');
@@ -458,13 +461,13 @@ function applyChangeSet(schema: OrigamixPageSchema, changeSet: ChangeSet): Origa
       [changeSet.elementId]: { ...element, props: { ...element.props, ...changeSet.props } },
     },
   };
-}
+};
 
-export async function commitSchema(
+export const commitSchema = async (
   page: SchemaPageRef,
   changeSet: ChangeSet,
   options: SchemaWriteOptions = {},
-): Promise<SchemaReadResult> {
+): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     await reconcileUnlocked(page);
     if (!validateChangeSet(changeSet).valid) throw invalid('ChangeSet 格式无效');
@@ -497,12 +500,12 @@ export async function commitSchema(
       options,
     );
   });
-}
+};
 
-export async function undoSchema(
+export const undoSchema = async (
   page: SchemaPageRef,
   options: SchemaWriteOptions = {},
-): Promise<SchemaReadResult> {
+): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     const currentRevision = await readJson<RevisionSnapshot>(
@@ -523,12 +526,12 @@ export async function undoSchema(
       options,
     );
   });
-}
+};
 
-export async function getSchemaRevision(
+export const getSchemaRevision = async (
   page: SchemaPageRef,
   revisionId: string,
-): Promise<SchemaReadResult> {
+): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     await reconcileUnlocked(page);
     const snapshot = await readJson<RevisionSnapshot>(revisionFile(page, revisionId));
@@ -536,4 +539,4 @@ export async function getSchemaRevision(
     if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
     return { schema: snapshot.schema, revisionId: snapshot.revisionId };
   });
-}
+};

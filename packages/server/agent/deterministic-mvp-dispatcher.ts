@@ -22,7 +22,7 @@ export const requestText = (request: CreateAgentRunRequest): string =>
     .join('\n')
     .trim();
 
-export function deterministicRunMode(text: string): RunMode {
+export const deterministicRunMode = (text: string): RunMode => {
   if (/^(请)?(加|添加|增加)(一个|个)?天气[，。！？!?]?$/u.test(text))
     return 'clarification_required';
   if (/(创建|新建|搭建|生成|做一个).{0,12}(天气).{0,8}(页面|展示页)/u.test(text))
@@ -36,13 +36,13 @@ export function deterministicRunMode(text: string): RunMode {
     return 'page_modify';
   if (/(怎么|如何|为什么|是什么|支持哪些|能否|可以吗|搭建器)/u.test(text)) return 'page_question';
   return 'page_modify';
-}
+};
 
-export function deterministicSchema(
+export const deterministicSchema = (
   schema: OrigamixPageSchema,
   text: string,
   runId: string,
-): OrigamixPageSchema {
+): OrigamixPageSchema => {
   const suffix = runId.replace(/^run_/, '').slice(-8);
   const root = schema.layout.root;
   const elements = { ...schema.elements };
@@ -130,10 +130,10 @@ export function deterministicSchema(
   }
   structure[root] = children;
   return { ...schema, elements, layout: { ...schema.layout, structure } };
-}
+};
 
 /** Deterministic test/MVP engine. It uses the same Orchestrator and Tool Registry as real models. */
-export function createDeterministicFakeAgentEngine(): AgentEngine {
+export const createDeterministicFakeAgentEngine = (): AgentEngine => {
   return new FakeAgentEngine(async (request) => {
     const contextMatch = request.systemPrompt.match(
       /<ORIGAMIX_CONTEXT>([\s\S]*)<\/ORIGAMIX_CONTEXT>/u,
@@ -174,7 +174,7 @@ export function createDeterministicFakeAgentEngine(): AgentEngine {
     await request.onEvent?.({ type: 'text_delta', delta: text });
     return { text, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
   });
-}
+};
 
 /** Temporary executable closure until the real model/tool capability matrix is approved. */
 export class DeterministicMvpDispatcher {

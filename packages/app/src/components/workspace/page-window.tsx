@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router';
 import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
 import { RuntimePreview } from '../../runtime/runtime-preview';
 
-export function PageWindow(): React.JSX.Element {
+export const PageWindow = (): React.JSX.Element => {
   const [searchParams] = useSearchParams();
   const previewTitle = searchParams.get('previewTitle') ?? 'Origamix - 页面预览';
   const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
@@ -152,4 +152,4 @@ export function PageWindow(): React.JSX.Element {
       )}
     </main>
   );
-}
+};

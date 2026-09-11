@@ -29,11 +29,11 @@ export interface MvpGateResult {
   failures: string[];
 }
 
-export function evaluateMvpGate(
+export const evaluateMvpGate = (
   report: AgentEvaluationReport,
   resources: AgentResourceSnapshot,
   thresholds: MvpGateThresholds = DEFAULT_FAKE_MVP_THRESHOLDS,
-): MvpGateResult {
+): MvpGateResult => {
   const failures: string[] = [];
   if (!report.passed || report.summary.successRate < thresholds.minimumSuccessRate) {
     failures.push(`成功率 ${report.summary.successRate} 未达到 ${thresholds.minimumSuccessRate}`);
@@ -58,4 +58,4 @@ export function evaluateMvpGate(
     failures.push(`仍有 ${resources.eventSubscribers} 个 SSE 订阅`);
   if (resources.openPreviewWrites !== 0) failures.push('Preview 出现写入能力');
   return { passed: failures.length === 0, failures };
-}
+};

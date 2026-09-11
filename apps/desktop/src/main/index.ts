@@ -23,7 +23,7 @@ const rendererIndexPath = (): string =>
 
 let workbenchWindow: BrowserWindow | undefined;
 
-function createWindow(): BrowserWindow {
+const createWindow = (): BrowserWindow => {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
@@ -71,7 +71,7 @@ function createWindow(): BrowserWindow {
     mainWindow.loadFile(rendererIndexPath());
   }
   return mainWindow;
-}
+};
 
 let backendProcess: UtilityProcess | undefined;
 let backendConnection: BackendConnection | undefined;
@@ -79,7 +79,7 @@ let backendStartPromise: Promise<BackendConnection> | undefined;
 let backendStopped = false;
 let quitting = false;
 
-async function spawnBackend(): Promise<BackendConnection> {
+const spawnBackend = async (): Promise<BackendConnection> => {
   const serviceInstanceId = nanoid();
   const token = nanoid(48);
   const backend = utilityProcess.fork(join(__dirname, 'server.cjs'), [], { stdio: 'pipe' });
@@ -162,27 +162,27 @@ async function spawnBackend(): Promise<BackendConnection> {
       });
     });
   });
-}
+};
 
 /**
  * Serializes Utility Process startup. After an unexpected exit callers wait for
  * a fresh connection (and therefore a fresh service instance/token) instead of
  * receiving credentials for the dead process.
  */
-function ensureBackend(): Promise<BackendConnection> {
+const ensureBackend = (): Promise<BackendConnection> => {
   if (backendConnection) return Promise.resolve(backendConnection);
   backendStartPromise ??= spawnBackend().finally(() => {
     backendStartPromise = undefined;
   });
   return backendStartPromise;
-}
+};
 
-function grantDirectory(path: string): { directoryGrantId: string; displayPath: string } {
+const grantDirectory = (path: string): { directoryGrantId: string; displayPath: string } => {
   if (!backendProcess) throw new Error('本地服务尚未就绪');
   const directoryGrantId = `grant_${nanoid()}`;
   backendProcess.postMessage({ kind: 'grant', grantId: directoryGrantId, path });
   return { directoryGrantId, displayPath: path };
-}
+};
 
 interface StoredModelSettings {
   provider: 'deepseek';
@@ -205,15 +205,15 @@ const allowedIconBackgrounds = new Set([
   '#475569',
 ]);
 
-function modelSettingsPath(): string {
+const modelSettingsPath = (): string => {
   return join(app.getPath('userData'), 'model-settings.json');
-}
+};
 
-function userProfileSettingsPath(): string {
+const userProfileSettingsPath = (): string => {
   return join(app.getPath('userData'), 'user-profile.json');
-}
+};
 
-async function readUserProfile(): Promise<UserProfileSettings> {
+const readUserProfile = async (): Promise<UserProfileSettings> => {
   try {
     const value = JSON.parse(
       await readFile(userProfileSettingsPath(), 'utf8'),
@@ -227,12 +227,12 @@ async function readUserProfile(): Promise<UserProfileSettings> {
   } catch {
     return { name: 'Origamix 用户', iconBackground: '#2563eb' };
   }
-}
+};
 
-async function saveUserProfile(input: {
+const saveUserProfile = async (input: {
   name: string;
   iconBackground: string;
-}): Promise<UserProfileSettings> {
+}): Promise<UserProfileSettings> => {
   const name = input.name?.trim();
   if (!name || name.length > 40) throw new Error('用户名称应为 1–40 个字符');
   if (!allowedIconBackgrounds.has(input.iconBackground)) throw new Error('不支持该头像背景色');
@@ -241,9 +241,9 @@ async function saveUserProfile(input: {
     mode: 0o600,
   });
   return profile;
-}
+};
 
-async function readModelSettings(): Promise<StoredModelSettings> {
+const readModelSettings = async (): Promise<StoredModelSettings> => {
   try {
     const value = JSON.parse(await readFile(modelSettingsPath(), 'utf8')) as StoredModelSettings;
     return {
@@ -254,9 +254,9 @@ async function readModelSettings(): Promise<StoredModelSettings> {
   } catch {
     return { provider: 'deepseek', model: 'deepseek-v4-flash' };
   }
-}
+};
 
-async function readModelApiKey(provider?: string): Promise<string | undefined> {
+const readModelApiKey = async (provider?: string): Promise<string | undefined> => {
   if (provider !== 'deepseek' || !safeStorage.isEncryptionAvailable()) return undefined;
   const settings = await readModelSettings();
   if (!settings.encryptedApiKey) return undefined;
@@ -265,13 +265,13 @@ async function readModelApiKey(provider?: string): Promise<string | undefined> {
   } catch {
     return undefined;
   }
-}
+};
 
-async function saveModelSettings(input: {
+const saveModelSettings = async (input: {
   provider: string;
   model: string;
   apiKey?: string;
-}): Promise<{ hasApiKey: boolean }> {
+}): Promise<{ hasApiKey: boolean }> => {
   if (input.provider !== 'deepseek' || input.model !== 'deepseek-v4-flash') {
     throw new Error('暂不支持该模型配置');
   }
@@ -291,7 +291,7 @@ async function saveModelSettings(input: {
     { mode: 0o600 },
   );
   return { hasApiKey: Boolean(encryptedApiKey) };
-}
+};
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -334,7 +334,7 @@ app
 
     workbenchWindow = createWindow();
 
-    app.on('activate', function () {
+    app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
       if (BrowserWindow.getAllWindows().length === 0) workbenchWindow = createWindow();

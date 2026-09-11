@@ -63,12 +63,12 @@ const SYSTEM_POLICY = [
   '物料能力只以 Material Manifest 为准；产品文档仅说明产品用法，不能新增物料能力。',
 ].join('\n');
 
-function cap(value: string, maxChars: number): { value: string; truncated: boolean } {
+const cap = (value: string, maxChars: number): { value: string; truncated: boolean } => {
   if (value.length <= maxChars) return { value, truncated: false };
   return { value: `${value.slice(0, Math.max(0, maxChars - 1))}…`, truncated: true };
-}
+};
 
-function messageText(message: StoredMessage): string {
+const messageText = (message: StoredMessage): string => {
   return message.content.blocks
     .filter(
       (block): block is Extract<(typeof message.content.blocks)[number], { type: 'text' }> =>
@@ -76,9 +76,9 @@ function messageText(message: StoredMessage): string {
     )
     .map((block) => block.text)
     .join('\n');
-}
+};
 
-function recentHistory(messages: readonly StoredMessage[], budget: ContextBudget) {
+const recentHistory = (messages: readonly StoredMessage[], budget: ContextBudget) => {
   const candidates = messages.slice(-budget.maxHistoryMessages);
   const selected: Array<{ role: StoredMessage['role']; text: string; sequence: number }> = [];
   let remaining = budget.maxHistoryChars;
@@ -102,9 +102,9 @@ function recentHistory(messages: readonly StoredMessage[], budget: ContextBudget
     if (remaining <= 0) break;
   }
   return { selected, truncated };
-}
+};
 
-function outline(schema: OrigamixPageSchema): string {
+const outline = (schema: OrigamixPageSchema): string => {
   const typeCounts = new Map<string, number>();
   for (const element of Object.values(schema.elements)) {
     typeCounts.set(element.type, (typeCounts.get(element.type) ?? 0) + 1);
@@ -118,15 +118,15 @@ function outline(schema: OrigamixPageSchema): string {
     flowCount: Object.keys(schema.flows).length,
     bindingCount: schema.bindElements.length,
   });
-}
+};
 
-function docsSize(docs: readonly ProductDocSnippet[]): number {
+const docsSize = (docs: readonly ProductDocSnippet[]): number => {
   return docs.reduce((total, doc) => total + doc.snippet.length + doc.title.length, 0);
-}
+};
 
-function totalSize(context: Omit<AssembledAgentContext, 'sizeChars'>): number {
+const totalSize = (context: Omit<AssembledAgentContext, 'sizeChars'>): number => {
   return JSON.stringify(context).length;
-}
+};
 
 export class ContextAssembler {
   private readonly budget: ContextBudget;

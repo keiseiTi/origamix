@@ -16,11 +16,11 @@ const schema: OrigamixPageSchema = {
   extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
-async function createPageFixture(): Promise<{
+const createPageFixture = async (): Promise<{
   projectPath: string;
   pageId: string;
   slug: string;
-}> {
+}> => {
   const projectPath = await mkdtemp(join(tmpdir(), 'origamix-schema-'));
   directories.push(projectPath);
   const pageId = 'page_test';
@@ -39,7 +39,7 @@ async function createPageFixture(): Promise<{
     }),
   );
   return { projectPath, pageId, slug };
-}
+};
 
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));

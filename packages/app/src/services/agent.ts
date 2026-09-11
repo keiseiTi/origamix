@@ -9,7 +9,7 @@ import type {
 } from '@origamix/shared/protocol/agent';
 import { getApiConnection, refreshBackendConnection, request } from './request';
 
-function isAgentEvent(value: unknown): value is AgentEvent {
+const isAgentEvent = (value: unknown): value is AgentEvent => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const event = value as Record<string, unknown>;
   return (
@@ -29,7 +29,7 @@ function isAgentEvent(value: unknown): value is AgentEvent {
     typeof event['occurredAt'] === 'string' &&
     !Number.isNaN(Date.parse(event['occurredAt']))
   );
-}
+};
 
 export const listConversations = (projectId: string, pageId: string) =>
   request<ListConversationsResponse>(`/pages/${encodeURIComponent(pageId)}/conversations`, {
@@ -50,11 +50,11 @@ export const listMessages = (
     },
   });
 
-export async function listAllMessages(
+export const listAllMessages = async (
   projectId: string,
   pageId: string,
   conversationId: string,
-): Promise<ListMessagesResponse> {
+): Promise<ListMessagesResponse> => {
   const messages: ListMessagesResponse['messages'] = [];
   let afterSequence = -1;
   while (true) {
@@ -66,7 +66,7 @@ export async function listAllMessages(
     afterSequence = next;
   }
   return { version: '1', messages };
-}
+};
 
 export const createAgentRun = (input: CreateAgentRunRequest) =>
   request<CreateAgentRunResponse>('/agent/runs', {
@@ -93,11 +93,11 @@ export interface AgentEventSubscriptionOptions {
 }
 
 /** Authenticated fetch-based SSE; EventSource cannot carry the desktop bearer token. */
-export function subscribeAgentEvents(
+export const subscribeAgentEvents = (
   projectId: string,
   runId: string,
   options: AgentEventSubscriptionOptions,
-): () => void {
+): (() => void) => {
   const controller = new AbortController();
   let lastEventId = options.afterEventId ?? -1;
   let stopped = false;
@@ -158,7 +158,7 @@ export function subscribeAgentEvents(
     stopped = true;
     controller.abort();
   };
-}
+};
 
 export const agentService = {
   listConversations,

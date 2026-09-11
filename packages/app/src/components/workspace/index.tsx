@@ -25,7 +25,7 @@ interface WorkspaceProps {
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }
 
-export function Workspace({
+export const Workspace = ({
   page,
   projectId,
   projectName,
@@ -40,7 +40,7 @@ export function Workspace({
   supportsNativeProjectDirectories,
   schemaRefreshKey,
   onSchemaCommitted,
-}: WorkspaceProps): React.JSX.Element {
+}: WorkspaceProps): React.JSX.Element => {
   const [runningPages, setRunningPages] = useState<Record<string, boolean>>({});
   const [applyStatus, setApplyStatus] = useState<
     'loading' | 'in_sync' | 'pending' | 'external_change' | 'result_pending' | 'error'
@@ -147,6 +147,6 @@ export function Workspace({
       )}
     </section>
   );
-}
+};
 
 export type { WorkspaceMode } from './workspace-header';

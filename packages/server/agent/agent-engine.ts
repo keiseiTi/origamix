@@ -57,20 +57,20 @@ const models = new Map<string, AgentModelDefinition>([
   ],
 ]);
 
-export function getAgentModel(modelId: string): AgentModelDefinition {
+export const getAgentModel = (modelId: string): AgentModelDefinition => {
   const model = models.get(modelId);
   if (!model) throw new AgentEngineError('MODEL_NOT_FOUND', '所选模型不可用');
   return model;
-}
+};
 
-export function requireModelCapability(
+export const requireModelCapability = (
   model: AgentModelDefinition,
   capability: keyof AgentModelDefinition['capabilities'],
-): void {
+): void => {
   if (!model.capabilities[capability]) {
     throw new AgentEngineError('CAPABILITY_UNSUPPORTED', '所选模型不支持此能力');
   }
-}
+};
 
 export interface AgentEngineTool {
   name: string;

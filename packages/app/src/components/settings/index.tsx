@@ -14,7 +14,7 @@ interface SettingsPageProps {
   onBack: () => void;
 }
 
-export function SettingsPage({
+export const SettingsPage = ({
   theme,
   sidebarCollapsed,
   isMacDesktop,
@@ -22,7 +22,7 @@ export function SettingsPage({
   onThemeChange,
   onProfileChange,
   onBack,
-}: SettingsPageProps): React.JSX.Element {
+}: SettingsPageProps): React.JSX.Element => {
   const [apiKey, setApiKey] = useState('');
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
@@ -367,4 +367,4 @@ export function SettingsPage({
       </div>
     </section>
   );
-}
+};

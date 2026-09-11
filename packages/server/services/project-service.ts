@@ -16,7 +16,7 @@ import { ProjectApplyService } from './project-apply-service';
 const now = (): string => new Date().toISOString();
 const projectQueues = new Map<string, Promise<void>>();
 
-async function withProjectQueue<T>(projectId: string, action: () => Promise<T>): Promise<T> {
+const withProjectQueue = async <T>(projectId: string, action: () => Promise<T>): Promise<T> => {
   const previous = projectQueues.get(projectId) ?? Promise.resolve();
   let release!: () => void;
   const current = new Promise<void>((resolve) => {
@@ -30,7 +30,7 @@ async function withProjectQueue<T>(projectId: string, action: () => Promise<T>):
     release();
     if (projectQueues.get(projectId) === current) projectQueues.delete(projectId);
   }
-}
+};
 const schemaTemplate = (): OrigamixPageSchema => ({
   elements: { element_root: { type: 'container', props: {} } },
   layout: { root: 'element_root', structure: { element_root: [] } },
@@ -40,20 +40,20 @@ const schemaTemplate = (): OrigamixPageSchema => ({
   extensions: { origamix: { schemaVersion: '1.0' } },
 });
 
-async function atomicWrite(path: string, contents: string): Promise<void> {
+const atomicWrite = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
   await writeFile(temporary, contents, { mode: 0o600 });
   await rename(temporary, path);
-}
+};
 
-function pageComponentName(slug: string): string {
+const pageComponentName = (slug: string): string => {
   return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
-}
+};
 
-function pageComponentSource(slug: string): string {
+const pageComponentSource = (slug: string): string => {
   const componentName = pageComponentName(slug);
-  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd';\nimport schema from './schema.json';\n\nexport default function ${componentName}(): React.JSX.Element {\n  return <OrigamixPage schema={schema} materials={materials} />;\n}\n`;
-}
+  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
+};
 
 export class ProjectService {
   private readonly lifecycle = new ProjectLifecycleService();

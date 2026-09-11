@@ -11,7 +11,7 @@ import { containerManifest } from './container/manifest';
 import { formManifest } from './form/manifest';
 import { inputManifest } from './input/manifest';
 
-function expectPureData(value: unknown): void {
+const expectPureData = (value: unknown): void => {
   expect(typeof value).not.toBe('function');
   if (Array.isArray(value)) {
     value.forEach(expectPureData);
@@ -20,7 +20,7 @@ function expectPureData(value: unknown): void {
   if (value !== null && typeof value === 'object') {
     Object.values(value).forEach(expectPureData);
   }
-}
+};
 
 describe('antd material registry', () => {
   it('keeps palette material types unique and registered at runtime', () => {
