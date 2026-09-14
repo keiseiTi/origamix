@@ -366,6 +366,95 @@ describe('local HTTP API', () => {
     database.close();
   });
 
+  it('removes page files when creation fails before the manifest is committed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-page-rollback-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const apply = new ProjectApplyService(projects);
+    const service = new ProjectService(projects, templatePath, apply);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '页面回滚',
+      code: 'page-rollback',
+      directoryGrantId: 'grant_project',
+    });
+    vi.spyOn(apply, 'initializeTarget').mockRejectedValueOnce(new Error('simulated write failure'));
+
+    await expect(
+      service.createPage(project.id, { name: '失败页面', slug: 'failed-page' }),
+    ).rejects.toThrow('simulated write failure');
+    await expect(access(join(project.path, 'src', 'pages', 'failed-page'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    expect(
+      JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')).pages,
+    ).toEqual([]);
+    database.close();
+  });
+
+  it('does not remove the winning page during concurrent creation of the same slug', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-page-same-slug-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '同名页面',
+      code: 'same-slug',
+      directoryGrantId: 'grant_project',
+    });
+
+    const results = await Promise.allSettled([
+      service.createPage(project.id, { name: '页面 A', slug: 'same-page' }),
+      service.createPage(project.id, { name: '页面 B', slug: 'same-page' }),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+    const manifest = JSON.parse(
+      await readFile(join(project.path, 'origamix.project.json'), 'utf8'),
+    ) as { pages: Array<{ slug: string }> };
+    expect(manifest.pages).toEqual([expect.objectContaining({ slug: 'same-page' })]);
+    await access(join(project.path, 'src', 'pages', 'same-page', 'schema.json'));
+    database.close();
+  });
+
+  it('preserves a manifest-committed page and rebuilds its failed local index', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-page-recovery-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '页面恢复',
+      code: 'page-recovery',
+      directoryGrantId: 'grant_project',
+    });
+    const reconcile = vi.spyOn(projects, 'reconcile').mockImplementationOnce(() => {
+      throw new Error('simulated index failure');
+    });
+
+    await expect(
+      service.createPage(project.id, { name: '已落盘页面', slug: 'durable-page' }),
+    ).rejects.toThrow('页面已创建，但本地索引更新失败');
+    reconcile.mockRestore();
+    const manifest = JSON.parse(
+      await readFile(join(project.path, 'origamix.project.json'), 'utf8'),
+    ) as { pages: Array<{ pageId: string; slug: string }> };
+    expect(manifest.pages).toEqual([
+      expect.objectContaining({ pageId: expect.any(String), slug: 'durable-page' }),
+    ]);
+    await access(join(project.path, 'src', 'pages', 'durable-page', 'schema.json'));
+
+    await service.reconcile(project.path);
+    expect(projects.listPages(project.id)).toEqual([
+      expect.objectContaining({ id: manifest.pages[0]!.pageId, slug: 'durable-page' }),
+    ]);
+    database.close();
+  });
+
   it('initializes a project manifest when opening an uninitialized directory', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-imported-project-'));
     directories.push(directory);
@@ -376,6 +465,13 @@ describe('local HTTP API', () => {
 
     const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
     expect(pending.status).toBe('initialization_required');
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection).toMatchObject({
+      directoryKind: 'empty',
+      discoveredPages: [],
+      blockers: [],
+    });
+    expect(pending.inspection.plannedChanges).toContain('生成完整项目模板');
     await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
       code: 'ENOENT',
     });
@@ -435,6 +531,14 @@ describe('local HTTP API', () => {
     const projects = new ProjectRepository(database);
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_existing', directory);
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection).toEqual({
+      directoryKind: 'existing_application',
+      discoveredPages: [{ name: 'customers', slug: 'customers', route: '/customers' }],
+      plannedChanges: ['写入 origamix.project.json', '按发现页面建立本地索引和工作副本'],
+      blockers: [],
+    });
     const opened = await service.openProject({
       directoryGrantId: 'grant_existing',
       initializeIfNeeded: true,
@@ -443,6 +547,47 @@ describe('local HTTP API', () => {
     expect(projects.listPages(opened.project.id)).toEqual([
       expect.objectContaining({ name: 'customers', slug: 'customers', route: '/customers' }),
     ]);
+    database.close();
+  });
+
+  it('reports initialization blockers without writing a project manifest', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-blocked-'));
+    directories.push(directory);
+    await writeFile(
+      join(directory, 'package.json'),
+      JSON.stringify({ dependencies: { react: '^19.0.0' }, devDependencies: { vite: '^8.0.0' } }),
+    );
+    const pagePath = join(directory, 'src', 'pages', 'customers');
+    await mkdir(pagePath, { recursive: true });
+    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
+    await writeFile(
+      join(pagePath, 'schema.json'),
+      JSON.stringify({
+        elements: { element_root: { type: 'container', props: {} } },
+        layout: { root: 'element_root', structure: { element_root: [] } },
+        flows: {},
+        bindElements: [],
+        context: { globalVariables: [] },
+        extensions: { origamix: { schemaVersion: '1.0' } },
+      }),
+    );
+    const database = new ApplicationDatabase(join(directory, 'app.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_existing', directory);
+
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection.blockers).toEqual([
+      '已有页面需要声明 @origamix/runtime 与 @origamix/materials 依赖',
+      '已有页面需要挂载标准 src/router.ts',
+    ]);
+    await expect(
+      service.openProject({ directoryGrantId: 'grant_existing', initializeIfNeeded: true }),
+    ).rejects.toThrow('项目尚不能初始化');
+    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
     database.close();
   });
 

@@ -29,6 +29,9 @@ export interface SchemaReadResult {
 const pageQueues = new Map<string, Promise<void>>();
 const store = new WorkingSchemaStore();
 
+export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void> =>
+  store.removePage(page);
+
 export const withSchemaPageQueue = async <T>(
   page: SchemaPageRef,
   action: () => Promise<T>,

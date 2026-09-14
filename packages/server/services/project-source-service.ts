@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
 import { copyTemplate } from '../template';
@@ -49,5 +49,9 @@ export class ProjectSourceService {
       join(projectPath, 'src', 'pages', slug, 'index.tsx'),
       pageComponentSource(slug),
     );
+  }
+
+  removePageDirectory(projectPath: string, slug: string): Promise<void> {
+    return rm(join(projectPath, 'src', 'pages', slug), { recursive: true, force: true });
   }
 }

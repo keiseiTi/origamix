@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from 'react';
+import type { ProjectInitializationInspection } from '@origamix/shared/protocol/api';
 import type { PageItem, ProjectItem } from '../sidebar';
 import type { ViewSession } from './state/view-session';
 import { projectsService } from '../../services/projects';
@@ -21,6 +22,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
   const [pendingInitialization, setPendingInitialization] = useState<{
     directoryGrantId: string;
     displayPath: string;
+    inspection: ProjectInitializationInspection;
   } | null>(null);
   const [initializing, setInitializing] = useState(false);
 
@@ -57,6 +59,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
       setPendingInitialization({
         directoryGrantId: grant.directoryGrantId,
         displayPath: result.displayPath,
+        inspection: result.inspection,
       });
       return;
     }

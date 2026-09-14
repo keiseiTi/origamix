@@ -9,11 +9,13 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import { copyTemplate } from '../template';
 import { invalid } from '../errors';
 import { validatePage } from '@origamix/shared/protocol/validation';
+import type { ProjectInitializationInspection } from '@origamix/shared/protocol/api';
 
 const atomicWrite = async (path: string, contents: string): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
@@ -24,7 +26,83 @@ const atomicWrite = async (path: string, contents: string): Promise<void> => {
 export class ProjectScaffoldService {
   constructor(private readonly templatePath: string) {}
 
+  async inspectExistingDirectory(path: string): Promise<ProjectInitializationInspection> {
+    const entries = await readdir(path);
+    const hasApplicationFiles = entries.some(
+      (entry) => entry === 'package.json' || entry === 'src',
+    );
+    if (!hasApplicationFiles)
+      return {
+        directoryKind: 'empty',
+        discoveredPages: [],
+        plannedChanges: ['生成完整项目模板', '创建空页面清单', '建立本机编辑状态目录'],
+        blockers: [],
+      };
+
+    const blockers: string[] = [];
+    let dependencies: Record<string, string> = {};
+    try {
+      const packageJson = JSON.parse(await readFile(join(path, 'package.json'), 'utf8')) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+      if (!dependencies.react || !dependencies.vite)
+        blockers.push('工程需要有效的 React 与 Vite 依赖');
+    } catch {
+      blockers.push('工程需要有效的 package.json');
+    }
+
+    const discoveredPages: ProjectInitializationInspection['discoveredPages'] = [];
+    const pagesPath = join(path, 'src', 'pages');
+    let pageEntries: Dirent[] = [];
+    try {
+      pageEntries = await readdir(pagesPath, { withFileTypes: true });
+    } catch {
+      // A project without the standard pages directory starts with an empty page list.
+    }
+    for (const entry of pageEntries) {
+      if (!entry.isDirectory() || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) continue;
+      try {
+        const schema = JSON.parse(
+          await readFile(join(pagesPath, entry.name, 'schema.json'), 'utf8'),
+        ) as unknown;
+        await access(join(pagesPath, entry.name, 'index.tsx'));
+        if (!validatePage(schema).valid) throw new Error('invalid schema');
+        discoveredPages.push({
+          name: entry.name,
+          slug: entry.name,
+          route: entry.name === 'home' && discoveredPages.length === 0 ? '/' : `/${entry.name}`,
+        });
+      } catch {
+        blockers.push(`页面“${entry.name}”需要有效的 index.tsx 和 schema.json`);
+      }
+    }
+    if (
+      discoveredPages.length &&
+      (!dependencies['@origamix/runtime'] || !dependencies['@origamix/materials'])
+    )
+      blockers.push('已有页面需要声明 @origamix/runtime 与 @origamix/materials 依赖');
+    if (discoveredPages.length) {
+      try {
+        await access(join(path, 'src', 'router.ts'));
+      } catch {
+        blockers.push('已有页面需要挂载标准 src/router.ts');
+      }
+    }
+    return {
+      directoryKind: 'existing_application',
+      discoveredPages,
+      plannedChanges: ['写入 origamix.project.json', '按发现页面建立本地索引和工作副本'],
+      blockers,
+    };
+  }
+
   async initializeExistingDirectory(path: string): Promise<void> {
+    const inspection = await this.inspectExistingDirectory(path);
+    if (inspection.blockers.length > 0)
+      throw invalid(`项目尚不能初始化：${inspection.blockers.join('；')}`);
+
     const directoryName = basename(path);
     const entries = await readdir(path);
     const hasApplicationFiles = entries.some(

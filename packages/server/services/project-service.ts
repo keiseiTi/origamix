@@ -4,7 +4,12 @@ import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
-import { getSchema, initializePageSchema, reconcilePageSchema } from './schema-service';
+import {
+  discardInitializedPageSchema,
+  getSchema,
+  initializePageSchema,
+  reconcilePageSchema,
+} from './schema-service';
 import type { ProjectRepository } from '../repositories/project-repository';
 import { conflict, invalid, notFound } from '../errors';
 import { ProjectFormatService } from './project-format-service';
@@ -108,7 +113,11 @@ export class ProjectService {
       await access(join(path, 'origamix.project.json'));
     } catch {
       if (!input.initializeIfNeeded)
-        return { status: 'initialization_required', displayPath: path };
+        return {
+          status: 'initialization_required',
+          displayPath: path,
+          inspection: await this.scaffold.inspectExistingDirectory(path),
+        };
       await this.scaffold.initializeExistingDirectory(path);
     }
     this.consumeGrant(input.directoryGrantId);
@@ -154,16 +163,31 @@ export class ProjectService {
       if (error instanceof Error && error.message === '页面文件已经存在') throw error;
     }
     const id = `page_${nanoid()}`;
-    await mkdir(pagePath);
-    await this.projectApply.initializeTarget(
-      { projectPath: project.path, pageId: id, slug: input.slug },
-      schema,
-    );
-    await this.source.createPageEntry(project.path, input.slug);
-    await initializePageSchema({ projectPath: project.path, pageId: id, slug: input.slug }, schema);
-    const nextPage = { pageId: id, name, slug: input.slug, route };
-    await this.format.addPage(project.path, nextPage);
-    await this.reconcile(project.path);
+    const pageRef = { projectPath: project.path, pageId: id, slug: input.slug };
+    let manifestCommitted = false;
+    let pageDirectoryCreated = false;
+    try {
+      await mkdir(pagePath);
+      pageDirectoryCreated = true;
+      await this.projectApply.initializeTarget(pageRef, schema);
+      await this.source.createPageEntry(project.path, input.slug);
+      await initializePageSchema(pageRef, schema);
+      const nextPage = { pageId: id, name, slug: input.slug, route };
+      await this.format.addPage(project.path, nextPage);
+      manifestCommitted = true;
+      await this.reconcile(project.path);
+    } catch (error) {
+      if (!manifestCommitted) {
+        await Promise.allSettled([
+          ...(pageDirectoryCreated
+            ? [this.source.removePageDirectory(project.path, input.slug)]
+            : []),
+          discardInitializedPageSchema(pageRef),
+        ]);
+        throw error;
+      }
+      throw conflict('页面已创建，但本地索引更新失败，请重新打开项目以重建页面索引');
+    }
     const page = this.projects.getPage(projectId, id);
     if (!page) throw new Error('页面索引失败');
     return page;

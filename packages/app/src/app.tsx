@@ -490,14 +490,36 @@ const App = (): React.JSX.Element => {
               </Modal.Header>
               <Modal.Body className='grid gap-3'>
                 <p className='text-sm text-zinc-700 dark:text-zinc-300'>
-                  选择的目录尚未初始化为 Origamix 项目。是否在该目录中建立项目索引？
+                  选择的目录尚未初始化为 Origamix 项目。请确认检测结果和将写入的内容。
                 </p>
                 <p className='break-all text-xs text-zinc-400 dark:text-zinc-500'>
                   {projectActions.pendingInitialization?.displayPath}
                 </p>
-                <p className='text-xs text-zinc-400 dark:text-zinc-500'>
-                  将写入 Origamix 项目清单和页面 registry，不会删除目录中的现有文件。
-                </p>
+                <p className='text-xs text-zinc-400 dark:text-zinc-500'>计划变更：</p>
+                <ul className='list-disc pl-5 text-xs text-zinc-500 dark:text-zinc-400'>
+                  {projectActions.pendingInitialization?.inspection.plannedChanges.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                {(projectActions.pendingInitialization?.inspection.discoveredPages.length ?? 0) >
+                  0 && (
+                  <p className='text-xs text-zinc-500 dark:text-zinc-400'>
+                    已发现页面：
+                    {projectActions.pendingInitialization?.inspection.discoveredPages
+                      .map((page) => `${page.name}（${page.route}）`)
+                      .join('、')}
+                  </p>
+                )}
+                {(projectActions.pendingInitialization?.inspection.blockers.length ?? 0) > 0 && (
+                  <div role='alert' className='rounded-lg bg-danger/10 p-3 text-xs text-danger'>
+                    <p className='font-medium'>初始化前需要处理：</p>
+                    <ul className='mt-1 list-disc pl-4'>
+                      {projectActions.pendingInitialization?.inspection.blockers.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Modal.Body>
               <Modal.Footer>
                 <Button
@@ -507,7 +529,10 @@ const App = (): React.JSX.Element => {
                   取消
                 </Button>
                 <Button
-                  isDisabled={projectActions.initializing}
+                  isDisabled={
+                    projectActions.initializing ||
+                    (projectActions.pendingInitialization?.inspection.blockers.length ?? 0) > 0
+                  }
                   onPress={() => void projectActions.initializePendingProject()}
                 >
                   {projectActions.initializing ? '初始化中…' : '初始化并打开'}

@@ -146,7 +146,18 @@ export interface ProjectRecord {
 
 export type OpenProjectResult =
   | { status: 'opened'; project: ProjectRecord }
-  | { status: 'initialization_required'; displayPath: string };
+  | {
+      status: 'initialization_required';
+      displayPath: string;
+      inspection: ProjectInitializationInspection;
+    };
+
+export interface ProjectInitializationInspection {
+  directoryKind: 'empty' | 'existing_application';
+  discoveredPages: Array<{ name: string; slug: string; route: string }>;
+  plannedChanges: string[];
+  blockers: string[];
+}
 
 export interface PageRecord {
   id: string;

@@ -141,4 +141,22 @@ export class WorkingSchemaStore {
   writeReceipt(page: WorkingSchemaPageRef, receipt: ChangeSetReceipt): Promise<void> {
     return writeJsonAtomically(this.receiptFile(page, receipt.changeSetId), receipt);
   }
+
+  async removePage(page: WorkingSchemaPageRef): Promise<void> {
+    await Promise.all([
+      rm(join(page.projectPath, '.origamix', 'pages', page.pageId), {
+        recursive: true,
+        force: true,
+      }),
+      rm(join(page.projectPath, '.origamix', 'revisions', page.pageId), {
+        recursive: true,
+        force: true,
+      }),
+      rm(join(page.projectPath, '.origamix', 'changesets', page.pageId), {
+        recursive: true,
+        force: true,
+      }),
+      rm(this.journalFile(page), { force: true }),
+    ]);
+  }
 }
