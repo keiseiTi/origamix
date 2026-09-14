@@ -682,15 +682,29 @@ describe('local HTTP API', () => {
       );
     database.connection
       .prepare(
-        'INSERT INTO agent_runs (id, project_id, page_id, conversation_id, model_ref, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        `INSERT INTO agent_runs (
+          id, project_id, page_id, conversation_id, user_message_id, client_request_id,
+          base_revision_id, model_ref, mode, status, budget_json, prompt_version,
+          policy_version, toolset_version, material_manifest_version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         'run_lifecycle',
         project.id,
         duplicatePage.id,
         'conversation_lifecycle',
+        'message_lifecycle',
+        'request_lifecycle',
+        'revision_base',
         'fake/model',
+        'page_modify',
         'completed',
+        '{"maxModelCalls":1,"maxToolCalls":1,"maxOutputTokens":1,"maxDurationMs":1,"maxSchemaBytes":1,"maxRepairAttempts":0}',
+        '1',
+        '1',
+        '1',
+        '1',
+        timestamp,
         timestamp,
       );
     database.connection

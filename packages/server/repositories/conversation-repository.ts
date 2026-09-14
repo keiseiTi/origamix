@@ -1,13 +1,14 @@
+import { and, asc, desc, eq, gt, isNull, lt, max, ne, or } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import {
   MessageContentSchema,
   type AgentMessage,
   type MessageContent,
 } from '@origamix/shared/protocol/agent';
-import type { ApplicationDatabase } from '../database/database';
+import type { ApplicationDatabase, DatabaseClient } from '../database/database';
+import { conversations, messages, pages, projects } from '../database/schema';
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted';
-
 export interface ConversationRecord {
   id: string;
   projectId: string;
@@ -18,165 +19,136 @@ export interface ConversationRecord {
   updatedAt: string;
   deletedAt?: string;
 }
-
 export type MessageStatus = 'pending' | 'streaming' | 'completed' | 'failed';
-
-type ConversationRow = {
-  id: string;
-  project_id: string;
-  page_id: string;
-  title: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-};
-
-type MessageRow = {
-  id: string;
-  conversation_id: string;
-  run_id: string | null;
-  role: string;
-  content_json: string;
-  content_version: string;
-  status: string;
-  sequence: number;
-  error_code: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 export interface StoredMessage extends AgentMessage {
   status: MessageStatus;
   updatedAt: string;
   errorCode?: string;
 }
 
-const conversationFromRow = (row: ConversationRow): ConversationRecord => ({
-  id: row.id,
-  projectId: row.project_id,
-  pageId: row.page_id,
-  title: row.title,
+const conversationFromRow = ({
+  deletedAt,
+  ...row
+}: typeof conversations.$inferSelect): ConversationRecord => ({
+  ...row,
   status: row.status as ConversationStatus,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  ...(row.deleted_at ? { deletedAt: row.deleted_at } : {}),
+  ...(deletedAt ? { deletedAt } : {}),
 });
-
-const messageFromRow = (row: MessageRow): StoredMessage => {
+const messageFromRow = (row: typeof messages.$inferSelect): StoredMessage => {
   let content: unknown;
   try {
-    content = JSON.parse(row.content_json);
+    content = JSON.parse(row.contentJson);
   } catch {
     throw new Error(`消息 ${row.id} 的 content_json 不是合法 JSON`);
   }
-  if (row.content_version !== '1' || !Value.Check(MessageContentSchema, content)) {
-    throw new Error(`消息 ${row.id} 的内容不符合协议版本 ${row.content_version}`);
-  }
-  if (!['user', 'assistant', 'system'].includes(row.role)) {
+  if (row.contentVersion !== '1' || !Value.Check(MessageContentSchema, content))
+    throw new Error(`消息 ${row.id} 的内容不符合协议版本 ${row.contentVersion}`);
+  if (!['user', 'assistant', 'system'].includes(row.role))
     throw new Error(`消息 ${row.id} 的 role 无效`);
-  }
   return {
     version: '1',
     messageId: row.id,
-    conversationId: row.conversation_id,
-    ...(row.run_id ? { runId: row.run_id } : {}),
+    conversationId: row.conversationId,
+    ...(row.runId ? { runId: row.runId } : {}),
     role: row.role as StoredMessage['role'],
     content: content as MessageContent,
     sequence: row.sequence,
-    createdAt: row.created_at,
+    createdAt: row.createdAt,
     status: row.status as MessageStatus,
-    updatedAt: row.updated_at,
-    ...(row.error_code ? { errorCode: row.error_code } : {}),
+    updatedAt: row.updatedAt,
+    ...(row.errorCode ? { errorCode: row.errorCode } : {}),
   };
 };
 
 export class ConversationRepository {
-  constructor(private readonly database: ApplicationDatabase) {}
-
+  private readonly client: DatabaseClient;
+  constructor(database: ApplicationDatabase | DatabaseClient) {
+    this.client = 'orm' in database ? database.orm : database;
+  }
   create(record: ConversationRecord): ConversationRecord {
-    this.database.connection
-      .prepare(
-        'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        record.id,
-        record.projectId,
-        record.pageId,
-        record.title,
-        record.status,
-        record.createdAt,
-        record.updatedAt,
-        record.deletedAt ?? null,
-      );
+    this.client
+      .insert(conversations)
+      .values({ ...record, deletedAt: record.deletedAt ?? null })
+      .run();
     return record;
   }
-
   get(id: string, includeDeleted = false): ConversationRecord | undefined {
-    const row = this.database.connection
-      .prepare(
-        `SELECT * FROM conversations WHERE id = ?${includeDeleted ? '' : " AND status != 'deleted'"}`,
+    const row = this.client
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, id),
+          ...(includeDeleted ? [] : [ne(conversations.status, 'deleted')]),
+        ),
       )
-      .get(id) as ConversationRow | undefined;
+      .get();
     return row && conversationFromRow(row);
   }
-
   findActive(projectId: string, pageId: string): ConversationRecord | undefined {
-    const row = this.database.connection
-      .prepare(
-        "SELECT * FROM conversations WHERE project_id = ? AND page_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1",
+    const row = this.client
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.projectId, projectId),
+          eq(conversations.pageId, pageId),
+          eq(conversations.status, 'active'),
+        ),
       )
-      .get(projectId, pageId) as ConversationRow | undefined;
+      .orderBy(desc(conversations.updatedAt))
+      .limit(1)
+      .get();
     return row && conversationFromRow(row);
   }
-
   list(projectId: string, pageId: string, limit = 50, before?: string): ConversationRecord[] {
-    const rows = this.database.connection
-      .prepare(
-        `SELECT * FROM conversations WHERE project_id = ? AND page_id = ? AND status != 'deleted'
-         AND (? IS NULL OR updated_at < ?) ORDER BY updated_at DESC LIMIT ?`,
+    return this.client
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.projectId, projectId),
+          eq(conversations.pageId, pageId),
+          ne(conversations.status, 'deleted'),
+          ...(before ? [lt(conversations.updatedAt, before)] : []),
+        ),
       )
-      .all(projectId, pageId, before ?? null, before ?? null, limit) as ConversationRow[];
-    return rows.map(conversationFromRow);
+      .orderBy(desc(conversations.updatedAt))
+      .limit(limit)
+      .all()
+      .map(conversationFromRow);
   }
-
   touch(id: string, updatedAt: string): void {
-    this.database.connection
-      .prepare('UPDATE conversations SET updated_at = ? WHERE id = ?')
-      .run(updatedAt, id);
+    this.client.update(conversations).set({ updatedAt }).where(eq(conversations.id, id)).run();
   }
-
   softDelete(id: string, deletedAt: string): boolean {
     return (
-      this.database.connection
-        .prepare(
-          "UPDATE conversations SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE id = ? AND status != 'deleted'",
-        )
-        .run(deletedAt, deletedAt, id).changes > 0
+      this.client
+        .update(conversations)
+        .set({ status: 'deleted', deletedAt, updatedAt: deletedAt })
+        .where(and(eq(conversations.id, id), ne(conversations.status, 'deleted')))
+        .run().changes > 0
     );
   }
-
   appendMessage(message: StoredMessage): StoredMessage {
-    this.database.connection
-      .prepare(
-        'INSERT INTO messages (id, conversation_id, run_id, role, content_json, content_version, status, sequence, error_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        message.messageId,
-        message.conversationId,
-        message.runId ?? null,
-        message.role,
-        JSON.stringify(message.content),
-        message.version,
-        message.status,
-        message.sequence,
-        message.errorCode ?? null,
-        message.createdAt,
-        message.updatedAt,
-      );
+    this.client
+      .insert(messages)
+      .values({
+        id: message.messageId,
+        conversationId: message.conversationId,
+        runId: message.runId ?? null,
+        role: message.role,
+        contentJson: JSON.stringify(message.content),
+        contentVersion: message.version,
+        status: message.status,
+        sequence: message.sequence,
+        errorCode: message.errorCode ?? null,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+      })
+      .run();
     return message;
   }
-
   updateMessage(
     id: string,
     input: {
@@ -187,79 +159,83 @@ export class ConversationRepository {
     },
   ): boolean {
     return (
-      this.database.connection
-        .prepare(
-          'UPDATE messages SET content_json = ?, content_version = ?, status = ?, error_code = ?, updated_at = ? WHERE id = ?',
-        )
-        .run(
-          JSON.stringify(input.content),
-          input.content.version,
-          input.status,
-          input.errorCode ?? null,
-          input.updatedAt,
-          id,
-        ).changes > 0
+      this.client
+        .update(messages)
+        .set({
+          contentJson: JSON.stringify(input.content),
+          contentVersion: input.content.version,
+          status: input.status,
+          errorCode: input.errorCode ?? null,
+          updatedAt: input.updatedAt,
+        })
+        .where(eq(messages.id, id))
+        .run().changes > 0
     );
   }
-
   getMessage(id: string): StoredMessage | undefined {
-    const row = this.database.connection.prepare('SELECT * FROM messages WHERE id = ?').get(id) as
-      MessageRow | undefined;
+    const row = this.client.select().from(messages).where(eq(messages.id, id)).get();
     return row && messageFromRow(row);
   }
-
   findAssistantByRun(runId: string): StoredMessage | undefined {
-    const row = this.database.connection
-      .prepare("SELECT * FROM messages WHERE run_id = ? AND role = 'assistant' LIMIT 1")
-      .get(runId) as MessageRow | undefined;
+    const row = this.client
+      .select()
+      .from(messages)
+      .where(and(eq(messages.runId, runId), eq(messages.role, 'assistant')))
+      .limit(1)
+      .get();
     return row && messageFromRow(row);
   }
-
   nextSequence(conversationId: string): number {
-    const row = this.database.connection
-      .prepare(
-        'SELECT COALESCE(MAX(sequence), -1) + 1 AS sequence FROM messages WHERE conversation_id = ?',
-      )
-      .get(conversationId) as { sequence: number };
-    return row.sequence;
+    const row = this.client
+      .select({ value: max(messages.sequence) })
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .get();
+    return (row?.value ?? -1) + 1;
   }
-
   listMessages(conversationId: string, afterSequence = -1, limit = 100): StoredMessage[] {
-    const rows = this.database.connection
-      .prepare(
-        'SELECT * FROM messages WHERE conversation_id = ? AND sequence > ? ORDER BY sequence LIMIT ?',
-      )
-      .all(conversationId, afterSequence, limit) as MessageRow[];
-    return rows.map(messageFromRow);
+    return this.client
+      .select()
+      .from(messages)
+      .where(and(eq(messages.conversationId, conversationId), gt(messages.sequence, afterSequence)))
+      .orderBy(asc(messages.sequence))
+      .limit(limit)
+      .all()
+      .map(messageFromRow);
   }
-
   listRecentMessages(conversationId: string, limit = 100): StoredMessage[] {
-    const rows = this.database.connection
-      .prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY sequence DESC LIMIT ?')
-      .all(conversationId, limit) as MessageRow[];
-    return rows.reverse().map(messageFromRow);
+    return this.client
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.sequence))
+      .limit(limit)
+      .all()
+      .reverse()
+      .map(messageFromRow);
   }
-
   listOrphanMessageIds(): string[] {
-    return (
-      this.database.connection
-        .prepare(
-          'SELECT messages.id FROM messages LEFT JOIN conversations ON conversations.id = messages.conversation_id WHERE conversations.id IS NULL ORDER BY messages.id',
-        )
-        .all() as Array<{ id: string }>
-    ).map(({ id }) => id);
+    return this.client
+      .select({ id: messages.id })
+      .from(messages)
+      .leftJoin(conversations, eq(conversations.id, messages.conversationId))
+      .where(isNull(conversations.id))
+      .orderBy(asc(messages.id))
+      .all()
+      .map(({ id }) => id);
   }
-
   listOrphanConversationIds(): string[] {
-    return (
-      this.database.connection
-        .prepare(
-          `SELECT conversations.id FROM conversations
-           LEFT JOIN projects ON projects.id = conversations.project_id
-           LEFT JOIN pages ON pages.id = conversations.page_id AND pages.project_id = conversations.project_id
-           WHERE projects.id IS NULL OR pages.id IS NULL ORDER BY conversations.id`,
-        )
-        .all() as Array<{ id: string }>
-    ).map(({ id }) => id);
+    return this.client
+      .selectDistinct({ id: conversations.id })
+      .from(conversations)
+      .leftJoin(projects, eq(projects.id, conversations.projectId))
+      .leftJoin(
+        pages,
+        and(eq(pages.id, conversations.pageId), eq(pages.projectId, conversations.projectId)),
+      )
+      .where(or(isNull(projects.id), isNull(pages.id)))
+      .orderBy(asc(conversations.id))
+      .all()
+      .map(({ id }) => id);
   }
 }

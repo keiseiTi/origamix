@@ -8,7 +8,7 @@ import {
   type ConversationRecord,
   type StoredMessage,
 } from '../repositories/conversation-repository';
-import type { ProjectRepository } from '../repositories/project-repository';
+import { ProjectRepository } from '../repositories/project-repository';
 
 export interface StartConversationRunInput {
   projectId: string;
@@ -65,18 +65,44 @@ export class ConversationService {
     run: AgentRunRecord;
     created: boolean;
   } {
-    this.requirePage(input.projectId, input.pageId);
-    const duplicate = this.runs.findByClientRequest(
+    try {
+      return this.database.transaction(() =>
+        this.startRunInTransaction(input, this.projects, this.conversations, this.runs),
+      );
+    } catch (error) {
+      const raced = this.runs.findByClientRequest(
+        input.projectId,
+        input.pageId,
+        input.clientRequestId,
+      );
+      if (raced) return this.existingStartResult(raced, input);
+      throw error;
+    }
+  }
+
+  private startRunInTransaction(
+    input: StartConversationRunInput,
+    projects: ProjectRepository,
+    conversations: ConversationRepository,
+    runs: AgentRunRepository,
+  ): {
+    conversation: ConversationRecord;
+    message: StoredMessage;
+    run: AgentRunRecord;
+    created: boolean;
+  } {
+    this.requirePage(input.projectId, input.pageId, projects);
+    const duplicate = runs.findByClientRequest(
       input.projectId,
       input.pageId,
       input.clientRequestId,
     );
-    if (duplicate) return this.existingStartResult(duplicate, input);
+    if (duplicate) return this.existingStartResult(duplicate, input, conversations);
 
     let shouldCreateConversation = false;
     let conversation = input.conversationId
-      ? this.requireConversation(input.conversationId, input.projectId, input.pageId)
-      : this.conversations.findActive(input.projectId, input.pageId);
+      ? this.requireConversation(input.conversationId, input.projectId, input.pageId, conversations)
+      : conversations.findActive(input.projectId, input.pageId);
     if (!conversation) {
       const timestamp = now();
       conversation = {
@@ -90,7 +116,7 @@ export class ConversationService {
       };
       shouldCreateConversation = true;
     }
-    if (input.retryOfRunId) this.requireRetryParent(input.retryOfRunId, conversation);
+    if (input.retryOfRunId) this.requireRetryParent(input.retryOfRunId, conversation, runs);
 
     const timestamp = now();
     const message: StoredMessage = {
@@ -99,7 +125,7 @@ export class ConversationService {
       conversationId: conversation.id,
       role: 'user',
       content: input.content,
-      sequence: this.conversations.nextSequence(conversation.id),
+      sequence: conversations.nextSequence(conversation.id),
       createdAt: timestamp,
       updatedAt: timestamp,
       status: 'completed',
@@ -129,30 +155,11 @@ export class ConversationService {
       updatedAt: timestamp,
     };
 
-    const db = this.database.connection;
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      if (shouldCreateConversation) this.conversations.create(conversation);
-      this.conversations.appendMessage(message);
-      this.runs.create(run);
-      this.conversations.touch(conversation.id, timestamp);
-      db.exec('COMMIT');
-      return {
-        conversation: { ...conversation, updatedAt: timestamp },
-        message,
-        run,
-        created: true,
-      };
-    } catch (error) {
-      db.exec('ROLLBACK');
-      const raced = this.runs.findByClientRequest(
-        input.projectId,
-        input.pageId,
-        input.clientRequestId,
-      );
-      if (raced) return this.existingStartResult(raced, input);
-      throw error;
-    }
+    if (shouldCreateConversation) conversations.create(conversation);
+    conversations.appendMessage(message);
+    runs.create(run);
+    conversations.touch(conversation.id, timestamp);
+    return { conversation: { ...conversation, updatedAt: timestamp }, message, run, created: true };
   }
 
   checkpointAssistant(runId: string, content: MessageContent): StoredMessage {
@@ -228,8 +235,12 @@ export class ConversationService {
     return this.conversations.listRecentMessages(conversationId, Math.min(Math.max(limit, 1), 500));
   }
 
-  private existingStartResult(run: AgentRunRecord, input: StartConversationRunInput) {
-    const storedMessage = this.conversations.getMessage(run.userMessageId);
+  private existingStartResult(
+    run: AgentRunRecord,
+    input: StartConversationRunInput,
+    conversations = this.conversations,
+  ) {
+    const storedMessage = conversations.getMessage(run.userMessageId);
     if (
       run.baseRevisionId !== input.baseRevisionId ||
       run.conversationId !== (input.conversationId ?? run.conversationId) ||
@@ -245,25 +256,31 @@ export class ConversationService {
       run.conversationId,
       input.projectId,
       input.pageId,
+      conversations,
     );
     return { conversation, message: storedMessage, run, created: false };
   }
 
-  private requirePage(projectId: string, pageId: string): void {
-    if (!this.projects.getProject(projectId)) throw notFound('项目不存在');
-    if (!this.projects.getPage(projectId, pageId)) throw notFound('页面不存在或不属于项目');
+  private requirePage(projectId: string, pageId: string, projects = this.projects): void {
+    if (!projects.getProject(projectId)) throw notFound('项目不存在');
+    if (!projects.getPage(projectId, pageId)) throw notFound('页面不存在或不属于项目');
   }
 
-  private requireConversation(id: string, projectId: string, pageId: string): ConversationRecord {
-    const conversation = this.conversations.get(id);
+  private requireConversation(
+    id: string,
+    projectId: string,
+    pageId: string,
+    conversations = this.conversations,
+  ): ConversationRecord {
+    const conversation = conversations.get(id);
     if (!conversation || conversation.projectId !== projectId || conversation.pageId !== pageId) {
       throw notFound('会话不存在或不属于当前页面');
     }
     return conversation;
   }
 
-  private requireRetryParent(id: string, conversation: ConversationRecord): void {
-    const parent = this.runs.get(id);
+  private requireRetryParent(id: string, conversation: ConversationRecord, runs = this.runs): void {
+    const parent = runs.get(id);
     if (
       !parent ||
       parent.conversationId !== conversation.id ||

@@ -24,14 +24,15 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "pretest": "pnpm --filter @origamix/materials build",
+    "pretest": "pnpm --filter @origamix/materials build && pnpm check:database-schema",
     "test": "vitest run",
     "test:template": "pnpm build && node scripts/smoke-template.mjs",
     "test:dev": "node scripts/smoke-development.mjs",
     "probe:deepseek": "pnpm build && node scripts/probe-deepseek.mjs",
     "gate:agent": "pnpm build && node scripts/gate-agent.mjs",
     "build": "node scripts/build.mjs",
-    "dev": "node scripts/dev.mjs"
+    "dev": "node scripts/dev.mjs",
+    "check:database-schema": "node scripts/check-database-schema.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.83.0",
@@ -40,10 +41,13 @@
     "@origamix/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.52",
     "ajv": "^8.20.0",
+    "drizzle-orm": "0.45.2",
     "fastify": "^5.12.1",
     "nanoid": "^6.0.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "drizzle-kit": "0.31.10",
     "tsup": "^8.5.0"
   }
 }

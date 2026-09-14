@@ -1,40 +1,34 @@
-import type { ApplicationDatabase } from '../database/database';
+import { eq } from 'drizzle-orm';
 import type { WorkspaceRecord } from '@origamix/shared/protocol/api';
+import type { ApplicationDatabase, DatabaseClient } from '../database/database';
+import { workspaceState } from '../database/schema';
 
 export class WorkspaceRepository {
-  constructor(private readonly database: ApplicationDatabase) {}
-
+  private readonly client: DatabaseClient;
+  constructor(database: ApplicationDatabase | DatabaseClient) {
+    this.client = 'orm' in database ? database.orm : database;
+  }
   get(): WorkspaceRecord {
-    const row = this.database.connection
-      .prepare('SELECT * FROM workspace_state WHERE id = 1')
-      .get() as {
-      active_project_id: string | null;
-      active_page_id: string | null;
-      theme: 'light' | 'dark';
-      sidebar_state: 'expanded' | 'collapsed';
-      updated_at: string;
-    };
+    const row = this.client.select().from(workspaceState).where(eq(workspaceState.id, 1)).get();
+    if (!row) throw new Error('工作区状态未初始化');
+    if (row.theme !== 'light' && row.theme !== 'dark') throw new Error('工作区主题无效');
     return {
       theme: row.theme,
-      sidebarCollapsed: row.sidebar_state === 'collapsed',
-      updatedAt: row.updated_at,
+      sidebarCollapsed: row.sidebarState === 'collapsed',
+      updatedAt: row.updatedAt,
     };
   }
-
   save(input: Partial<Omit<WorkspaceRecord, 'updatedAt'>>): WorkspaceRecord {
-    const current = this.get();
-    const next = { ...current, ...input, updatedAt: new Date().toISOString() };
-    this.database.connection
-      .prepare(
-        'UPDATE workspace_state SET active_project_id = ?, active_page_id = ?, theme = ?, sidebar_state = ?, updated_at = ? WHERE id = 1',
-      )
-      .run(
-        null,
-        null,
-        next.theme,
-        next.sidebarCollapsed ? 'collapsed' : 'expanded',
-        next.updatedAt,
-      );
+    const next = { ...this.get(), ...input, updatedAt: new Date().toISOString() };
+    this.client
+      .update(workspaceState)
+      .set({
+        theme: next.theme,
+        sidebarState: next.sidebarCollapsed ? 'collapsed' : 'expanded',
+        updatedAt: next.updatedAt,
+      })
+      .where(eq(workspaceState.id, 1))
+      .run();
     return next;
   }
 }

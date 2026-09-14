@@ -1,211 +1,202 @@
-import type { ApplicationDatabase } from '../database/database';
+import { and, asc, desc, eq, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
 import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
+import type { ApplicationDatabase, DatabaseClient } from '../database/database';
+import {
+  agentRuns,
+  conversations,
+  messages,
+  pageRuntimeState,
+  pages,
+  projects,
+  removedPages,
+  runtimeDiagnostics,
+} from '../database/schema';
 
-type ProjectRow = {
-  id: string;
-  path: string;
-  name: string;
-  format_version: string;
-  status: string;
-  created_at: string;
-  last_opened_at: string;
-};
-type PageRow = {
-  id: string;
-  project_id: string;
-  slug: string;
-  name: string;
-  route: string | null;
-  relative_path: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-};
-const projectRecord = (row: ProjectRow): ProjectRecord => ({
-  id: row.id,
-  path: row.path,
-  name: row.name,
-  formatVersion: row.format_version,
-  status: row.status,
-  createdAt: row.created_at,
-  lastOpenedAt: row.last_opened_at,
+const projectRecord = (row: typeof projects.$inferSelect): ProjectRecord => ({ ...row });
+const pageRecord = ({ route, ...row }: typeof pages.$inferSelect): PageRecord => ({
+  ...row,
+  ...(route ? { route } : {}),
 });
-const pageRecord = (row: PageRow): PageRecord => ({
-  id: row.id,
-  projectId: row.project_id,
-  slug: row.slug,
-  name: row.name,
-  ...(row.route ? { route: row.route } : {}),
-  relativePath: row.relative_path,
-  status: row.status,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
 
 export class ProjectRepository {
-  constructor(private readonly database: ApplicationDatabase) {}
-
-  listProjects(): ProjectRecord[] {
-    return (
-      this.database.connection
-        .prepare('SELECT * FROM projects WHERE status = ? ORDER BY last_opened_at DESC')
-        .all('available') as ProjectRow[]
-    ).map(projectRecord);
+  private readonly client: DatabaseClient;
+  private readonly database?: ApplicationDatabase;
+  constructor(database: ApplicationDatabase | DatabaseClient) {
+    this.client = 'orm' in database ? database.orm : database;
+    this.database = 'orm' in database ? database : undefined;
   }
-
+  private transact<T>(action: (client: DatabaseClient) => T): T {
+    return this.database ? this.database.transaction(action) : action(this.client);
+  }
+  listProjects(): ProjectRecord[] {
+    return this.client
+      .select()
+      .from(projects)
+      .where(eq(projects.status, 'available'))
+      .orderBy(desc(projects.lastOpenedAt))
+      .all()
+      .map(projectRecord);
+  }
   getProject(id: string): ProjectRecord | undefined {
-    const row = this.database.connection.prepare('SELECT * FROM projects WHERE id = ?').get(id) as
-      ProjectRow | undefined;
+    const row = this.client.select().from(projects).where(eq(projects.id, id)).get();
     return row && projectRecord(row);
   }
-
   getPage(projectId: string, pageId: string): PageRecord | undefined {
-    const row = this.database.connection
-      .prepare('SELECT * FROM pages WHERE project_id = ? AND id = ? AND status = ?')
-      .get(projectId, pageId, 'active') as PageRow | undefined;
+    const row = this.client
+      .select()
+      .from(pages)
+      .where(and(eq(pages.projectId, projectId), eq(pages.id, pageId), eq(pages.status, 'active')))
+      .get();
     return row && pageRecord(row);
   }
-
   listPages(projectId: string): PageRecord[] {
-    return (
-      this.database.connection
-        .prepare('SELECT * FROM pages WHERE project_id = ? AND status = ? ORDER BY created_at')
-        .all(projectId, 'active') as PageRow[]
-    ).map(pageRecord);
+    return this.client
+      .select()
+      .from(pages)
+      .where(and(eq(pages.projectId, projectId), eq(pages.status, 'active')))
+      .orderBy(asc(pages.createdAt))
+      .all()
+      .map(pageRecord);
   }
-
   isPageRemoved(projectId: string, pageId: string): boolean {
     return Boolean(
-      this.database.connection
-        .prepare('SELECT 1 FROM removed_pages WHERE project_id = ? AND page_id = ?')
-        .get(projectId, pageId),
+      this.client
+        .select({ id: removedPages.pageId })
+        .from(removedPages)
+        .where(and(eq(removedPages.projectId, projectId), eq(removedPages.pageId, pageId)))
+        .get(),
     );
   }
-
-  deletePageRecord(projectId: string, pageId: string): boolean {
-    const db = this.database.connection;
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      const page = db
-        .prepare('SELECT id FROM pages WHERE project_id = ? AND id = ?')
-        .get(projectId, pageId);
-      if (!page) {
-        db.exec('ROLLBACK');
-        return false;
-      }
-      db.prepare(
-        'INSERT OR REPLACE INTO removed_pages (project_id, page_id, removed_at) VALUES (?, ?, ?)',
-      ).run(projectId, pageId, new Date().toISOString());
-      db.prepare('DELETE FROM runtime_diagnostics WHERE project_id = ? AND page_id = ?').run(
-        projectId,
-        pageId,
-      );
-      db.prepare('DELETE FROM page_runtime_state WHERE project_id = ? AND page_id = ?').run(
-        projectId,
-        pageId,
-      );
-      db.prepare('DELETE FROM agent_runs WHERE project_id = ? AND page_id = ?').run(
-        projectId,
-        pageId,
-      );
-      db.prepare(
-        'DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = ? AND page_id = ?)',
-      ).run(projectId, pageId);
-      db.prepare('DELETE FROM conversations WHERE project_id = ? AND page_id = ?').run(
-        projectId,
-        pageId,
-      );
-      db.prepare('DELETE FROM pages WHERE project_id = ? AND id = ?').run(projectId, pageId);
-      db.exec('COMMIT');
-      return true;
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    }
-  }
-
   hasActiveRuns(projectId: string, pageId?: string): boolean {
-    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
-    const sql = `SELECT 1 FROM agent_runs WHERE project_id = ?${
-      pageId ? ' AND page_id = ?' : ''
-    } AND status NOT IN (${terminal.map(() => '?').join(', ')}) LIMIT 1`;
     return Boolean(
-      this.database.connection
-        .prepare(sql)
-        .get(projectId, ...(pageId ? [pageId] : []), ...terminal),
+      this.client
+        .select({ id: agentRuns.id })
+        .from(agentRuns)
+        .where(
+          and(
+            eq(agentRuns.projectId, projectId),
+            ...(pageId ? [eq(agentRuns.pageId, pageId)] : []),
+            notInArray(agentRuns.status, terminal),
+          ),
+        )
+        .limit(1)
+        .get(),
     );
   }
-
-  deleteProjectRecord(projectId: string): boolean {
-    const db = this.database.connection;
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId)) {
-        db.exec('ROLLBACK');
+  deletePageRecord(projectId: string, pageId: string): boolean {
+    return this.transact((client) => {
+      if (
+        !client
+          .select({ id: pages.id })
+          .from(pages)
+          .where(and(eq(pages.projectId, projectId), eq(pages.id, pageId)))
+          .get()
+      )
         return false;
-      }
-      db.prepare('DELETE FROM runtime_diagnostics WHERE project_id = ?').run(projectId);
-      db.prepare('DELETE FROM page_runtime_state WHERE project_id = ?').run(projectId);
-      db.prepare('DELETE FROM agent_runs WHERE project_id = ?').run(projectId);
-      db.prepare(
-        'DELETE FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE project_id = ?)',
-      ).run(projectId);
-      db.prepare('DELETE FROM conversations WHERE project_id = ?').run(projectId);
-      db.prepare('DELETE FROM removed_pages WHERE project_id = ?').run(projectId);
-      db.prepare('DELETE FROM pages WHERE project_id = ?').run(projectId);
-      db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
-      db.exec('COMMIT');
+      const conversationIds = client
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(and(eq(conversations.projectId, projectId), eq(conversations.pageId, pageId)))
+        .all()
+        .map(({ id }) => id);
+      client
+        .insert(removedPages)
+        .values({ projectId, pageId, removedAt: new Date().toISOString() })
+        .onConflictDoUpdate({
+          target: [removedPages.projectId, removedPages.pageId],
+          set: { removedAt: new Date().toISOString() },
+        })
+        .run();
+      client
+        .delete(runtimeDiagnostics)
+        .where(
+          and(eq(runtimeDiagnostics.projectId, projectId), eq(runtimeDiagnostics.pageId, pageId)),
+        )
+        .run();
+      client
+        .delete(pageRuntimeState)
+        .where(and(eq(pageRuntimeState.projectId, projectId), eq(pageRuntimeState.pageId, pageId)))
+        .run();
+      client
+        .delete(agentRuns)
+        .where(and(eq(agentRuns.projectId, projectId), eq(agentRuns.pageId, pageId)))
+        .run();
+      if (conversationIds.length)
+        client.delete(messages).where(inArray(messages.conversationId, conversationIds)).run();
+      client
+        .delete(conversations)
+        .where(and(eq(conversations.projectId, projectId), eq(conversations.pageId, pageId)))
+        .run();
+      client
+        .delete(pages)
+        .where(and(eq(pages.projectId, projectId), eq(pages.id, pageId)))
+        .run();
       return true;
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    }
+    });
   }
-
-  reconcile(project: ProjectRecord, pages: PageRecord[]): void {
-    const db = this.database.connection;
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      db.prepare(
-        'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET path = excluded.path, name = excluded.name, format_version = excluded.format_version, status = excluded.status, last_opened_at = excluded.last_opened_at',
-      ).run(
-        project.id,
-        project.path,
-        project.name,
-        project.formatVersion,
-        project.status,
-        project.createdAt,
-        project.lastOpenedAt,
-      );
-      const upsertPage = db.prepare(
-        'INSERT INTO pages (id, project_id, slug, name, route, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, name = excluded.name, route = excluded.route, relative_path = excluded.relative_path, status = excluded.status, updated_at = excluded.updated_at',
-      );
-      for (const page of pages)
-        upsertPage.run(
-          page.id,
-          page.projectId,
-          page.slug,
-          page.name,
-          page.route ?? null,
-          page.relativePath,
-          page.status,
-          page.createdAt,
-          page.updatedAt,
-        );
-      const ids = pages.map((page) => page.id);
-      if (ids.length)
-        db.prepare(
-          `UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ? AND id NOT IN (${ids.map(() => '?').join(', ')})`,
-        ).run(new Date().toISOString(), project.id, ...ids);
-      else
-        db.prepare("UPDATE pages SET status = 'missing', updated_at = ? WHERE project_id = ?").run(
-          new Date().toISOString(),
-          project.id,
-        );
-      db.exec('COMMIT');
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
-    }
+  deleteProjectRecord(projectId: string): boolean {
+    return this.transact((client) => {
+      if (
+        !client.select({ id: projects.id }).from(projects).where(eq(projects.id, projectId)).get()
+      )
+        return false;
+      const conversationIds = client
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(eq(conversations.projectId, projectId))
+        .all()
+        .map(({ id }) => id);
+      client.delete(runtimeDiagnostics).where(eq(runtimeDiagnostics.projectId, projectId)).run();
+      client.delete(pageRuntimeState).where(eq(pageRuntimeState.projectId, projectId)).run();
+      client.delete(agentRuns).where(eq(agentRuns.projectId, projectId)).run();
+      if (conversationIds.length)
+        client.delete(messages).where(inArray(messages.conversationId, conversationIds)).run();
+      client.delete(conversations).where(eq(conversations.projectId, projectId)).run();
+      client.delete(removedPages).where(eq(removedPages.projectId, projectId)).run();
+      client.delete(pages).where(eq(pages.projectId, projectId)).run();
+      client.delete(projects).where(eq(projects.id, projectId)).run();
+      return true;
+    });
+  }
+  reconcile(project: ProjectRecord, pageRecords: PageRecord[]): void {
+    this.transact((client) => {
+      client
+        .insert(projects)
+        .values(project)
+        .onConflictDoUpdate({
+          target: projects.id,
+          set: {
+            path: project.path,
+            name: project.name,
+            formatVersion: project.formatVersion,
+            status: project.status,
+            lastOpenedAt: project.lastOpenedAt,
+          },
+        })
+        .run();
+      for (const page of pageRecords)
+        client
+          .insert(pages)
+          .values({ ...page, route: page.route ?? null })
+          .onConflictDoUpdate({
+            target: pages.id,
+            set: {
+              slug: page.slug,
+              name: page.name,
+              route: page.route ?? null,
+              relativePath: page.relativePath,
+              status: page.status,
+              updatedAt: page.updatedAt,
+            },
+          })
+          .run();
+      const ids = pageRecords.map(({ id }) => id);
+      client
+        .update(pages)
+        .set({ status: 'missing', updatedAt: new Date().toISOString() })
+        .where(and(eq(pages.projectId, project.id), ...(ids.length ? [notIn(pages.id, ids)] : [])))
+        .run();
+    });
   }
 }

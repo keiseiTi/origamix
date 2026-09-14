@@ -11,7 +11,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `services/project-apply-service.ts`: apply orchestration. Initial target creation and explicit apply must share one Target Schema Store; `ProjectService` must not retain a separate target `schema.json` writer.
 - `origamix.project.json.pages` is the project page standard. `pageId` is the stable identity; opening a project may rebuild the SQLite index from the manifest, but SQLite must never rewrite the manifest.
 - `services/schema-material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
-- `repositories/`, `database/`: SQLite access, migrations and safety checks.
+- `repositories/`, `database/`: Drizzle over `node:sqlite`, current-schema initialization and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.
 - `tooling.ts`: separate export entry for Agent evaluation, capability probes, privacy evidence and internal-release thresholds.
 
@@ -33,9 +33,9 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - Normal edits validate ChangeSet, match page/base revision, validate candidates, create Revision and write atomically. Preserve valid data on rejection/failure.
 - External target changes must not be imported during reconciliation. Reloading from the project is an explicit, confirmed operation that replaces the affected page's Working Schema; missing, moved or invalid manifest-owned files stop only that page's operation with an actionable error. Do not scan for a guessed replacement path, silently recreate files or overwrite user changes.
 - A single-file rename does not make multiple files plus SQLite one transaction. Changes to this path need explicit recovery/concurrency tests; do not claim existing code is crash-safe solely because it uses atomic rename.
-- **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in migrations.** Keep `assertMigrationSafety` and tests effective; do not disable checks or hide equivalent relationships in triggers.
+- **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in the schema.** Keep generated-DDL and live-database safety checks effective; do not disable checks or hide equivalent relationships in triggers.
 - Services enforce parent existence, ownership, deletion order and orphan handling. Use indexes, uniqueness constraints and SQL transactions for related database changes.
-- Append migrations instead of rewriting applied versions. Test migration/reopen with temporary databases and retain a recovery path for file/index inconsistencies.
+- `database/schema.ts` is the table-model source of truth. This pre-release codebase has no migration chain: initialize empty databases from the current schema, preserve matching databases on reopen and reject incompatible structures without rewriting or deleting them.
 - `template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. New scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
 - Stop listeners and close databases on failed startup, restart and exit. Use package-owned build scripts/exports; generated artifacts are not source.
 

@@ -329,7 +329,7 @@ describe('Agent Run state and recovery', () => {
     database.close();
   });
 
-  it('persists terminal state across database reopen and keeps migration safe', async () => {
+  it('persists terminal state across database reopen on the current schema', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-agent-db-'));
     directories.push(directory);
     const path = join(directory, 'app.db');
@@ -347,10 +347,11 @@ describe('Agent Run state and recovery', () => {
       errorCode: 'PROVIDER_ERROR',
       errorMessage: '模型不可用 token=[REDACTED]',
     });
-    const version = reopened.connection
-      .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
-      .get() as { value: string };
-    expect(version.value).toBe('5');
+    expect(
+      reopened.connection
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'app_meta'")
+        .get(),
+    ).toBeUndefined();
     reopened.close();
   });
 });
