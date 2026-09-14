@@ -35,7 +35,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - A single-file rename does not make multiple files plus SQLite one transaction. Changes to this path need explicit recovery/concurrency tests; do not claim existing code is crash-safe solely because it uses atomic rename.
 - **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in the schema.** Keep generated-DDL and live-database safety checks effective; do not disable checks or hide equivalent relationships in triggers.
 - Services enforce parent existence, ownership, deletion order and orphan handling. Use indexes, uniqueness constraints and SQL transactions for related database changes.
-- `database/schema.ts` is the table-model source of truth. This pre-release codebase has no migration chain: initialize empty databases from the current schema, preserve matching databases on reopen and reject incompatible structures without rewriting or deleting them.
+- `database/schema.ts` is the table-model source of truth. This MVP codebase has no migration chain: initialize empty databases from the current schema, preserve matching databases on reopen and automatically rebuild incompatible SQLite files. Revisit this destructive reset policy before retaining user-authored database data across releases.
 - `template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. New scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
 - Stop listeners and close databases on failed startup, restart and exit. Use package-owned build scripts/exports; generated artifacts are not source.
 

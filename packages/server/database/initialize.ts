@@ -111,6 +111,13 @@ export const assertSchemaSafety = (sql: string): void => {
   if (/\b(foreign\s+key|references)\b/i.test(sql)) throw new Error('数据库结构不能包含外键约束');
 };
 
+export class IncompatibleDatabaseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IncompatibleDatabaseError';
+  }
+}
+
 const currentUserTables = (connection: DatabaseSync): string[] =>
   (
     connection
@@ -124,13 +131,13 @@ const assertCurrentSchema = (connection: DatabaseSync): void => {
   const actualTables = currentUserTables(connection);
   const expectedTables = Object.keys(expectedColumns).sort();
   if (JSON.stringify(actualTables) !== JSON.stringify(expectedTables))
-    throw new Error('数据库结构与当前版本不兼容；请备份后重建本地数据库');
+    throw new IncompatibleDatabaseError('数据库结构与当前版本不兼容');
   for (const [table, expected] of Object.entries(expectedColumns)) {
     const actual = (
       connection.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
     ).map(({ name }) => name);
     if (JSON.stringify(actual) !== JSON.stringify(expected))
-      throw new Error(`数据库表 ${table} 与当前版本不兼容；请备份后重建本地数据库`);
+      throw new IncompatibleDatabaseError(`数据库表 ${table} 与当前版本不兼容`);
     if ((connection.prepare(`PRAGMA foreign_key_list(${table})`).all() as unknown[]).length > 0)
       throw new Error(`数据库表 ${table} 包含禁止的外键`);
   }

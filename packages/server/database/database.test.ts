@@ -65,25 +65,25 @@ describe('ApplicationDatabase', () => {
     database.close();
   });
 
-  it('rejects an incompatible existing database without rewriting it', async () => {
+  it('rebuilds an incompatible existing database during the MVP phase', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-old-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
     const legacy = new DatabaseSync(path);
     legacy.exec('CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     legacy.close();
-    expect(() => new ApplicationDatabase(path)).toThrow('不兼容');
-    const inspected = new DatabaseSync(path);
+    const rebuilt = new ApplicationDatabase(path);
     expect(
-      inspected
+      rebuilt.connection
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'app_meta'")
         .get(),
-    ).toBeTruthy();
+    ).toBeUndefined();
     expect(
-      inspected
+      rebuilt.connection
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projects'")
         .get(),
-    ).toBeUndefined();
-    inspected.close();
+    ).toBeTruthy();
+    expect(new WorkspaceRepository(rebuilt).get()).toMatchObject({ theme: 'light' });
+    rebuilt.close();
   });
 });
