@@ -14,15 +14,22 @@ it('loads the bundled server with Node builtins outside the workspace', async ()
       entry: { server: options.entry.server },
       outDir: directory,
       config: false,
-      silent: true
+      silent: true,
     });
     // Stub only the Electron control port. Real Node module resolution must
     // load every bundled dependency, including the prefix-only node:sqlite.
-    const output = execFileSync(process.execPath, ['-e', `
+    const output = execFileSync(
+      process.execPath,
+      [
+        '-e',
+        `
       process.parentPort = { on() {}, postMessage() {} };
       require('./server.cjs');
       process.stdout.write('server loaded');
-    `], { cwd: directory, encoding: 'utf8' });
+    `,
+      ],
+      { cwd: directory, encoding: 'utf8' },
+    );
     expect(output).toBe('server loaded');
   } finally {
     await rm(directory, { recursive: true, force: true });

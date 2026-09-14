@@ -12,7 +12,7 @@
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
     "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
     "build:npm": "pnpm build:libs",
-    "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,mjs,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
     "lint": "pnpm -r lint",

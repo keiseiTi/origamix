@@ -6,5 +6,5 @@ const require = createRequire(import.meta.url);
 runDevelopment({
   entry: join(dirname(require.resolve('vite/package.json')), 'bin/vite.js'),
   args: process.argv.slice(2),
-  watchServer: process.env.ORIGAMIX_DESKTOP !== '1'
+  watchServer: process.env.ORIGAMIX_DESKTOP !== '1',
 });

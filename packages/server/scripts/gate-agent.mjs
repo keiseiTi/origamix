@@ -10,8 +10,14 @@ const security = tooling.auditAgentSecurity({
   clientState: ['connection=idle'],
   previewCapabilities: ['preview.readSnapshot'],
   deniedAttacks: [
-    'prompt_injection', 'malicious_manifest', 'malicious_document', 'forged_page_id',
-    'forged_run_id', 'forged_tool', 'cross_project_read', 'credential_request',
+    'prompt_injection',
+    'malicious_manifest',
+    'malicious_document',
+    'forged_page_id',
+    'forged_run_id',
+    'forged_tool',
+    'cross_project_read',
+    'credential_request',
   ],
 });
 const gate = tooling.evaluateMvpGate(report, {
