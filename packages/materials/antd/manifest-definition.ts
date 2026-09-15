@@ -1,4 +1,4 @@
-import type { JsonSchema, MaterialManifest } from '@/material-manifest';
+import type { JsonSchema, MaterialManifest } from '../src/material-manifest';
 
 export const objectSchema = (
   properties: Readonly<Record<string, JsonSchema>>,

@@ -7,24 +7,42 @@
   ],
   "exports": {
     "./antd": {
-      "types": "./dist/antd/index.d.ts",
+      "types": "./antd/index.ts",
       "import": "./dist/antd/index.js"
     },
     "./antd/group": {
-      "types": "./dist/antd/group.d.ts",
+      "types": "./antd/group.ts",
       "import": "./dist/antd/group.js"
     },
     "./antd/manifest": {
-      "types": "./dist/antd/manifest.d.ts",
+      "types": "./antd/manifest.ts",
       "import": "./dist/antd/manifest.js"
     },
     "./manifest": {
-      "types": "./dist/src/material-manifest.d.ts",
+      "types": "./src/material-manifest.ts",
       "import": "./dist/src/material-manifest.js"
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./antd": {
+        "types": "./dist/antd/index.d.ts",
+        "import": "./dist/antd/index.js"
+      },
+      "./antd/group": {
+        "types": "./dist/antd/group.d.ts",
+        "import": "./dist/antd/group.js"
+      },
+      "./antd/manifest": {
+        "types": "./dist/antd/manifest.d.ts",
+        "import": "./dist/antd/manifest.js"
+      },
+      "./manifest": {
+        "types": "./dist/src/material-manifest.d.ts",
+        "import": "./dist/src/material-manifest.js"
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",

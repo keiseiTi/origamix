@@ -6,12 +6,16 @@ import { build } from 'tsup';
 import { expect, it } from 'vitest';
 import { options } from './build-options.mjs';
 
-it('loads the bundled server with Node builtins outside the workspace', async () => {
+it('loads isolated bundles and keeps host and evaluation exports separate', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-server-bundle-'));
   try {
     await build({
       ...options,
-      entry: { server: options.entry.server },
+      entry: {
+        server: options.entry.server,
+        runtime: options.entry.runtime,
+        tooling: options.entry.tooling,
+      },
       outDir: directory,
       config: false,
       silent: true,
@@ -25,6 +29,9 @@ it('loads the bundled server with Node builtins outside the workspace', async ()
         `
       process.parentPort = { on() {}, postMessage() {} };
       require('./server.cjs');
+      const assert = require('node:assert/strict');
+      assert.deepEqual(Object.keys(require('./runtime.cjs')), ['startServer']);
+      assert.equal(typeof require('./tooling.cjs').probeDeepSeekCapabilities, 'function');
       process.stdout.write('server loaded');
     `,
       ],

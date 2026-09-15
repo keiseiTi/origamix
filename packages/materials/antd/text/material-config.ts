@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Text = React.lazy(() => import('./index'));
-import type { Material } from '@/material';
+import type { Material } from '../../src/material';
 import { textManifest } from './manifest';
 
 const TextMaterial: Material = {

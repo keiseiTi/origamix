@@ -16,6 +16,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
+- Workspace type exports resolve to package source so downstream typechecks do not depend on prebuilt `dist`; runtime imports and `publishConfig.exports` resolve to compiled files. Keep both export maps synchronized.
 - A registry key, manifest `type` and persisted Schema type form a compatibility boundary. Renames and removals require a migration plan and coordinated Shared/Server/App/Template changes.
 - Runtime adapters should forward supported props and Tangramino context deliberately. Do not leak editor-only props to DOM elements, mutate Schema or add persistence/network side effects.
 - Runtime components use the package-local minimal runtime props contract; do not import editor contracts solely for injected render props. Editor metadata and controls may continue to depend on the editor package through editor-facing entries.

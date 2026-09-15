@@ -1,3 +1,4 @@
+import { serverBoundaries } from './scripts/eslint-server-boundaries.mjs';
 import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -32,6 +33,11 @@ export default defineConfig([
       ],
       'prefer-arrow-callback': 'error',
     },
+  },
+  {
+    files: ['packages/server/**/*.ts'],
+    plugins: { architecture: { rules: { 'server-boundaries': serverBoundaries } } },
+    rules: { 'architecture/server-boundaries': 'error' },
   },
   {
     files: ['packages/app/src/**/*.{ts,tsx}'],
@@ -90,6 +96,7 @@ export default defineConfig([
   },
   {
     files: [
+      'scripts/**/*.mjs',
       'apps/desktop/scripts/**/*.{mjs,cjs}',
       'packages/server/scripts/**/*.mjs',
       'packages/app/scripts/**/*.mjs',

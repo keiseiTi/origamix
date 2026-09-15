@@ -102,7 +102,9 @@ export class RunExecutor {
       }))
         registry.register(entry);
       const audit = async (event: ToolAuditEvent): Promise<void> => {
-        if (event.phase === 'started' && event.toolName === 'replace_page_schema') {
+        // The tool checks authority while the Run is tool_calling. Advance only
+        // after its validation and Schema commit have actually succeeded.
+        if (event.phase === 'completed' && event.toolName === 'replace_page_schema') {
           this.transitionIf(runId, 'tool_calling', 'validating');
           this.transitionIf(runId, 'validating', 'committing');
         }

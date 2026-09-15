@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import type { Material } from '@/material';
+import type { Material } from '../../src/material';
 
 const CascaderMaterial: Material = {
   Component: lazy(() => import('./index')),

@@ -18,8 +18,8 @@ export interface ReplacePageSchemaToolContext {
 }
 
 export interface ReplacePageSchemaToolDependencies {
-  projects: ProjectRepository;
-  runs: AgentRunRepository;
+  projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
+  runs: Pick<AgentRunRepository, 'get'>;
 }
 
 const parameters = Type.Object({ schema: PageSchema }, { additionalProperties: false });

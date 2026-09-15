@@ -44,6 +44,13 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. New scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
 - Stop listeners and close databases on failed startup, restart and exit. Use package-owned build scripts/exports; generated artifacts are not source.
 
+## Mechanical boundaries
+
+- Root `scripts/eslint-server-boundaries.mjs` is loaded by ESLint for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
+- `http/types.ts` exposes only repository reads and the required service methods; tools receive narrow repository/diagnostic interfaces. Keep these capabilities narrow when adding routes/tools.
+- `runtime.ts` exports only local `startServer`; the rule and isolated bundle test enforce this. Update callers directly in the MVP.
+- These are static import/type checks, not a security sandbox or proof of all runtime effects. Runtime authorization and persistence tests remain required. The rule covers static imports, re-exports, literal dynamic imports and direct `require`; computed module paths are rejected in checked production files.
+
 ## Verification
 
 From the repository root:
@@ -56,7 +63,7 @@ pnpm --filter @origamix/server build
 pnpm --filter @origamix/server gate:agent
 ```
 
-- Extend `database/database.test.ts`, `schema/schema-service.test.ts` and `http/server.test.ts` for affected boundaries. Cover invalid input, stale revisions, cross-project access, authentication and recovery.
+- Extend `database/database.test.ts`, `schema/schema-service.test.ts`, `http/server.test.ts` (authentication), `http/project-routes.test.ts` (project flows), and `http/agent-schema-flow.test.ts` (Agent → commit → Apply) for affected boundaries. Cover invalid input, stale revisions, cross-project access, authentication and recovery.
 - Use temporary directories/databases and fake secrets. Never migrate real app databases or overwrite existing user projects in tests.
 - Template/copy changes: `pnpm --filter @origamix/server test:template` (registry access or populated cache required).
 - Development/build lifecycle changes: `pnpm --filter @origamix/server test:dev`; host changes may also need App `test:web` and Desktop `test:smoke` after root build.

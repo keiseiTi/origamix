@@ -3,7 +3,7 @@ import {
   toAgentMaterialSummary,
   toValidationMaterialManifest,
   type MaterialManifestCatalog,
-} from '@/material-manifest';
+} from '../src/material-manifest';
 import { buttonManifest } from './button/manifest';
 import { cascaderManifest } from './cascader/manifest';
 import { checkboxManifest } from './checkbox/manifest';

@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Upload = React.lazy(() => import('./index'));
-import type { Material } from '@/material';
+import type { Material } from '../../src/material';
 
 const UploadMaterial: Material = {
   Component: Upload,

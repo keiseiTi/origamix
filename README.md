@@ -22,7 +22,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Dependency installation also installs the repository's Lefthook `pre-commit` hook. Like lint-staged, it formats only staged text files, lints only staged application code and re-stages the processed files after successful fixes. Typecheck and tests run only when staged application or package files include TypeScript. Run the hook against the current staged files without committing, or reinstall it, with:
+Dependency installation also installs the repository's Lefthook `pre-commit` hook. Like lint-staged, it formats only staged text files, lints only staged application code and re-stages the processed files after successful fixes. Typecheck and package tests run when staged application or package files include TypeScript. Changes to the Server architecture rule or ESLint configuration also run the boundary-rule tests and lint Server. Run the hook against the current staged files without committing, or reinstall it, with:
 
 ```sh
 pnpm hooks:run
@@ -53,6 +53,8 @@ The current `dev:web` command is the local browser-development composition of th
 For standalone backend development, set `ORIGAMIX_SERVER_TOKEN` and run `pnpm --filter @origamix/server dev`. It builds on startup, watches Server/Shared source and restarts after successful builds. The console reports the assigned loopback port and service instance ID after each restart; clients must send both the bearer token and `X-Origamix-Service` header. App and Server supervisors stop their workers and compiler on exit.
 
 ## Verification and packaging
+
+`pnpm lint` includes Server import-boundary checks. `pnpm test` runs the root architecture-rule regression tests before package tests; run `pnpm test:architecture` to check only the rule. See [Server verification](packages/server/README.md#自动边界检查) for the enforced boundaries.
 
 ```sh
 pnpm lint

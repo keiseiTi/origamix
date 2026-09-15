@@ -10,10 +10,16 @@ pre-commit:
             stage_fixed: true
           - name: lint staged code
             glob:
+              - 'scripts/**/*.mjs'
               - 'apps/**/*.{js,jsx,ts,tsx,mjs,cjs}'
               - 'packages/**/*.{js,jsx,ts,tsx,mjs,cjs}'
             run: pnpm exec eslint --fix --max-warnings=0 {staged_files}
             stage_fixed: true
+          - name: verify architecture rules
+            glob:
+              - 'scripts/eslint-server-boundaries*.mjs'
+              - 'eslint.config.mjs'
+            run: pnpm exec eslint packages/server && pnpm test:architecture
           - name: verify TypeScript changes
             group:
               parallel: true

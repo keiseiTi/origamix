@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
-import { cn } from '@/cn';
+import { cn } from '../../src/cn';
 
 interface BasicPageProps extends MaterialComponentProps {
   children?: React.ReactNode;

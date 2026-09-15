@@ -31,8 +31,8 @@ export interface DomainToolScope {
 
 export interface DomainToolDependencies {
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
-  docs: ProductDocsProvider;
-  diagnostics: RuntimeDiagnosticService;
+  docs: Pick<ProductDocsProvider, 'search'>;
+  diagnostics: Pick<RuntimeDiagnosticService, 'getState'>;
   maxResultBytes?: number;
 }
 

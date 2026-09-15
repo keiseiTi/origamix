@@ -90,17 +90,31 @@ pnpm --filter @origamix/server test
 pnpm --filter @origamix/server build
 ```
 
-| 修改内容          | 重点阅读与验证                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 项目和页面操作    | `projects/project-service.ts`、`http/server.test.ts` 中的项目与页面场景                                                              |
-| Schema 编辑与恢复 | `schema/schema-service.test.ts`，关注陈旧版本、幂等、并发与中断恢复                                                                  |
-| Apply 与目标路径  | `schema/project-apply-service.test.ts`，关注外部改动和路径逃逸                                                                       |
-| Agent 执行与权限  | `agent/run-executor.test.ts`、`agent/tools/*.test.ts`、`http/agent-server.test.ts`；运行 `pnpm --filter @origamix/server gate:agent` |
-| 数据库            | `database/database.test.ts`；保持无外键检查                                                                                          |
-| 开发与构建        | `scripts/build-options.test.mjs`；运行 `pnpm --filter @origamix/server test:dev`                                                     |
-| 模板复制          | `template.test.ts`；运行 `pnpm --filter @origamix/server test:template`                                                              |
+| 修改内容          | 重点阅读与验证                                                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 项目和页面操作    | `projects/project-service.test.ts`、`http/project-routes.test.ts` 中的项目、并发创建和失败恢复场景                                                                     |
+| Schema 编辑与恢复 | `schema/schema-service.test.ts`，关注陈旧版本、幂等、并发与中断恢复                                                                                                    |
+| Apply 与目标路径  | `schema/project-apply-service.test.ts`，关注外部改动和路径逃逸                                                                                                         |
+| Agent 执行与权限  | `agent/run-executor.test.ts`、`agent/tools/*.test.ts`、`http/agent-server.test.ts`、`http/agent-schema-flow.test.ts`；运行 `pnpm --filter @origamix/server gate:agent` |
+| 数据库            | `database/database.test.ts`；保持无外键检查                                                                                                                            |
+| 开发与构建        | `scripts/build-options.test.mjs`；运行 `pnpm --filter @origamix/server test:dev`                                                                                       |
+| 模板复制          | `template.test.ts`；运行 `pnpm --filter @origamix/server test:template`                                                                                                |
 
 交付前运行根目录的 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。完整约束见 [AGENTS.md](AGENTS.md)。
+
+## 自动边界检查
+
+`pnpm --filter @origamix/server lint` 自动检查导入边界；根目录 `pnpm test:architecture` 验证规则本身，并已接入 `pnpm test` 和针对规则变更的提交前检查。
+
+- HTTP 和 Agent 工具不能直接导入文件系统、数据库、仓库实现或写文件辅助模块；通过服务执行写入，注入的仓库接口只提供所需读取方法。
+- Working Store、Target Store、Schema 提交协议和原子文件写入只能由规则中明确指定的模块在运行时引用。
+- 业务模块不能反向依赖 HTTP／启动入口；数据库和基础模块不能反向依赖业务模块。
+- 运行代码不能导入测试辅助、评测、React、Electron 或其他界面包；Materials 只允许 Manifest 出口。
+- `runtime.ts` 只导出 `startServer`，构建测试也会加载真实产物检查这一点。
+
+规则实现位于 [eslint-server-boundaries.mjs](../../scripts/eslint-server-boundaries.mjs)，正反例位于 [对应测试](../../scripts/eslint-server-boundaries.test.mjs)。它检查静态导入、重导出、字面量动态导入与直接 `require`，并拒绝被检查文件中的动态模块路径；它不能代替运行时授权与数据恢复验证。
+
+HTTP 测试已按用途分开：`server.test.ts` 关注鉴权与响应；`project-routes.test.ts` 关注项目／页面 HTTP 流程；`agent-schema-flow.test.ts` 使用真实服务、存储和写工具连接完整流程，仅替换模型，验证 Agent 保存不隐式 Apply、重复请求、陈旧版本和跨项目拒绝。纯项目恢复测试放在 `projects/project-service.test.ts`。
 
 ## 包入口（MVP）
 

@@ -11,15 +11,15 @@ import type { AgentService } from '../agent/agent-service';
 export interface HttpServerInput {
   desktopToken: string;
   serviceInstanceId: string;
-  projects: ProjectRepository;
+  projects: Pick<ProjectRepository, 'getProject' | 'getPage' | 'listProjects' | 'listPages'>;
   projectService: ProjectService;
   projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];
   agent?: {
-    conversations: ConversationService;
-    runs: AgentRunService;
+    conversations: Pick<ConversationService, 'list' | 'history'>;
+    runs: Pick<AgentRunService, 'get'>;
     events: AgentEventBroker;
-    service: AgentService;
+    service: Pick<AgentService, 'start' | 'cancel'>;
   };
   runtimeDiagnostics?: RuntimeDiagnosticService;
 }
