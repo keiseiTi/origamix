@@ -38,7 +38,7 @@ const setup = async () => {
       name: 'Home',
       framework: 'react',
       uiLibrary: 'antd',
-      pages: [{ pageId: 'page_home', name: 'Home', slug: 'home', route: '/' }],
+      pages: [{ pageId: 'page_home', name: 'Home', slug: 'home' }],
     }),
   );
   const pageRef = { projectPath, pageId: 'page_home', slug: 'home' };
@@ -47,14 +47,14 @@ const setup = async () => {
   const timestamp = new Date().toISOString();
   database.connection
     .prepare(
-      'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO projects (id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
     )
-    .run('project_test', projectPath, 'Test', '1', 'available', timestamp, timestamp);
+    .run('project_test', projectPath, 'Test', 0, timestamp, timestamp);
   database.connection
     .prepare(
       'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_home', 'project_test', 'home', 'Home', 'pages/home', 'active', timestamp, timestamp);
+    .run('page_home', 'project_test', 'home', 'Home', 'pages/home', 0, timestamp, timestamp);
   const runs = new AgentRunRepository(database);
   const run: AgentRunRecord = {
     id: 'run_replace',

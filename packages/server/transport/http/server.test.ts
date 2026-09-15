@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../repositories/project-repository';
-import { WorkspaceRepository } from '../../repositories/workspace-repository';
 import { ProjectService } from '../../services/project-service';
 import { ProjectApplyService } from '../../services/project-apply-service';
 import { createHttpServer } from './server';
@@ -21,19 +20,17 @@ describe('local HTTP API', () => {
   it('allows desktop renderer preflights while enforcing origins and session authentication', async () => {
     const database = new ApplicationDatabase(':memory:');
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
-      workspace,
       projectService: new ProjectService(projects, templatePath),
     });
     try {
       for (const origin of ['http://127.0.0.1:5173', 'http://localhost:5173', 'null']) {
         const preflight = await server.inject({
           method: 'OPTIONS',
-          url: '/api/v1/workspace',
+          url: '/api/v1/health',
           headers: {
             origin,
             'access-control-request-method': 'GET',
@@ -48,7 +45,7 @@ describe('local HTTP API', () => {
 
         const denied = await server.inject({
           method: 'GET',
-          url: '/api/v1/workspace',
+          url: '/api/v1/health',
           headers: { origin },
         });
         expect(denied.statusCode).toBe(401);
@@ -62,7 +59,7 @@ describe('local HTTP API', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/workspace',
+          url: '/api/v1/health',
           headers: {
             origin,
             authorization: 'Bearer desktop-token',
@@ -71,11 +68,7 @@ describe('local HTTP API', () => {
         });
         expect(response.statusCode).toBe(200);
         expect(response.headers['access-control-allow-origin']).toBe(origin);
-        expect(response.json()).toMatchObject({
-          success: true,
-          code: 200,
-          data: { theme: 'light' },
-        });
+        expect(response.json()).toMatchObject({ success: true, code: 200 });
       }
       for (const origin of [
         'https://example.com',
@@ -85,7 +78,7 @@ describe('local HTTP API', () => {
         for (const method of ['OPTIONS', 'GET'] as const) {
           const denied = await server.inject({
             method,
-            url: '/api/v1/workspace',
+            url: '/api/v1/health',
             headers: {
               origin,
               authorization: 'Bearer desktop-token',
@@ -108,33 +101,31 @@ describe('local HTTP API', () => {
     }
   });
 
-  it('requires the desktop session and serves workspace through the versioned API', async () => {
+  it('requires the desktop session and serves the versioned API', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-http-'));
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
-      workspace,
       projectService: new ProjectService(projects, templatePath),
     });
 
-    const denied = await server.inject({ method: 'GET', url: '/api/v1/workspace' });
+    const denied = await server.inject({ method: 'GET', url: '/api/v1/projects' });
     expect(denied.statusCode).toBe(401);
 
     const response = await server.inject({
       method: 'GET',
-      url: '/api/v1/workspace',
+      url: '/api/v1/projects',
       headers: { authorization: 'Bearer desktop-token', 'x-origamix-service': 'service-instance' },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       success: true,
       code: 200,
-      data: { theme: 'light' },
+      data: [],
     });
     expect(response.headers['x-request-id']).toBeTruthy();
     await server.close();
@@ -144,12 +135,10 @@ describe('local HTTP API', () => {
   it('uses REST status codes and the uniform failure envelope', async () => {
     const database = new ApplicationDatabase(':memory:');
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
-      workspace,
       projectService: new ProjectService(projects, templatePath),
     });
     const headers = {
@@ -158,10 +147,10 @@ describe('local HTTP API', () => {
     };
     try {
       const malformed = await server.inject({
-        method: 'PATCH',
-        url: '/api/v1/workspace',
+        method: 'POST',
+        url: '/api/v1/projects',
         headers,
-        payload: { theme: 'sepia' },
+        payload: {},
       });
       expect(malformed.statusCode).toBe(400);
       expect(malformed.json()).toMatchObject({ success: false, code: 400, data: null });
@@ -220,14 +209,12 @@ describe('local HTTP API', () => {
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_project', directory);
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
-      workspace,
       projectService: service,
       projectApplyService: new ProjectApplyService(projects),
     });
@@ -285,7 +272,7 @@ describe('local HTTP API', () => {
     ).toMatchObject({
       framework: 'react',
       uiLibrary: 'antd',
-      pages: [{ pageId: expect.any(String), route: '/customer-list' }],
+      pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
 
     const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
@@ -334,7 +321,7 @@ describe('local HTTP API', () => {
     database.close();
   });
 
-  it('serializes page creation and keeps route/index projection aligned with an empty manifest', async () => {
+  it('serializes page creation and keeps the page index aligned with an empty manifest', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-page-index-'));
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
@@ -348,13 +335,13 @@ describe('local HTTP API', () => {
     });
 
     await Promise.all([
-      service.createPage(project.id, { name: '页面 A', slug: 'page-a', route: '/custom-a' }),
-      service.createPage(project.id, { name: '页面 B', slug: 'page-b', route: '/custom-b' }),
+      service.createPage(project.id, { name: '页面 A', slug: 'page-a' }),
+      service.createPage(project.id, { name: '页面 B', slug: 'page-b' }),
     ]);
     expect(projects.listPages(project.id)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ slug: 'page-a', route: '/custom-a' }),
-        expect.objectContaining({ slug: 'page-b', route: '/custom-b' }),
+        expect.objectContaining({ slug: 'page-a' }),
+        expect.objectContaining({ slug: 'page-b' }),
       ]),
     );
 
@@ -535,7 +522,7 @@ describe('local HTTP API', () => {
     if (pending.status !== 'initialization_required') throw new Error('expected inspection');
     expect(pending.inspection).toEqual({
       directoryKind: 'existing_application',
-      discoveredPages: [{ name: 'customers', slug: 'customers', route: '/customers' }],
+      discoveredPages: [{ name: 'customers', slug: 'customers' }],
       plannedChanges: ['写入 origamix.project.json', '按发现页面建立本地索引和工作副本'],
       blockers: [],
     });
@@ -545,7 +532,7 @@ describe('local HTTP API', () => {
     });
     if (opened.status !== 'opened') throw new Error('expected opened project');
     expect(projects.listPages(opened.project.id)).toEqual([
-      expect.objectContaining({ name: 'customers', slug: 'customers', route: '/customers' }),
+      expect.objectContaining({ name: 'customers', slug: 'customers' }),
     ]);
     database.close();
   });
@@ -596,7 +583,6 @@ describe('local HTTP API', () => {
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
-    const workspace = new WorkspaceRepository(database);
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_project', directory);
     const project = await service.createProject({
@@ -607,13 +593,11 @@ describe('local HTTP API', () => {
     const originalPage = await service.createPage(project.id, {
       name: '首页',
       slug: 'home',
-      route: '/',
     });
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
-      workspace,
       projectService: service,
     });
     const headers = {
@@ -657,15 +641,7 @@ describe('local HTTP API', () => {
       .prepare(
         'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(
-        'conversation_lifecycle',
-        project.id,
-        duplicatePage.id,
-        'test',
-        'active',
-        timestamp,
-        timestamp,
-      );
+      .run('conversation_lifecycle', project.id, duplicatePage.id, 'test', 0, timestamp, timestamp);
     database.connection
       .prepare(
         'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -675,7 +651,7 @@ describe('local HTTP API', () => {
         'conversation_lifecycle',
         'user',
         '{"version":"1","blocks":[]}',
-        'completed',
+        2,
         0,
         timestamp,
         timestamp,
@@ -698,27 +674,13 @@ describe('local HTTP API', () => {
         'revision_base',
         'fake/model',
         'page_modify',
-        'completed',
+        8,
         '{"maxModelCalls":1,"maxToolCalls":1,"maxOutputTokens":1,"maxDurationMs":1,"maxSchemaBytes":1,"maxRepairAttempts":0}',
         '1',
         '1',
         '1',
         '1',
         timestamp,
-        timestamp,
-      );
-    database.connection
-      .prepare(
-        'INSERT INTO runtime_diagnostics (project_id, page_id, revision_id, code, severity, stage, safe_message, observed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        project.id,
-        duplicatePage.id,
-        'revision_test',
-        'TEST',
-        'warning',
-        'render',
-        'test',
         timestamp,
       );
     expect(
@@ -732,12 +694,12 @@ describe('local HTTP API', () => {
       ).json().data,
     ).toEqual({ deleted: true });
     expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
-    for (const table of ['conversations', 'messages', 'agent_runs', 'runtime_diagnostics']) {
+    for (const table of ['conversations', 'messages', 'agent_runs']) {
       expect(
         database.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get(),
       ).toMatchObject({ count: 0 });
     }
-    await access(duplicatePath);
+    await expect(access(duplicatePath)).rejects.toThrow();
     await service.renameProject(project.id, '再次改名');
     expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
     expect(

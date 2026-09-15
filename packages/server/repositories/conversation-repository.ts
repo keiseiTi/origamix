@@ -7,6 +7,7 @@ import {
 } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { conversations, messages, pages, projects } from '../database/schema';
+import { conversationStatus, messageStatus } from '../database/status';
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted';
 export interface ConversationRecord {
@@ -31,7 +32,7 @@ const conversationFromRow = ({
   ...row
 }: typeof conversations.$inferSelect): ConversationRecord => ({
   ...row,
-  status: row.status as ConversationStatus,
+  status: conversationStatus.decode(row.status),
   ...(deletedAt ? { deletedAt } : {}),
 });
 const messageFromRow = (row: typeof messages.$inferSelect): StoredMessage => {
@@ -54,7 +55,7 @@ const messageFromRow = (row: typeof messages.$inferSelect): StoredMessage => {
     content: content as MessageContent,
     sequence: row.sequence,
     createdAt: row.createdAt,
-    status: row.status as MessageStatus,
+    status: messageStatus.decode(row.status),
     updatedAt: row.updatedAt,
     ...(row.errorCode ? { errorCode: row.errorCode } : {}),
   };
@@ -68,7 +69,11 @@ export class ConversationRepository {
   create(record: ConversationRecord): ConversationRecord {
     this.client
       .insert(conversations)
-      .values({ ...record, deletedAt: record.deletedAt ?? null })
+      .values({
+        ...record,
+        status: conversationStatus.encode(record.status),
+        deletedAt: record.deletedAt ?? null,
+      })
       .run();
     return record;
   }
@@ -79,7 +84,9 @@ export class ConversationRepository {
       .where(
         and(
           eq(conversations.id, id),
-          ...(includeDeleted ? [] : [ne(conversations.status, 'deleted')]),
+          ...(includeDeleted
+            ? []
+            : [ne(conversations.status, conversationStatus.encode('deleted'))]),
         ),
       )
       .get();
@@ -93,7 +100,7 @@ export class ConversationRepository {
         and(
           eq(conversations.projectId, projectId),
           eq(conversations.pageId, pageId),
-          eq(conversations.status, 'active'),
+          eq(conversations.status, conversationStatus.encode('active')),
         ),
       )
       .orderBy(desc(conversations.updatedAt))
@@ -109,7 +116,7 @@ export class ConversationRepository {
         and(
           eq(conversations.projectId, projectId),
           eq(conversations.pageId, pageId),
-          ne(conversations.status, 'deleted'),
+          ne(conversations.status, conversationStatus.encode('deleted')),
           ...(before ? [lt(conversations.updatedAt, before)] : []),
         ),
       )
@@ -125,8 +132,13 @@ export class ConversationRepository {
     return (
       this.client
         .update(conversations)
-        .set({ status: 'deleted', deletedAt, updatedAt: deletedAt })
-        .where(and(eq(conversations.id, id), ne(conversations.status, 'deleted')))
+        .set({ status: conversationStatus.encode('deleted'), deletedAt, updatedAt: deletedAt })
+        .where(
+          and(
+            eq(conversations.id, id),
+            ne(conversations.status, conversationStatus.encode('deleted')),
+          ),
+        )
         .run().changes > 0
     );
   }
@@ -140,7 +152,7 @@ export class ConversationRepository {
         role: message.role,
         contentJson: JSON.stringify(message.content),
         contentVersion: message.version,
-        status: message.status,
+        status: messageStatus.encode(message.status),
         sequence: message.sequence,
         errorCode: message.errorCode ?? null,
         createdAt: message.createdAt,
@@ -164,7 +176,7 @@ export class ConversationRepository {
         .set({
           contentJson: JSON.stringify(input.content),
           contentVersion: input.content.version,
-          status: input.status,
+          status: messageStatus.encode(input.status),
           errorCode: input.errorCode ?? null,
           updatedAt: input.updatedAt,
         })

@@ -10,6 +10,7 @@ import {
 } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { agentRuns } from '../database/schema';
+import { agentRunStatus } from '../database/status';
 
 export interface AgentRunRecord {
   id: string;
@@ -50,7 +51,8 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     throw new Error(`Agent Run ${row.id} 的 budget_json 不是合法 JSON`);
   }
   if (!Value.Check(RunBudgetSchema, budget)) throw new Error(`Agent Run ${row.id} 的 budget 无效`);
-  if (!Value.Check(AgentRunStatusSchema, row.status) || !Value.Check(RunModeSchema, row.mode))
+  const status = agentRunStatus.decode(row.status);
+  if (!Value.Check(AgentRunStatusSchema, status) || !Value.Check(RunModeSchema, row.mode))
     throw new Error(`Agent Run ${row.id} 的状态或模式无效`);
   return {
     id: row.id,
@@ -63,7 +65,7 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     ...(row.resultRevisionId ? { resultRevisionId: row.resultRevisionId } : {}),
     modelRef: row.modelRef,
     mode: row.mode as RunMode,
-    status: row.status as AgentRunStatus,
+    status,
     budget: budget as RunBudget,
     promptVersion: row.promptVersion,
     policyVersion: row.policyVersion,
@@ -85,6 +87,7 @@ const fromRow = (row: RunRow): AgentRunRecord => {
 
 const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
   ...run,
+  status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
   resultRevisionId: run.resultRevisionId ?? null,
   retryOfRunId: run.retryOfRunId ?? null,
@@ -129,7 +132,14 @@ export class AgentRunRepository {
     return this.client
       .select()
       .from(agentRuns)
-      .where(notInArray(agentRuns.status, ['completed', 'failed', 'cancelled', 'interrupted']))
+      .where(
+        notInArray(
+          agentRuns.status,
+          ['completed', 'failed', 'cancelled', 'interrupted'].map((status) =>
+            agentRunStatus.encode(status as AgentRunStatus),
+          ),
+        ),
+      )
       .orderBy(asc(agentRuns.createdAt))
       .all()
       .map(fromRow);
@@ -149,7 +159,7 @@ export class AgentRunRepository {
   ): boolean {
     if (expected.length === 0) return false;
     const values = {
-      status: patch.status,
+      status: agentRunStatus.encode(patch.status),
       updatedAt: patch.updatedAt,
       ...(patch.finishedAt ? { finishedAt: patch.finishedAt } : {}),
       ...(patch.resultRevisionId ? { resultRevisionId: patch.resultRevisionId } : {}),
@@ -161,7 +171,9 @@ export class AgentRunRepository {
       this.client
         .update(agentRuns)
         .set(values)
-        .where(and(eq(agentRuns.id, id), inArray(agentRuns.status, [...expected])))
+        .where(
+          and(eq(agentRuns.id, id), inArray(agentRuns.status, expected.map(agentRunStatus.encode))),
+        )
         .run().changes > 0
     );
   }

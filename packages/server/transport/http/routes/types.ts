@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../../../repositories/project-repository';
-import type { WorkspaceRepository } from '../../../repositories/workspace-repository';
 import type { ProjectService } from '../../../services/project-service';
 import type { ProjectApplyService } from '../../../services/project-apply-service';
 import type { RuntimeDiagnosticService } from '../../../services/runtime-diagnostic-service';
@@ -13,7 +12,6 @@ export interface HttpServerInput {
   desktopToken: string;
   serviceInstanceId: string;
   projects: ProjectRepository;
-  workspace: WorkspaceRepository;
   projectService: ProjectService;
   projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];

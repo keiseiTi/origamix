@@ -25,14 +25,14 @@ const setup = (
   const timestamp = new Date().toISOString();
   database.connection
     .prepare(
-      'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO projects (id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
     )
-    .run('project_test', '/tmp/project-test', 'Test', '1', 'available', timestamp, timestamp);
+    .run('project_test', '/tmp/project-test', 'Test', 0, timestamp, timestamp);
   database.connection
     .prepare(
       'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_test', 'project_test', 'home', 'Home', 'pages/home', 'active', timestamp, timestamp);
+    .run('page_test', 'project_test', 'home', 'Home', 'pages/home', 0, timestamp, timestamp);
   const projects = new ProjectRepository(database);
   const runs = new AgentRunRepository(database);
   const conversations = new ConversationService(

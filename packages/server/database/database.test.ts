@@ -5,7 +5,6 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from './database';
 import { assertSchemaSafety, schemaSql } from './initialize';
-import { WorkspaceRepository } from '../repositories/workspace-repository';
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -13,7 +12,7 @@ afterEach(async () => {
 });
 
 describe('ApplicationDatabase', () => {
-  it('creates the current schema and preserves workspace state on reopen', async () => {
+  it('creates only the current durable domain tables and reopens them', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
@@ -22,29 +21,13 @@ describe('ApplicationDatabase', () => {
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all() as Array<{ name: string }>;
     expect(tables.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([
-        'projects',
-        'pages',
-        'workspace_state',
-        'conversations',
-        'messages',
-        'agent_runs',
-        'runtime_diagnostics',
-        'page_runtime_state',
-        'removed_pages',
-      ]),
+      expect.arrayContaining(['projects', 'pages', 'conversations', 'messages', 'agent_runs']),
     );
     expect(tables.map(({ name }) => name)).not.toContain('app_meta');
-    const workspace = new WorkspaceRepository(database);
-    expect(workspace.save({ theme: 'dark', sidebarCollapsed: true })).toMatchObject({
-      theme: 'dark',
-      sidebarCollapsed: true,
-    });
     database.close();
     const reopened = new ApplicationDatabase(path);
-    expect(new WorkspaceRepository(reopened).get()).toMatchObject({
-      theme: 'dark',
-      sidebarCollapsed: true,
+    expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM projects').get()).toEqual({
+      count: 0,
     });
     reopened.close();
   });
@@ -83,7 +66,6 @@ describe('ApplicationDatabase', () => {
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'projects'")
         .get(),
     ).toBeTruthy();
-    expect(new WorkspaceRepository(rebuilt).get()).toMatchObject({ theme: 'light' });
     rebuilt.close();
   });
 });

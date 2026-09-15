@@ -35,7 +35,7 @@ const createPageFixture = async (): Promise<{
       name: 'Test',
       framework: 'react',
       uiLibrary: 'antd',
-      pages: [{ pageId, name: '测试页面', slug, route: '/test-page' }],
+      pages: [{ pageId, name: '测试页面', slug }],
     }),
   );
   return { projectPath, pageId, slug };

@@ -72,7 +72,6 @@ export class ProjectScaffoldService {
         discoveredPages.push({
           name: entry.name,
           slug: entry.name,
-          route: entry.name === 'home' && discoveredPages.length === 0 ? '/' : `/${entry.name}`,
         });
       } catch {
         blockers.push(`页面“${entry.name}”需要有效的 index.tsx 和 schema.json`);
@@ -139,7 +138,7 @@ export class ProjectScaffoldService {
     if (!dependencies.react || !dependencies.vite)
       throw invalid('已有工程不符合 React + Vite 项目标准，未写入 Origamix 清单');
 
-    const pages: Array<{ pageId: string; name: string; slug: string; route: string }> = [];
+    const pages: Array<{ pageId: string; name: string; slug: string }> = [];
     const pagesPath = join(path, 'src', 'pages');
     await mkdir(pagesPath, { recursive: true });
     for (const entry of await readdir(pagesPath, { withFileTypes: true })) {
@@ -157,7 +156,6 @@ export class ProjectScaffoldService {
         pageId: `page_${nanoid()}`,
         name: entry.name,
         slug: entry.name,
-        route: entry.name === 'home' && pages.length === 0 ? '/' : `/${entry.name}`,
       });
     }
     if (pages.length) {

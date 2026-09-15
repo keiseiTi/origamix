@@ -48,21 +48,17 @@ export class ProjectFormatService {
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     const ids = new Set<string>();
     const slugs = new Set<string>();
-    const routes = new Set<string>();
     for (const page of manifest.pages) {
       if (
         !/^page_[A-Za-z0-9_-]+$/.test(page.pageId) ||
         !page.name ||
         !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug) ||
-        !/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.route) ||
         ids.has(page.pageId) ||
-        slugs.has(page.slug) ||
-        routes.has(page.route)
+        slugs.has(page.slug)
       )
         throw invalid('项目页面清单存在无效或重复的页面');
       ids.add(page.pageId);
       slugs.add(page.slug);
-      routes.add(page.route);
     }
     return manifest;
   }
@@ -85,6 +81,13 @@ export class ProjectFormatService {
     const manifest = await this.readManifest(projectPath);
     const pages = manifest.pages.map((item) => (item.pageId === pageId ? { ...item, name } : item));
     if (!pages.some((item) => item.pageId === pageId)) throw notFound('页面注册信息不存在');
+    await this.writeManifest(projectPath, { ...manifest, pages });
+  }
+
+  async removePage(projectPath: string, pageId: string): Promise<void> {
+    const manifest = await this.readManifest(projectPath);
+    const pages = manifest.pages.filter((item) => item.pageId !== pageId);
+    if (pages.length === manifest.pages.length) throw notFound('页面注册信息不存在');
     await this.writeManifest(projectPath, { ...manifest, pages });
   }
 }

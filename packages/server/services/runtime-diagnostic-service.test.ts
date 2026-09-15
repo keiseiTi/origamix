@@ -22,8 +22,7 @@ beforeEach(async () => {
       id: 'project_one',
       path: directory,
       name: 'Test',
-      formatVersion: '1',
-      status: 'available',
+      status: 0,
       createdAt: now,
       lastOpenedAt: now,
     },
@@ -34,7 +33,7 @@ beforeEach(async () => {
         slug: 'one',
         name: 'One',
         relativePath: 'src/pages/one',
-        status: 'active',
+        status: 0,
         createdAt: now,
         updatedAt: now,
       },
@@ -43,7 +42,7 @@ beforeEach(async () => {
   revisionId = 'revision_one';
   service = new RuntimeDiagnosticService(
     projects,
-    new RuntimeDiagnosticRepository(database),
+    new RuntimeDiagnosticRepository(),
     async () => revisionId,
   );
 });
@@ -78,33 +77,20 @@ const report = (outcome: 'success' | 'failed', message = '组件失败') => ({
 });
 
 describe('RuntimeDiagnosticService', () => {
-  it('records last-known-good and uses it only as a visual fallback', async () => {
-    expect(await service.report(report('success'))).toMatchObject({
-      disposition: 'accepted',
-      visualRevisionId: 'revision_one',
-    });
+  it('keeps only current-session diagnostics for the current revision', async () => {
+    expect(await service.report(report('success'))).toMatchObject({ disposition: 'accepted' });
 
     revisionId = 'revision_two';
     expect(await service.report(report('failed'))).toMatchObject({
       currentRevisionId: 'revision_two',
-      visualRevisionId: 'revision_one',
     });
     expect(await service.getState('project_one', 'page_one')).toMatchObject({
       currentRevisionId: 'revision_two',
-      lastKnownGoodRevisionId: 'revision_one',
-      visualRevisionId: 'revision_one',
       diagnostics: [{ code: 'MATERIAL_RENDER_FAILED', revisionId: 'revision_two' }],
     });
-
-    // Runtime state is an independent projection. It has no Schema write capability.
-    expect(
-      database.connection
-        .prepare('SELECT last_known_good_revision_id FROM page_runtime_state')
-        .get(),
-    ).toMatchObject({ last_known_good_revision_id: 'revision_one' });
   });
 
-  it('ignores a stale revision response without poisoning diagnostics or last-known-good', async () => {
+  it('ignores a stale revision response without poisoning diagnostics', async () => {
     await service.report(report('success'));
     revisionId = 'revision_two';
     const stale = report('failed');
@@ -115,7 +101,6 @@ describe('RuntimeDiagnosticService', () => {
       version: '1',
       disposition: 'stale',
       currentRevisionId: 'revision_two',
-      visualRevisionId: 'revision_one',
     });
     expect((await service.getState('project_one', 'page_one')).diagnostics).toEqual([]);
   });

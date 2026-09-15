@@ -10,11 +10,7 @@ import {
   type PreviewRenderResult,
   type PreviewSnapshot,
 } from '@origamix/shared/page-window';
-import {
-  isApiResultEnvelope,
-  type PageRecord,
-  type WorkspaceRecord,
-} from '@origamix/shared/protocol/api';
+import { isApiResultEnvelope, type PageRecord } from '@origamix/shared/protocol/api';
 
 interface PreviewEntry {
   view: WebContentsView;
@@ -98,7 +94,8 @@ export const registerPageWindows = (
     if (window && !window.isDestroyed() && activeKey === key) {
       window.contentView.removeChildView(entry.view);
       activeKey = undefined;
-      window.webContents.send('preview:exited', entry.target);
+      const { projectId, pageId, mode } = entry.target;
+      window.webContents.send('preview:exited', { projectId, pageId, mode });
     }
   };
   const destroyPreview = (entry: PreviewEntry): void => {
@@ -116,11 +113,11 @@ export const registerPageWindows = (
     const entry = [...views.values()].find(({ view }) => view.webContents === event.sender);
     if (!entry || event.senderFrame !== event.sender.mainFrame) throw new Error('预览视图未授权');
     const { target } = entry;
-    const [snapshot, workspace] = await Promise.all([
-      read<Omit<PreviewSnapshot, 'theme'>>(`/pages/${target.pageId}/schema`, target.projectId),
-      read<WorkspaceRecord>('/workspace'),
-    ]);
-    return { ...snapshot, theme: workspace.theme };
+    const snapshot = await read<Omit<PreviewSnapshot, 'theme'>>(
+      `/pages/${target.pageId}/schema`,
+      target.projectId,
+    );
+    return { ...snapshot, theme: target.theme ?? 'light' };
   });
 
   ipcMain.handle(
@@ -155,14 +152,11 @@ export const registerPageWindows = (
       );
       let visualSnapshot: PreviewSnapshot | undefined;
       if (result.visualRevisionId && result.visualRevisionId !== report.revisionId) {
-        const [snapshot, workspace] = await Promise.all([
-          read<Omit<PreviewSnapshot, 'theme'>>(
-            `/pages/${target.pageId}/revisions/${result.visualRevisionId}/schema`,
-            target.projectId,
-          ),
-          read<WorkspaceRecord>('/workspace'),
-        ]);
-        visualSnapshot = { ...snapshot, theme: workspace.theme };
+        const snapshot = await read<Omit<PreviewSnapshot, 'theme'>>(
+          `/pages/${target.pageId}/revisions/${result.visualRevisionId}/schema`,
+          target.projectId,
+        );
+        visualSnapshot = { ...snapshot, theme: target.theme ?? 'light' };
       }
       return {
         disposition: result.disposition,
@@ -249,6 +243,7 @@ export const registerPageWindows = (
         throw error;
       }
     }
+    entry.target = input;
 
     if (activeKey && activeKey !== key) {
       const active = views.get(activeKey);

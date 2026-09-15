@@ -50,13 +50,11 @@ export class RuntimeDiagnosticService {
       throw invalid('Runtime 诊断归属不匹配');
 
     const currentRevisionId = await this.getCurrentRevisionId(report.projectId, report.pageId);
-    const lastKnownGood = this.diagnostics.getLastKnownGood(report.projectId, report.pageId);
     if (currentRevisionId !== report.revisionId) {
       return {
         version: '1',
         disposition: 'stale',
         currentRevisionId,
-        ...(lastKnownGood ? { visualRevisionId: lastKnownGood } : {}),
       };
     }
 
@@ -71,36 +69,21 @@ export class RuntimeDiagnosticService {
       safeDiagnostics,
       report.observedAt,
     );
-    if (report.outcome === 'success')
-      this.diagnostics.setLastKnownGood(
-        report.projectId,
-        report.pageId,
-        report.revisionId,
-        report.observedAt,
-      );
-    const visualRevisionId =
-      report.outcome === 'success'
-        ? report.revisionId
-        : this.diagnostics.getLastKnownGood(report.projectId, report.pageId);
     return {
       version: '1',
       disposition: 'accepted',
       currentRevisionId,
-      ...(visualRevisionId ? { visualRevisionId } : {}),
     };
   }
 
   async getState(projectId: string, pageId: string): Promise<PageRuntimeState> {
     this.assertPage(projectId, pageId);
     const currentRevisionId = await this.getCurrentRevisionId(projectId, pageId);
-    const lastKnownGoodRevisionId = this.diagnostics.getLastKnownGood(projectId, pageId);
     return {
       version: '1',
       projectId,
       pageId,
       currentRevisionId,
-      ...(lastKnownGoodRevisionId ? { lastKnownGoodRevisionId } : {}),
-      ...(lastKnownGoodRevisionId ? { visualRevisionId: lastKnownGoodRevisionId } : {}),
       diagnostics: this.diagnostics.listForRevision(projectId, pageId, currentRevisionId),
     };
   }

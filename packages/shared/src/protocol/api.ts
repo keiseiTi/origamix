@@ -22,8 +22,7 @@ export const ProjectRecordSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
   path: Type.String(),
-  formatVersion: Type.String(),
-  status: Type.String(),
+  status: Type.Integer({ minimum: 0, maximum: 5 }),
   createdAt: Type.String(),
   lastOpenedAt: Type.String(),
 });
@@ -33,16 +32,9 @@ export const PageRecordSchema = Type.Object({
   projectId: Type.String(),
   name: Type.String(),
   slug: Type.String(),
-  route: Type.Optional(Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' })),
   relativePath: Type.String(),
-  status: Type.String(),
+  status: Type.Integer({ minimum: 0, maximum: 5 }),
   createdAt: Type.String(),
-  updatedAt: Type.String(),
-});
-
-export const WorkspaceSchema = Type.Object({
-  theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
-  sidebarCollapsed: Type.Boolean(),
   updatedAt: Type.String(),
 });
 
@@ -68,7 +60,6 @@ export const DeleteDesktopRecordSchema = Type.Object({
 export const CreatePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
-  route: Type.Optional(Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' })),
 });
 
 export const ApplyPageSchema = Type.Object({
@@ -113,13 +104,6 @@ export const DuplicatePageSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
 });
 
-export const WorkspacePatchSchema = Type.Partial(
-  Type.Object({
-    theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
-    sidebarCollapsed: Type.Boolean(),
-  }),
-);
-
 export type ApiResult<T> =
   | { success: true; code: 200; data: T }
   | { success: false; code: number; data: null; message?: string };
@@ -138,8 +122,7 @@ export interface ProjectRecord {
   id: string;
   name: string;
   path: string;
-  formatVersion: string;
-  status: string;
+  status: number;
   createdAt: string;
   lastOpenedAt: string;
 }
@@ -154,7 +137,7 @@ export type OpenProjectResult =
 
 export interface ProjectInitializationInspection {
   directoryKind: 'empty' | 'existing_application';
-  discoveredPages: Array<{ name: string; slug: string; route: string }>;
+  discoveredPages: Array<{ name: string; slug: string }>;
   plannedChanges: string[];
   blockers: string[];
 }
@@ -164,9 +147,8 @@ export interface PageRecord {
   projectId: string;
   name: string;
   slug: string;
-  route?: string;
   relativePath: string;
-  status: string;
+  status: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -186,10 +168,4 @@ export interface ApplyPageResult {
   schemaHash: string;
   appliedAt: string;
   status: 'applied';
-}
-
-export interface WorkspaceRecord {
-  theme: 'light' | 'dark';
-  sidebarCollapsed: boolean;
-  updatedAt: string;
 }

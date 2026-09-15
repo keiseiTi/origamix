@@ -87,8 +87,8 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
   server.delete(
     '/api/v1/pages/:pageId',
     { schema: { body: DeleteDesktopRecordSchema } },
-    route<DeleteDesktopRecord>((request) => {
-      input.projectService.deletePage(
+    route<DeleteDesktopRecord>(async (request) => {
+      await input.projectService.deletePage(
         String(request.headers['x-origamix-project-id'] ?? ''),
         request.params.pageId,
       );

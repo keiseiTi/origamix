@@ -16,7 +16,6 @@ import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
 import { useViewSession } from './components/workspace/state/use-view-session';
 import { projectsService } from './services/projects';
-import { workspaceService } from './services/workspace';
 import { schemaService } from './services/schema';
 import { useWorkspaceTransitions } from './components/workspace/use-workspace-transitions';
 import { useProjectActions } from './components/workspace/use-project-actions';
@@ -32,7 +31,6 @@ const App = (): React.JSX.Element => {
     setIsSettingsOpen,
     sidebarCollapsed: sessionSidebarCollapsed,
     setSidebarCollapsed,
-    restoreSidebarCollapsed,
     activeProjectId,
     activePageId: selectedPageId,
     openPageIds,
@@ -43,7 +41,9 @@ const App = (): React.JSX.Element => {
   const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
   const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true);
-  const [theme, setTheme] = useState<AppTheme>('light');
+  const [theme, setTheme] = useState<AppTheme>(() =>
+    localStorage.getItem('origamix:theme') === 'dark' ? 'dark' : 'light',
+  );
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Origamix 用户',
@@ -110,6 +110,7 @@ const App = (): React.JSX.Element => {
       projectId: selectedProject.id,
       pageId: selectedPage.id,
       mode: 'preview',
+      theme,
     });
     previousPreviewMode.current[selectedPage.id] =
       activeTab === 'preview'
@@ -185,8 +186,9 @@ const App = (): React.JSX.Element => {
 
   useEffect(() => {
     let active = true;
-    Promise.all([workspaceService.get(), projectsService.list()])
-      .then(async ([workspace, projectRecords]) => {
+    projectsService
+      .list()
+      .then(async (projectRecords) => {
         const hydrated = await Promise.all(
           projectRecords.map(async (project) => ({
             id: project.id,
@@ -237,8 +239,6 @@ const App = (): React.JSX.Element => {
           pageDrafts: nextDrafts,
           activeTab: restoredPageId && nextModes[restoredPageId] === 'edit' ? 'edit' : 'chat',
         });
-        setTheme(workspace.theme);
-        restoreSidebarCollapsed(workspace.sidebarCollapsed);
         setWorkspaceReady(true);
       })
       .catch((error: unknown) => {
@@ -248,16 +248,12 @@ const App = (): React.JSX.Element => {
     return () => {
       active = false;
     };
-  }, [restoreSidebarCollapsed, updateWorkspace]);
+  }, [updateWorkspace]);
 
   useEffect(() => {
     if (!workspaceReady) return;
-    const workspace = {
-      theme,
-      sidebarCollapsed,
-    };
-    void workspaceService.save(workspace);
-  }, [theme, sidebarCollapsed, workspaceReady]);
+    localStorage.setItem('origamix:theme', theme);
+  }, [theme, workspaceReady]);
 
   useEffect(() => {
     window.api?.settings
@@ -506,7 +502,7 @@ const App = (): React.JSX.Element => {
                   <p className='text-xs text-zinc-500 dark:text-zinc-400'>
                     已发现页面：
                     {projectActions.pendingInitialization?.inspection.discoveredPages
-                      .map((page) => `${page.name}（${page.route}）`)
+                      .map((page) => page.name)
                       .join('、')}
                   </p>
                 )}

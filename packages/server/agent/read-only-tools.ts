@@ -128,9 +128,9 @@ export const createReadOnlyAgentTools = (
       throw notFound('页面或 Revision 不属于当前 Agent Run');
     }
     const project = dependencies.projects.getProject(scope.projectId);
-    if (!project || project.status !== 'available') throw notFound('项目不存在或不可用');
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
-    if (!page || page.status !== 'active') throw notFound('页面不存在或不属于该项目');
+    if (!page || page.status !== 0) throw notFound('页面不存在或不属于该项目');
     schemaPromise ??= (dependencies.readSchema ?? getSchema)({
       projectPath: project.path,
       pageId: page.id,

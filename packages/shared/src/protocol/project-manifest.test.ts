@@ -6,7 +6,7 @@ const manifest = () => ({
   name: '示例项目',
   framework: 'react',
   uiLibrary: 'antd',
-  pages: [{ pageId: 'page_home', name: '首页', slug: 'home', route: '/' }],
+  pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
 });
 
 describe('project manifest protocol', () => {
@@ -19,7 +19,7 @@ describe('project manifest protocol', () => {
     expect(
       isProjectManifest({
         ...manifest(),
-        pages: [{ pageId: 'page_home', name: '首页', slug: '../home', route: '/home' }],
+        pages: [{ pageId: 'page_home', name: '首页', slug: '../home' }],
       }),
     ).toBe(false);
   });

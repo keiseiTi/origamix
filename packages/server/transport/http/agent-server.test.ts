@@ -5,7 +5,6 @@ import { ApplicationDatabase } from '../../database/database';
 import { AgentRunRepository } from '../../repositories/agent-run-repository';
 import { ConversationRepository } from '../../repositories/conversation-repository';
 import { ProjectRepository } from '../../repositories/project-repository';
-import { WorkspaceRepository } from '../../repositories/workspace-repository';
 import { AgentRunService } from '../../services/agent-run-service';
 import { ConversationService } from '../../services/conversation-service';
 import { ProjectService } from '../../services/project-service';
@@ -25,8 +24,7 @@ const setup = () => {
       id: 'project_a',
       path: '/tmp/a',
       name: 'A',
-      formatVersion: '1',
-      status: 'available',
+      status: 0,
       createdAt: timestamp,
       lastOpenedAt: timestamp,
     },
@@ -37,7 +35,7 @@ const setup = () => {
         slug: 'a',
         name: 'A',
         relativePath: 'pages/a',
-        status: 'active',
+        status: 0,
         createdAt: timestamp,
         updatedAt: timestamp,
       },
@@ -48,8 +46,7 @@ const setup = () => {
       id: 'project_b',
       path: '/tmp/b',
       name: 'B',
-      formatVersion: '1',
-      status: 'available',
+      status: 0,
       createdAt: timestamp,
       lastOpenedAt: timestamp,
     },
@@ -103,7 +100,6 @@ const setup = () => {
     desktopToken: 'desktop-token',
     serviceInstanceId: 'service-instance',
     projects,
-    workspace: new WorkspaceRepository(database),
     projectService: new ProjectService(projects, templatePath),
     agent: { conversations: conversationService, runs: runService, events, application },
   });

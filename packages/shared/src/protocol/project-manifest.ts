@@ -5,7 +5,6 @@ export const ProjectPageManifestSchema = Type.Object({
   pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
   name: Type.String({ minLength: 1, maxLength: 80 }),
   slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
-  route: Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' }),
 });
 
 export const ProjectManifestSchema = Type.Object({

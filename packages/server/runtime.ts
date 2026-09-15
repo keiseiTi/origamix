@@ -2,7 +2,6 @@ import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './repositories/project-repository';
 import { AgentRunRepository } from './repositories/agent-run-repository';
 import { ConversationRepository } from './repositories/conversation-repository';
-import { WorkspaceRepository } from './repositories/workspace-repository';
 import { AgentRunService } from './services/agent-run-service';
 import { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
 import { ConversationService } from './services/conversation-service';
@@ -75,7 +74,6 @@ export const startServer = async (input: {
 }) => {
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
-  const workspace = new WorkspaceRepository(database);
   const conversations = new ConversationRepository(database);
   const runs = new AgentRunRepository(database);
   const conversationService = new ConversationService(database, projects, conversations, runs);
@@ -83,7 +81,7 @@ export const startServer = async (input: {
   const agentEvents = new AgentEventBroker();
   const runtimeDiagnostics = new RuntimeDiagnosticService(
     projects,
-    new RuntimeDiagnosticRepository(database),
+    new RuntimeDiagnosticRepository(),
     async (projectId, pageId) => {
       const project = projects.getProject(projectId);
       const page = projects.getPage(projectId, pageId);
@@ -148,7 +146,6 @@ export const startServer = async (input: {
   const server = createHttpServer({
     ...input,
     projects,
-    workspace,
     projectService,
     projectApplyService,
     runtimeDiagnostics,

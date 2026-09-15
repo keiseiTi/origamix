@@ -32,8 +32,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
             id,
             path: '/authorized/project',
             name: 'Project',
-            formatVersion: '1',
-            status: 'available',
+            status: 0,
             createdAt: '2026-01-01T00:00:00.000Z',
             lastOpenedAt: '2026-01-01T00:00:00.000Z',
           }
@@ -47,7 +46,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
             slug: 'home',
             name: '首页',
             relativePath: 'src/pages/home',
-            status: 'active',
+            status: 0,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           }

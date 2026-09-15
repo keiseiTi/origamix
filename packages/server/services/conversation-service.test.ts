@@ -29,19 +29,19 @@ const setup = (path?: string) => {
   const timestamp = new Date().toISOString();
   database.connection
     .prepare(
-      'INSERT INTO projects (id, path, name, format_version, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO projects (id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
     )
-    .run('project_a', '/tmp/project-a', 'A', '1', 'available', timestamp, timestamp);
+    .run('project_a', '/tmp/project-a', 'A', 0, timestamp, timestamp);
   database.connection
     .prepare(
       'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_a', 'project_a', 'a', 'A', 'pages/a', 'active', timestamp, timestamp);
+    .run('page_a', 'project_a', 'a', 'A', 'pages/a', 0, timestamp, timestamp);
   database.connection
     .prepare(
       'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_b', 'project_a', 'b', 'B', 'pages/b', 'active', timestamp, timestamp);
+    .run('page_b', 'project_a', 'b', 'B', 'pages/b', 0, timestamp, timestamp);
   const conversations = new ConversationRepository(database);
   const runs = new AgentRunRepository(database);
   return {
@@ -138,7 +138,7 @@ describe('Conversation persistence', () => {
         'conversation_missing',
         'user',
         JSON.stringify(content('x')),
-        'completed',
+        2,
         0,
         first.createdAt,
         first.createdAt,
@@ -153,7 +153,7 @@ describe('Conversation persistence', () => {
         'project_a',
         'page_missing',
         'orphan',
-        'active',
+        0,
         first.createdAt,
         first.createdAt,
       );
@@ -173,7 +173,7 @@ describe('Conversation persistence', () => {
         started.conversation.id,
         'assistant',
         '{',
-        'failed',
+        3,
         1,
         started.message.createdAt,
         started.message.createdAt,

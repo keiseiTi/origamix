@@ -124,16 +124,13 @@ export class ProjectService {
     return { status: 'opened', project: await this.reconcile(path) };
   }
 
-  async createPage(
-    projectId: string,
-    input: { name: string; slug: string; route?: string },
-  ): Promise<PageRecord> {
+  async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
     return this.createPageWithSchema(projectId, input, schemaTemplate());
   }
 
   private async createPageWithSchema(
     projectId: string,
-    input: { name: string; slug: string; route?: string },
+    input: { name: string; slug: string },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     return withProjectQueue(projectId, () =>
@@ -143,18 +140,15 @@ export class ProjectService {
 
   private async createPageWithSchemaUnlocked(
     projectId: string,
-    input: { name: string; slug: string; route?: string },
+    input: { name: string; slug: string },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
-    if (!project || project.status !== 'available') throw notFound('项目不存在或不可用');
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const name = input.name.trim();
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
-    const route = input.route ?? `/${input.slug}`;
-    if (!/^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(route)) throw invalid('页面路由无效');
     const pages = await this.format.readPages(project.path);
-    if (pages.some((item) => item.slug === input.slug || item.route === route))
-      throw conflict('页面标识或路由已存在');
+    if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
     const pagePath = join(project.path, 'src', 'pages', input.slug);
     try {
       await access(pagePath);
@@ -172,7 +166,7 @@ export class ProjectService {
       await this.projectApply.initializeTarget(pageRef, schema);
       await this.source.createPageEntry(project.path, input.slug);
       await initializePageSchema(pageRef, schema);
-      const nextPage = { pageId: id, name, slug: input.slug, route };
+      const nextPage = { pageId: id, name, slug: input.slug };
       await this.format.addPage(project.path, nextPage);
       manifestCommitted = true;
       await this.reconcile(project.path);
@@ -248,10 +242,20 @@ export class ProjectService {
     );
   }
 
-  deletePage(projectId: string, pageId: string): void {
-    if (this.projects.hasActiveRuns(projectId, pageId))
-      throw conflict('页面 Agent 正在运行，请先停止后再删除');
-    if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
+  async deletePage(projectId: string, pageId: string): Promise<void> {
+    await withProjectQueue(projectId, async () => {
+      if (this.projects.hasActiveRuns(projectId, pageId))
+        throw conflict('页面 Agent 正在运行，请先停止后再删除');
+      const project = this.projects.getProject(projectId);
+      const page = this.projects.getPage(projectId, pageId);
+      if (!project || !page) throw notFound('页面不存在');
+      await this.format.removePage(project.path, pageId);
+      await Promise.all([
+        this.source.removePageDirectory(project.path, page.slug),
+        discardInitializedPageSchema({ projectPath: project.path, pageId, slug: page.slug }),
+      ]);
+      if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
+    });
   }
 
   deleteProject(projectId: string): void {
@@ -266,7 +270,6 @@ export class ProjectService {
     const timestamp = now();
     const pages: PageRecord[] = [];
     for (const item of pagesInManifest) {
-      if (this.projects.isPageRemoved(manifest.projectId, item.pageId)) continue;
       const relativePath = join('src', 'pages', item.slug);
       const pagePath = join(path, relativePath);
       const pageRef = { projectPath: path, pageId: item.pageId, slug: item.slug };
@@ -289,9 +292,8 @@ export class ProjectService {
         projectId: manifest.projectId,
         name: item.name,
         slug: item.slug,
-        route: item.route,
         relativePath,
-        status: 'active',
+        status: 0,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -300,8 +302,7 @@ export class ProjectService {
       id: manifest.projectId,
       name: manifest.name,
       path,
-      formatVersion: 'current',
-      status: 'available',
+      status: 0,
       createdAt: timestamp,
       lastOpenedAt: timestamp,
     };

@@ -10,12 +10,11 @@ const pages = manifest.pages as Array<{
   pageId: string;
   name: string;
   slug: string;
-  route: string;
 }>;
 const routes = pages.map((page) => {
   const Component = modules[`./pages/${page.slug}/index.tsx`]?.default;
   if (!Component) throw new Error(`页面入口不存在：${page.slug}`);
-  return { path: page.route, Component };
+  return { path: page.slug === 'home' ? '/' : `/${page.slug}`, Component };
 });
 
 export default createBrowserRouter(

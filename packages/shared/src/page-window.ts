@@ -5,6 +5,7 @@ export const PageWindowSchema = Type.Object(
     projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
     pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
     mode: Type.Literal('preview'),
+    theme: Type.Optional(Type.Union([Type.Literal('light'), Type.Literal('dark')])),
   },
   { additionalProperties: false },
 );

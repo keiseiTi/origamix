@@ -1,7 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
-import type { Static } from '@sinclair/typebox';
 import { nanoid } from 'nanoid';
-import { WorkspacePatchSchema, type ApiResult } from '@origamix/shared/protocol/api';
+import type { ApiResult } from '@origamix/shared/protocol/api';
 import { ApiError } from '../../errors';
 import { registerAgentRoutes } from './routes/agent-routes';
 import { registerApplyRoutes } from './routes/apply-routes';
@@ -9,8 +8,6 @@ import { registerProjectRoutes } from './routes/project-routes';
 import { registerRuntimeRoutes } from './routes/runtime-routes';
 import { registerSchemaRoutes } from './routes/schema-routes';
 import type { HttpServerInput, RouteAdapter, RouteInput } from './routes/types';
-
-type WorkspacePatch = Static<typeof WorkspacePatchSchema>;
 
 const requestId = (value: unknown): string => {
   return typeof value === 'string' && value.length <= 100 ? value : nanoid();
@@ -115,15 +112,6 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
     code: 200,
     data: { serviceInstanceId: input.serviceInstanceId },
   }));
-  server.get(
-    '/api/v1/workspace',
-    route<void>(() => input.workspace.get()),
-  );
-  server.patch(
-    '/api/v1/workspace',
-    { schema: { body: WorkspacePatchSchema } },
-    route<WorkspacePatch>((request) => input.workspace.save(request.body)),
-  );
   const context = { server, input, route };
   registerProjectRoutes(context);
   registerSchemaRoutes(context);

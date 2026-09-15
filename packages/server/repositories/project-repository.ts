@@ -1,23 +1,14 @@
 import { and, asc, desc, eq, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
 import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
-import {
-  agentRuns,
-  conversations,
-  messages,
-  pageRuntimeState,
-  pages,
-  projects,
-  removedPages,
-  runtimeDiagnostics,
-} from '../database/schema';
+import { agentRuns, conversations, messages, pages, projects } from '../database/schema';
+import { agentRunStatus } from '../database/status';
 
 const projectRecord = (row: typeof projects.$inferSelect): ProjectRecord => ({ ...row });
-const pageRecord = ({ route, ...row }: typeof pages.$inferSelect): PageRecord => ({
-  ...row,
-  ...(route ? { route } : {}),
-});
-const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
+const pageRecord = (row: typeof pages.$inferSelect): PageRecord => ({ ...row });
+const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].map((status) =>
+  agentRunStatus.encode(status as Parameters<typeof agentRunStatus.encode>[0]),
+);
 
 export class ProjectRepository {
   private readonly client: DatabaseClient;
@@ -33,7 +24,7 @@ export class ProjectRepository {
     return this.client
       .select()
       .from(projects)
-      .where(eq(projects.status, 'available'))
+      .where(eq(projects.status, 0))
       .orderBy(desc(projects.lastOpenedAt))
       .all()
       .map(projectRecord);
@@ -46,7 +37,7 @@ export class ProjectRepository {
     const row = this.client
       .select()
       .from(pages)
-      .where(and(eq(pages.projectId, projectId), eq(pages.id, pageId), eq(pages.status, 'active')))
+      .where(and(eq(pages.projectId, projectId), eq(pages.id, pageId), eq(pages.status, 0)))
       .get();
     return row && pageRecord(row);
   }
@@ -54,19 +45,10 @@ export class ProjectRepository {
     return this.client
       .select()
       .from(pages)
-      .where(and(eq(pages.projectId, projectId), eq(pages.status, 'active')))
+      .where(and(eq(pages.projectId, projectId), eq(pages.status, 0)))
       .orderBy(asc(pages.createdAt))
       .all()
       .map(pageRecord);
-  }
-  isPageRemoved(projectId: string, pageId: string): boolean {
-    return Boolean(
-      this.client
-        .select({ id: removedPages.pageId })
-        .from(removedPages)
-        .where(and(eq(removedPages.projectId, projectId), eq(removedPages.pageId, pageId)))
-        .get(),
-    );
   }
   hasActiveRuns(projectId: string, pageId?: string): boolean {
     return Boolean(
@@ -101,24 +83,6 @@ export class ProjectRepository {
         .all()
         .map(({ id }) => id);
       client
-        .insert(removedPages)
-        .values({ projectId, pageId, removedAt: new Date().toISOString() })
-        .onConflictDoUpdate({
-          target: [removedPages.projectId, removedPages.pageId],
-          set: { removedAt: new Date().toISOString() },
-        })
-        .run();
-      client
-        .delete(runtimeDiagnostics)
-        .where(
-          and(eq(runtimeDiagnostics.projectId, projectId), eq(runtimeDiagnostics.pageId, pageId)),
-        )
-        .run();
-      client
-        .delete(pageRuntimeState)
-        .where(and(eq(pageRuntimeState.projectId, projectId), eq(pageRuntimeState.pageId, pageId)))
-        .run();
-      client
         .delete(agentRuns)
         .where(and(eq(agentRuns.projectId, projectId), eq(agentRuns.pageId, pageId)))
         .run();
@@ -147,13 +111,10 @@ export class ProjectRepository {
         .where(eq(conversations.projectId, projectId))
         .all()
         .map(({ id }) => id);
-      client.delete(runtimeDiagnostics).where(eq(runtimeDiagnostics.projectId, projectId)).run();
-      client.delete(pageRuntimeState).where(eq(pageRuntimeState.projectId, projectId)).run();
       client.delete(agentRuns).where(eq(agentRuns.projectId, projectId)).run();
       if (conversationIds.length)
         client.delete(messages).where(inArray(messages.conversationId, conversationIds)).run();
       client.delete(conversations).where(eq(conversations.projectId, projectId)).run();
-      client.delete(removedPages).where(eq(removedPages.projectId, projectId)).run();
       client.delete(pages).where(eq(pages.projectId, projectId)).run();
       client.delete(projects).where(eq(projects.id, projectId)).run();
       return true;
@@ -169,7 +130,6 @@ export class ProjectRepository {
           set: {
             path: project.path,
             name: project.name,
-            formatVersion: project.formatVersion,
             status: project.status,
             lastOpenedAt: project.lastOpenedAt,
           },
@@ -178,13 +138,12 @@ export class ProjectRepository {
       for (const page of pageRecords)
         client
           .insert(pages)
-          .values({ ...page, route: page.route ?? null })
+          .values(page)
           .onConflictDoUpdate({
             target: pages.id,
             set: {
               slug: page.slug,
               name: page.name,
-              route: page.route ?? null,
               relativePath: page.relativePath,
               status: page.status,
               updatedAt: page.updatedAt,
@@ -194,7 +153,7 @@ export class ProjectRepository {
       const ids = pageRecords.map(({ id }) => id);
       client
         .update(pages)
-        .set({ status: 'missing', updatedAt: new Date().toISOString() })
+        .set({ status: 1, updatedAt: new Date().toISOString() })
         .where(and(eq(pages.projectId, project.id), ...(ids.length ? [notIn(pages.id, ids)] : [])))
         .run();
     });

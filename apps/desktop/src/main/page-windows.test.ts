@@ -75,6 +75,7 @@ const open = async (projectId = 'project_one', pageId = 'page_one'): Promise<unk
     projectId,
     pageId,
     mode: 'preview',
+    theme: 'dark',
   });
 };
 
