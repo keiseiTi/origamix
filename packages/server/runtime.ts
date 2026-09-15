@@ -1,67 +1,29 @@
 import { ApplicationDatabase } from './database/database';
-import { ProjectRepository } from './repositories/project-repository';
-import { AgentRunRepository } from './repositories/agent-run-repository';
-import { ConversationRepository } from './repositories/conversation-repository';
-import { AgentRunService } from './services/agent-run-service';
-import { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
-import { ConversationService } from './services/conversation-service';
-import { ProjectService } from './services/project-service';
-import { ProjectApplyService } from './services/project-apply-service';
-import { getSchema } from './services/schema-service';
-import { createHttpServer } from './transport/http/server';
-import { AgentEventBroker } from './agent/agent-event-broker';
-import { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
-import { RuntimeDiagnosticService } from './services/runtime-diagnostic-service';
-import { AgentApplicationService } from './services/agent-application-service';
-import { AgentRunOrchestrator } from './agent/agent-orchestrator';
+import { ProjectRepository } from './projects/project-repository';
+import { AgentRunRepository } from './agent/run-repository';
+import { ConversationRepository } from './conversations/conversation-repository';
+import { AgentRunService } from './agent/run-service';
+import { recoverAgentRunsOnStartup } from './agent/run-recovery';
+import { ConversationService } from './conversations/conversation-service';
+import { ProjectService } from './projects/project-service';
+import { ProjectApplyService } from './schema/project-apply-service';
+import { getSchema } from './schema/schema-service';
+import { createHttpServer } from './http/server';
+import { AgentEventBroker } from './agent/event-broker';
+import { RuntimeDiagnosticCache } from './diagnostics/diagnostic-cache';
+import { RuntimeDiagnosticService } from './diagnostics/diagnostic-service';
+import { AgentService } from './agent/agent-service';
+import { RunExecutor } from './agent/run-executor';
 import { ScopeRouter } from './agent/scope-router';
 import { ContextAssembler } from './agent/context-assembler';
-import { ProductDocsProvider } from './services/product-docs-provider';
-import { createReadOnlyAgentTools } from './agent/read-only-tools';
-import { createDomainAgentTools } from './agent/domain-tools';
-import { createReplacePageSchemaTool } from './agent/replace-page-schema-tool';
-import { createDefaultAgentToolEntries } from './agent/tool-registry';
-import { MVP_MODEL_ID } from './agent/agent-engine';
+import { ProductDocsProvider } from './agent/product-docs-provider';
+import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
+import { createDomainAgentTools } from './agent/tools/domain-tools';
+import { createReplacePageSchemaTool } from './agent/tools/replace-page-schema';
+import { createDefaultAgentToolEntries } from './agent/tools/registry';
+import { MVP_MODEL_ID } from './agent/engine';
 import { PiAgentEngine } from './agent/pi-agent-engine';
 import { createMvpPiModels } from './agent/pi-runtime';
-
-export { createMvpPiModels, mvpModelReference } from './agent/pi-runtime';
-export * from './agent/agent-engine';
-export * from './agent/pi-agent-engine';
-export * from './agent/agent-orchestrator';
-export * from './agent/agent-event-broker';
-export * from './agent/deterministic-mvp-dispatcher';
-export * from './agent/domain-tools';
-export * from './agent/read-only-tools';
-export * from './agent/replace-page-schema-tool';
-export * from './agent/tool-registry';
-export { ContextAssembler } from './agent/context-assembler';
-export type {
-  AssembleContextInput,
-  AssembledAgentContext,
-  ContextBudget,
-  ContextHistoryProvider,
-  ContextSchemaReader,
-} from './agent/context-assembler';
-export { OUT_OF_SCOPE_REPLY, ScopeRouter } from './agent/scope-router';
-export type { ScopeClassifier, ScopeRouterOptions } from './agent/scope-router';
-export { AgentRunRepository } from './repositories/agent-run-repository';
-export { ConversationRepository } from './repositories/conversation-repository';
-export { RuntimeDiagnosticRepository } from './repositories/runtime-diagnostic-repository';
-export { AgentRunService } from './services/agent-run-service';
-export { AgentApplicationService } from './services/agent-application-service';
-export { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
-export { ConversationService } from './services/conversation-service';
-export { DEFAULT_PRODUCT_DOCS, ProductDocsProvider } from './services/product-docs-provider';
-export type {
-  ProductDocument,
-  ProductDocSnippet,
-  ProductDocsSearchInput,
-} from './services/product-docs-provider';
-export {
-  RuntimeDiagnosticService,
-  redactRuntimeMessage,
-} from './services/runtime-diagnostic-service';
 
 export const startServer = async (input: {
   databasePath: string;
@@ -79,28 +41,28 @@ export const startServer = async (input: {
   const conversationService = new ConversationService(database, projects, conversations, runs);
   const runService = new AgentRunService(runs);
   const agentEvents = new AgentEventBroker();
+  const getCurrentRevision = async (projectId: string, pageId: string): Promise<string> => {
+    const project = projects.getProject(projectId);
+    const page = projects.getPage(projectId, pageId);
+    if (!project || !page) throw new Error('页面不存在或不属于当前项目');
+    return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
+      .revisionId;
+  };
   const runtimeDiagnostics = new RuntimeDiagnosticService(
     projects,
-    new RuntimeDiagnosticRepository(),
-    async (projectId, pageId) => {
-      const project = projects.getProject(projectId);
-      const page = projects.getPage(projectId, pageId);
-      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-      return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
-        .revisionId;
-    },
+    new RuntimeDiagnosticCache(),
+    getCurrentRevision,
   );
   const projectApplyService = new ProjectApplyService(projects);
   const projectService = new ProjectService(projects, input.templatePath, projectApplyService);
   const productDocs = new ProductDocsProvider();
   const context = new ContextAssembler({ getCurrent: getSchema }, conversations, productDocs);
   const pi = createMvpPiModels();
-  const orchestrator = new AgentRunOrchestrator({
+  const executor = new RunExecutor({
     projects,
     runs,
     conversations: conversationService,
     runService,
-    router: new ScopeRouter(),
     context,
     engine: new PiAgentEngine({
       resolveModel: (provider, model) => pi.models.getModel(provider, model),
@@ -110,7 +72,6 @@ export const startServer = async (input: {
         return input.getModelCredential?.('deepseek');
       },
     }),
-    modelRef: MVP_MODEL_ID,
     createTools: (scope) =>
       createDefaultAgentToolEntries([
         ...createReadOnlyAgentTools(
@@ -129,19 +90,15 @@ export const startServer = async (input: {
         createReplacePageSchemaTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
       ]),
   });
-  const agentApplication = new AgentApplicationService({
+  const agentService = new AgentService({
     conversations: conversationService,
     runs,
     runService,
     events: agentEvents,
-    orchestrator,
-    getCurrentRevision: async (projectId, pageId) => {
-      const project = projects.getProject(projectId);
-      const page = projects.getPage(projectId, pageId);
-      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-      return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
-        .revisionId;
-    },
+    executor,
+    router: new ScopeRouter(),
+    modelRef: MVP_MODEL_ID,
+    getCurrentRevision,
   });
   const server = createHttpServer({
     ...input,
@@ -153,7 +110,7 @@ export const startServer = async (input: {
       conversations: conversationService,
       runs: runService,
       events: agentEvents,
-      application: agentApplication,
+      service: agentService,
     },
   });
   try {

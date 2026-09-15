@@ -10,7 +10,7 @@ import {
   type AgentEngineRequest,
   type AgentEngineResult,
   type AgentEngineTool,
-} from './agent-engine';
+} from './engine';
 
 type PiStream = StreamFunction<string, SimpleStreamOptions>;
 

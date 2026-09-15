@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from './database/database';
-import { AgentRunRepository } from './repositories/agent-run-repository';
-import { ConversationRepository } from './repositories/conversation-repository';
-import { ProjectRepository } from './repositories/project-repository';
-import { ConversationService } from './services/conversation-service';
-import { recoverAgentRunsOnStartup } from './services/agent-run-recovery';
+import { AgentRunRepository } from './agent/run-repository';
+import { ConversationRepository } from './conversations/conversation-repository';
+import { ProjectRepository } from './projects/project-repository';
+import { ConversationService } from './conversations/conversation-service';
+import { recoverAgentRunsOnStartup } from './agent/run-recovery';
 
 const directories: string[] = [];
 

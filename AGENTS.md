@@ -17,7 +17,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 | [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                  | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
 | [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests              | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`              |
 | [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages | `packages/runtime/react.tsx`                                                        |
-| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits   | `packages/server/runtime.ts`, `packages/server/services/`                           |
+| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits   | `packages/server/runtime.ts`, `packages/server/projects/`                           |
 | [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                   | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
 | [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                         | `packages/template/package.json`, `packages/template/src/`                          |
 

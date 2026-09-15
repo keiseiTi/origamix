@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PageIntent } from '@origamix/shared/protocol/agent';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import type { StoredMessage } from '../repositories/conversation-repository';
-import { ProductDocsProvider } from '../services/product-docs-provider';
+import type { StoredMessage } from '../conversations/conversation-repository';
+import { ProductDocsProvider } from './product-docs-provider';
 import { ContextAssembler } from './context-assembler';
 
 const page = { projectPath: '/project', pageId: 'page_home', slug: 'home' };

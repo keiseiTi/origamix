@@ -6,7 +6,7 @@ import {
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
 import { describe, expect, it } from 'vitest';
-import { MVP_MODEL_ID, type AgentEngineEvent } from './agent-engine';
+import { MVP_MODEL_ID, type AgentEngineEvent } from './engine';
 import { PiAgentEngine } from './pi-agent-engine';
 
 const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) => {

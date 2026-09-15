@@ -2,9 +2,9 @@ import { antdAgentMaterialCatalog } from '@origamix/materials/antd/manifest';
 import type { PageIntent } from '@origamix/shared/protocol/agent';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { conflict } from '../errors';
-import type { StoredMessage } from '../repositories/conversation-repository';
-import type { ProductDocSnippet, ProductDocsProvider } from '../services/product-docs-provider';
-import type { SchemaPageRef, SchemaReadResult } from '../services/schema-service';
+import type { StoredMessage } from '../conversations/conversation-repository';
+import type { ProductDocSnippet, ProductDocsProvider } from './product-docs-provider';
+import type { SchemaPageRef, SchemaReadResult } from '../schema/schema-service';
 
 export interface ContextSchemaReader {
   getCurrent(page: SchemaPageRef): Promise<SchemaReadResult>;

@@ -58,7 +58,11 @@ try {
       filter: (path) =>
         !relative(source, path)
           .split(sep)
-          .some((part) => ['dist', '.vite', '.origamix-web'].includes(part)),
+          .some(
+            (part) =>
+              ['.vite', '.origamix-web'].includes(part) ||
+              (part === 'dist' && ['server', 'app'].includes(name)),
+          ),
     });
   }
   const serverRoot = join(root, 'packages/server');
@@ -73,10 +77,11 @@ try {
   ]);
   const api = 'http://127.0.0.1:5189/api/v1/health';
   const first = await waitFor(async () => (await (await fetch(api)).json()).data.serviceInstanceId);
-  const runtime = join(serverRoot, 'runtime.ts');
+  // Exercise relocated business modules, not only the unchanged runtime entry.
+  const schemaService = join(serverRoot, 'schema/schema-service.ts');
   await writeFile(
-    runtime,
-    `${await readFile(runtime, 'utf8')}\nconsole.info('dev-smoke-recompiled');\n`,
+    schemaService,
+    `${await readFile(schemaService, 'utf8')}\nconsole.info('dev-smoke-recompiled');\n`,
   );
   await waitFor(async () => {
     const next = (await (await fetch(api)).json()).data.serviceInstanceId;
@@ -90,9 +95,10 @@ try {
   const url = await waitFor(
     () => output.match(/Local API: (http:\/\/127\.0\.0\.1:\d+\/api\/v1)/)?.[1],
   );
+  const toolRegistry = join(serverRoot, 'agent/tools/registry.ts');
   await writeFile(
-    runtime,
-    `${await readFile(runtime, 'utf8')}\nconsole.info('standalone-recompiled');\n`,
+    toolRegistry,
+    `${await readFile(toolRegistry, 'utf8')}\nconsole.info('standalone-recompiled');\n`,
   );
   await waitFor(
     () =>

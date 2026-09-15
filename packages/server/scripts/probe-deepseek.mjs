@@ -5,7 +5,7 @@ if (!apiKey) {
   console.error('Skipped: set DEEPSEEK_API_KEY to run the real DeepSeek capability probe.');
 } else {
   const require = createRequire(import.meta.url);
-  const { probeDeepSeekCapabilities } = require('../dist/runtime.cjs');
+  const { probeDeepSeekCapabilities } = require('../dist/tooling.cjs');
   const report = await probeDeepSeekCapabilities({ apiKey });
   console.log(JSON.stringify(report, null, 2));
   if (
