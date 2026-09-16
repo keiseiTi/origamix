@@ -19,7 +19,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - Keep the HTTP result envelope in `src/protocol/api.ts` synchronized with every producer and consumer; `data` is always present, and failures never place error metadata inside it.
 - Separate shape validation from semantic checks such as root existence, layout references and cycles. Never weaken validators to accept invalid fixtures/model responses.
 - Review all App/Server/Desktop producers and consumers when changing exports. Keep preview contracts read-only and separate from workbench APIs.
-- Consumers import declared `@origamix/shared/...` exports. `build` emits ESM and declarations to `dist`; keep every public subpath represented by the wildcard export and the package contents independently consumable.
+- Consumers import declared `@origamix/shared/...` exports. `build` emits ESM and declarations to `dist`; keep every public subpath explicitly listed in both export maps and the package contents independently consumable.
 
 ## Verification
 

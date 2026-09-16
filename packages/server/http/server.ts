@@ -80,33 +80,23 @@ const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput)
   });
 };
 
-const createRouteAdapter = (): RouteAdapter => {
-  return <T>(
-      handler: (request: RouteInput<T>) => Promise<unknown> | unknown,
-      successStatus = 200,
-    ) =>
-    async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-      try {
-        reply.code(successStatus).send({
-          success: true,
-          code: 200,
-          data: await handler({
-            body: request.body as T,
-            params: request.params as Record<string, string>,
-            headers: request.headers as Record<string, unknown>,
-          }),
-        });
-      } catch (error) {
-        const statusCode = errorStatus(error);
-        reply.code(statusCode).send(failure(error));
-      }
-    };
-};
+const route: RouteAdapter =
+  <T>(handler: (request: RouteInput<T>) => Promise<unknown> | unknown, successStatus = 200) =>
+  async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    reply.code(successStatus).send({
+      success: true,
+      code: 200,
+      data: await handler({
+        body: request.body as T,
+        params: request.params as Record<string, string>,
+        headers: request.headers as Record<string, unknown>,
+      }),
+    });
+  };
 
 export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
   installRequestBoundary(server, input);
-  const route = createRouteAdapter();
   server.get('/api/v1/health', async () => ({
     success: true,
     code: 200,

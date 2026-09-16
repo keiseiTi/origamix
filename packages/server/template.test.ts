@@ -14,13 +14,21 @@ it('copies only portable source files and excludes workspace dependencies and sy
       await mkdir(join(source, name));
       await writeFile(join(source, name, 'sentinel'), 'must not copy');
     }
+    await mkdir(join(source, 'vendor'));
+    await writeFile(join(source, 'vendor', 'runtime.tgz'), 'runtime');
+    await writeFile(join(source, 'vendor', 'materials.tgz'), 'materials');
+    await writeFile(join(source, 'vendor', 'private.tgz'), 'must not copy');
     await writeFile(join(source, 'package.json'), '{}');
     await writeFile(join(source, 'src', 'main.tsx'), 'export {};');
     await writeFile(join(source, '.env'), 'PRIVATE=not-for-export');
     await writeFile(join(root, 'outside'), 'outside');
     await symlink(join(root, 'outside'), join(source, 'src', 'linked.ts'));
     await copyTemplate(source, target);
-    expect((await readdir(target)).sort()).toEqual(['package.json', 'src']);
+    expect((await readdir(target)).sort()).toEqual(['package.json', 'src', 'vendor']);
+    expect((await readdir(join(target, 'vendor'))).sort()).toEqual([
+      'materials.tgz',
+      'runtime.tgz',
+    ]);
     expect(await readdir(join(target, 'src'))).toEqual(['main.tsx']);
     expect(await readFile(join(target, 'src', 'main.tsx'), 'utf8')).toBe('export {};');
   } finally {

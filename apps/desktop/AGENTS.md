@@ -24,7 +24,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 ## Build and package contract
 
 - Root `pnpm build` builds required workspace packages and assembles Desktop resources, stopping at `dist`. Root `pnpm package:dir` creates an unsigned unpacked application, while `pnpm package` creates installable distributions after all checks. `pnpm --filter @origamix/desktop build` prepares its package inputs before assembly; package-local `build:assemble`, `package:dir:assemble` and `package:assemble` are internal steps that require existing artifacts.
-- Main/Preload/Server ship in `app.asar`; Renderer and the clean template are external resources. Preserve development/packaged path resolution, relative Renderer assets and the template allowlist.
+- Main/Preload/Server ship as self-contained bundles in `app.asar`; electron-builder excludes the duplicate `node_modules` tree, enforced by `test:resources`; Renderer and the clean template are external resources. Preserve development/packaged path resolution, relative Renderer assets and the template allowlist.
 - Maintain icons in root `build/`. Do not repair packaging by patching generated `dist/` or `release/`.
 
 ## Verification

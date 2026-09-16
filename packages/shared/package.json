@@ -6,14 +6,54 @@
     "dist"
   ],
   "exports": {
-    "./*": "./src/*.ts"
+    "./credential-gateway": "./src/credential-gateway.ts",
+    "./desktop-api": "./src/desktop-api.ts",
+    "./page-window": "./src/page-window.ts",
+    "./protocol/agent-validation": "./src/protocol/agent-validation.ts",
+    "./protocol/agent": "./src/protocol/agent.ts",
+    "./protocol/api": "./src/protocol/api.ts",
+    "./protocol/project-manifest": "./src/protocol/project-manifest.ts",
+    "./protocol/schema": "./src/protocol/schema.ts",
+    "./protocol/validation": "./src/protocol/validation.ts"
   },
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./*": {
-        "types": "./dist/*.d.mts",
-        "import": "./dist/*.js"
+      "./credential-gateway": {
+        "types": "./dist/credential-gateway.d.mts",
+        "import": "./dist/credential-gateway.js"
+      },
+      "./desktop-api": {
+        "types": "./dist/desktop-api.d.mts",
+        "import": "./dist/desktop-api.js"
+      },
+      "./page-window": {
+        "types": "./dist/page-window.d.mts",
+        "import": "./dist/page-window.js"
+      },
+      "./protocol/agent-validation": {
+        "types": "./dist/protocol/agent-validation.d.mts",
+        "import": "./dist/protocol/agent-validation.js"
+      },
+      "./protocol/agent": {
+        "types": "./dist/protocol/agent.d.mts",
+        "import": "./dist/protocol/agent.js"
+      },
+      "./protocol/api": {
+        "types": "./dist/protocol/api.d.mts",
+        "import": "./dist/protocol/api.js"
+      },
+      "./protocol/project-manifest": {
+        "types": "./dist/protocol/project-manifest.d.mts",
+        "import": "./dist/protocol/project-manifest.js"
+      },
+      "./protocol/schema": {
+        "types": "./dist/protocol/schema.d.mts",
+        "import": "./dist/protocol/schema.js"
+      },
+      "./protocol/validation": {
+        "types": "./dist/protocol/validation.d.mts",
+        "import": "./dist/protocol/validation.js"
       }
     }
   },

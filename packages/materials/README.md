@@ -1,20 +1,23 @@
-# `@origamix/materials`
+# Materials
 
-Origamix's bundled page material library. It provides Ant Design adapters and editor manifests for Tangramino.
+Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件、物料默认值、编辑配置和可序列化清单，不包含 Origamix 工作台、项目服务或持久化。
 
-## Public entries
+## 公开接口
 
-```ts
-import materialComponents from '@origamix/materials/antd';
-import materialGroups from '@origamix/materials/antd/group';
-```
+| 入口                                | 消费方与用途                       |
+| ----------------------------------- | ---------------------------------- |
+| `@origamix/materials/antd`          | Runtime/生成页面使用的组件注册表   |
+| `@origamix/materials/antd/group`    | App 编辑器使用的分组及属性配置     |
+| `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单 |
+| `@origamix/materials/manifest`      | 清单类型及通用定义                 |
 
-- `materialComponents` maps persisted material type names to runtime React components.
-- `materialGroups` supplies the editor palette and each material's defaults, context contract and property-panel configuration.
+运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
 
-The package is publishable. `pnpm build` uses tsup to emit ESM bundles, declarations, and source maps into `dist`; after building, `pnpm pack:npm` creates the npm tarball under the repository's `release/npm` directory. The root `pnpm package:npm` performs both phases in order.
+物料注册键和已保存 Schema 的 `type` 是兼容性边界。删除物料或改名需要数据迁移，不能因为某个示例页面没用到就移除。
 
-## Development
+## 开发与发布
+
+在仓库根目录：
 
 ```sh
 pnpm --filter @origamix/materials lint
@@ -23,4 +26,6 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials build
 ```
 
-Ant Design is the only supported family. Add a new family as a separate directory and explicit package export, while keeping persisted type names stable. See [AGENTS.md](AGENTS.md) for package boundaries and verification expectations.
+tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区类型指向源码，发布类型指向声明文件，两套出口需要同步。React、Ant Design 和当前编辑控件所需 HeroUI 使用声明的 peer dependencies；不要依赖工作区意外提升。
+
+维护约束见 [AGENTS.md](AGENTS.md)。

@@ -8,8 +8,6 @@ import {
 } from '@origamix/shared/protocol/project-manifest';
 import { invalid, notFound } from '../errors';
 
-export type ProjectPageItem = ProjectPageManifest;
-
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
     await writeFileAtomically(
@@ -43,13 +41,7 @@ export class ProjectManifestStore {
     const ids = new Set<string>();
     const slugs = new Set<string>();
     for (const page of manifest.pages) {
-      if (
-        !/^page_[A-Za-z0-9_-]+$/.test(page.pageId) ||
-        !page.name ||
-        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(page.slug) ||
-        ids.has(page.pageId) ||
-        slugs.has(page.slug)
-      )
+      if (ids.has(page.pageId) || slugs.has(page.slug))
         throw invalid('项目页面清单存在无效或重复的页面');
       ids.add(page.pageId);
       slugs.add(page.slug);
@@ -57,11 +49,11 @@ export class ProjectManifestStore {
     return manifest;
   }
 
-  async readPages(projectPath: string): Promise<ProjectPageItem[]> {
+  async readPages(projectPath: string): Promise<ProjectPageManifest[]> {
     return (await this.readManifest(projectPath)).pages;
   }
 
-  async addPage(projectPath: string, page: ProjectPageItem): Promise<void> {
+  async addPage(projectPath: string, page: ProjectPageManifest): Promise<void> {
     const manifest = await this.readManifest(projectPath);
     await this.writeManifest(projectPath, { ...manifest, pages: [...manifest.pages, page] });
   }

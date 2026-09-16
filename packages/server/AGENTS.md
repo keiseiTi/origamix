@@ -6,7 +6,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - [README.md](README.md): onboarding, domain map, request flows and verification guide.
 
-- `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown; only `startServer` is exported.
+- `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown; only `startServer` is exported, returning only `port`, `registerGrant` and `close`.
 - `http/server.ts`: shared authentication, error mapping and HTTP response adaptation; `http/` registers business domains.
 - `projects/project-service.ts`: project use-case facade and orchestration; directory grants, manifest store, scaffold and source modules own grants, manifest changes, initialization and generated source respectively.
 - `schema/schema-service.ts`: authoritative edit pipeline and per-page serialization. `schema/schema-commit.ts` owns the internal commit/recovery protocol and must run under that page queue; `schema/schema-hash.ts` owns pure hashing. `schema/working-schema-store.ts` owns Working/Revision/journal/ChangeSet-receipt paths and atomic JSON persistence.
@@ -30,7 +30,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - Validate payloads and project/page ownership before filesystem access. Resolve paths inside the authorized project and reject traversal/symlink escapes; client IDs/display paths are not authority.
 - HTTP JSON uses `{ success, code, data, message? }`: successful bodies use `code: 200`; failures use `data: null` and an HTTP/business code. Keep the HTTP status RESTful and expose request IDs through response headers.
 - Use shared TypeBox contracts and runtime validators. Return actionable, redacted errors with request IDs; never log tokens, keys or full private project content.
-- HTTP/SSE preview capabilities and Agent streaming in the ADR are target work. Do not claim endpoints exist or bypass authentication for a new client.
+- Agent HTTP/SSE streaming is implemented in `http/agent-routes.ts`. HTTP/SSE preview capabilities remain target work; do not bypass authentication for a new client.
 
 ## Persistence invariants
 
@@ -41,7 +41,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in the schema.** Keep generated-DDL and live-database safety checks effective; do not disable checks or hide equivalent relationships in triggers.
 - Services enforce parent existence, ownership, deletion order and orphan handling. Use indexes, uniqueness constraints and SQL transactions for related database changes.
 - `database/schema.ts` is the table-model source of truth. This MVP codebase has no migration chain: initialize empty databases from the current schema, preserve matching databases on reopen and automatically rebuild incompatible SQLite files. Revisit this destructive reset policy before retaining user-authored database data across releases.
-- `template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. New scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
+- `template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. Only the two prepared `vendor/runtime.tgz` and `vendor/materials.tgz` archives are copied from vendor; new scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
 - Stop listeners and close databases on failed startup, restart and exit. Use package-owned build scripts/exports; generated artifacts are not source.
 
 ## Mechanical boundaries

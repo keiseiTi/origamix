@@ -14,6 +14,16 @@ describe('project manifest protocol', () => {
     expect(isProjectManifest(manifest())).toBe(true);
   });
 
+  it.each([{ pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(
+    'rejects malformed page fields: %j',
+    (fields) => {
+      const value = manifest();
+      expect(isProjectManifest({ ...value, pages: [{ ...value.pages[0], ...fields }] })).toBe(
+        false,
+      );
+    },
+  );
+
   it('rejects null pages and malformed page fields', () => {
     expect(isProjectManifest({ ...manifest(), pages: [null] })).toBe(false);
     expect(

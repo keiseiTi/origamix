@@ -25,7 +25,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 业务目录内部保留 Service → Repository/Store 的职责边界，不再为每个技术层建立子目录。目录位置不代表允许绕过服务写入。
 
-## 四条常用调用链
+## 常用调用链
 
 ### 创建页面
 
@@ -118,6 +118,14 @@ HTTP 测试已按用途分开：`server.test.ts` 关注鉴权与响应；`projec
 
 ## 包入口（MVP）
 
-`runtime` 只导出宿主需要的 `startServer`。`utility` 是 Electron 入口，`tooling` 提供评测和能力探测；模板、构建和开发脚本使用各自的包出口。内部模块直接导入所属业务文件，测试从 `testing/` 使用 Fake Engine。
+`runtime` 只导出宿主需要的 `startServer`，返回 `port`、`registerGrant` 和 `close`，不暴露内部业务服务。`utility` 是 Electron 入口，`tooling` 提供评测和能力探测；模板、构建和开发脚本使用各自的包出口。内部模块直接导入所属业务文件，测试从 `testing/` 使用 Fake Engine。
 
 当前处于 MVP 阶段，重构时同步修改调用方，不保留旧名称别名、旧启动路径或内部实现的聚合导出。
+
+## 开发宿主与模板集成
+
+独立启动可设置 `ORIGAMIX_SERVER_TOKEN` 后执行 `pnpm --filter @origamix/server dev`。监听地址保持 loopback，客户端同时发送 bearer token 与 `X-Origamix-Service`。开发监督器只清理自己启动的进程。
+
+`test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建真实项目和页面、保存并 Apply，然后独立安装、类型检查和构建。它验证生成路径而不是只构建空模板，需要依赖缓存或 registry 网络。
+
+模板 README 是生成项目使用说明的唯一来源，创建时只替换标题并附加项目标识。复制白名单只允许两份已准备的 vendor 归档，不能复制任意 vendor 内容。字段形状由 Shared 校验，项目服务保留页面 ID/slug 唯一性检查；HTTP 错误统一由 Fastify 错误处理器转换。

@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, utilityProcess } = require('electron');
-const { mkdtempSync, rmSync } = require('node:fs');
+const assert = require('node:assert/strict');
+const { existsSync, mkdtempSync, rmSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { tmpdir } = require('node:os');
 const { randomUUID } = require('node:crypto');
@@ -8,6 +9,10 @@ const state = mkdtempSync(join(tmpdir(), 'origamix-electron-smoke-'));
 app.setPath('userData', state);
 if (!process.argv[2]) throw new Error('Provide the packaged application Resources directory');
 const resources = resolve(process.argv[2]);
+assert.equal(existsSync(join(resources, 'app.asar', 'node_modules')), false,
+  'Bundled application must not ship a second dependency tree');
+for (const name of ['runtime.tgz', 'materials.tgz'])
+  assert.ok(existsSync(join(resources, 'template', 'vendor', name)), `Missing template dependency: ${name}`);
 const desktopDist = join(resources, 'app.asar', 'dist');
 const renderer = join(resources, 'app', 'index.html');
 const template = join(resources, 'template');

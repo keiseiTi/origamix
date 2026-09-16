@@ -22,16 +22,13 @@ This file is a repository map and durable guardrails, not a product specificatio
 | [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                         | `packages/template/package.json`, `packages/template/src/`                          |
 
 - [README.md](README.md): current setup, development, builds and integration checks.
-- [PRD and architecture](_doc/PRD-AND-ARCHITECTURE.md): product intent and phased scope.
-- [Development plan](_doc/DEVELOPMENT-PLAN.md): milestones and acceptance scenarios.
-- [Persistence ADR](_doc/ADR-001-LOCAL-PERSISTENCE.md): storage ownership and transport design.
-- Manifests, exports, implementation and tests establish current commands and behavior, not completion of every planned feature.
-- `_doc/` is Git-ignored and may be absent in a clean checkout. Report missing references; do not invent their contents. Keep durable contributor guidance in tracked files. Do not change ignore rules without task scope.
-- Known drift: old product references defer monorepo adoption, but the five-package workspace exists. Preview HTTP/SSE capability sessions are a target; the current read-only IPC bridge is described in Desktop guidance. Do not reverse working architecture to match stale prose or silently implement future plans.
+- Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.
+- `_doc/` is Git-ignored historical planning and may be absent in a clean checkout. Do not treat plans as current implementation or change ignore rules to publish them.
+- Preview currently uses a read-only IPC bridge; Agent HTTP/SSE is implemented. Preview capability sessions remain future work.
 
 ## Architecture invariants
 
-- Origamix is an AI-first, local-first Electron low-code product. Working Schema/Revision is the sole editable page source of truth; the real project's target `schema.json` is a managed projection written only by the explicit Apply-to-Project pipeline. The current direct Schema write is transitional: do not add another writer. Zustand holds projections and transient state, not a second database.
+- Origamix is an AI-first, local-first Electron low-code product. Working Schema/Revision is the sole editable page source of truth; the real project's target `schema.json` is a managed projection written only by the explicit Apply-to-Project pipeline. Do not add another target writer. Zustand holds projections and transient state, not a second database.
 - User and Agent Schema edits must use the typed ChangeSet → validation → revision check → snapshot/atomic-write pipeline in Server. Initialization and undo stay in the same service ownership; never add another file-writing path in UI or Main.
 - SQLite belongs to Server. **Never add `FOREIGN KEY`, `REFERENCES`, or cascading database actions.** Services enforce relationships and deletion order through explicit checks, transactions and reconciliation.
 - Renderer business operations use typed HTTP APIs. IPC is limited to named desktop capabilities; never expose raw `ipcRenderer`, filesystem, shell or arbitrary-path operations. Validate inputs and caller authority at the privileged boundary.

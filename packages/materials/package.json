@@ -47,7 +47,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "build": "tsup",
     "pack:npm": "pnpm pack --pack-destination ../../release/npm"
   },

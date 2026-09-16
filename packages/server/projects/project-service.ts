@@ -9,7 +9,6 @@ import {
   discardInitializedPageSchema,
   getSchema,
   initializePageSchema,
-  reconcilePageSchema,
 } from '../schema/schema-service';
 import type { ProjectRepository } from './project-repository';
 import { conflict, invalid, notFound } from '../errors';
@@ -51,14 +50,6 @@ export class ProjectService {
     this.grants.registerGrant(id, path);
   }
 
-  private consumeGrant(id: string): string {
-    return this.grants.consumeGrant(id);
-  }
-
-  private resolveGrant(id: string): string {
-    return this.grants.resolveGrant(id);
-  }
-
   async createProject(input: {
     name: string;
     code: string;
@@ -70,7 +61,7 @@ export class ProjectService {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
       throw invalid('项目标识仅支持小写字母、数字和连字符');
     }
-    const parentPath = this.consumeGrant(input.directoryGrantId);
+    const parentPath = this.grants.consumeGrant(input.directoryGrantId);
     const path = join(parentPath, code);
     try {
       await access(path);
@@ -95,7 +86,7 @@ export class ProjectService {
     directoryGrantId: string;
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> {
-    const path = this.resolveGrant(input.directoryGrantId);
+    const path = this.grants.resolveGrant(input.directoryGrantId);
     try {
       await access(join(path, 'origamix.project.json'));
     } catch {
@@ -107,7 +98,7 @@ export class ProjectService {
         };
       await this.scaffold.initializeExistingDirectory(path);
     }
-    this.consumeGrant(input.directoryGrantId);
+    this.grants.consumeGrant(input.directoryGrantId);
     return { status: 'opened', project: await this.reconcile(path) };
   }
 
@@ -253,15 +244,13 @@ export class ProjectService {
 
   reconcile = async (path: string): Promise<ProjectRecord> => {
     const manifest = await this.manifest.readManifest(path);
-    const pagesInManifest = await this.manifest.readPages(path);
     const timestamp = now();
     const pages: PageRecord[] = [];
-    for (const item of pagesInManifest) {
+    for (const item of manifest.pages) {
       const relativePath = join('src', 'pages', item.slug);
       const pagePath = join(path, relativePath);
       const pageRef = { projectPath: path, pageId: item.pageId, slug: item.slug };
       try {
-        await reconcilePageSchema(pageRef);
         await getSchema(pageRef);
       } catch (error) {
         if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;

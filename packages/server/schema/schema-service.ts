@@ -63,10 +63,6 @@ const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
     throw invalid('页面工作副本无效');
   return working;
 };
-export const reconcilePageSchema = async (page: SchemaPageRef): Promise<void> => {
-  return withSchemaPageQueue(page, () => commits.recover(page));
-};
-
 export const initializePageSchema = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
@@ -85,15 +81,18 @@ export const initializePageSchema = async (
   });
 };
 
-const getSchemaUnlocked = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
+const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
   await commits.recover(page);
   const working = await readWorking(page);
   const validation = validatePage(working.schema);
   if (!validation.valid) throw invalid(validationMessage(validation));
-  return { schema: working.schema, revisionId: working.revisionId };
+  return working;
 };
 export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, () => getSchemaUnlocked(page));
+  return withSchemaPageQueue(page, async () => {
+    const { schema, revisionId } = await getSchemaUnlocked(page);
+    return { schema, revisionId };
+  });
 };
 
 export const getWorkingSchemaState = async (
@@ -101,10 +100,10 @@ export const getWorkingSchemaState = async (
 ): Promise<SchemaReadResult & { baselineHash: string; schemaHash: string }> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
-    const working = await readWorking(page);
     return {
-      ...current,
-      baselineHash: working.baselineHash,
+      schema: current.schema,
+      revisionId: current.revisionId,
+      baselineHash: current.baselineHash,
       schemaHash: hashSchema(current.schema),
     };
   });
@@ -118,8 +117,7 @@ export const updateWorkingBaseline = async (
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     if (current.revisionId !== revisionId) throw conflict('页面已更新，请重新应用');
-    const working = await readWorking(page);
-    await store.writeWorking(page, { ...working, baselineHash });
+    await store.writeWorking(page, { ...current, baselineHash });
   });
 };
 
@@ -133,14 +131,14 @@ export const applyWorkingSchemaOperation = async <T>(
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
     if (current.revisionId !== expectedRevisionId) throw conflict('页面已更新，请重新应用');
-    const working = await readWorking(page);
     const completed = await operation({
-      ...current,
-      baselineHash: working.baselineHash,
+      schema: current.schema,
+      revisionId: current.revisionId,
+      baselineHash: current.baselineHash,
       schemaHash: hashSchema(current.schema),
     });
     await store.writeWorking(page, {
-      ...working,
+      ...current,
       baselineHash: completed.baselineHash,
     });
     return completed.result;

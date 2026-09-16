@@ -80,6 +80,19 @@ export default defineConfig([
     },
   },
   {
+    files: ['packages/runtime/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*', '**/*.config.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...builtinModules, 'electron'],
+          patterns: ['node:*'],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/desktop/src/**/*.ts', 'packages/server/**/*.ts', 'packages/app/*.ts'],
     languageOptions: { globals: globals.node },
   },
@@ -96,7 +109,6 @@ export default defineConfig([
   },
   {
     files: [
-      'scripts/**/*.mjs',
       'apps/desktop/scripts/**/*.{mjs,cjs}',
       'packages/server/scripts/**/*.mjs',
       'packages/app/scripts/**/*.mjs',

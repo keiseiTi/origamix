@@ -3,6 +3,7 @@ import { relative, sep } from 'node:path';
 
 const rootFiles = new Set([
   'src',
+  'vendor',
   'index.html',
   'package.json',
   'vite.config.ts',
@@ -25,6 +26,12 @@ export const copyTemplate = async (source: string, target: string): Promise<void
     filter: async (path) => {
       const parts = relative(source, path).split(sep);
       if (parts[0] && (!rootFiles.has(parts[0]) || parts.some((part) => excluded.has(part))))
+        return false;
+      if (
+        parts[0] === 'vendor' &&
+        parts.length > 1 &&
+        (parts.length !== 2 || !['runtime.tgz', 'materials.tgz'].includes(parts[1]))
+      )
         return false;
       return !(await lstat(path)).isSymbolicLink();
     },

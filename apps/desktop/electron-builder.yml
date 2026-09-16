@@ -6,6 +6,8 @@ directories:
 files:
   - dist/**
   - '!dist/template/**'
+  # Main, preload and Server are self-contained bundles.
+  - '!node_modules/**'
 extraResources:
   - from: ../../packages/app/dist
     to: app

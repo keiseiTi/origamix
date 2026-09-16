@@ -125,8 +125,6 @@ export const startServer = async (input: {
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');
     return {
       port: address.port,
-      conversationService,
-      runService,
       registerGrant: (id: string, path: string) => projectService.registerGrant(id, path),
       close: async () => {
         await server.close();

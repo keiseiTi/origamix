@@ -186,6 +186,18 @@ describe('HTTP authentication and responses', () => {
         message: '目录授权已失效，请重新选择目录',
       });
 
+      vi.spyOn(projects, 'listProjects').mockImplementationOnce(() => {
+        throw Object.assign(new Error('请求暂不可处理'), { statusCode: 429 });
+      });
+      const throttled = await server.inject({ method: 'GET', url: '/api/v1/projects', headers });
+      expect(throttled.statusCode).toBe(429);
+      expect(throttled.json()).toEqual({
+        success: false,
+        code: 429,
+        data: null,
+        message: '请求暂不可处理',
+      });
+
       vi.spyOn(projects, 'listProjects').mockImplementation(() => {
         throw new Error('/private/user/project should not leak');
       });

@@ -18,7 +18,7 @@ pre-commit:
             glob:
               - 'packages/server/scripts/eslint-boundaries*.mjs'
               - 'eslint.config.mjs'
-            run: pnpm --filter @origamix/server lint && pnpm --filter @origamix/server test:architecture
+            run: pnpm lint && pnpm --filter @origamix/server test:architecture
           - name: verify TypeScript changes
             group:
               parallel: true
