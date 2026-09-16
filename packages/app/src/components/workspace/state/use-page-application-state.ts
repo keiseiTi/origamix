@@ -32,6 +32,7 @@ export const usePageApplicationState = ({
     value: 'saved',
   });
   const pageKeyRef = useRef(pageKey);
+  const polling = useRef({ issued: 0, accepted: 0 });
 
   useEffect(() => {
     pageKeyRef.current = pageKey;
@@ -57,18 +58,29 @@ export const usePageApplicationState = ({
   const refreshApplyState = useCallback(async (): Promise<void> => {
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
+    const pollingState = polling.current;
+    const sequence = ++pollingState.issued;
+    const publish = (value: PageApplyStatus) => {
+      if (pageKeyRef.current !== requestPageKey || sequence <= pollingState.accepted) return;
+      // Accept responses in request order without starving slower-than-interval polling.
+      pollingState.accepted = sequence;
+      setApplyStatus(value);
+    };
     try {
       const state = await schemaService.applyState(projectId, pageId);
-      if (pageKeyRef.current === requestPageKey) setApplyStatus(state.status);
+      publish(state.status);
     } catch {
-      if (pageKeyRef.current === requestPageKey) setApplyStatus('error');
+      publish('error');
     }
   }, [pageId, projectId, setApplyStatus]);
 
   useEffect(() => {
+    const pollingState = polling.current;
     const initial = window.setTimeout(() => void refreshApplyState(), 0);
     const timer = window.setInterval(() => void refreshApplyState(), 1500);
     return () => {
+      // Invalidate responses immediately, before a new page/revision starts polling.
+      pollingState.accepted = ++pollingState.issued;
       window.clearTimeout(initial);
       window.clearInterval(timer);
     };
