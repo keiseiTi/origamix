@@ -32,6 +32,6 @@ pnpm --filter @origamix/shared test
 pnpm --filter @origamix/shared build
 ```
 
-- Add positive/negative cases in `src/protocol/validation.test.ts` or adjacent tests for changed contracts. Include malformed IDs, missing fields, invalid references and incompatible changes where relevant.
+- Add positive/negative cases under `test/protocol/` for changed contracts. Include malformed IDs, missing fields, invalid references and incompatible changes where relevant.
 - Run all root gates for downstream compilation and behavior; Shared passing alone is insufficient for a public-contract change.
 - Root ESLint restrictions cover some platform imports, not the entire dependency graph. Review imports/manifests explicitly; do not describe architectural isolation as fully lint-enforced.

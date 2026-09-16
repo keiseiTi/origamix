@@ -7,7 +7,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - `src/main.tsx`, `src/router.ts`, `src/pages/`: portable React/Tangramino scaffold.
 - `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`: standalone tools and build configuration.
 - The template README is also the generated-project usage documentation; ProjectSource only customizes its heading and project code.
-- Copying is owned by `../server/template.ts`; coverage starts in `../server/template.test.ts` and `../server/scripts/test-template.mjs`.
+- Copying is owned by `../server/template.ts`; coverage starts in `../server/test/template.test.ts` and `../server/test/test-template.mjs`.
 - Runtime/Materials package preparation and dependency rewriting use Server template-artifact tooling from template smoke and Desktop resource assembly; do not reintroduce separate packing recipes.
 
 ## Portability contract

@@ -46,7 +46,7 @@ pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build
 ```
 
-- Extend `src/store/workspace.test.ts` and `src/services/request.test.ts` for affected transitions/transport; add focused tests beside new stateful logic.
+- Extend `test/store/workspace.test.ts` and `test/services/request.test.ts` for affected transitions/transport; keep new tests under `test/` mirroring their source area.
 - Web host/proxy changes: `pnpm --filter @origamix/app test:web`. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
 - Use `pnpm dev:web` for browser interaction checks. Directory pickers, settings and independent windows need `pnpm dev` and Desktop smoke checks, not only browser screenshots.
 - Run root gates before handoff and report both-theme interaction evidence. Existing unit/smoke tests are not complete visual coverage.

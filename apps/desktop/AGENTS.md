@@ -39,7 +39,7 @@ pnpm build
 pnpm --filter @origamix/desktop test:main
 ```
 
-- Extend `src/main/page-windows.test.ts` for lifecycle and preview-boundary regressions.
+- Extend `test/main/page-windows.test.ts` for lifecycle and preview-boundary regressions.
 - The Main integration check needs compiled artifacts and a graphical session. It exercises real Main/IPC/backend paths with a temporary directory picker. Verify window reuse, denied preview access, theme persistence and shutdown when changed.
 - For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.

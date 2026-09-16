@@ -110,8 +110,11 @@ export default defineConfig([
   {
     files: [
       'apps/desktop/scripts/**/*.{mjs,cjs}',
+      'apps/desktop/test/**/*.{mjs,cjs}',
       'packages/server/scripts/**/*.mjs',
+      'packages/server/test/**/*.mjs',
       'packages/app/scripts/**/*.mjs',
+      'packages/app/test/**/*.mjs',
     ],
     extends: [js.configs.recommended],
     languageOptions: { globals: globals.node },

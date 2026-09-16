@@ -1,0 +1,412 @@
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, describe, expect, it } from 'vitest';
+import { ApplicationDatabase } from '../../database/database';
+import { ProjectRepository } from '../../projects/project-repository';
+import { ProjectService } from '../../projects/project-service';
+import { ProjectApplyService } from '../../schema/project-apply-service';
+import { createHttpServer } from '../../http/server';
+
+const directories: string[] = [];
+const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
+
+afterEach(async () => {
+  await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
+});
+
+describe('Project and Schema HTTP flows', () => {
+  it('creates a runnable project from the template and registers new pages', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-project-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const server = createHttpServer({
+      desktopToken: 'desktop-token',
+      serviceInstanceId: 'service-instance',
+      projects,
+      projectService: service,
+      projectApplyService: new ProjectApplyService(projects),
+    });
+    const headers = {
+      authorization: 'Bearer desktop-token',
+      'x-origamix-service': 'service-instance',
+    };
+    const createProject = await server.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers,
+      payload: {
+        name: '客户控制台',
+        code: 'customer-console',
+        directoryGrantId: 'grant_project',
+      },
+    });
+    expect(createProject.statusCode).toBe(201);
+    const projectResult = createProject.json() as {
+      success: true;
+      code: 200;
+      data: { id: string; path: string };
+    };
+    expect(projectResult).toMatchObject({ success: true, code: 200 });
+    const project = projectResult.data;
+    expect(project.path).toBe(join(directory, 'customer-console'));
+    expect(await readFile(join(project.path, 'README.md'), 'utf8')).toContain('客户控制台');
+    expect(await readFile(join(project.path, 'package.json'), 'utf8')).toContain(
+      'customer-console',
+    );
+    expect(await readFile(join(project.path, 'index.html'), 'utf8')).toContain(
+      '<title>客户控制台</title>',
+    );
+
+    const createPage = await server.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${project.id}/pages`,
+      headers,
+      payload: { name: '客户列表', slug: 'customer-list' },
+    });
+    expect(createPage.statusCode).toBe(201);
+    const pageResult = createPage.json() as {
+      success: true;
+      code: 200;
+      data: { id: string; slug: string };
+    };
+    expect(pageResult).toMatchObject({ success: true, code: 200 });
+    const page = pageResult.data;
+    expect(page.slug).toBe('customer-list');
+    expect(
+      await readFile(join(project.path, 'src', 'pages', page.slug, 'index.tsx'), 'utf8'),
+    ).toContain('OrigamixPage');
+    expect(
+      JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
+    ).toMatchObject({
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
+    });
+
+    const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
+    const targetPath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
+    const targetBeforeEdit = await readFile(targetPath, 'utf8');
+    const schemaResponse = await server.inject({
+      method: 'GET',
+      url: `/api/v1/pages/${page.id}/schema`,
+      headers: projectHeaders,
+    });
+    const current = schemaResponse.json() as {
+      success: true;
+      data: { revisionId: string };
+    };
+    const saveResponse = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/changesets`,
+      headers: projectHeaders,
+      payload: {
+        pageId: page.id,
+        baseRevisionId: current.data.revisionId,
+        source: { kind: 'user' },
+        createdAt: new Date().toISOString(),
+        operation: 'updateElementProps',
+        elementId: 'element_root',
+        props: { padding: 28 },
+      },
+    });
+    expect(saveResponse.statusCode).toBe(200);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetBeforeEdit);
+    const saved = saveResponse.json() as { success: true; data: { revisionId: string } };
+    const applyResponse = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/apply`,
+      headers: projectHeaders,
+      payload: {
+        expectedRevisionId: saved.data.revisionId,
+        clientRequestId: 'deterministic_product_flow',
+      },
+    });
+    expect(applyResponse.statusCode).toBe(200);
+    expect(JSON.parse(await readFile(targetPath, 'utf8'))).toMatchObject({
+      elements: { element_root: { props: { padding: 28 } } },
+    });
+    await server.close();
+    database.close();
+  });
+
+  it('initializes a project manifest when opening an uninitialized directory', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-imported-project-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_existing', directory);
+
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    expect(pending.status).toBe('initialization_required');
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection).toMatchObject({
+      directoryKind: 'empty',
+      discoveredPages: [],
+      blockers: [],
+    });
+    expect(pending.inspection.plannedChanges).toContain('生成完整项目模板');
+    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    const opened = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      initializeIfNeeded: true,
+    });
+    if (opened.status !== 'opened') throw new Error('expected opened project');
+    const project = opened.project;
+    const manifest = JSON.parse(
+      await readFile(join(directory, 'origamix.project.json'), 'utf8'),
+    ) as { name: string; code: string };
+
+    expect(manifest).toMatchObject({ name: basename(directory), code: basename(directory) });
+    expect(project.name).toBe(basename(directory));
+    expect(manifest).toMatchObject({
+      framework: 'react',
+      uiLibrary: 'antd',
+      pages: [],
+    });
+    await access(join(directory, 'src', 'router.ts'));
+    await access(join(directory, 'vite.config.ts'));
+    database.close();
+  });
+
+  it('discovers only standard Schema pages while initializing an existing React Vite project', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-react-'));
+    directories.push(directory);
+    await writeFile(
+      join(directory, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          react: '^19.0.0',
+          '@origamix/runtime': 'workspace:*',
+          '@origamix/materials': 'workspace:*',
+        },
+        devDependencies: { vite: '^8.0.0' },
+      }),
+    );
+    await mkdir(join(directory, 'src'), { recursive: true });
+    await writeFile(join(directory, 'src', 'router.ts'), 'export default [];');
+    const pagePath = join(directory, 'src', 'pages', 'customers');
+    await mkdir(pagePath, { recursive: true });
+    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
+    await writeFile(
+      join(pagePath, 'schema.json'),
+      JSON.stringify({
+        elements: { element_root: { type: 'container', props: {} } },
+        layout: { root: 'element_root', structure: { element_root: [] } },
+        flows: {},
+        bindElements: [],
+        context: { globalVariables: [] },
+        extensions: { origamix: { schemaVersion: '1.0' } },
+      }),
+    );
+    const database = new ApplicationDatabase(join(directory, 'app.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_existing', directory);
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection).toEqual({
+      directoryKind: 'existing_application',
+      discoveredPages: [{ name: 'customers', slug: 'customers' }],
+      plannedChanges: ['写入 origamix.project.json', '按发现页面建立本地索引和工作副本'],
+      blockers: [],
+    });
+    const opened = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      initializeIfNeeded: true,
+    });
+    if (opened.status !== 'opened') throw new Error('expected opened project');
+    expect(projects.listPages(opened.project.id)).toEqual([
+      expect.objectContaining({ name: 'customers', slug: 'customers' }),
+    ]);
+    database.close();
+  });
+
+  it('reports initialization blockers without writing a project manifest', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-blocked-'));
+    directories.push(directory);
+    await writeFile(
+      join(directory, 'package.json'),
+      JSON.stringify({ dependencies: { react: '^19.0.0' }, devDependencies: { vite: '^8.0.0' } }),
+    );
+    const pagePath = join(directory, 'src', 'pages', 'customers');
+    await mkdir(pagePath, { recursive: true });
+    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
+    await writeFile(
+      join(pagePath, 'schema.json'),
+      JSON.stringify({
+        elements: { element_root: { type: 'container', props: {} } },
+        layout: { root: 'element_root', structure: { element_root: [] } },
+        flows: {},
+        bindElements: [],
+        context: { globalVariables: [] },
+        extensions: { origamix: { schemaVersion: '1.0' } },
+      }),
+    );
+    const database = new ApplicationDatabase(join(directory, 'app.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_existing', directory);
+
+    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+    expect(pending.inspection.blockers).toEqual([
+      '已有页面需要声明 @origamix/runtime 与 @origamix/materials 依赖',
+      '已有页面需要挂载标准 src/router.ts',
+    ]);
+    await expect(
+      service.openProject({ directoryGrantId: 'grant_existing', initializeIfNeeded: true }),
+    ).rejects.toThrow('项目尚不能初始化');
+    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    database.close();
+  });
+
+  it('renames and duplicates records while desktop deletion preserves project files', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-lifecycle-'));
+    directories.push(directory);
+    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('grant_project', directory);
+    const project = await service.createProject({
+      name: '原项目',
+      code: 'lifecycle-project',
+      directoryGrantId: 'grant_project',
+    });
+    const originalPage = await service.createPage(project.id, {
+      name: '首页',
+      slug: 'home',
+    });
+    const server = createHttpServer({
+      desktopToken: 'desktop-token',
+      serviceInstanceId: 'service-instance',
+      projects,
+      projectService: service,
+    });
+    const headers = {
+      authorization: 'Bearer desktop-token',
+      'x-origamix-service': 'service-instance',
+      'x-origamix-project-id': project.id,
+    };
+    expect(
+      (
+        await server.inject({
+          method: 'PATCH',
+          url: `/api/v1/projects/${project.id}`,
+          headers,
+          payload: { name: '新项目名' },
+        })
+      ).json().data,
+    ).toMatchObject({ name: '新项目名' });
+    expect(
+      (
+        await server.inject({
+          method: 'PATCH',
+          url: `/api/v1/pages/${originalPage.id}`,
+          headers,
+          payload: { name: '新页面名' },
+        })
+      ).json().data,
+    ).toMatchObject({ name: '新页面名', slug: 'home' });
+    const duplicate = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${originalPage.id}/duplicate`,
+      headers,
+      payload: {},
+    });
+    expect(duplicate.statusCode).toBe(201);
+    const duplicatePage = duplicate.json().data as { id: string; slug: string };
+    expect(duplicatePage.slug).toBe('home-copy');
+    const duplicatePath = join(project.path, 'src', 'pages', duplicatePage.slug, 'schema.json');
+    await access(duplicatePath);
+    const timestamp = new Date().toISOString();
+    database.connection
+      .prepare(
+        'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run('conversation_lifecycle', project.id, duplicatePage.id, 'test', 0, timestamp, timestamp);
+    database.connection
+      .prepare(
+        'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'message_lifecycle',
+        'conversation_lifecycle',
+        'user',
+        '{"version":"1","blocks":[]}',
+        2,
+        0,
+        timestamp,
+        timestamp,
+      );
+    database.connection
+      .prepare(
+        `INSERT INTO agent_runs (
+          id, project_id, page_id, conversation_id, user_message_id, client_request_id,
+          base_revision_id, model_ref, mode, status, budget_json, prompt_version,
+          policy_version, toolset_version, material_manifest_version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        'run_lifecycle',
+        project.id,
+        duplicatePage.id,
+        'conversation_lifecycle',
+        'message_lifecycle',
+        'request_lifecycle',
+        'revision_base',
+        'fake/model',
+        'page_modify',
+        8,
+        '{"maxModelCalls":1,"maxToolCalls":1,"maxOutputTokens":1,"maxDurationMs":1,"maxSchemaBytes":1,"maxRepairAttempts":0}',
+        '1',
+        '1',
+        '1',
+        '1',
+        timestamp,
+        timestamp,
+      );
+    expect(
+      (
+        await server.inject({
+          method: 'DELETE',
+          url: `/api/v1/pages/${duplicatePage.id}`,
+          headers,
+          payload: { scope: 'desktop_record' },
+        })
+      ).json().data,
+    ).toEqual({ deleted: true });
+    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    for (const table of ['conversations', 'messages', 'agent_runs']) {
+      expect(
+        database.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get(),
+      ).toMatchObject({ count: 0 });
+    }
+    await expect(access(duplicatePath)).rejects.toThrow();
+    await service.renameProject(project.id, '再次改名');
+    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    expect(
+      (
+        await server.inject({
+          method: 'DELETE',
+          url: `/api/v1/projects/${project.id}`,
+          headers,
+          payload: { scope: 'desktop_record' },
+        })
+      ).json().data,
+    ).toEqual({ deleted: true });
+    expect(projects.getProject(project.id)).toBeUndefined();
+    await access(join(project.path, 'origamix.project.json'));
+    await server.close();
+    database.close();
+  });
+});
