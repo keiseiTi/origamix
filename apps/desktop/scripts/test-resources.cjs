@@ -6,10 +6,11 @@ const { randomUUID } = require('node:crypto');
 
 const state = mkdtempSync(join(tmpdir(), 'origamix-electron-smoke-'));
 app.setPath('userData', state);
-const resources = process.argv[2] && resolve(process.argv[2]);
-const desktopDist = resources ? join(resources, 'app.asar', 'dist') : resolve(__dirname, '../dist');
-const renderer = resources ? join(resources, 'app', 'index.html') : resolve(__dirname, '../../../packages/app/dist/index.html');
-const template = resources ? join(resources, 'template') : resolve(__dirname, '../dist/template');
+if (!process.argv[2]) throw new Error('Provide the packaged application Resources directory');
+const resources = resolve(process.argv[2]);
+const desktopDist = join(resources, 'app.asar', 'dist');
+const renderer = join(resources, 'app', 'index.html');
+const template = join(resources, 'template');
 let backend;
 let window;
 const timer = setTimeout(() => finish(new Error('Electron smoke timed out')), 20000);

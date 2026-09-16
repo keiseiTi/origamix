@@ -7,7 +7,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 - `src/main/index.ts`: application lifecycle, directory grants, settings/credentials and backend bootstrap.
 - `src/main/page-windows.ts`: page preview `WebContentsView` ownership, reuse and read authorization.
 - `src/preload/index.ts`: workbench bridge; `src/preload/preview.ts`: separate read-only preview bridge.
-- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/tsup-options.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template vendor preparation comes from Server tooling rather than a Desktop-owned recipe.
+- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/build-options.mjs`, `scripts/assemble-resources.mjs`, `scripts/copy-server-artifact.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template vendor preparation comes from Server tooling rather than a Desktop-owned recipe.
 
 ## Boundaries
 
@@ -23,7 +23,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Build and package contract
 
-- Root `pnpm build:desktop` (and its `pnpm build` compatibility alias) builds required workspace packages directly, assembles Desktop and creates an unsigned, unpacked current-platform application. It does not consume public npm tarballs. `pnpm --filter @origamix/desktop build` builds Server then assembles Desktop without packaging; `build:app`, `build:assemble` and `package:assemble` are internal steps that require existing artifacts.
+- Root `pnpm build` builds required workspace packages and assembles Desktop resources, stopping at `dist`. Root `pnpm package:dir` creates an unsigned unpacked application, while `pnpm package` creates installable distributions after all checks. `pnpm --filter @origamix/desktop build` prepares its package inputs before assembly; package-local `build:assemble`, `package:dir:assemble` and `package:assemble` are internal steps that require existing artifacts.
 - Main/Preload/Server ship in `app.asar`; Renderer and the clean template are external resources. Preserve development/packaged path resolution, relative Renderer assets and the template allowlist.
 - Maintain icons in root `build/`. Do not repair packaging by patching generated `dist/` or `release/`.
 
@@ -36,10 +36,10 @@ pnpm --filter @origamix/desktop lint
 pnpm --filter @origamix/desktop typecheck
 pnpm --filter @origamix/desktop test
 pnpm build
-pnpm --filter @origamix/desktop test:smoke
+pnpm --filter @origamix/desktop test:main
 ```
 
 - Extend `src/main/page-windows.test.ts` for lifecycle and preview-boundary regressions.
-- Default smoke needs compiled artifacts and a graphical session. It exercises real Main/IPC/backend paths with a temporary directory picker. Verify window reuse, denied preview access, theme persistence and shutdown when changed.
-- For packaging changes, also run `pnpm --filter @origamix/desktop package --dir` and the packaged-resource smoke command in the root README. Resource checks do not prove signed-installer launch.
+- The Main integration check needs compiled artifacts and a graphical session. It exercises real Main/IPC/backend paths with a temporary directory picker. Verify window reuse, denied preview access, theme persistence and shutdown when changed.
+- For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.

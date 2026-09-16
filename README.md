@@ -62,19 +62,19 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm build:web
-pnpm build:npm
 pnpm gate:internal
+pnpm package:dir
 pnpm package
 pnpm package:npm
 ```
 
-`pnpm build` is a compatibility alias for `pnpm build:desktop`. It builds the local workspace dependencies directly, assembles Desktop and creates an unsigned, unpacked application for the current platform in ignored `release/`; it does not consume the public npm tarballs. For independent use, Desktop's package-local `build` still builds Server before assembly; `build:app`, `build:assemble` and `package:assemble` are internal steps that expect their input artifacts to exist.
+`pnpm build` builds the local workspace dependencies, Renderer, Server and Desktop resources into their `dist` directories. It does not run electron-builder or consume public npm tarballs. Desktop and Server package-local `build` commands prepare their inputs before assembly; their `build:assemble` steps are internal commands used by the root build after those inputs already exist.
 
-`pnpm build:web` builds Shared, Runtime and Materials from the workspace, then emits the standalone Renderer production assets to `packages/app/dist`. Both Web and Desktop use these local workspace builds rather than npm tarballs. `pnpm build:npm` only builds the publishable Shared, Runtime and Materials `dist` directories; internally these commands share `build:libs` to avoid duplicating the package list.
+`pnpm build:web` builds Shared, Runtime and Materials from the workspace, then emits the standalone Renderer production assets to `packages/app/dist`. `pnpm build:libs` builds only the publishable Shared, Runtime and Materials packages.
 
-`pnpm package` is a compatibility alias for `pnpm package:desktop`. It runs all checks and the desktop build before creating installable distributions. `pnpm --filter @origamix/desktop package --dir` also rebuilds its inputs and produces only an unpacked application. Platform signing credentials must be configured separately for distribution; the normal build intentionally disables automatic macOS certificate discovery so local builds do not prompt for signing credentials.
+`pnpm package:dir` builds and creates an unsigned unpacked application in ignored `release/`. `pnpm package` runs all checks and the build before creating installable distributions. Platform signing credentials must be configured separately for distribution; the directory package disables automatic macOS certificate discovery so local builds do not prompt for signing credentials.
 
-`pnpm package:npm` runs `build:npm`, then creates publishable npm tarballs in `release/npm`. It does not publish them to a registry.
+`pnpm package:npm` builds Shared, Runtime and Materials, then creates publishable npm tarballs in `release/npm`. It does not publish them to a registry.
 
 The packaged Renderer uses relative asset URLs for `file://`. Main/Preload/Server live inside `app.asar`; Renderer and the clean project template are external resources. The template copier includes only scaffold files and excludes dependency directories, generated output, secrets, caches and symlinks. Icons are maintained in `build/` only.
 
@@ -84,11 +84,11 @@ Additional integration checks:
 pnpm --filter @origamix/app test:web
 pnpm --filter @origamix/server test:template
 pnpm --filter @origamix/server test:dev
-pnpm --filter @origamix/desktop test:smoke
+pnpm --filter @origamix/desktop test:main
 # After packaging on macOS, test the packaged resources with the installed Electron runtime:
-pnpm --filter @origamix/desktop test:smoke /absolute/path/to/Origamix.app/Contents/Resources
+pnpm --filter @origamix/desktop test:resources /absolute/path/to/Origamix.app/Contents/Resources
 ```
 
-The default Electron smoke check requires Desktop's compiled artifacts (produced by `pnpm build` or `pnpm --filter @origamix/desktop build`) and a graphical session. It loads the real compiled Main entry, uses its real IPC handlers and SQLite backend, and verifies workspace restoration, project creation, preview isolation, dark-theme persistence and graceful shutdown. Only the OS directory picker is replaced with a temporary test directory. Supplying a Resources path runs the separate packaged-resource smoke check; it is not an end-to-end launch of a signed installer.
+The Main Electron integration check requires Desktop's compiled artifacts and a graphical session. It loads the real compiled Main entry, uses its real IPC handlers and SQLite backend, and verifies workspace restoration, project creation, preview isolation, dark-theme persistence and graceful shutdown. Only the OS directory picker is replaced with a temporary test directory. The separate packaged-resource check validates an explicit Resources path; it is not an end-to-end launch of a signed installer.
 
 `test:dev` copies source to a temporary workspace (reusing installed dependencies), starts App without Server artifacts, changes only temporary source and verifies Web/Server restarts and listener cleanup. The template check installs dependencies in a temporary generated project, so it requires registry access or a populated pnpm cache.

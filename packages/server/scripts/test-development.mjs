@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stopChild } from './development.mjs';
+import { stopChild } from './dev-supervisor.mjs';
 
 // Test real compilers in a throwaway workspace, without touching source mtimes or user data.
 const original = fileURLToPath(new URL('../../../', import.meta.url));

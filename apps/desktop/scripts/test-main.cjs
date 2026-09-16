@@ -36,7 +36,7 @@ app.on('will-quit', () => {
   if (!passed || !backendExited)
     return fail(new Error('Application quit without passing checks or closing its backend'));
   console.info(
-    'Real Main smoke passed: workspace, directory IPC, project creation, preview, theme and graceful backend shutdown.',
+    'Main test passed: directory IPC, project creation, preview, theme and graceful backend shutdown.',
   );
 });
 
@@ -79,10 +79,9 @@ app
     const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project' });
     await request('/projects/' + project.id + '/pages', { name: 'Home', slug: 'home', route: '/' });
     const pages = await request('/projects/' + project.id + '/pages');
-    await request('/workspace', { theme: 'light' }, 'PATCH');
     await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });
-    await window.api.window.openPage({ projectId: project.id, pageId: pages[0].id, mode: 'preview' });
-    return { path: project.path, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
+    await window.api.window.openPage({ projectId: project.id, pageId: pages[0].id, mode: 'preview', theme: 'light' });
+    return { path: project.path, projectId: project.id, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
     assert.ok(existsSync(join(result.path, 'origamix.project.json')));
@@ -123,14 +122,14 @@ app
     assert.equal(snapshot.theme, 'light');
     assert.equal(await preview.executeJavaScript('typeof window.api'), 'undefined');
     await main.webContents.executeJavaScript(`(async () => {
-    const connection = await window.api.backend.getConnection();
-    await fetch(connection.baseUrl + '/workspace', {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + connection.token,
-        'X-Origamix-Service': connection.serviceInstanceId, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: 'dark' })
-    });
-  })()`);
+      localStorage.setItem('origamix:theme', 'dark');
+      await window.api.window.openPage({
+        projectId: ${JSON.stringify(result.projectId)},
+        pageId: ${JSON.stringify(result.pageId)},
+        mode: 'preview',
+        theme: 'dark'
+      });
+    })()`);
     await waitFor(() =>
       preview.executeJavaScript(`document.documentElement.dataset.theme === 'dark'`),
     );

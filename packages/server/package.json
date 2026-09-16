@@ -14,7 +14,7 @@
     },
     "./utility": "./dist/server.cjs",
     "./build": "./scripts/build.mjs",
-    "./development": "./scripts/development.mjs",
+    "./development": "./scripts/dev-supervisor.mjs",
     "./template": {
       "types": "./template.ts",
       "default": "./dist/template.cjs"
@@ -26,11 +26,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "pretest": "pnpm --filter @origamix/materials build && pnpm check:database-schema",
     "test": "vitest run",
-    "test:template": "pnpm build && node scripts/smoke-template.mjs",
-    "test:dev": "node scripts/smoke-development.mjs",
+    "test:template": "pnpm --filter @origamix/runtime build && pnpm build && node scripts/test-template.mjs",
+    "test:dev": "node scripts/test-development.mjs",
     "probe:deepseek": "pnpm build && node scripts/probe-deepseek.mjs",
     "gate:agent": "pnpm build && node scripts/gate-agent.mjs",
-    "build": "node scripts/build.mjs",
+    "build": "pnpm --filter @origamix/shared --filter @origamix/materials build && pnpm build:assemble",
+    "build:assemble": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "check:database-schema": "node scripts/check-database-schema.mjs"
   },

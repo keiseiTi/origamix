@@ -1,11 +1,11 @@
 import { build } from 'tsup';
 import electronPath from 'electron';
 import { fork, spawn } from 'node:child_process';
-import { cp } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
-import { desktopRoot, workspaceRoot, options } from './tsup-options.mjs';
+import { desktopRoot, workspaceRoot, options } from './build-options.mjs';
+import { copyServerArtifact } from './copy-server-artifact.mjs';
 import { stopChild } from '@origamix/server/development';
 
 const rendererUrl = 'http://127.0.0.1:5173';
@@ -55,8 +55,7 @@ function restartElectron() {
   restartQueue = restartQueue.then(async () => {
     if (stopping || !desktopReady) return;
     await stopElectron();
-    await cp(require.resolve('@origamix/server/utility'), `${desktopRoot}dist/main/server.cjs`);
-    await cp(`${require.resolve('@origamix/server/utility')}.map`, `${desktopRoot}dist/main/server.cjs.map`);
+    await copyServerArtifact();
     if (stopping || !desktopReady) return;
     const env = { ...process.env, ELECTRON_RENDERER_URL: rendererUrl,
       ORIGAMIX_TEMPLATE_DIR: `${workspaceRoot}packages/template` };

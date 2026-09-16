@@ -66,5 +66,5 @@ pnpm --filter @origamix/server gate:agent
 - Extend `database/database.test.ts`, `schema/schema-service.test.ts`, `http/server.test.ts` (authentication), `http/project-routes.test.ts` (project flows), and `http/agent-schema-flow.test.ts` (Agent → commit → Apply) for affected boundaries. Cover invalid input, stale revisions, cross-project access, authentication and recovery.
 - Use temporary directories/databases and fake secrets. Never migrate real app databases or overwrite existing user projects in tests.
 - Template/copy changes: `pnpm --filter @origamix/server test:template` (registry access or populated cache required).
-- Development/build lifecycle changes: `pnpm --filter @origamix/server test:dev`; host changes may also need App `test:web` and Desktop `test:smoke` after root build.
+- Development/build lifecycle changes: `pnpm --filter @origamix/server test:dev`; host changes may also need App `test:web` and Desktop `test:main` after root build.
 - Run root gates before handoff. Name uncovered failure/concurrency cases; passing current tests does not prove crash-safe multi-file transactions.

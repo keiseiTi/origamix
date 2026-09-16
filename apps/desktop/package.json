@@ -11,11 +11,13 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:smoke": "node scripts/smoke.mjs",
-    "build": "pnpm --filter @origamix/server build && node scripts/build.mjs",
-    "build:app": "electron-builder --config electron-builder.yml --dir --config.mac.identity=null",
+    "test:main": "node scripts/test-electron.mjs",
+    "test:resources": "node scripts/test-electron.mjs --resources",
+    "build": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build && pnpm --filter @origamix/server build:assemble && node scripts/build.mjs",
     "build:assemble": "node scripts/build.mjs",
     "package": "pnpm --filter @origamix/app build && pnpm build && pnpm package:assemble",
+    "package:dir": "pnpm --filter @origamix/app build && pnpm build && pnpm package:dir:assemble",
+    "package:dir:assemble": "electron-builder --config electron-builder.yml --dir --config.mac.identity=null",
     "package:assemble": "electron-builder --config electron-builder.yml"
   },
   "dependencies": {
