@@ -54,7 +54,7 @@ For standalone backend development, set `ORIGAMIX_SERVER_TOKEN` and run `pnpm --
 
 ## Verification and packaging
 
-`pnpm lint` includes Server import-boundary checks. `pnpm test` runs the root architecture-rule regression tests before package tests; run `pnpm test:architecture` to check only the rule. See [Server verification](packages/server/README.md#自动边界检查) for the enforced boundaries.
+`pnpm lint` includes Server import-boundary checks. `pnpm test` runs the Server-owned architecture-rule regression tests through the Server package; run `pnpm --filter @origamix/server test:architecture` to check only the rule. See [Server verification](packages/server/README.md#自动边界检查) for the enforced boundaries.
 
 ```sh
 pnpm lint

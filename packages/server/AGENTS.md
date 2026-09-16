@@ -46,7 +46,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Mechanical boundaries
 
-- Root `scripts/eslint-server-boundaries.mjs` is loaded by ESLint for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
+- `scripts/eslint-boundaries.mjs` is loaded by the root ESLint configuration for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
 - `http/types.ts` exposes only repository reads and the required service methods; tools receive narrow repository/diagnostic interfaces. Keep these capabilities narrow when adding routes/tools.
 - `runtime.ts` exports only local `startServer`; the rule and isolated bundle test enforce this. Update callers directly in the MVP.
 - These are static import/type checks, not a security sandbox or proof of all runtime effects. Runtime authorization and persistence tests remain required. The rule covers static imports, re-exports, literal dynamic imports and direct `require`; computed module paths are rejected in checked production files.

@@ -78,7 +78,7 @@ pnpm build
 ## Keep the harness useful
 
 - Make recurring mistakes mechanically detectable: prefer regression tests, validators or lint rules over another paragraph. Add enforcement when in scope; otherwise name the gap rather than claiming coverage.
-- Server import/entry-point enforcement lives in `scripts/eslint-server-boundaries.mjs`, loaded by `eslint.config.mjs`; `pnpm test:architecture` tests the rule and runs as part of root `pnpm test`. Root lint includes the rule source; the staged gate verifies changes to architecture rules.
+- Server import/entry-point enforcement lives in `packages/server/scripts/eslint-boundaries.mjs`, loaded by `eslint.config.mjs`; the Server package's `test:architecture` tests the rule and runs through root `pnpm test`. Server lint includes the rule source; the staged gate verifies changes to architecture rules.
 - Other existing enforcement lives in `eslint.config.mjs`, strict tsconfigs, Shared validation tests, Server schema/persistence/HTTP tests, package smoke scripts and the Lefthook pre-commit gate. These cover specific cases, not every invariant above.
 - When changing a boundary, command or directory, update its owning guide in the same change. Link to code/tests instead of copying implementation inventories; remove stale guidance.
 - Debug with reproducible inputs, request/revision identifiers and redacted errors. Close temporary servers/listeners after checks. Leave better verification evidence, not only a workaround.

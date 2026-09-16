@@ -1,7 +1,7 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const serverRoot = fileURLToPath(new URL('../packages/server/', import.meta.url));
+const serverRoot = fileURLToPath(new URL('../', import.meta.url));
 const normalize = (path) => path.replaceAll('\\', '/').replace(/\.(?:[cm]?[jt]sx?)$/, '');
 const owners = new Map([
   ['schema/schema-commit', ['schema/schema-service']],

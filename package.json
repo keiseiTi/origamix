@@ -13,14 +13,13 @@
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,mjs,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
-    "lint": "eslint scripts && pnpm -r lint",
+    "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm test:architecture && pnpm -r test",
+    "test": "pnpm -r test",
     "gate:internal": "pnpm --filter @origamix/server gate:agent",
     "package:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
     "package:dir": "pnpm build && pnpm --filter @origamix/desktop package:dir:assemble",
-    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble",
-    "test:architecture": "node --test scripts/eslint-server-boundaries.test.mjs"
+    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
   },
   "keywords": [
     "lowCode",

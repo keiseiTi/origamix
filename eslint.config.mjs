@@ -1,4 +1,4 @@
-import { serverBoundaries } from './scripts/eslint-server-boundaries.mjs';
+import { serverBoundaries } from './packages/server/scripts/eslint-boundaries.mjs';
 import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';

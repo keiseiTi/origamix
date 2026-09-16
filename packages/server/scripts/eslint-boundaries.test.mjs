@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ESLint, Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { serverBoundaries } from './eslint-server-boundaries.mjs';
+import { serverBoundaries } from './eslint-boundaries.mjs';
 
-const serverRoot = fileURLToPath(new URL('../packages/server/', import.meta.url));
+const serverRoot = fileURLToPath(new URL('../', import.meta.url));
 const lint = (file, code) =>
   new Linter().verify(
     code,
@@ -93,7 +93,7 @@ for (const [file, code] of [
 }
 
 test('the repository configuration enables the Server boundary rule', async () => {
-  const eslint = new ESLint({ cwd: fileURLToPath(new URL('../', import.meta.url)) });
+  const eslint = new ESLint({ cwd: fileURLToPath(new URL('../../../', import.meta.url)) });
   const config = await eslint.calculateConfigForFile(`${serverRoot}http/schema-routes.ts`);
   assert.equal(config.rules['architecture/server-boundaries'][0], 2);
 });
