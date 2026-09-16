@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { schemaService } from '../../../services/schema';
+import { pageOperationKey, usePendingOperations } from '../../../store/pending-operations';
 import { ApiRequestError } from '../../../services/request';
 import type { EditorHandle } from '../../editor';
 import type { EditorSaveStatus } from '../../editor/use-editor-session';
@@ -20,7 +21,8 @@ export const usePageApplicationState = ({
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
-  const pageKey = `${projectId ?? ''}:${pageId ?? ''}`;
+  const pageKey = pageOperationKey(projectId ?? '', pageId ?? '');
+  const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
   const [applyState, setApplyState] = useState<{ pageKey: string; value: PageApplyStatus }>({
     pageKey,
     value: 'loading',
@@ -30,13 +32,18 @@ export const usePageApplicationState = ({
     value: 'saved',
   });
   const pageKeyRef = useRef(pageKey);
-  const applyRequestsRef = useRef(
-    new Map<string, { revisionId: string; clientRequestId: string }>(),
-  );
+
   useEffect(() => {
     pageKeyRef.current = pageKey;
+    return () => {
+      pageKeyRef.current = '';
+    };
   }, [pageKey]);
-  const applyStatus = applyState.pageKey === pageKey ? applyState.value : 'loading';
+  const applyStatus = pendingApply
+    ? 'result_pending'
+    : applyState.pageKey === pageKey
+      ? applyState.value
+      : 'loading';
   const saveStatus = saveState.pageKey === pageKey ? saveState.value : 'saved';
   const setApplyStatus = useCallback(
     (value: PageApplyStatus): void => setApplyState({ pageKey, value }),
@@ -49,7 +56,7 @@ export const usePageApplicationState = ({
 
   const refreshApplyState = useCallback(async (): Promise<void> => {
     if (!pageId || !projectId) return;
-    const requestPageKey = `${projectId}:${pageId}`;
+    const requestPageKey = pageOperationKey(projectId, pageId);
     try {
       const state = await schemaService.applyState(projectId, pageId);
       if (pageKeyRef.current === requestPageKey) setApplyStatus(state.status);
@@ -69,19 +76,21 @@ export const usePageApplicationState = ({
 
   const applyPage = async (): Promise<void> => {
     if (!pageId || !projectId) return;
-    const requestPageKey = `${projectId}:${pageId}`;
+    const requestPageKey = pageOperationKey(projectId, pageId);
     await editorRef.current?.flush();
     const current = await schemaService.get(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
-    const previousRequest = applyRequestsRef.current.get(requestPageKey);
-    const request =
-      previousRequest?.revisionId === current.revisionId
-        ? previousRequest
-        : { revisionId: current.revisionId, clientRequestId: crypto.randomUUID() };
-    applyRequestsRef.current.set(requestPageKey, request);
+    const operations = usePendingOperations.getState();
+    const previousRequest = operations.applies[requestPageKey];
+    if (previousRequest?.inFlight) throw new Error('应用请求仍在处理中，请稍后重试');
+    const request = previousRequest ?? {
+      revisionId: current.revisionId,
+      clientRequestId: crypto.randomUUID(),
+    };
+    operations.setApply(requestPageKey, { ...request, inFlight: true });
     try {
-      await schemaService.apply(projectId, pageId, current.revisionId, request.clientRequestId);
-      applyRequestsRef.current.delete(requestPageKey);
+      await schemaService.apply(projectId, pageId, request.revisionId, request.clientRequestId);
+      operations.finishApply(requestPageKey, request.clientRequestId, true);
       if (pageKeyRef.current !== requestPageKey) return;
       await refreshApplyState();
     } catch (error) {
@@ -89,15 +98,21 @@ export const usePageApplicationState = ({
         setApplyStatus(
           !(error instanceof ApiRequestError) || error.status >= 500 ? 'result_pending' : 'error',
         );
-      if (error instanceof ApiRequestError && error.status < 500)
-        applyRequestsRef.current.delete(requestPageKey);
+      operations.finishApply(
+        requestPageKey,
+        request.clientRequestId,
+        error instanceof ApiRequestError &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408,
+      );
       throw error;
     }
   };
 
   const reloadFromProject = async (): Promise<void> => {
     if (!pageId || !projectId) return;
-    const requestPageKey = `${projectId}:${pageId}`;
+    const requestPageKey = pageOperationKey(projectId, pageId);
     const result = await schemaService.reloadFromProject(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     onSchemaCommitted(pageId, result.revisionId);
