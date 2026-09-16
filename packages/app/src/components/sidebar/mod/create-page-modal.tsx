@@ -1,6 +1,6 @@
 import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
 import { useState } from 'react';
-import type { PageItem, ProjectItem } from '..';
+import type { PageItem, ProjectItem } from '../../../store/workspace';
 import { projectsService } from '../../../services/projects';
 
 interface CreatePageModalProps {

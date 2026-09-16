@@ -1,66 +1,54 @@
 import { Button, Modal, Spinner } from '@heroui/react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Sidebar,
-  type AppTheme,
-  type PageItem,
-  type ProjectItem,
-  type UserProfile,
-} from './components/sidebar';
+import { Sidebar } from './components/sidebar';
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsPage } from './components/settings';
 import { Workspace } from './components/workspace';
 import { PageTabs } from './components/workspace/page-tabs';
 import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
-import { useViewSession } from './components/workspace/state/use-view-session';
 import { projectsService } from './services/projects';
 import { schemaService } from './services/schema';
-import { useWorkspaceTransitions } from './components/workspace/use-workspace-transitions';
-import { useProjectActions } from './components/workspace/use-project-actions';
+import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
+import { useProjectActions } from './hooks/use-project-actions';
+import { usePreferencesStore } from './store/preferences';
+import { useWorkspaceStore, type PageItem } from './store/workspace';
 
 const App = (): React.JSX.Element => {
   const isMacDesktop = window.api?.platform === 'darwin';
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const {
-    activeTab,
-    setActiveTab,
-    isSettingsOpen,
-    setIsSettingsOpen,
-    sidebarCollapsed: sessionSidebarCollapsed,
-    setSidebarCollapsed,
-    activeProjectId,
-    activePageId: selectedPageId,
-    openPageIds,
-    pageModes,
-    pageDrafts,
-    updateWorkspace,
-  } = useViewSession();
+  const projects = useWorkspaceStore((state) => state.projects);
+  const setProjects = useWorkspaceStore((state) => state.setProjects);
+  const activeTab = useWorkspaceStore((state) => state.activeTab);
+  const setActiveTab = useWorkspaceStore((state) => state.setActiveTab);
+  const isSettingsOpen = useWorkspaceStore((state) => state.isSettingsOpen);
+  const setIsSettingsOpen = useWorkspaceStore((state) => state.setSettingsOpen);
+  const sessionSidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
+  const setSidebarCollapsed = useWorkspaceStore((state) => state.setSidebarCollapsed);
+  const selectedPageId = useWorkspaceStore((state) => state.activePageId);
+  const openPageIds = useWorkspaceStore((state) => state.openPageIds);
+  const pageModes = useWorkspaceStore((state) => state.pageModes);
+  const pageDrafts = useWorkspaceStore((state) => state.pageDrafts);
+  const selectWorkspacePage = useWorkspaceStore((state) => state.selectPage);
+  const closeWorkspacePage = useWorkspaceStore((state) => state.closePage);
+  const setPageMode = useWorkspaceStore((state) => state.setPageMode);
+  const setPageDraft = useWorkspaceStore((state) => state.setPageDraft);
+  const restoreWorkspace = useWorkspaceStore((state) => state.restoreWorkspace);
+  const failWorkspaceRestore = useWorkspaceStore((state) => state.failWorkspaceRestore);
+  const workspaceReady = useWorkspaceStore((state) => state.workspaceReady);
+  const workspaceError = useWorkspaceStore((state) => state.workspaceError);
   const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
   const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true);
-  const [theme, setTheme] = useState<AppTheme>(() =>
-    localStorage.getItem('origamix:theme') === 'dark' ? 'dark' : 'light',
-  );
+  const theme = usePreferencesStore((state) => state.theme);
+  const setTheme = usePreferencesStore((state) => state.setTheme);
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'Origamix 用户',
-    iconBackground: '#2563eb',
-  });
-  const [workspaceReady, setWorkspaceReady] = useState(false);
-  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const userProfile = usePreferencesStore((state) => state.userProfile);
+  const setUserProfile = usePreferencesStore((state) => state.setUserProfile);
   const editorRef = useRef<EditorHandle>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const previousPreviewMode = useRef<Record<string, Exclude<WorkspaceMode, 'preview'>>>({});
-  const initialWorkspaceSession = useRef({
-    activeProjectId,
-    selectedPageId,
-    openPageIds,
-    pageModes,
-    pageDrafts,
-  });
   const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const selectedPage = projects
     .flatMap((project) => project.pages)
@@ -95,9 +83,10 @@ const App = (): React.JSX.Element => {
       if (mode === 'chat') {
         pinSidebarOpen();
       }
-      setActiveTab(mode);
       if (selectedPageId) {
-        updateWorkspace({ pageModes: { ...pageModes, [selectedPageId]: mode } });
+        setPageMode(selectedPageId, mode);
+      } else {
+        setActiveTab(mode);
       }
     });
 
@@ -116,8 +105,7 @@ const App = (): React.JSX.Element => {
       activeTab === 'preview'
         ? (previousPreviewMode.current[selectedPage.id] ?? 'chat')
         : activeTab;
-    updateWorkspace({ pageModes: { ...pageModes, [selectedPage.id]: 'preview' } });
-    setActiveTab('preview');
+    setPageMode(selectedPage.id, 'preview');
   };
 
   const undoPage = async (): Promise<void> => {
@@ -128,20 +116,7 @@ const App = (): React.JSX.Element => {
   };
 
   const selectPage = (pageId: string): void => {
-    const nextModes =
-      selectedPageId && activeTab !== 'preview'
-        ? { ...pageModes, [selectedPageId]: activeTab }
-        : { ...pageModes };
-    const projectId = projects.find((project) =>
-      project.pages.some((page) => page.id === pageId),
-    )?.id;
-    updateWorkspace({
-      activeProjectId: projectId ?? activeProjectId,
-      activePageId: pageId,
-      openPageIds: openPageIds.includes(pageId) ? openPageIds : [...openPageIds, pageId],
-      pageModes: nextModes,
-    });
-    setActiveTab(pageModes[pageId] === 'edit' ? 'edit' : 'chat');
+    selectWorkspacePage(pageId);
     setSidebarPeek(false);
   };
 
@@ -152,30 +127,8 @@ const App = (): React.JSX.Element => {
         await window.api.window.closePreview({ projectId: project.id, pageId, mode: 'preview' });
       }
     }
-    const index = openPageIds.indexOf(pageId);
-    const remaining = openPageIds.filter((id) => id !== pageId);
-    const nextModes = { ...pageModes };
-    const nextDrafts = { ...pageDrafts };
-    delete nextModes[pageId];
-    delete nextDrafts[pageId];
     delete previousPreviewMode.current[pageId];
-    const nextId =
-      selectedPageId === pageId
-        ? (remaining[Math.min(index, remaining.length - 1)] ?? null)
-        : selectedPageId;
-    const nextProjectId =
-      projects.find((project) => project.pages.some((page) => page.id === nextId))?.id ??
-      activeProjectId;
-    updateWorkspace({
-      activeProjectId: nextProjectId,
-      activePageId: nextId,
-      openPageIds: remaining,
-      pageModes: nextModes,
-      pageDrafts: nextDrafts,
-    });
-    if (selectedPageId === pageId) {
-      setActiveTab(nextId && pageModes[nextId] === 'edit' ? 'edit' : 'chat');
-    }
+    closeWorkspacePage(pageId);
   };
 
   useEffect(() => {
@@ -202,73 +155,30 @@ const App = (): React.JSX.Element => {
           })),
         );
         if (!active) return;
-        const session = initialWorkspaceSession.current;
-        setProjects(hydrated);
-        const pageIds = new Set(
-          hydrated.flatMap((project) => project.pages.map((page) => page.id)),
-        );
-        const projectIds = new Set(hydrated.map((project) => project.id));
-        const restoredOpenIds = session.openPageIds.filter((id) => pageIds.has(id));
-        const restoredPageId =
-          session.selectedPageId && pageIds.has(session.selectedPageId)
-            ? session.selectedPageId
-            : null;
-        const nextOpenIds =
-          restoredPageId && !restoredOpenIds.includes(restoredPageId)
-            ? [...restoredOpenIds, restoredPageId]
-            : restoredOpenIds;
-        const nextModes = Object.fromEntries(
-          Object.entries(session.pageModes).filter(([id]) => pageIds.has(id)),
-        );
-        const nextDrafts = Object.fromEntries(
-          Object.entries(session.pageDrafts).filter(([id]) => pageIds.has(id)),
-        );
-        const restoredPageProjectId = hydrated.find((project) =>
-          project.pages.some((page) => page.id === restoredPageId),
-        )?.id;
-        const restoredProjectId =
-          restoredPageProjectId ??
-          (session.activeProjectId && projectIds.has(session.activeProjectId)
-            ? session.activeProjectId
-            : null);
-        updateWorkspace({
-          activeProjectId: restoredProjectId,
-          activePageId: restoredPageId,
-          openPageIds: nextOpenIds,
-          pageModes: nextModes,
-          pageDrafts: nextDrafts,
-          activeTab: restoredPageId && nextModes[restoredPageId] === 'edit' ? 'edit' : 'chat',
-        });
-        setWorkspaceReady(true);
+        restoreWorkspace(hydrated);
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setWorkspaceError(error instanceof Error ? error.message : '无法恢复工作区');
+        failWorkspaceRestore(error instanceof Error ? error.message : '无法恢复工作区');
       });
     return () => {
       active = false;
     };
-  }, [updateWorkspace]);
-
-  useEffect(() => {
-    if (!workspaceReady) return;
-    localStorage.setItem('origamix:theme', theme);
-  }, [theme, workspaceReady]);
+  }, [failWorkspaceRestore, restoreWorkspace]);
 
   useEffect(() => {
     window.api?.settings
       ?.getProfile?.()
       .then(setUserProfile)
       .catch(() => undefined);
-  }, []);
+  }, [setUserProfile]);
 
   useEffect(() => {
     return window.api?.window?.onPreviewExited?.((target) => {
       const restored = previousPreviewMode.current[target.pageId] ?? 'chat';
-      updateWorkspace({ pageModes: { ...pageModes, [target.pageId]: restored } });
-      if (selectedPageId === target.pageId) setActiveTab(restored);
+      setPageMode(target.pageId, restored);
     });
-  }, [pageModes, selectedPageId, setActiveTab, updateWorkspace]);
+  }, [setPageMode]);
 
   useEffect(() => {
     const element = workspaceRef.current;
@@ -302,14 +212,6 @@ const App = (): React.JSX.Element => {
     });
   };
   const projectActions = useProjectActions({
-    projects,
-    setProjects,
-    selectedPageId,
-    openPageIds,
-    pageModes,
-    pageDrafts,
-    updateWorkspace,
-    setActiveTab,
     flushEditor,
     onPageAdded: addPage,
     onError: setTransitionError,
@@ -454,7 +356,7 @@ const App = (): React.JSX.Element => {
               draft={selectedPageId ? (pageDrafts[selectedPageId] ?? '') : ''}
               onDraftChange={(draft) => {
                 if (selectedPageId) {
-                  updateWorkspace({ pageDrafts: { ...pageDrafts, [selectedPageId]: draft } });
+                  setPageDraft(selectedPageId, draft);
                 }
               }}
               supportsNativeProjectDirectories={supportsNativeProjectDirectories}

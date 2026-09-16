@@ -1,6 +1,6 @@
 import { Button } from '@heroui/react';
 import { X } from 'lucide-react';
-import type { PageItem } from '../sidebar';
+import type { PageItem } from '../../store/workspace';
 
 interface PageTabsProps {
   pages: PageItem[];

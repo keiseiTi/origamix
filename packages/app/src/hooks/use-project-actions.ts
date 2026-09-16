@@ -1,24 +1,19 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useState } from 'react';
 import type { ProjectInitializationInspection } from '@origamix/shared/protocol/api';
-import type { PageItem, ProjectItem } from '../sidebar';
-import type { ViewSession } from './state/view-session';
-import { projectsService } from '../../services/projects';
+import { projectsService } from '../services/projects';
+import { useWorkspaceStore, type PageItem, type ProjectItem } from '../store/workspace';
 
 interface ProjectActionsInput {
-  projects: ProjectItem[];
-  setProjects: Dispatch<SetStateAction<ProjectItem[]>>;
-  selectedPageId: string | null;
-  openPageIds: string[];
-  pageModes: ViewSession['pageModes'];
-  pageDrafts: ViewSession['pageDrafts'];
-  updateWorkspace: (patch: Partial<ViewSession>) => void;
-  setActiveTab: (mode: ViewSession['activeTab']) => void;
   flushEditor: () => Promise<void>;
   onPageAdded: (projectId: string, page: PageItem) => void;
   onError: (message: string) => void;
 }
 
 export const useProjectActions = (input: ProjectActionsInput) => {
+  const projects = useWorkspaceStore((state) => state.projects);
+  const setProjects = useWorkspaceStore((state) => state.setProjects);
+  const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
+  const removePages = useWorkspaceStore((state) => state.removePages);
   const [pendingInitialization, setPendingInitialization] = useState<{
     directoryGrantId: string;
     displayPath: string;
@@ -36,18 +31,18 @@ export const useProjectActions = (input: ProjectActionsInput) => {
       ...project,
       pages: pages.map((page) => ({ id: page.id, name: page.name, fileName: page.slug })),
     };
-    input.setProjects((current) => [
+    setProjects((current) => [
       ...current.filter((item) => item.path !== opened.path && item.id !== opened.id),
       opened,
     ]);
-    input.updateWorkspace({
+    replaceWorkspace({
       activeProjectId: opened.id,
       activePageId: opened.pages[0]?.id ?? null,
       openPageIds: opened.pages[0] ? [opened.pages[0].id] : [],
       pageModes: {},
       pageDrafts: {},
+      activeTab: 'chat',
     });
-    input.setActiveTab('chat');
   };
 
   const openProject = async (): Promise<void> => {
@@ -87,14 +82,14 @@ export const useProjectActions = (input: ProjectActionsInput) => {
 
   const renameProject = async (projectId: string, name: string): Promise<void> => {
     const project = await projectsService.rename(projectId, name);
-    input.setProjects((current) =>
+    setProjects((current) =>
       current.map((item) => (item.id === projectId ? { ...item, name: project.name } : item)),
     );
   };
 
   const renamePage = async (projectId: string, pageId: string, name: string): Promise<void> => {
     const page = await projectsService.renamePage(projectId, pageId, name);
-    input.setProjects((current) =>
+    setProjects((current) =>
       current.map((project) =>
         project.id === projectId
           ? {
@@ -108,55 +103,30 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     );
   };
 
-  const removePagesFromSession = (removedIds: Set<string>): void => {
-    const remaining = input.openPageIds.filter((id) => !removedIds.has(id));
-    const nextModes = Object.fromEntries(
-      Object.entries(input.pageModes).filter(([id]) => !removedIds.has(id)),
-    );
-    const nextDrafts = Object.fromEntries(
-      Object.entries(input.pageDrafts).filter(([id]) => !removedIds.has(id)),
-    );
-    const nextPageId =
-      input.selectedPageId && !removedIds.has(input.selectedPageId)
-        ? input.selectedPageId
-        : (remaining[0] ?? null);
-    const nextProjectId =
-      input.projects.find((project) => project.pages.some((page) => page.id === nextPageId))?.id ??
-      null;
-    input.updateWorkspace({
-      activeProjectId: nextProjectId,
-      activePageId: nextPageId,
-      openPageIds: remaining,
-      pageModes: nextModes,
-      pageDrafts: nextDrafts,
-    });
-    input.setActiveTab(nextPageId && nextModes[nextPageId] === 'edit' ? 'edit' : 'chat');
-  };
-
   const deleteProject = async (projectId: string): Promise<void> => {
     await input.flushEditor();
-    const project = input.projects.find((item) => item.id === projectId);
+    const project = projects.find((item) => item.id === projectId);
     if (!project) return;
     for (const page of project.pages) {
       await window.api?.window?.closePreview?.({ projectId, pageId: page.id, mode: 'preview' });
     }
     await projectsService.delete(projectId);
-    input.setProjects((current) => current.filter((item) => item.id !== projectId));
-    removePagesFromSession(new Set(project.pages.map((page) => page.id)));
+    setProjects((current) => current.filter((item) => item.id !== projectId));
+    removePages(project.pages.map((page) => page.id));
   };
 
   const deletePage = async (projectId: string, pageId: string): Promise<void> => {
     await input.flushEditor();
     await window.api?.window?.closePreview?.({ projectId, pageId, mode: 'preview' });
     await projectsService.deletePage(projectId, pageId);
-    input.setProjects((current) =>
+    setProjects((current) =>
       current.map((project) =>
         project.id === projectId
           ? { ...project, pages: project.pages.filter((page) => page.id !== pageId) }
           : project,
       ),
     );
-    removePagesFromSession(new Set([pageId]));
+    removePages([pageId]);
   };
 
   const duplicatePage = async (projectId: string, pageId: string): Promise<void> => {

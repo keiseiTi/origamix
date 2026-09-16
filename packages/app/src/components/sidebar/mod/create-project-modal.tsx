@@ -1,6 +1,6 @@
 import { Button, FieldError, Form, Input, Label, Modal, TextField } from '@heroui/react';
 import { useState } from 'react';
-import type { ProjectItem } from '..';
+import type { ProjectItem } from '../../../store/workspace';
 import { projectsService } from '../../../services/projects';
 
 interface CreateProjectModalProps {

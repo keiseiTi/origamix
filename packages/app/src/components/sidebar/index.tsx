@@ -15,26 +15,8 @@ import { useState } from 'react';
 import { CreatePageModal } from './mod/create-page-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
-
-export type AppTheme = 'light' | 'dark';
-
-export interface PageItem {
-  id: string;
-  name: string;
-  fileName: string;
-}
-
-export interface ProjectItem {
-  id: string;
-  name: string;
-  path: string;
-  pages: PageItem[];
-}
-
-export interface UserProfile {
-  name: string;
-  iconBackground: string;
-}
+import type { UserProfile } from '../../store/preferences';
+import type { PageItem, ProjectItem } from '../../store/workspace';
 
 interface SidebarProps {
   projects: ProjectItem[];
