@@ -26,7 +26,7 @@ export const ChatWorkspace = ({
   draft,
   onDraftChange,
   onSchemaCommitted,
-  onRunningChange,
+  onActivityChange,
 }: {
   projectId: string;
   pageId: string;
@@ -34,13 +34,16 @@ export const ChatWorkspace = ({
   draft: string;
   onDraftChange: (draft: string) => void;
   onSchemaCommitted: (revisionId: string) => void;
-  onRunningChange: (running: boolean) => void;
+  onActivityChange: (activity: 'unknown' | 'idle' | 'running') => void;
 }): React.JSX.Element => {
-  const { state, send, cancel, retry } = useAgentChat(projectId, pageId);
+  const { state, activity, pendingSubmission, send, cancel, retry } = useAgentChat(
+    projectId,
+    pageId,
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const notifiedRevisionRef = useRef<string | null>(null);
   const active = isRunActive(state.stage);
-  useEffect(() => onRunningChange(active), [active, onRunningChange]);
+  useEffect(() => onActivityChange(activity), [activity, onActivityChange]);
   useEffect(() => {
     if (state.committedRevisionId && state.committedRevisionId !== notifiedRevisionRef.current) {
       notifiedRevisionRef.current = state.committedRevisionId;
@@ -52,7 +55,7 @@ export const ChatWorkspace = ({
   }, [state.messages, state.streamedText]);
 
   const submit = async (): Promise<void> => {
-    if (!draft.trim() || active) return;
+    if (!draft.trim() || activity !== 'idle') return;
     try {
       await send(draft);
       onDraftChange('');
@@ -144,13 +147,15 @@ export const ChatWorkspace = ({
             页面已提交，编辑器正在加载该版本。
           </p>
         )}
-        {state.error && (
+        {(state.error || pendingSubmission) && (
           <div
             className='mt-4 flex items-center gap-2 rounded-xl bg-danger/10 p-3 text-danger'
             role='alert'
           >
-            <span className='min-w-0 flex-1'>{state.error}</span>
-            <Button size='sm' variant='ghost' onPress={() => void retry()}>
+            <span className='min-w-0 flex-1'>
+              {state.error ?? '上次发送结果待确认，请重试确认结果。'}
+            </span>
+            <Button size='sm' variant='ghost' onPress={() => void retry().catch(() => undefined)}>
               <RotateCcw size={13} />
               重试
             </Button>
@@ -167,11 +172,17 @@ export const ChatWorkspace = ({
               void submit();
             }
           }}
-          disabled={active}
+          disabled={activity !== 'idle'}
           variant='secondary'
           className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
           aria-label='发送消息'
-          placeholder={active ? '本轮完成后可继续修改' : '描述你想创建或修改的页面'}
+          placeholder={
+            activity === 'unknown'
+              ? '正在确认页面状态…'
+              : active
+                ? '本轮完成后可继续修改'
+                : '描述你想创建或修改的页面'
+          }
         />
         <footer className='flex items-center justify-between'>
           <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
@@ -194,7 +205,7 @@ export const ChatWorkspace = ({
               size='sm'
               className='h-7 min-h-7 w-7 min-w-7'
               aria-label='发送'
-              isDisabled={!draft.trim()}
+              isDisabled={!draft.trim() || activity !== 'idle'}
               onPress={() => void submit()}
             >
               <Send size={15} />

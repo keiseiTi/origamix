@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import type { RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditorHandle } from '../../../../src/components/editor';
@@ -14,6 +14,7 @@ const schemaMocks = vi.hoisted(() => ({
 
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
 
+import { usePendingOperations } from '../../../../src/store/pending-operations';
 import { usePageApplicationState } from '../../../../src/components/workspace/state/use-page-application-state';
 
 const deferred = <T,>() => {
@@ -33,10 +34,13 @@ const editorRef = {
 describe('usePageApplicationState', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    vi.mocked(editorRef.current!.flush).mockResolvedValue(undefined);
+    usePendingOperations.setState({ applies: {}, agents: {} });
   });
 
   afterEach(() => {
+    cleanup();
     vi.useRealTimers();
   });
 
@@ -144,5 +148,128 @@ describe('usePageApplicationState', () => {
 
     expect(schemaMocks.apply).toHaveBeenCalledTimes(2);
     expect(schemaMocks.apply.mock.calls[1]![3]).toBe(schemaMocks.apply.mock.calls[0]![3]);
+  });
+  it('keeps an ambiguous Apply across unmount and polling, then clears it on explicit retry', async () => {
+    schemaMocks.applyState.mockResolvedValue({ status: 'pending' });
+    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_1' });
+    schemaMocks.apply.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({});
+    const usePage = () =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        schemaRefreshKey: 'revision_1',
+        editorRef,
+        onSchemaCommitted: vi.fn(),
+      });
+    const first = renderHook(usePage);
+    await act(async () => {
+      await expect(first.result.current.applyPage()).rejects.toThrow();
+    });
+    first.unmount();
+    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_2' });
+    const next = renderHook(usePage);
+    await act(async () => vi.advanceTimersByTime(1500));
+    expect(next.result.current.applyStatus).toBe('result_pending');
+    expect(schemaMocks.apply).toHaveBeenCalledTimes(1);
+    await act(async () => next.result.current.applyPage());
+    expect(schemaMocks.apply.mock.calls[1]![3]).toBe(schemaMocks.apply.mock.calls[0]![3]);
+    expect(schemaMocks.apply.mock.calls[1]![2]).toBe('revision_1');
+    expect(usePendingOperations.getState().applies).toEqual({});
+    next.unmount();
+  });
+  it.each(['success', 'failure'] as const)(
+    'ignores an old polling %s after refreshing the same page revision',
+    async (outcome) => {
+      const previous = deferred<{ status: 'external_change' }>();
+      schemaMocks.applyState
+        .mockReturnValueOnce(previous.promise)
+        .mockResolvedValue({ status: 'pending' });
+      const hook = renderHook(
+        ({ revision }) =>
+          usePageApplicationState({
+            projectId: 'project_1',
+            pageId: 'page_a',
+            schemaRefreshKey: revision,
+            editorRef,
+            onSchemaCommitted: vi.fn(),
+          }),
+        { initialProps: { revision: 'revision_1' } },
+      );
+      await act(async () => vi.advanceTimersByTime(0));
+      hook.rerender({ revision: 'revision_2' });
+      await act(async () => vi.advanceTimersByTime(0));
+      expect(hook.result.current.applyStatus).toBe('pending');
+      await act(async () => {
+        if (outcome === 'success') previous.resolve({ status: 'external_change' });
+        else previous.reject(new Error('old polling failure'));
+      });
+      expect(hook.result.current.applyStatus).toBe('pending');
+    },
+  );
+
+  it('keeps the newest polling failure visible when an older request succeeds later', async () => {
+    const previous = deferred<{ status: 'in_sync' }>();
+    schemaMocks.applyState
+      .mockReturnValueOnce(previous.promise)
+      .mockRejectedValue(new Error('latest failure'));
+    const hook = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        schemaRefreshKey: 'revision_1',
+        editorRef,
+        onSchemaCommitted: vi.fn(),
+      }),
+    );
+    await act(async () => vi.advanceTimersByTime(0));
+    await act(async () => vi.advanceTimersByTime(1500));
+    expect(hook.result.current.applyStatus).toBe('error');
+    await act(async () => previous.resolve({ status: 'in_sync' }));
+    expect(hook.result.current.applyStatus).toBe('error');
+  });
+
+  it('invalidates an old response when returning to a page before its next poll starts', async () => {
+    const previous = deferred<{ status: 'external_change' }>();
+    schemaMocks.applyState
+      .mockReturnValueOnce(previous.promise)
+      .mockResolvedValue({ status: 'pending' });
+    const hook = renderHook(
+      ({ pageId }) =>
+        usePageApplicationState({
+          projectId: 'project_1',
+          pageId,
+          schemaRefreshKey: 'revision_1',
+          editorRef,
+          onSchemaCommitted: vi.fn(),
+        }),
+      { initialProps: { pageId: 'page_a' } },
+    );
+    await act(async () => vi.advanceTimersByTime(0));
+    hook.rerender({ pageId: 'page_b' });
+    hook.rerender({ pageId: 'page_a' });
+    await act(async () => previous.resolve({ status: 'external_change' }));
+    expect(hook.result.current.applyStatus).toBe('loading');
+    await act(async () => vi.advanceTimersByTime(0));
+    expect(hook.result.current.applyStatus).toBe('pending');
+  });
+  it('continues updating on a slow connection while the next poll is pending', async () => {
+    const first = deferred<{ status: 'pending' }>();
+    const second = deferred<{ status: 'in_sync' }>();
+    schemaMocks.applyState.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const hook = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        schemaRefreshKey: 'revision_1',
+        editorRef,
+        onSchemaCommitted: vi.fn(),
+      }),
+    );
+    await act(async () => vi.advanceTimersByTime(0));
+    await act(async () => vi.advanceTimersByTime(1500));
+    await act(async () => first.resolve({ status: 'pending' }));
+    expect(hook.result.current.applyStatus).toBe('pending');
+    await act(async () => second.resolve({ status: 'in_sync' }));
+    expect(hook.result.current.applyStatus).toBe('in_sync');
   });
 });

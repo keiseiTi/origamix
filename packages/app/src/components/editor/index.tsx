@@ -23,6 +23,7 @@ interface EditorProps {
   projectId: string;
   pageId: string;
   readOnly?: boolean;
+  readOnlyMessage?: string;
   onSaveStatusChange?: (status: EditorSaveStatus, error: string | null) => void;
 }
 
@@ -64,7 +65,10 @@ const EditorCanvas = (): React.JSX.Element => {
 };
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(
-  ({ projectId, pageId, readOnly = false, onSaveStatusChange }, ref): React.JSX.Element => {
+  (
+    { projectId, pageId, readOnly = false, readOnlyMessage, onSaveStatusChange },
+    ref,
+  ): React.JSX.Element => {
     const session = useEditorSession(projectId, pageId, readOnly);
     const { initial, loading, status, error, flush, onChange, providerKey } = session;
 
@@ -106,7 +110,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
             role='status'
           >
             <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
-              AI 正在修改，编辑暂时锁定
+              {readOnlyMessage ?? 'AI 正在修改，编辑暂时锁定'}
             </span>
           </div>
         )}

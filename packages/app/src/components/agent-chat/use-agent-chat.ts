@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { AgentEvent, AgentRun } from '@origamix/shared/protocol/agent';
+import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
 import {
   cancelAgentRun,
   createAgentRun,
@@ -8,6 +8,8 @@ import {
   listAllMessages,
   subscribeAgentEvents,
 } from '../../services/agent';
+import { pageOperationKey, usePendingOperations } from '../../store/pending-operations';
+import { ApiRequestError } from '../../services/request';
 import { schemaService } from '../../services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 
@@ -20,6 +22,8 @@ export const useAgentChat = (
   pageId: string,
 ): {
   state: ReturnType<typeof agentChatReducer>;
+  activity: 'unknown' | 'idle' | 'running';
+  pendingSubmission: boolean;
   send: (text: string) => Promise<void>;
   cancel: () => Promise<void>;
   retry: () => Promise<void>;
@@ -29,24 +33,29 @@ export const useAgentChat = (
   const mounted = useRef(true);
   const generation = useRef(0);
   const sending = useRef(false);
+  const authorityRequest = useRef(0);
   const lastSubmittedText = useRef('');
-  const uncertainSubmission = useRef<{
-    text: string;
-    clientRequestId: string;
-    baseRevisionId?: string;
-    retryOfRunId?: string;
-  } | null>(null);
+  const pageKey = pageOperationKey(projectId, pageId);
+  const pending = usePendingOperations((value) => value.agents[pageKey]);
+  const [authority, setAuthority] = useState<string | null>(null);
   const conversationId = useRef<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
     const currentGeneration = generation.current;
+    const request = ++authorityRequest.current;
+    const current = () =>
+      mounted.current &&
+      generation.current === currentGeneration &&
+      authorityRequest.current === request;
     dispatch({ type: 'connection.changed', connection: 'recovering' });
     try {
       const listed = await listConversations(projectId, pageId);
+      if (!current()) return;
       const conversation = listed.conversations[0];
       conversationId.current = conversation?.conversationId ?? null;
       if (!conversation) {
+        setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
@@ -54,103 +63,161 @@ export const useAgentChat = (
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
-      if (mounted.current && generation.current === currentGeneration)
+      if (current()) {
+        setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
+      }
     } catch (error) {
-      if (mounted.current && generation.current === currentGeneration)
+      if (current())
         dispatch({
           type: 'history.failed',
           message: error instanceof Error ? error.message : '无法加载对话记录',
         });
     }
-  }, [pageId, projectId]);
+  }, [pageId, projectId, pageKey]);
 
   useEffect(() => {
     generation.current += 1;
     mounted.current = true;
     conversationId.current = null;
     dispatch({ type: 'reset' });
-    void loadAuthority();
+    // Cancel the initial load when StrictMode immediately disposes the mount.
+    const initial = window.setTimeout(() => void loadAuthority(), 0);
     return () => {
+      window.clearTimeout(initial);
       mounted.current = false;
       generation.current += 1;
     };
   }, [loadAuthority]);
+
+  useEffect(
+    () =>
+      usePendingOperations.subscribe((next, previous) => {
+        if (previous.agents[pageKey] && !next.agents[pageKey] && !sending.current) {
+          // A request initiated by an unmounted view has settled. Recheck authority
+          // before releasing the new view's editing lock.
+          setAuthority(null);
+          void loadAuthority();
+        }
+      }),
+    [pageKey, loadAuthority],
+  );
 
   const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
   useEffect(() => {
     if (!activeRunId) return;
     dispatch({ type: 'connection.changed', connection: 'connecting' });
     const afterEventId = state.lastEventId >= 0 ? state.lastEventId : undefined;
-    return subscribeAgentEvents(projectId, activeRunId, {
+    const currentGeneration = generation.current;
+    let disposed = false;
+    let timer: number | undefined;
+    const current = () => !disposed && mounted.current && generation.current === currentGeneration;
+    const reconnect = () => {
+      if (!current()) return;
+      setAuthority(null);
+      dispatch({ type: 'connection.changed', connection: 'recovering' });
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (current())
+          void loadAuthority().finally(() => {
+            if (current()) setReconnectAttempt((value) => value + 1);
+          });
+      }, 750);
+    };
+    const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
       afterEventId,
-      onEvent: (event: AgentEvent) => dispatch({ type: 'event.received', event }),
-      onError: () => {
-        dispatch({ type: 'connection.changed', connection: 'recovering' });
-        window.setTimeout(() => {
-          if (mounted.current) {
-            void loadAuthority().finally(() => setReconnectAttempt((current) => current + 1));
-          }
-        }, 750);
+      onEvent: (event: AgentEvent) => {
+        if (current()) dispatch({ type: 'event.received', event });
       },
-      onClose: () => {
-        void loadAuthority().finally(() => setReconnectAttempt((current) => current + 1));
-      },
+      onError: reconnect,
+      onClose: reconnect,
     });
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+      unsubscribe();
+    };
     // Event ids are per Run. The current cursor is captured only when opening a stream;
     // received deltas must not tear down and recreate the same connection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRunId, loadAuthority, projectId, reconnectAttempt]);
 
   const submit = useCallback(
-    async (submission: {
-      text: string;
-      clientRequestId: string;
-      baseRevisionId?: string;
-      retryOfRunId?: string;
-    }): Promise<void> => {
+    async (
+      submission: { text: string; retryOfRunId?: string },
+      retryInput?: CreateAgentRunRequest,
+    ): Promise<void> => {
       const content = submission.text.trim();
-      if (!content || sending.current || isRunActive(state.stage)) return;
+      const operations = usePendingOperations.getState();
+      if (!content || sending.current || operations.agents[pageKey]?.inFlight)
+        throw new Error('请求仍在处理中，请稍后重试');
+      if (!retryInput && (authority !== pageKey || isRunActive(state.stage)))
+        throw new Error('请等待页面运行状态确认后再发送');
+      if (!retryInput && operations.agents[pageKey])
+        throw new Error('上次发送结果待确认，请先重试');
       sending.current = true;
+      authorityRequest.current += 1;
+      setAuthority(null);
       lastSubmittedText.current = content;
+      const currentGeneration = generation.current;
+      const current = () => mounted.current && generation.current === currentGeneration;
+      let input: CreateAgentRunRequest | undefined;
+      let accepted = false;
       try {
         const baseRevisionId =
-          submission.baseRevisionId ?? (await schemaService.get(projectId, pageId)).revisionId;
-        const stableSubmission = { ...submission, text: content, baseRevisionId };
-        uncertainSubmission.current = stableSubmission;
-        const created = await createAgentRun({
+          retryInput?.baseRevisionId ?? (await schemaService.get(projectId, pageId)).revisionId;
+        if (!current()) throw new Error('页面已切换，请返回原页面重试');
+        const latest = usePendingOperations.getState().agents[pageKey];
+        if (latest?.inFlight || (!retryInput && latest))
+          throw new Error('请求仍在处理中，请稍后重试');
+        input = retryInput ?? {
           version: '1',
           projectId,
           pageId,
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
-          clientRequestId: stableSubmission.clientRequestId,
+          clientRequestId: requestId(),
           baseRevisionId,
           content: { version: '1', blocks: [{ type: 'text', text: content }] },
-          ...(stableSubmission.retryOfRunId ? { retryOfRunId: stableSubmission.retryOfRunId } : {}),
-        });
+          ...(submission.retryOfRunId ? { retryOfRunId: submission.retryOfRunId } : {}),
+        };
+        operations.setAgent(pageKey, { input, inFlight: true });
+        const created = await createAgentRun(input);
+        accepted = true;
+        operations.finishAgent(pageKey, input.clientRequestId, true);
+        if (!current()) return;
         conversationId.current = created.conversationId;
         const run = (await getAgentRun(projectId, created.runId)).run;
         const history = await listAllMessages(projectId, pageId, created.conversationId);
+        if (!current()) return;
+        setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
         dispatch({ type: 'run.queued', run });
-        uncertainSubmission.current = null;
       } catch (error) {
-        dispatch({
-          type: 'history.failed',
-          message: error instanceof Error ? error.message : '发送失败，请重试。',
-        });
+        if (input && !accepted)
+          operations.finishAgent(
+            pageKey,
+            input.clientRequestId,
+            error instanceof ApiRequestError &&
+              error.status >= 400 &&
+              error.status < 500 &&
+              error.status !== 408,
+          );
+        if (current()) {
+          setAuthority(null);
+          dispatch({
+            type: 'history.failed',
+            message: error instanceof Error ? error.message : '发送失败，请重试。',
+          });
+        }
         throw error;
       } finally {
         sending.current = false;
       }
     },
-    [pageId, projectId, state.stage],
+    [pageId, projectId, pageKey, authority, state.stage],
   );
 
-  const send = useCallback(
-    (text: string) => submit({ text, clientRequestId: requestId() }),
-    [submit],
-  );
+  const send = useCallback((text: string) => submit({ text }), [submit]);
 
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
@@ -159,15 +226,35 @@ export const useAgentChat = (
   }, [loadAuthority, projectId, state.run, state.stage]);
 
   const retry = useCallback(async (): Promise<void> => {
-    if (uncertainSubmission.current) await submit(uncertainSubmission.current);
-    else if (lastSubmittedText.current)
-      await submit({
-        text: lastSubmittedText.current,
-        clientRequestId: requestId(),
-        ...(state.run ? { retryOfRunId: state.run.runId } : {}),
-      });
+    const request = usePendingOperations.getState().agents[pageKey];
+    if (request) {
+      const text = request.input.content.blocks
+        .filter((block) => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n');
+      await submit({ text }, request.input);
+    } else if (authority !== pageKey) await loadAuthority();
+    else if (
+      lastSubmittedText.current &&
+      state.run &&
+      ['failed', 'cancelled', 'interrupted'].includes(state.run.status)
+    )
+      await submit({ text: lastSubmittedText.current, retryOfRunId: state.run.runId });
     else await loadAuthority();
-  }, [loadAuthority, state.run, submit]);
+  }, [pageKey, authority, loadAuthority, state.run, submit]);
 
-  return { state, send, cancel, retry, refresh: loadAuthority };
+  const activity =
+    authority !== pageKey || pending ? 'unknown' : isRunActive(state.stage) ? 'running' : 'idle';
+  return {
+    state,
+    activity,
+    pendingSubmission: Boolean(pending && !pending.inFlight),
+    send,
+    cancel,
+    retry,
+    refresh: async () => {
+      setAuthority(null);
+      await loadAuthority();
+    },
+  };
 };

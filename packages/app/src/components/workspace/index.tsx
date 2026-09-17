@@ -39,7 +39,11 @@ export const Workspace = ({
   schemaRefreshKey,
   onSchemaCommitted,
 }: WorkspaceProps): React.JSX.Element => {
-  const [runningPages, setRunningPages] = useState<Record<string, boolean>>({});
+  const [agentState, setAgentState] = useState<{
+    pageKey: string;
+    activity: 'unknown' | 'idle' | 'running';
+  } | null>(null);
+  const pageKey = JSON.stringify([projectId, page?.id]);
   const { applyStatus, saveStatus, setSaveStatus, applyPage, reloadFromProject } =
     usePageApplicationState({
       projectId,
@@ -48,7 +52,8 @@ export const Workspace = ({
       editorRef,
       onSchemaCommitted,
     });
-  const agentRunning = page ? runningPages[page.id] === true : false;
+  const agentBlocked = agentState?.pageKey !== pageKey || agentState.activity !== 'idle';
+  const agentChecking = agentState?.pageKey !== pageKey || agentState.activity === 'unknown';
   const chat = page && projectId && (
     <ChatWorkspace
       key={`${projectId}:${page.id}`}
@@ -58,9 +63,11 @@ export const Workspace = ({
       draft={draft}
       onDraftChange={onDraftChange}
       onSchemaCommitted={(revisionId) => onSchemaCommitted(page.id, revisionId)}
-      onRunningChange={(running) =>
-        setRunningPages((current) =>
-          current[page.id] === running ? current : { ...current, [page.id]: running },
+      onActivityChange={(activity) =>
+        setAgentState((current) =>
+          current?.pageKey === pageKey && current.activity === activity
+            ? current
+            : { pageKey, activity },
         )
       }
     />
@@ -79,7 +86,7 @@ export const Workspace = ({
           onReloadFromProject={reloadFromProject}
           applyStatus={applyStatus}
           saveStatus={saveStatus}
-          undoDisabled={agentRunning}
+          undoDisabled={agentBlocked}
         />
       )}
       {!page ? (
@@ -97,7 +104,8 @@ export const Workspace = ({
                 ref={editorRef}
                 projectId={projectId}
                 pageId={page.id}
-                readOnly={agentRunning}
+                readOnly={agentBlocked}
+                readOnlyMessage={agentChecking ? '正在确认页面运行状态，请稍候' : undefined}
                 onSaveStatusChange={setSaveStatus}
               />
             </div>

@@ -131,11 +131,11 @@ export const WorkspaceHeader = ({
               applying ||
               undoDisabled ||
               saveStatus !== 'saved' ||
-              applyStatus !== 'pending'
+              (applyStatus !== 'pending' && applyStatus !== 'result_pending')
             }
             onPress={() => void apply()}
           >
-            {applying ? '应用中…' : '应用到项目'}
+            {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
           </Button>
           <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
         </Tooltip>

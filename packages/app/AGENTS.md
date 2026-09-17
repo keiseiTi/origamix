@@ -6,7 +6,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/app.tsx`, `src/components/`: React workbench and interactions.
 - `src/services/request.ts` and sibling services: typed HTTP requests and errors.
-- `src/store/`: window-scoped workspace and preference projections.
+- `src/store/`: window-scoped workspace and preference projections; `pending-operations.ts` retains unresolved Apply/Agent request identities in memory across view unmounts.
 - `src/hooks/`: cross-component workflow orchestration; feature-owned editor, Agent and Apply sessions remain beside their components.
 - `src/components/agent-chat/`, `src/components/editor/`, `src/components/settings/`: feature-owned UI and state.
 - `src/components/editor/`: editing UI and its save session; `src/runtime/` and `src/components/workspace/page-window.tsx`: reusable runtime rendering and the read-only preview surface.
@@ -22,6 +22,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Associate asynchronous work with page identity and revision; stale results must not overwrite another page. Preserve pending edits on failure.
 - Resolve edit, preview, Agent, Apply and explicit project reload actions with `projectId` plus stable `pageId`; page names are display labels, not identity. A reload that discards Working Schema needs an explicit user confirmation, and late responses from another page must be ignored.
 - Keep Workspace polling, save and Apply projections in the page-bound application-state hook keyed by projectId/pageId and, where relevant, revisionId. Ignore late responses for inactive pages instead of letting view components reconcile them ad hoc.
+- Agent recovery starts as unknown and blocks editing, undo, Apply and new submissions until authority is loaded; failures must retain a visible retry path. Pending operation records are never written to browser storage, and remounting must not automatically replay a mutation.
 - Retain one Apply request ID for the same page Revision until the result is known; an ambiguous transport failure must not turn an explicit retry into a different logical operation.
 - Renderer transports cache backend authority only as a convenience. After a desktop Server restart, refresh it through the named connection bridge; never replay an ambiguous failed mutation automatically, and recover Agent views from durable Run/Message/Schema state.
 - Preview uses the read-only preview bridge, never a fallback that requests desktop credentials. Rendering errors must remain visible without corrupting the editing session.
