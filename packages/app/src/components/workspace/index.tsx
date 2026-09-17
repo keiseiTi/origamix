@@ -1,10 +1,10 @@
-import { useState, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { PageItem } from '../../store/workspace';
 import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
-import { usePageApplicationState } from './state/use-page-application-state';
+import { usePageSession } from './state/use-page-session';
 
 interface WorkspaceProps {
   page?: PageItem;
@@ -39,42 +39,72 @@ export const Workspace = ({
   schemaRefreshKey,
   onSchemaCommitted,
 }: WorkspaceProps): React.JSX.Element => {
-  const [agentState, setAgentState] = useState<{
-    pageKey: string;
-    activity: 'unknown' | 'idle' | 'running';
-  } | null>(null);
-  const pageKey = JSON.stringify([projectId, page?.id]);
-  const { applyStatus, saveStatus, setSaveStatus, applyPage, reloadFromProject } =
-    usePageApplicationState({
-      projectId,
-      pageId: page?.id,
-      schemaRefreshKey,
-      editorRef,
-      onSchemaCommitted,
-    });
-  const agentBlocked = agentState?.pageKey !== pageKey || agentState.activity !== 'idle';
-  const agentChecking = agentState?.pageKey !== pageKey || agentState.activity === 'unknown';
-  const chat = page && projectId && (
-    <ChatWorkspace
-      key={`${projectId}:${page.id}`}
+  if (!page || !projectId)
+    return (
+      <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
+        <EmptyWorkspace
+          onCreateProject={onCreateProject}
+          supportsNativeProjectDirectories={supportsNativeProjectDirectories}
+        />
+      </section>
+    );
+
+  return (
+    <PageWorkspace
+      page={page}
       projectId={projectId}
-      pageId={page.id}
+      projectName={projectName}
+      mode={mode}
+      editorRef={editorRef}
+      onModeChange={onModeChange}
+      onPreview={onPreview}
+      onUndo={onUndo}
+      draft={draft}
+      onDraftChange={onDraftChange}
+      schemaRefreshKey={schemaRefreshKey}
+      onSchemaCommitted={onSchemaCommitted}
+    />
+  );
+};
+
+const PageWorkspace = ({
+  page,
+  projectId,
+  projectName,
+  mode,
+  editorRef,
+  onModeChange,
+  onPreview,
+  onUndo,
+  draft,
+  onDraftChange,
+  schemaRefreshKey,
+  onSchemaCommitted,
+}: Omit<
+  WorkspaceProps,
+  'page' | 'projectId' | 'onCreateProject' | 'supportsNativeProjectDirectories'
+> & {
+  page: PageItem;
+  projectId: string;
+}): React.JSX.Element => {
+  const { application, agent, capabilities } = usePageSession({
+    projectId,
+    pageId: page.id,
+    schemaRefreshKey,
+    editorRef,
+    onSchemaCommitted,
+  });
+  const chat = (
+    <ChatWorkspace
       pageName={page.name}
       draft={draft}
       onDraftChange={onDraftChange}
-      onSchemaCommitted={(revisionId) => onSchemaCommitted(page.id, revisionId)}
-      onActivityChange={(activity) =>
-        setAgentState((current) =>
-          current?.pageKey === pageKey && current.activity === activity
-            ? current
-            : { pageKey, activity },
-        )
-      }
+      session={agent}
     />
   );
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      {page && projectId && mode !== 'preview' && (
+      {mode !== 'preview' && (
         <WorkspaceHeader
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}
@@ -82,36 +112,31 @@ export const Workspace = ({
           onModeChange={onModeChange}
           onPreview={onPreview}
           onUndo={onUndo}
-          onApply={applyPage}
-          onReloadFromProject={reloadFromProject}
-          applyStatus={applyStatus}
-          saveStatus={saveStatus}
-          undoDisabled={agentBlocked}
+          onApply={application.applyPage}
+          onReloadFromProject={application.reloadFromProject}
+          applyStatus={application.applyStatus}
+          saveStatus={application.saveStatus}
+          canApply={capabilities.canApply}
+          canUndo={capabilities.canUndo}
+          canReload={capabilities.canReload}
         />
       )}
-      {!page ? (
-        <EmptyWorkspace
-          onCreateProject={onCreateProject}
-          supportsNativeProjectDirectories={supportsNativeProjectDirectories}
-        />
-      ) : (
-        <>
-          <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
-          {projectId && (
-            <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-              <Editor
-                key={`${projectId}:${page.id}:${schemaRefreshKey}`}
-                ref={editorRef}
-                projectId={projectId}
-                pageId={page.id}
-                readOnly={agentBlocked}
-                readOnlyMessage={agentChecking ? '正在确认页面运行状态，请稍候' : undefined}
-                onSaveStatusChange={setSaveStatus}
-              />
-            </div>
-          )}
-        </>
-      )}
+      <>
+        <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
+        <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <Editor
+            key={`${projectId}:${page.id}:${schemaRefreshKey}`}
+            ref={editorRef}
+            projectId={projectId}
+            pageId={page.id}
+            readOnly={!capabilities.canEdit}
+            readOnlyMessage={
+              capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined
+            }
+            onSaveStatusChange={application.setSaveStatus}
+          />
+        </div>
+      </>
     </section>
   );
 };

@@ -16,7 +16,9 @@ interface WorkspaceHeaderProps {
   onReloadFromProject: () => Promise<void>;
   applyStatus: 'loading' | 'in_sync' | 'pending' | 'external_change' | 'result_pending' | 'error';
   saveStatus: EditorSaveStatus;
-  undoDisabled?: boolean;
+  canApply: boolean;
+  canUndo: boolean;
+  canReload: boolean;
 }
 
 export const WorkspaceHeader = ({
@@ -30,7 +32,9 @@ export const WorkspaceHeader = ({
   onReloadFromProject,
   applyStatus,
   saveStatus,
-  undoDisabled = false,
+  canApply,
+  canUndo,
+  canReload,
 }: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
   const [undoing, setUndoing] = useState(false);
@@ -125,14 +129,7 @@ export const WorkspaceHeader = ({
             size='sm'
             variant='secondary'
             className='h-7 min-h-7 px-2 text-xs'
-            isDisabled={
-              opening ||
-              undoing ||
-              applying ||
-              undoDisabled ||
-              saveStatus !== 'saved' ||
-              (applyStatus !== 'pending' && applyStatus !== 'result_pending')
-            }
+            isDisabled={opening || undoing || applying || !canApply}
             onPress={() => void apply()}
           >
             {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
@@ -146,7 +143,7 @@ export const WorkspaceHeader = ({
               size='sm'
               variant='ghost'
               aria-label='重新读取项目内容'
-              isDisabled={reloading || applying || undoDisabled}
+              isDisabled={reloading || applying || !canReload}
               onPress={() => void reload()}
             >
               <RefreshCw size={15} />
@@ -161,7 +158,7 @@ export const WorkspaceHeader = ({
             aria-label='撤销页面修改'
             variant='ghost'
             className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-            isDisabled={opening || undoing || undoDisabled}
+            isDisabled={opening || undoing || !canUndo}
             onPress={() => void undo()}
           >
             <Undo2 size={15} />

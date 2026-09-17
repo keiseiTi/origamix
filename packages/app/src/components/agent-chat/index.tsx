@@ -2,7 +2,7 @@ import { Button, Spinner, TextArea } from '@heroui/react';
 import { CircleStop, LayoutPanelLeft, RotateCcw, Send, Sparkles, Wrench } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { isRunActive, messageText } from './agent-chat-state';
-import { useAgentChat } from './use-agent-chat';
+import type { AgentChatSession } from './use-agent-chat';
 
 const stageLabels = {
   queued: '已排队',
@@ -20,36 +20,19 @@ const stageLabels = {
 } as const;
 
 export const ChatWorkspace = ({
-  projectId,
-  pageId,
   pageName,
   draft,
   onDraftChange,
-  onSchemaCommitted,
-  onActivityChange,
+  session,
 }: {
-  projectId: string;
-  pageId: string;
   pageName: string;
   draft: string;
   onDraftChange: (draft: string) => void;
-  onSchemaCommitted: (revisionId: string) => void;
-  onActivityChange: (activity: 'unknown' | 'idle' | 'running') => void;
+  session: AgentChatSession;
 }): React.JSX.Element => {
-  const { state, activity, pendingSubmission, send, cancel, retry } = useAgentChat(
-    projectId,
-    pageId,
-  );
+  const { state, activity, pendingSubmission, send, cancel, retry } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const notifiedRevisionRef = useRef<string | null>(null);
   const active = isRunActive(state.stage);
-  useEffect(() => onActivityChange(activity), [activity, onActivityChange]);
-  useEffect(() => {
-    if (state.committedRevisionId && state.committedRevisionId !== notifiedRevisionRef.current) {
-      notifiedRevisionRef.current = state.committedRevisionId;
-      onSchemaCommitted(state.committedRevisionId);
-    }
-  }, [onSchemaCommitted, state.committedRevisionId]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages, state.streamedText]);
