@@ -1,53 +1,30 @@
 import { lazy } from 'react';
-import type { Material } from '../../src/material';
+import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
+import { sliderManifest } from './manifest';
 
-const SliderMaterial: Material = {
-  Component: lazy(() => import('./index')),
-  title: '滑动输入条',
-  type: 'slider',
-  dropTypes: ['form'],
-  contextConfig: {
-    variables: [
-      {
-        name: 'checked',
-        description: '是否选中',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
-      },
-    ],
-    methods: [
-      {
-        name: 'onChange',
-        description: '值改变时的回调',
-        params: [
-          {
-            description: '事件参数',
-          },
-        ],
-      },
-    ],
-  },
-  editorConfig: {
-    panels: [
-      {
-        title: '属性',
-        configs: [
-          {
-            label: '最大值',
-            field: 'max',
-            uiType: 'number',
-          },
-          {
-            label: '最小值',
-            field: 'min',
-            uiType: 'number',
-          },
-        ],
-      },
-    ],
-  },
-};
+const SliderMaterial = toEditorMaterial(
+  fromMaterialManifest(sliderManifest, {
+    editorConfig: {
+      panels: [
+        {
+          title: '属性',
+          configs: [
+            {
+              label: '最大值',
+              field: 'max',
+              uiType: 'number',
+            },
+            {
+              label: '最小值',
+              field: 'min',
+              uiType: 'number',
+            },
+          ],
+        },
+      ],
+    },
+  }),
+  lazy(() => import('./index')),
+);
 
 export default SliderMaterial;

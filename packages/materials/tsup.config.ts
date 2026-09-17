@@ -6,6 +6,7 @@ export default defineConfig({
     'antd/group': 'antd/group.ts',
     'antd/manifest': 'antd/manifest.ts',
     'src/material-manifest': 'src/material-manifest.ts',
+    'src/origamix-material': 'src/origamix-material.ts',
   },
   format: ['esm'],
   dts: true,

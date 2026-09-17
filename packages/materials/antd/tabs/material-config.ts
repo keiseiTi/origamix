@@ -2,6 +2,8 @@ import React from 'react';
 
 const Tabs = React.lazy(() => import('./index'));
 import type { Material } from '../../src/material';
+import { fromLegacyEditorMaterial } from '../../src/origamix-material';
+import { tabsManifest } from './manifest';
 
 const TabsMaterial: Material = {
   Component: Tabs,
@@ -82,4 +84,4 @@ const TabsMaterial: Material = {
   },
 };
 
-export default TabsMaterial;
+export default fromLegacyEditorMaterial(tabsManifest, TabsMaterial);

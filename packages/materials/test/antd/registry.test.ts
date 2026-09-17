@@ -29,6 +29,17 @@ import { timePickerManifest } from '../../antd/time-picker/manifest';
 import { treeManifest } from '../../antd/tree/manifest';
 import { treeSelectManifest } from '../../antd/tree-select/manifest';
 import { uploadManifest } from '../../antd/upload/manifest';
+import { buttonDefinition } from '../../antd/button/definition';
+import BasicPageMaterial from '../../antd/basic-page/material-config';
+import { inputDefinition } from '../../antd/input/definition';
+import TabsMaterial from '../../antd/tabs/material-config';
+import { basicPageManifest } from '../../antd/basic-page/manifest';
+import { tabsManifest } from '../../antd/tabs/manifest';
+import {
+  isOrigamixEditorMaterial,
+  toEditorMaterial,
+  toMaterialManifest,
+} from '../../src/origamix-material';
 
 const materialOwnedManifests = [
   containerManifest,
@@ -67,6 +78,34 @@ const expectPureData = (value: unknown): void => {
 };
 
 describe('antd material registry', () => {
+  it('derives migrated editor materials and manifests from serializable definitions', () => {
+    for (const definition of [buttonDefinition, inputDefinition]) {
+      expectPureData(definition);
+      expect(toMaterialManifest(definition)).toMatchObject({
+        type: definition.type,
+        title: definition.title,
+        defaultProps: definition.defaultProps,
+        context: definition.context,
+      });
+      const editorMaterial = toEditorMaterial(definition, (() => null) as never);
+      expect(editorMaterial).toMatchObject({
+        type: definition.type,
+        title: definition.title,
+        defaultProps: definition.defaultProps,
+      });
+      expect(editorMaterial.dropTypes).toEqual(toMaterialManifest(definition).allowedParentTypes);
+    }
+  });
+
+  it('supports runtime-only page and tabs materials without publishing them to the Agent catalog', () => {
+    expect(isOrigamixEditorMaterial(BasicPageMaterial)).toBe(true);
+    expect(isOrigamixEditorMaterial(TabsMaterial)).toBe(true);
+    expectPureData(basicPageManifest);
+    expectPureData(tabsManifest);
+    expect(antdMaterialManifest.materials).not.toContainEqual(basicPageManifest);
+    expect(antdMaterialManifest.materials).not.toContainEqual(tabsManifest);
+  });
+
   it('keeps palette material types unique and registered at runtime', () => {
     const types = materialGroups.flatMap((group) =>
       group.children.map((material) => material.type),
@@ -75,6 +114,9 @@ describe('antd material registry', () => {
     expect(new Set(types).size).toBe(types.length);
     for (const type of types) {
       expect(type in materialComponents).toBe(true);
+    }
+    for (const material of materialGroups.flatMap((group) => group.children)) {
+      expect(isOrigamixEditorMaterial(material)).toBe(true);
     }
   });
 

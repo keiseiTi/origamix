@@ -21,6 +21,10 @@
     "./manifest": {
       "types": "./src/material-manifest.ts",
       "import": "./dist/src/material-manifest.js"
+    },
+    "./material": {
+      "types": "./src/origamix-material.ts",
+      "import": "./dist/src/origamix-material.js"
     }
   },
   "publishConfig": {
@@ -41,6 +45,10 @@
       "./manifest": {
         "types": "./dist/src/material-manifest.d.ts",
         "import": "./dist/src/material-manifest.js"
+      },
+      "./material": {
+        "types": "./dist/src/origamix-material.d.ts",
+        "import": "./dist/src/origamix-material.js"
       }
     }
   },

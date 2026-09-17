@@ -1,5 +1,7 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
+import { fromLegacyEditorMaterial } from '../../src/origamix-material';
+import { basicPageManifest } from './manifest';
 
 const BasicPageMaterial: Material = {
   title: '页面',
@@ -70,4 +72,4 @@ const BasicPageMaterial: Material = {
   },
 };
 
-export default BasicPageMaterial;
+export default fromLegacyEditorMaterial(basicPageManifest, BasicPageMaterial);
