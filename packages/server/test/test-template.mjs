@@ -62,10 +62,12 @@ try {
     },
     created.id,
   );
+  const working = await request(`/pages/${page.id}/working-state`, undefined, created.id, 'GET');
   await request(
     `/pages/${page.id}/apply`,
     {
       expectedRevisionId: updated.revisionId,
+      expectedWorkingVersion: working.workingVersion,
       clientRequestId: 'template-test-apply',
     },
     created.id,

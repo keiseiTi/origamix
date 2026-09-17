@@ -5,7 +5,7 @@ CREATE TABLE projects (id TEXT PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NU
 CREATE TABLE pages (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, slug TEXT NOT NULL, name TEXT NOT NULL, relative_path TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE conversations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, title TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
 CREATE TABLE messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, run_id TEXT, role TEXT NOT NULL, content_json TEXT NOT NULL, content_version TEXT NOT NULL DEFAULT '1', status INTEGER NOT NULL, sequence INTEGER NOT NULL, error_code TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, conversation_id TEXT NOT NULL, user_message_id TEXT NOT NULL, client_request_id TEXT NOT NULL, base_revision_id TEXT NOT NULL, result_revision_id TEXT, model_ref TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'page_modify', status INTEGER NOT NULL, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT);
+CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, conversation_id TEXT NOT NULL, user_message_id TEXT NOT NULL, client_request_id TEXT NOT NULL, base_revision_id TEXT NOT NULL, base_working_version INTEGER NOT NULL, result_revision_id TEXT, result_working_version INTEGER, model_ref TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'page_modify', status INTEGER NOT NULL, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT);
 CREATE UNIQUE INDEX idx_pages_project_slug ON pages(project_id, slug);
 CREATE UNIQUE INDEX projects_path_unique ON projects(path);
 CREATE INDEX idx_pages_project_id ON pages(project_id);
@@ -61,6 +61,8 @@ const expectedColumns: Record<string, readonly string[]> = {
     'user_message_id',
     'client_request_id',
     'base_revision_id',
+    'base_working_version',
+    'result_working_version',
     'result_revision_id',
     'model_ref',
     'mode',

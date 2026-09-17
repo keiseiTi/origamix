@@ -123,12 +123,12 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
           }`}
         >
           {status === 'saving'
-            ? '保存中…'
+            ? '正在保留草稿…'
             : status === 'dirty'
-              ? '待保存'
+              ? '草稿待保留'
               : status === 'error'
                 ? error
-                : '已保存'}
+                : '草稿已保留'}
         </div>
       </div>
     );

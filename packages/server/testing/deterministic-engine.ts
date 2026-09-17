@@ -108,24 +108,30 @@ export const createDeterministicFakeAgentEngine = (): AgentEngine => {
     const schema = context?.schemaFragment
       ? (JSON.parse(context.schemaFragment) as OrigamixPageSchema)
       : undefined;
-    const replace = request.tools?.find((tool) => tool.name === 'replace_page_schema');
-    if (replace && schema) {
+    const applyOperations = request.tools?.find((tool) => tool.name === 'apply_page_operations');
+    if (applyOperations && schema) {
       const runId = `run_${Date.now()}`;
-      const candidate = deterministicSchema(schema, request.prompt, runId);
+      const operations = [
+        {
+          operation: 'updateElementProps',
+          elementId: schema.layout.root,
+          set: { agentPrompt: request.prompt, agentRunId: runId },
+        },
+      ];
       await request.onEvent?.({
         type: 'tool_start',
         toolCallId: `tool_${runId}`,
-        toolName: replace.name,
-        input: { schema: candidate },
+        toolName: applyOperations.name,
+        input: { operations },
       });
-      const result = await replace.execute(
-        { schema: candidate },
+      const result = await applyOperations.execute(
+        { operations },
         request.signal ?? new AbortController().signal,
       );
       await request.onEvent?.({
         type: 'tool_end',
         toolCallId: `tool_${runId}`,
-        toolName: replace.name,
+        toolName: applyOperations.name,
         result,
         isError: false,
       });

@@ -93,38 +93,78 @@ describe('Project and Schema HTTP flows', () => {
     const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
     const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
     const targetBeforeEdit = await readFile(targetPath, 'utf8');
-    const schemaResponse = await server.inject({
+    const workingBeforeResponse = await server.inject({
       method: 'GET',
-      url: `/api/v1/pages/${page.id}/schema`,
+      url: `/api/v1/pages/${page.id}/working-state`,
       headers: projectHeaders,
     });
-    const current = schemaResponse.json() as {
+    const workingBefore = workingBeforeResponse.json() as {
       success: true;
-      data: { revisionId: string };
+      data: {
+        revisionId: string;
+        workingVersion: number;
+        schema: {
+          elements: Record<string, { type: string; props: Record<string, unknown> }>;
+        };
+      };
     };
-    const saveResponse = await server.inject({
-      method: 'POST',
-      url: `/api/v1/pages/${page.id}/changesets`,
+    const editedSchema = structuredClone(workingBefore.data.schema);
+    editedSchema.elements.element_root!.props = { padding: 28 };
+    const draftResponse = await server.inject({
+      method: 'PUT',
+      url: `/api/v1/pages/${page.id}/working-state`,
       headers: projectHeaders,
       payload: {
-        pageId: page.id,
-        baseRevisionId: current.data.revisionId,
-        source: { kind: 'user' },
-        createdAt: new Date().toISOString(),
-        operation: 'updateElementProps',
-        elementId: 'element_root',
-        props: { padding: 28 },
+        baseWorkingVersion: workingBefore.data.workingVersion,
+        schema: editedSchema,
       },
     });
-    expect(saveResponse.statusCode).toBe(200);
+    expect(draftResponse.statusCode).toBe(200);
     expect(await readFile(targetPath, 'utf8')).toBe(targetBeforeEdit);
-    const saved = saveResponse.json() as { success: true; data: { revisionId: string } };
+    const draft = draftResponse.json() as {
+      success: true;
+      data: { revisionId: string; workingVersion: number };
+    };
+    expect(draft.data.revisionId).toBe(workingBefore.data.revisionId);
+    const workingStateResponse = await server.inject({
+      method: 'GET',
+      url: `/api/v1/pages/${page.id}/working-state`,
+      headers: projectHeaders,
+    });
+    expect(workingStateResponse.statusCode).toBe(200);
+    const workingState = workingStateResponse.json() as {
+      success: true;
+      data: {
+        revisionId: string;
+        workingVersion: number;
+        workingHash: string;
+        savedSchemaHash: string;
+      };
+    };
+    expect(workingState.data).toMatchObject({
+      revisionId: workingBefore.data.revisionId,
+    });
+    expect(workingState.data.workingHash).not.toBe(workingState.data.savedSchemaHash);
+    const checkpointResponse = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/revisions`,
+      headers: projectHeaders,
+      payload: { expectedWorkingVersion: workingState.data.workingVersion },
+    });
+    expect(checkpointResponse.statusCode).toBe(200);
+    const saved = checkpointResponse.json() as {
+      success: true;
+      data: { revisionId: string; workingVersion: number };
+    };
+    expect(saved.data.workingVersion).toBeGreaterThan(workingState.data.workingVersion);
+    expect(saved.data.revisionId).not.toBe(workingBefore.data.revisionId);
     const applyResponse = await server.inject({
       method: 'POST',
       url: `/api/v1/pages/${page.id}/apply`,
       headers: projectHeaders,
       payload: {
         expectedRevisionId: saved.data.revisionId,
+        expectedWorkingVersion: saved.data.workingVersion,
         clientRequestId: 'deterministic_product_flow',
       },
     });

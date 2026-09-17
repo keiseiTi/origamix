@@ -40,7 +40,7 @@ export const createDefaultAgentToolEntries = (
         },
       };
     }
-    if (tool.name === 'replace_page_schema') {
+    if (tool.name === 'apply_page_operations') {
       return {
         tool,
         policy: {

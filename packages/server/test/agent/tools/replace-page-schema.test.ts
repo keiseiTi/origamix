@@ -6,8 +6,12 @@ import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { ApplicationDatabase } from '../../../database/database';
 import { AgentRunRepository, type AgentRunRecord } from '../../../agent/run-repository';
 import { ProjectRepository } from '../../../projects/project-repository';
-import { getSchema, initializePageSchema } from '../../../schema/schema-service';
-import { createReplacePageSchemaTool } from '../../../agent/tools/replace-page-schema';
+import {
+  getSchema,
+  getWorkingSchemaState,
+  initializePageSchema,
+} from '../../../schema/schema-service';
+import { createApplyPageOperationsTool } from '../../../agent/tools/replace-page-schema';
 
 const directories: string[] = [];
 const pageSchema = (type = 'container'): OrigamixPageSchema => ({
@@ -64,6 +68,7 @@ const setup = async () => {
     userMessageId: 'message_test',
     clientRequestId: 'request_test',
     baseRevisionId: initialRevisionId,
+    baseWorkingVersion: 1,
     modelRef: 'deepseek/deepseek-v4-flash',
     mode: 'page_modify',
     status: 'tool_calling',
@@ -88,7 +93,7 @@ const setup = async () => {
   };
   runs.create(run);
   const projects = new ProjectRepository(database);
-  const tool = createReplacePageSchemaTool(
+  const tool = createApplyPageOperationsTool(
     { projects, runs },
     {
       runId: run.id,
@@ -96,27 +101,41 @@ const setup = async () => {
       projectId: run.projectId,
       pageId: run.pageId,
       baseRevisionId: run.baseRevisionId,
+      baseWorkingVersion: run.baseWorkingVersion,
       maxSchemaBytes: run.budget.maxSchemaBytes,
     },
   );
   return { database, pageRef, initialRevisionId, runs, tool };
 };
 
-describe('replace_page_schema tool', () => {
-  it('commits through SchemaService and makes identical retries idempotent', async () => {
+describe('apply_page_operations tool', () => {
+  it('updates Working atomically without creating a Revision', async () => {
     const fixture = await setup();
-    const schema = pageSchema();
-    schema.elements.text_title = { type: 'text', props: { text: 'Title' } };
-    schema.layout.structure.element_root = ['text_title'];
-    schema.layout.structure.text_title = [];
-    const first = (await fixture.tool.execute({ schema }, new AbortController().signal)) as {
+    const before = await readdir(
+      join(fixture.pageRef.projectPath, '.origamix', 'revisions', 'page_home'),
+    );
+    const result = (await fixture.tool.execute(
+      {
+        operations: [
+          {
+            operation: 'addElement',
+            elementId: 'text_title',
+            element: { type: 'text', props: { text: 'Title' } },
+            parentId: 'element_root',
+          },
+        ],
+      },
+      new AbortController().signal,
+    )) as {
       revisionId: string;
+      workingVersion: number;
     };
-    const duplicate = (await fixture.tool.execute({ schema }, new AbortController().signal)) as {
-      revisionId: string;
-    };
-    expect(duplicate.revisionId).toBe(first.revisionId);
-    expect((await getSchema(fixture.pageRef)).revisionId).toBe(first.revisionId);
+    expect(result.revisionId).toBe(fixture.initialRevisionId);
+    expect(result.workingVersion).toBe(2);
+    expect((await getWorkingSchemaState(fixture.pageRef)).schema.elements.text_title).toBeDefined();
+    expect(
+      await readdir(join(fixture.pageRef.projectPath, '.origamix', 'revisions', 'page_home')),
+    ).toEqual(before);
     fixture.database.close();
   });
 
@@ -126,7 +145,18 @@ describe('replace_page_schema tool', () => {
       join(fixture.pageRef.projectPath, '.origamix', 'revisions', 'page_home'),
     );
     await expect(
-      fixture.tool.execute({ schema: pageSchema('unknown') }, new AbortController().signal),
+      fixture.tool.execute(
+        {
+          operations: [
+            {
+              operation: 'replaceElement',
+              elementId: 'element_root',
+              element: { type: 'unknown', props: {} },
+            },
+          ],
+        },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow('UNKNOWN_MATERIAL');
     const after = await readdir(
       join(fixture.pageRef.projectPath, '.origamix', 'revisions', 'page_home'),
@@ -141,11 +171,16 @@ describe('replace_page_schema tool', () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      fixture.tool.execute({ schema: pageSchema() }, controller.signal),
+      fixture.tool.execute(
+        {
+          operations: [{ operation: 'updateElementProps', elementId: 'element_root', set: {} }],
+        },
+        controller.signal,
+      ),
     ).rejects.toMatchObject({
       code: 'CANCELLED',
     });
-    const wrong = createReplacePageSchemaTool(
+    const wrong = createApplyPageOperationsTool(
       { projects: new ProjectRepository(fixture.database), runs: fixture.runs },
       {
         runId: 'run_replace',
@@ -153,11 +188,17 @@ describe('replace_page_schema tool', () => {
         projectId: 'project_test',
         pageId: 'page_home',
         baseRevisionId: fixture.initialRevisionId,
+        baseWorkingVersion: 1,
         maxSchemaBytes: 1,
       },
     );
     await expect(
-      wrong.execute({ schema: pageSchema() }, new AbortController().signal),
+      wrong.execute(
+        {
+          operations: [{ operation: 'updateElementProps', elementId: 'element_root', set: {} }],
+        },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow('无权');
     fixture.database.close();
   });
@@ -165,7 +206,14 @@ describe('replace_page_schema tool', () => {
   it('lets an already committed result win over a later cancellation', async () => {
     const fixture = await setup();
     const controller = new AbortController();
-    const result = (await fixture.tool.execute({ schema: pageSchema() }, controller.signal)) as {
+    const result = (await fixture.tool.execute(
+      {
+        operations: [
+          { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 8 } },
+        ],
+      },
+      controller.signal,
+    )) as {
       revisionId: string;
     };
     controller.abort();

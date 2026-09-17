@@ -123,8 +123,9 @@ export const agentChatReducer = (
       streamedText: '',
       tools: [],
       lastEventId: changedRun ? -1 : state.lastEventId,
-      committedRevisionId:
-        action.run?.resultRevisionId ?? (changedRun ? null : state.committedRevisionId),
+      committedRevisionId: action.run?.resultWorkingVersion
+        ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
+        : (action.run?.resultRevisionId ?? (changedRun ? null : state.committedRevisionId)),
       error:
         action.run?.status === 'interrupted'
           ? '上次生成因服务重启而中断，请重新描述并发送。'
@@ -167,11 +168,14 @@ export const agentChatReducer = (
     stage: status ?? state.stage,
     tools: isToolEvent ? updateTool(state.tools, event) : state.tools,
     committedRevisionId:
-      event.type === 'schema.committed'
-        ? (event.revisionId ??
-          payloadString(event.payload, ['revisionId']) ??
-          state.committedRevisionId)
-        : state.committedRevisionId,
+      event.type === 'run.completed' &&
+      typeof payloadRecord(event.payload).workingVersion === 'number'
+        ? `working_${event.runId}_${String(payloadRecord(event.payload).workingVersion)}`
+        : event.type === 'schema.committed'
+          ? (event.revisionId ??
+            payloadString(event.payload, ['revisionId']) ??
+            state.committedRevisionId)
+          : state.committedRevisionId,
     error,
     connection: status && terminalStatuses.has(status) ? 'idle' : 'connected',
   };

@@ -7,7 +7,7 @@ import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../projects/project-repository';
 import { ProjectService } from '../../projects/project-service';
 import { ProjectApplyService } from '../../schema/project-apply-service';
-import { getSchema } from '../../schema/schema-service';
+import { getSchema, getWorkingSchemaState } from '../../schema/schema-service';
 import { AgentRunRepository } from '../../agent/run-repository';
 import { AgentRunService } from '../../agent/run-service';
 import { AgentService } from '../../agent/agent-service';
@@ -19,7 +19,7 @@ import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ConversationRepository } from '../../conversations/conversation-repository';
 import { ConversationService } from '../../conversations/conversation-service';
 import { createDefaultAgentToolEntries } from '../../agent/tools/registry';
-import { createReplacePageSchemaTool } from '../../agent/tools/replace-page-schema';
+import { createApplyPageOperationsTool } from '../../agent/tools/replace-page-schema';
 import { createDeterministicFakeAgentEngine } from '../../testing/deterministic-engine';
 import { createHttpServer } from '../../http/server';
 
@@ -66,7 +66,10 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       ),
       createTools: (scope) =>
         createDefaultAgentToolEntries([
-          createReplacePageSchemaTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
+          createApplyPageOperationsTool(
+            { projects, runs },
+            { ...scope, maxSchemaBytes: 256 * 1024 },
+          ),
         ]),
     });
     const service = new AgentService({
@@ -76,7 +79,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       events,
       executor,
       router: new ScopeRouter(),
-      getCurrentRevision: async () => (await getSchema(pageRef)).revisionId,
+      getCurrentState: async () => getWorkingSchemaState(pageRef),
     });
     const start = vi.spyOn(service, 'start');
     server = createHttpServer({
@@ -97,6 +100,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       projectId: project.id,
       pageId: page.id,
       baseRevisionId: before.revisionId,
+      baseWorkingVersion: (await getWorkingSchemaState(pageRef)).workingVersion,
       clientRequestId: 'agent-edit',
       content: { version: '1', blocks: [{ type: 'text', text: '创建客户表单和表格' }] },
     };
@@ -141,11 +145,16 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     });
     expect(stale.statusCode).toBe(409);
     expect(modelCall).toHaveBeenCalledTimes(1);
+    const working = await getWorkingSchemaState(pageRef);
     const foreign = await server.inject({
       method: 'POST',
       url: `/api/v1/pages/${page.id}/apply`,
       headers: { ...headers, 'x-origamix-project-id': 'project_other' },
-      payload: { expectedRevisionId: edited.revisionId, clientRequestId: 'foreign-apply' },
+      payload: {
+        expectedRevisionId: edited.revisionId,
+        expectedWorkingVersion: working.workingVersion,
+        clientRequestId: 'foreign-apply',
+      },
     });
     expect(foreign.statusCode).toBe(404);
     expect(await readFile(target, 'utf8')).toBe(originalTarget);
@@ -153,7 +162,11 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       method: 'POST',
       url: `/api/v1/pages/${page.id}/apply`,
       headers,
-      payload: { expectedRevisionId: edited.revisionId, clientRequestId: 'explicit-apply' },
+      payload: {
+        expectedRevisionId: edited.revisionId,
+        expectedWorkingVersion: working.workingVersion,
+        clientRequestId: 'explicit-apply',
+      },
     });
     expect(applied.statusCode).toBe(200);
     expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(edited.schema);

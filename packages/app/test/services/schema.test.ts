@@ -50,7 +50,7 @@ describe('schema service', () => {
     });
     const { schemaService } = await import('../../src/services/schema');
 
-    await schemaService.apply('project_one', 'page_one', 'revision_next', 'request_stable');
+    await schemaService.apply('project_one', 'page_one', 'revision_next', 3, 'request_stable');
 
     expect(request).toHaveBeenCalledWith(
       '/pages/page_one/apply',
@@ -59,10 +59,47 @@ describe('schema service', () => {
         method: 'POST',
         body: JSON.stringify({
           expectedRevisionId: 'revision_next',
+          expectedWorkingVersion: 3,
           clientRequestId: 'request_stable',
         }),
       }),
       expect.any(Function),
     );
+  });
+
+  it('reads Working state and sends explicit save/restore version requests', async () => {
+    request.mockResolvedValue({
+      schema,
+      revisionId: 'revision_saved',
+      workingVersion: 4,
+      workingHash: 'a'.repeat(64),
+      savedSchemaHash: 'b'.repeat(64),
+      baselineHash: 'c'.repeat(64),
+    });
+    const { schemaService } = await import('../../src/services/schema');
+
+    await schemaService.workingState('project_one', 'page_one');
+    await schemaService.updateWorking('project_one', 'page_one', 3, schema);
+    await schemaService.saveRevision('project_one', 'page_one', 4);
+    await schemaService.restoreRevision('project_one', 'page_one', 'revision_old', 5);
+
+    expect(request).toHaveBeenNthCalledWith(1, '/pages/page_one/working-state', {
+      projectId: 'project_one',
+    });
+    expect(request).toHaveBeenNthCalledWith(2, '/pages/page_one/working-state', {
+      projectId: 'project_one',
+      method: 'PUT',
+      body: JSON.stringify({ baseWorkingVersion: 3, schema }),
+    });
+    expect(request).toHaveBeenNthCalledWith(3, '/pages/page_one/revisions', {
+      projectId: 'project_one',
+      method: 'POST',
+      body: JSON.stringify({ expectedWorkingVersion: 4 }),
+    });
+    expect(request).toHaveBeenNthCalledWith(4, '/pages/page_one/revisions/revision_old/restore', {
+      projectId: 'project_one',
+      method: 'POST',
+      body: JSON.stringify({ expectedWorkingVersion: 5 }),
+    });
   });
 });

@@ -20,7 +20,9 @@ export interface AgentRunRecord {
   userMessageId: string;
   clientRequestId: string;
   baseRevisionId: string;
+  baseWorkingVersion: number;
   resultRevisionId?: string;
+  resultWorkingVersion?: number;
   modelRef: string;
   mode: RunMode;
   status: AgentRunStatus;
@@ -62,7 +64,11 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     userMessageId: row.userMessageId,
     clientRequestId: row.clientRequestId,
     baseRevisionId: row.baseRevisionId,
+    baseWorkingVersion: row.baseWorkingVersion,
     ...(row.resultRevisionId ? { resultRevisionId: row.resultRevisionId } : {}),
+    ...(row.resultWorkingVersion === null
+      ? {}
+      : { resultWorkingVersion: row.resultWorkingVersion }),
     modelRef: row.modelRef,
     mode: row.mode as RunMode,
     status,
@@ -90,6 +96,7 @@ const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
   status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
   resultRevisionId: run.resultRevisionId ?? null,
+  resultWorkingVersion: run.resultWorkingVersion ?? null,
   retryOfRunId: run.retryOfRunId ?? null,
   durationMs: run.durationMs ?? null,
   errorCode: run.errorCode ?? null,
@@ -152,6 +159,7 @@ export class AgentRunRepository {
       updatedAt: string;
       finishedAt?: string;
       resultRevisionId?: string;
+      resultWorkingVersion?: number;
       errorCode?: string;
       errorMessage?: string;
       durationMs?: number;
@@ -163,6 +171,9 @@ export class AgentRunRepository {
       updatedAt: patch.updatedAt,
       ...(patch.finishedAt ? { finishedAt: patch.finishedAt } : {}),
       ...(patch.resultRevisionId ? { resultRevisionId: patch.resultRevisionId } : {}),
+      ...(patch.resultWorkingVersion === undefined
+        ? {}
+        : { resultWorkingVersion: patch.resultWorkingVersion }),
       errorCode: patch.errorCode ?? null,
       errorMessage: patch.errorMessage ?? null,
       ...(patch.durationMs === undefined ? {} : { durationMs: patch.durationMs }),

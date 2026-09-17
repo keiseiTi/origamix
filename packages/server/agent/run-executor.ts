@@ -24,6 +24,7 @@ export interface RunResult {
   status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
   text: string;
   resultRevisionId?: string;
+  resultWorkingVersion?: number;
 }
 
 export interface RunExecutorDependencies {
@@ -39,6 +40,7 @@ export interface RunExecutorDependencies {
     projectId: string;
     pageId: string;
     baseRevisionId: string;
+    baseWorkingVersion: number;
   }) => RegisteredAgentTool[];
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
 }
@@ -75,6 +77,9 @@ export class RunExecutor {
         status: started.run.status as RunResult['status'],
         text: '',
         ...(started.run.resultRevisionId ? { resultRevisionId: started.run.resultRevisionId } : {}),
+        ...(started.run.resultWorkingVersion
+          ? { resultWorkingVersion: started.run.resultWorkingVersion }
+          : {}),
       };
     }
     this.dependencies.runService.transition(runId, 'classifying');
@@ -90,6 +95,7 @@ export class RunExecutor {
     const tracker = new RunBudgetController(started.run.budget);
     let assistantText = '';
     let resultRevisionId: string | undefined;
+    let resultWorkingVersion: number | undefined;
     let inputTokens = 0;
     const registry = new AgentToolRegistry();
     try {
@@ -99,12 +105,13 @@ export class RunExecutor {
         projectId: input.projectId,
         pageId: input.pageId,
         baseRevisionId: input.baseRevisionId,
+        baseWorkingVersion: input.baseWorkingVersion,
       }))
         registry.register(entry);
       const audit = async (event: ToolAuditEvent): Promise<void> => {
         // The tool checks authority while the Run is tool_calling. Advance only
         // after its validation and Schema commit have actually succeeded.
-        if (event.phase === 'completed' && event.toolName === 'replace_page_schema') {
+        if (event.phase === 'completed' && event.toolName === 'apply_page_operations') {
           this.transitionIf(runId, 'tool_calling', 'validating');
           this.transitionIf(runId, 'validating', 'committing');
         }
@@ -135,7 +142,7 @@ export class RunExecutor {
           modelId: started.run.modelRef,
           systemPrompt: `${assembled.systemPolicy}\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(assembled)}</ORIGAMIX_CONTEXT>`,
           prompt: repair
-            ? '上一次没有成功提交页面。请修正候选 Schema，并调用 replace_page_schema；不要声称未发生的修改。'
+            ? '上一次没有成功修改页面。请修正 Operation List，并调用 apply_page_operations；不要声称未发生的修改。'
             : message,
           tools,
           signal: controller.signal,
@@ -146,10 +153,16 @@ export class RunExecutor {
             if (
               event.type === 'tool_end' &&
               !event.isError &&
-              event.toolName === 'replace_page_schema'
+              event.toolName === 'apply_page_operations'
             ) {
-              const result = event.result as { revisionId?: unknown };
-              if (typeof result?.revisionId === 'string') resultRevisionId = result.revisionId;
+              const result = event.result as { revisionId?: unknown; workingVersion?: unknown };
+              if (
+                typeof result?.revisionId === 'string' &&
+                typeof result?.workingVersion === 'number'
+              ) {
+                resultRevisionId = result.revisionId;
+                resultWorkingVersion = result.workingVersion;
+              }
             }
           },
         });
@@ -157,26 +170,29 @@ export class RunExecutor {
         tracker.recordOutputTokens(result.usage.outputTokens);
       };
       await execute(false);
-      if (intent.mode === 'page_modify' && !resultRevisionId) {
+      if (intent.mode === 'page_modify' && !resultWorkingVersion) {
         tracker.consumeRepair();
         await execute(true);
       }
-      if (intent.mode === 'page_modify' && !resultRevisionId) {
+      if (intent.mode === 'page_modify' && !resultWorkingVersion) {
         throw new AgentEngineError('TOOL_ERROR', '页面修改未产生有效提交');
       }
       this.dependencies.conversations.finishAssistant(
         runId,
-        textContent(assistantText || (resultRevisionId ? '页面已完成修改。' : '已完成回答。')),
+        textContent(
+          assistantText || (resultWorkingVersion ? '页面草稿已完成修改。' : '已完成回答。'),
+        ),
       );
       const current = this.dependencies.runs.get(runId);
-      if (resultRevisionId) {
+      if (resultRevisionId && resultWorkingVersion) {
+        const resultPatch = { resultRevisionId, resultWorkingVersion };
         if (current?.status === 'cancelling') {
-          this.dependencies.runService.transition(runId, 'completed', { resultRevisionId });
+          this.dependencies.runService.transition(runId, 'completed', resultPatch);
         } else {
           this.transitionIf(runId, 'generating', 'validating');
           this.transitionIf(runId, 'tool_calling', 'validating');
           this.transitionIf(runId, 'validating', 'committing');
-          this.dependencies.runService.transition(runId, 'completed', { resultRevisionId });
+          this.dependencies.runService.transition(runId, 'completed', resultPatch);
         }
       } else {
         this.transitionIf(runId, 'tool_calling', 'generating');
@@ -189,6 +205,7 @@ export class RunExecutor {
         status: 'completed',
         text: assistantText,
         ...(resultRevisionId ? { resultRevisionId } : {}),
+        ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
       };
     } catch (error) {
       const current = this.dependencies.runs.get(runId);
@@ -229,7 +246,7 @@ export class RunExecutor {
 
   private async handleEngineEvent(runId: string, event: AgentEngineEvent): Promise<void> {
     if (event.type === 'tool_start') this.transitionIf(runId, 'generating', 'tool_calling');
-    if (event.type === 'tool_end' && event.toolName !== 'replace_page_schema') {
+    if (event.type === 'tool_end' && event.toolName !== 'apply_page_operations') {
       this.transitionIf(runId, 'tool_calling', 'generating');
     }
   }

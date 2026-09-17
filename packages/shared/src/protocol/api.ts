@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import { RevisionIdSchema } from './schema';
+import { PageSchema, RevisionIdSchema } from './schema';
 
 export const ApiResultSchema = Type.Union([
   Type.Object(
@@ -66,21 +66,55 @@ export const CreatePageSchema = Type.Object({
 
 export const ApplyPageSchema = Type.Object({
   expectedRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
+  expectedWorkingVersion: Type.Integer({ minimum: 1 }),
   clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
 });
 
+export const SaveWorkingRevisionSchema = Type.Object(
+  { expectedWorkingVersion: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+
+export const RestoreWorkingRevisionSchema = Type.Object(
+  { expectedWorkingVersion: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+
 const SchemaHashSchema = Type.String({ pattern: '^[a-f0-9]{64}$' });
+
+export const WorkingSchemaStateSchema = Type.Object(
+  {
+    schema: PageSchema,
+    revisionId: RevisionIdSchema,
+    workingVersion: Type.Integer({ minimum: 1 }),
+    workingHash: SchemaHashSchema,
+    savedSchemaHash: SchemaHashSchema,
+    baselineHash: SchemaHashSchema,
+  },
+  { additionalProperties: false },
+);
+
+export const UpdateWorkingSchemaSchema = Type.Object(
+  {
+    baseWorkingVersion: Type.Integer({ minimum: 1 }),
+    schema: PageSchema,
+  },
+  { additionalProperties: false },
+);
 
 export const PageApplyStateSchema = Type.Object(
   {
     pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
-    workingRevisionId: RevisionIdSchema,
+    savedRevisionId: RevisionIdSchema,
+    workingVersion: Type.Integer({ minimum: 1 }),
     status: Type.Union([
       Type.Literal('in_sync'),
-      Type.Literal('pending'),
+      Type.Literal('draft_unsaved'),
+      Type.Literal('saved_pending_apply'),
       Type.Literal('external_change'),
     ]),
-    workingSchemaHash: SchemaHashSchema,
+    workingHash: SchemaHashSchema,
+    savedSchemaHash: SchemaHashSchema,
     targetSchemaHash: SchemaHashSchema,
     baselineHash: SchemaHashSchema,
   },
@@ -157,9 +191,11 @@ export interface PageRecord {
 
 export interface PageApplyState {
   pageId: string;
-  workingRevisionId: string;
-  status: 'in_sync' | 'pending' | 'external_change';
-  workingSchemaHash: string;
+  savedRevisionId: string;
+  workingVersion: number;
+  status: 'in_sync' | 'draft_unsaved' | 'saved_pending_apply' | 'external_change';
+  workingHash: string;
+  savedSchemaHash: string;
   targetSchemaHash: string;
   baselineHash: string;
 }

@@ -7,7 +7,7 @@ import { recoverAgentRunsOnStartup } from './agent/run-recovery';
 import { ConversationService } from './conversations/conversation-service';
 import { ProjectService } from './projects/project-service';
 import { ProjectApplyService } from './schema/project-apply-service';
-import { getSchema } from './schema/schema-service';
+import { getSchema, getWorkingSchemaState } from './schema/schema-service';
 import { createHttpServer } from './http/server';
 import { AgentEventBroker } from './agent/event-broker';
 import { RuntimeDiagnosticCache } from './diagnostics/diagnostic-cache';
@@ -19,7 +19,7 @@ import { ContextAssembler } from './agent/context-assembler';
 import { ProductDocsProvider } from './agent/product-docs-provider';
 import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
 import { createDomainAgentTools } from './agent/tools/domain-tools';
-import { createReplacePageSchemaTool } from './agent/tools/replace-page-schema';
+import { createApplyPageOperationsTool } from './agent/tools/replace-page-schema';
 import { createDefaultAgentToolEntries } from './agent/tools/registry';
 import { MVP_MODEL_ID } from './agent/engine';
 import { PiAgentEngine } from './agent/pi-agent-engine';
@@ -93,7 +93,7 @@ export const startServer = async (input: {
           { projectId: scope.projectId, pageId: scope.pageId },
           { projects, docs: productDocs, diagnostics: runtimeDiagnostics },
         ),
-        createReplacePageSchemaTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
+        createApplyPageOperationsTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
       ]),
   });
   const agentService = new AgentService({
@@ -104,7 +104,17 @@ export const startServer = async (input: {
     executor,
     router: new ScopeRouter(),
     modelRef: MVP_MODEL_ID,
-    getCurrentRevision,
+    getCurrentState: async (projectId, pageId) => {
+      const project = projects.getProject(projectId);
+      const page = projects.getPage(projectId, pageId);
+      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
+      return getWorkingSchemaState({
+        projectPath: project.path,
+        pageId: page.id,
+        slug: page.slug,
+        relativePath: page.relativePath,
+      });
+    },
   });
   const server = createHttpServer({
     ...input,

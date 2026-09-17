@@ -9,13 +9,14 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
   const [initial, setInitial] = useState<{
     schema: OrigamixPageSchema;
     revisionId: string;
+    workingVersion: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<EditorSaveStatus>('saved');
   const [error, setError] = useState<string | null>(null);
   const draftRef = useRef<OrigamixPageSchema | null>(null);
   const savedHashRef = useRef('');
-  const revisionRef = useRef('');
+  const workingVersionRef = useRef(0);
   const pendingRef = useRef<Promise<void> | null>(null);
   const timerRef = useRef<number | null>(null);
   const providerReadyRef = useRef(false);
@@ -24,13 +25,13 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
     let active = true;
     providerReadyRef.current = false;
     schemaService
-      .get(projectId, pageId)
+      .workingState(projectId, pageId)
       .then((result) => {
         if (!active) return;
         const hash = JSON.stringify(result.schema);
         draftRef.current = result.schema;
         savedHashRef.current = hash;
-        revisionRef.current = result.revisionId;
+        workingVersionRef.current = result.workingVersion;
         setInitial(result);
         setStatus('saved');
         setError(null);
@@ -61,9 +62,9 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
       setStatus('saving');
       setError(null);
       const operation = schemaService
-        .replace(projectId, pageId, { baseRevisionId: revisionRef.current, schema: draft })
+        .updateWorking(projectId, pageId, workingVersionRef.current, draft)
         .then((result) => {
-          revisionRef.current = result.revisionId;
+          workingVersionRef.current = result.workingVersion;
           savedHashRef.current = JSON.stringify(result.schema);
           setStatus(JSON.stringify(draftRef.current) === savedHashRef.current ? 'saved' : 'dirty');
         })
@@ -107,7 +108,7 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
   }, [initial]);
 
   const providerKey = useMemo(
-    () => (initial ? `${projectId}:${pageId}:${initial.revisionId}` : ''),
+    () => (initial ? `${projectId}:${pageId}:${initial.workingVersion}` : ''),
     [initial, pageId, projectId],
   );
 

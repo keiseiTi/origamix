@@ -76,6 +76,7 @@ export class AgentRunService {
     status: AgentRunStatus,
     patch: {
       resultRevisionId?: string;
+      resultWorkingVersion?: number;
       errorCode?: string;
       errorMessage?: string;
       durationMs?: number;
@@ -88,10 +89,10 @@ export class AgentRunService {
     }
     if (
       status === 'completed' &&
-      !(patch.resultRevisionId ?? current.resultRevisionId) &&
+      !(patch.resultWorkingVersion ?? current.resultWorkingVersion) &&
       current.mode === 'page_modify'
     ) {
-      throw conflict('页面修改 Run 完成前必须关联 Revision');
+      throw conflict('页面修改 Run 完成前必须关联 Working 版本');
     }
     const timestamp = new Date().toISOString();
     const changed = this.runs.updateStatus(runId, [current.status], {

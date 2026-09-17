@@ -112,11 +112,13 @@ const PageWorkspace = ({
           onModeChange={onModeChange}
           onPreview={onPreview}
           onUndo={onUndo}
+          onSaveVersion={application.saveVersion}
           onApply={application.applyPage}
           onReloadFromProject={application.reloadFromProject}
           applyStatus={application.applyStatus}
           saveStatus={application.saveStatus}
           canApply={capabilities.canApply}
+          canSaveVersion={capabilities.canSaveVersion}
           canUndo={capabilities.canUndo}
           canReload={capabilities.canReload}
         />

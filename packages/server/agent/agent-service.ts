@@ -41,7 +41,12 @@ export class AgentService {
       events: AgentEventBroker;
       executor: RunExecutor;
       router: ScopeRouter;
-      getCurrentRevision: (projectId: string, pageId: string) => string | Promise<string>;
+      getCurrentState: (
+        projectId: string,
+        pageId: string,
+      ) =>
+        | { revisionId: string; workingVersion: number }
+        | Promise<{ revisionId: string; workingVersion: number }>;
       modelRef?: string;
       budget?: RunBudget;
     },
@@ -62,9 +67,10 @@ export class AgentService {
         });
         return this.startResult(started);
       }
+      const current = await this.dependencies.getCurrentState(request.projectId, request.pageId);
       if (
-        (await this.dependencies.getCurrentRevision(request.projectId, request.pageId)) !==
-        request.baseRevisionId
+        current.revisionId !== request.baseRevisionId ||
+        current.workingVersion !== request.baseWorkingVersion
       ) {
         throw conflict('页面版本已变化，请刷新后重试');
       }
@@ -155,6 +161,9 @@ export class AgentService {
         status: settled.status as RunResult['status'],
         text: '',
         ...(settled.resultRevisionId ? { resultRevisionId: settled.resultRevisionId } : {}),
+        ...(settled.resultWorkingVersion
+          ? { resultWorkingVersion: settled.resultWorkingVersion }
+          : {}),
       };
     }
     this.dependencies.events.publish({
@@ -163,7 +172,10 @@ export class AgentService {
       pageId: started.run.pageId,
       requestId: started.run.clientRequestId,
       ...(result.resultRevisionId ? { revisionId: result.resultRevisionId } : {}),
-      payload: { status: result.status },
+      payload: {
+        status: result.status,
+        ...(result.resultWorkingVersion ? { workingVersion: result.resultWorkingVersion } : {}),
+      },
     });
     return result;
   }

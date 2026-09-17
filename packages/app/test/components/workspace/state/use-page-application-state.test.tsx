@@ -7,7 +7,8 @@ import type { EditorHandle } from '../../../../src/components/editor';
 
 const schemaMocks = vi.hoisted(() => ({
   applyState: vi.fn(),
-  get: vi.fn(),
+  workingState: vi.fn(),
+  saveRevision: vi.fn(),
   apply: vi.fn(),
   reloadFromProject: vi.fn(),
 }));
@@ -98,7 +99,10 @@ describe('usePageApplicationState', () => {
 
   it('does not publish a late Apply failure to the page opened later', async () => {
     schemaMocks.applyState.mockResolvedValue({ status: 'in_sync' });
-    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_page_a' });
+    schemaMocks.workingState.mockResolvedValue({
+      revisionId: 'revision_page_a',
+      workingVersion: 1,
+    });
     const apply = deferred<unknown>();
     schemaMocks.apply.mockReturnValue(apply.promise);
     const { result, rerender } = renderHook(
@@ -127,8 +131,8 @@ describe('usePageApplicationState', () => {
   });
 
   it('reuses the request ID when an Apply result is ambiguous for the same revision', async () => {
-    schemaMocks.applyState.mockResolvedValue({ status: 'pending' });
-    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_1' });
+    schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    schemaMocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
     schemaMocks.apply.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({});
     const { result } = renderHook(() =>
       usePageApplicationState({
@@ -147,11 +151,39 @@ describe('usePageApplicationState', () => {
     await act(async () => result.current.applyPage());
 
     expect(schemaMocks.apply).toHaveBeenCalledTimes(2);
-    expect(schemaMocks.apply.mock.calls[1]![3]).toBe(schemaMocks.apply.mock.calls[0]![3]);
+    expect(schemaMocks.apply.mock.calls[1]![4]).toBe(schemaMocks.apply.mock.calls[0]![4]);
+  });
+
+  it('flushes the Working draft and explicitly saves a Revision', async () => {
+    schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    schemaMocks.workingState.mockResolvedValue({
+      revisionId: 'revision_old',
+      workingVersion: 3,
+    });
+    schemaMocks.saveRevision.mockResolvedValue({
+      revisionId: 'revision_saved',
+      workingVersion: 3,
+    });
+    const onSchemaCommitted = vi.fn();
+    const { result } = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        schemaRefreshKey: 'revision_old',
+        editorRef,
+        onSchemaCommitted,
+      }),
+    );
+
+    await act(async () => result.current.saveVersion());
+
+    expect(editorRef.current!.flush).toHaveBeenCalledOnce();
+    expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
+    expect(onSchemaCommitted).toHaveBeenCalledWith('page_a', 'revision_saved');
   });
   it('keeps an ambiguous Apply across unmount and polling, then clears it on explicit retry', async () => {
-    schemaMocks.applyState.mockResolvedValue({ status: 'pending' });
-    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_1' });
+    schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    schemaMocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
     schemaMocks.apply.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({});
     const usePage = () =>
       usePageApplicationState({
@@ -166,14 +198,15 @@ describe('usePageApplicationState', () => {
       await expect(first.result.current.applyPage()).rejects.toThrow();
     });
     first.unmount();
-    schemaMocks.get.mockResolvedValue({ revisionId: 'revision_2' });
+    schemaMocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
     const next = renderHook(usePage);
     await act(async () => vi.advanceTimersByTime(1500));
     expect(next.result.current.applyStatus).toBe('result_pending');
     expect(schemaMocks.apply).toHaveBeenCalledTimes(1);
     await act(async () => next.result.current.applyPage());
-    expect(schemaMocks.apply.mock.calls[1]![3]).toBe(schemaMocks.apply.mock.calls[0]![3]);
+    expect(schemaMocks.apply.mock.calls[1]![4]).toBe(schemaMocks.apply.mock.calls[0]![4]);
     expect(schemaMocks.apply.mock.calls[1]![2]).toBe('revision_1');
+    expect(schemaMocks.apply.mock.calls[1]![3]).toBe(1);
     expect(usePendingOperations.getState().applies).toEqual({});
     next.unmount();
   });
@@ -183,7 +216,7 @@ describe('usePageApplicationState', () => {
       const previous = deferred<{ status: 'external_change' }>();
       schemaMocks.applyState
         .mockReturnValueOnce(previous.promise)
-        .mockResolvedValue({ status: 'pending' });
+        .mockResolvedValue({ status: 'saved_pending_apply' });
       const hook = renderHook(
         ({ revision }) =>
           usePageApplicationState({
@@ -198,12 +231,12 @@ describe('usePageApplicationState', () => {
       await act(async () => vi.advanceTimersByTime(0));
       hook.rerender({ revision: 'revision_2' });
       await act(async () => vi.advanceTimersByTime(0));
-      expect(hook.result.current.applyStatus).toBe('pending');
+      expect(hook.result.current.applyStatus).toBe('saved_pending_apply');
       await act(async () => {
         if (outcome === 'success') previous.resolve({ status: 'external_change' });
         else previous.reject(new Error('old polling failure'));
       });
-      expect(hook.result.current.applyStatus).toBe('pending');
+      expect(hook.result.current.applyStatus).toBe('saved_pending_apply');
     },
   );
 
@@ -232,7 +265,7 @@ describe('usePageApplicationState', () => {
     const previous = deferred<{ status: 'external_change' }>();
     schemaMocks.applyState
       .mockReturnValueOnce(previous.promise)
-      .mockResolvedValue({ status: 'pending' });
+      .mockResolvedValue({ status: 'saved_pending_apply' });
     const hook = renderHook(
       ({ pageId }) =>
         usePageApplicationState({
@@ -250,10 +283,10 @@ describe('usePageApplicationState', () => {
     await act(async () => previous.resolve({ status: 'external_change' }));
     expect(hook.result.current.applyStatus).toBe('loading');
     await act(async () => vi.advanceTimersByTime(0));
-    expect(hook.result.current.applyStatus).toBe('pending');
+    expect(hook.result.current.applyStatus).toBe('saved_pending_apply');
   });
   it('continues updating on a slow connection while the next poll is pending', async () => {
-    const first = deferred<{ status: 'pending' }>();
+    const first = deferred<{ status: 'saved_pending_apply' }>();
     const second = deferred<{ status: 'in_sync' }>();
     schemaMocks.applyState.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const hook = renderHook(() =>
@@ -267,8 +300,8 @@ describe('usePageApplicationState', () => {
     );
     await act(async () => vi.advanceTimersByTime(0));
     await act(async () => vi.advanceTimersByTime(1500));
-    await act(async () => first.resolve({ status: 'pending' }));
-    expect(hook.result.current.applyStatus).toBe('pending');
+    await act(async () => first.resolve({ status: 'saved_pending_apply' }));
+    expect(hook.result.current.applyStatus).toBe('saved_pending_apply');
     await act(async () => second.resolve({ status: 'in_sync' }));
     expect(hook.result.current.applyStatus).toBe('in_sync');
   });

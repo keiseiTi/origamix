@@ -67,6 +67,7 @@ const input = (overrides: Partial<StartConversationRunInput> = {}): StartConvers
     pageId: 'page_a',
     clientRequestId: 'request-1',
     baseRevisionId: 'revision_base',
+    baseWorkingVersion: 1,
     content: content('创建表单'),
     modelRef: 'deepseek/deepseek-v4-flash',
     mode: 'page_modify',

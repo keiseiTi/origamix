@@ -73,13 +73,13 @@ const setup = (
     createTools: () => [
       {
         tool: {
-          name: 'replace_page_schema',
+          name: 'apply_page_operations',
           description: 'write',
           parameters: Type.Object({}),
-          execute: async () => ({ revisionId: 'revision_result' }),
+          execute: async () => ({ revisionId: 'revision_result', workingVersion: 2 }),
         },
         policy: {
-          toolName: 'replace_page_schema',
+          toolName: 'apply_page_operations',
           scope: 'page_write',
           risk: 'low',
           requiresConfirmation: false,
@@ -89,7 +89,7 @@ const setup = (
   });
   const events = new AgentEventBroker();
   const router = new ScopeRouter();
-  const getCurrentRevision = vi.fn(async () => 'revision_base');
+  const getCurrentState = vi.fn(async () => ({ revisionId: 'revision_base', workingVersion: 1 }));
   const service = new AgentService({
     conversations,
     runs,
@@ -97,7 +97,7 @@ const setup = (
     executor,
     events,
     router,
-    getCurrentRevision,
+    getCurrentState,
   });
   const input = (message: string, clientRequestId = message) => ({
     version: '1' as const,
@@ -105,6 +105,7 @@ const setup = (
     pageId: 'page_test',
     clientRequestId,
     baseRevisionId: 'revision_base',
+    baseWorkingVersion: 1,
     content: { version: '1' as const, blocks: [{ type: 'text' as const, text: message }] },
   });
   const run = async (request: ReturnType<typeof input>) =>
@@ -116,7 +117,7 @@ const setup = (
     executor,
     router,
     events,
-    getCurrentRevision,
+    getCurrentState,
     service,
     run,
     input,
@@ -154,8 +155,8 @@ describe('Agent execution through AgentService', () => {
 
   it('keeps assistant text and a successful Schema commit as separate outcomes', async () => {
     const fixture = setup(async (request) => {
-      const tool = request.tools?.find(({ name }) => name === 'replace_page_schema');
-      if (!tool) throw new Error('replace_page_schema tool missing');
+      const tool = request.tools?.find(({ name }) => name === 'apply_page_operations');
+      if (!tool) throw new Error('apply_page_operations tool missing');
       await request.onEvent?.({
         type: 'tool_start',
         toolCallId: 'call_1',
@@ -267,7 +268,7 @@ describe('Agent startup ownership', () => {
       expect(first.completion).toBe(second.completion);
       expect(first.completion).toBeDefined();
       expect(route).toHaveBeenCalledTimes(1);
-      expect(fixture.getCurrentRevision).toHaveBeenCalledTimes(1);
+      expect(fixture.getCurrentState).toHaveBeenCalledTimes(1);
       release.resolve();
       await first.completion;
       expect(fixture.calls()).toBe(1);

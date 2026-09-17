@@ -16,6 +16,7 @@ export interface StartConversationRunInput {
   conversationId?: string;
   clientRequestId: string;
   baseRevisionId: string;
+  baseWorkingVersion: number;
   content: MessageContent;
   modelRef: string;
   mode: RunMode;
@@ -138,6 +139,7 @@ export class ConversationService {
       userMessageId: message.messageId,
       clientRequestId: input.clientRequestId,
       baseRevisionId: input.baseRevisionId,
+      baseWorkingVersion: input.baseWorkingVersion,
       modelRef: input.modelRef,
       mode: input.mode,
       status: 'queued',

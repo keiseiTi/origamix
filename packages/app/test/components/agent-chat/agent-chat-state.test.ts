@@ -15,6 +15,7 @@ const run = (status: AgentRun['status'] = 'queued'): AgentRun => ({
   userMessageId: 'message_one',
   requestId: 'request-one',
   baseRevisionId: 'revision_one',
+  baseWorkingVersion: 1,
   mode: 'page_modify',
   status,
   budget: {

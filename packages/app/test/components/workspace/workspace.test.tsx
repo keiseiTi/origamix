@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   cancelAgentRun: vi.fn(),
   subscribeAgentEvents: vi.fn(),
   applyState: vi.fn(),
-  get: vi.fn(),
+  workingState: vi.fn(),
+  saveRevision: vi.fn(),
   apply: vi.fn(),
   reloadFromProject: vi.fn(),
 }));
@@ -48,8 +49,8 @@ describe('workspace recovery controls', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     usePendingOperations.setState({ applies: {}, agents: {} });
-    mocks.applyState.mockResolvedValue({ status: 'pending' });
-    mocks.get.mockResolvedValue({ revisionId: 'revision_1' });
+    mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 2 });
     mocks.listConversations.mockRejectedValue(new Error('无法恢复对话'));
   });
   afterEach(cleanup);
@@ -89,6 +90,6 @@ describe('workspace recovery controls', () => {
     expect(mocks.apply).toHaveBeenCalledTimes(1);
     await act(async () => fireEvent.click(screen.getByRole('button', { name: '重试应用' })));
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
-    expect(mocks.apply.mock.calls[1]![3]).toBe(mocks.apply.mock.calls[0]![3]);
+    expect(mocks.apply.mock.calls[1]![4]).toBe(mocks.apply.mock.calls[0]![4]);
   });
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateChangeSet, validatePage } from '../../src/protocol/validation';
+import {
+  validateChangeSet,
+  validatePage,
+  validateSchemaOperation,
+  validateSchemaOperationBatch,
+} from '../../src/protocol/validation';
 
 const emptyPage = {
   elements: { element_root: { type: 'container', props: {} } },
@@ -76,11 +81,55 @@ describe('page protocol validation', () => {
         changeSetId: 'change_1',
         pageId: 'page_1',
         baseRevisionId: 'revision_1',
+        baseWorkingVersion: 1,
         source: { kind: 'user' },
         createdAt: '2026-08-27T00:00:00.000Z',
         operation: 'replaceSchema',
         schema: emptyPage,
       }).valid,
     ).toBe(true);
+  });
+
+  it('validates a typed Schema operation', () => {
+    expect(
+      validateSchemaOperation({
+        operation: 'updateElementProps',
+        elementId: 'button_submit',
+        set: { children: '提交订单' },
+        unset: ['loading'],
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateSchemaOperation({
+        operation: 'updateElementProps',
+        elementId: '../button',
+        set: { children: '提交订单' },
+      }).valid,
+    ).toBe(false);
+  });
+
+  it('requires a bounded, page-scoped operation batch', () => {
+    const batch = {
+      version: '1',
+      pageId: 'page_orders',
+      baseWorkingVersion: 3,
+      clientRequestId: 'request_1',
+      source: { kind: 'agent', runId: 'run_1', messageId: 'message_1' },
+      operations: [
+        {
+          operation: 'addElement',
+          elementId: 'button_submit',
+          element: { type: 'button', props: {} },
+          parentId: 'element_root',
+        },
+      ],
+      createdAt: '2026-09-17T00:00:00.000Z',
+    };
+    expect(validateSchemaOperationBatch(batch).valid).toBe(true);
+    expect(validateSchemaOperationBatch({ ...batch, operations: [] }).valid).toBe(false);
+    expect(validateSchemaOperationBatch({ ...batch, baseWorkingVersion: 0 }).valid).toBe(false);
+    expect(
+      validateSchemaOperationBatch({ ...batch, pageId: 'page_other', extra: true }).valid,
+    ).toBe(false);
   });
 });

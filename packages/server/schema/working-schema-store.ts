@@ -10,13 +10,27 @@ export interface WorkingSchemaPageRef {
   relativePath?: string;
 }
 
-export interface WorkingSchemaFile {
+export interface LegacyWorkingSchemaFile {
   version: 1;
   pageId: string;
   revisionId: string;
   baselineHash: string;
   schema: OrigamixPageSchema;
 }
+
+export interface WorkingSchemaFile {
+  version: 2;
+  pageId: string;
+  workingVersion: number;
+  workingHash: string;
+  lastSavedRevisionId: string;
+  savedSchemaHash: string;
+  baselineHash: string;
+  updatedAt: string;
+  schema: OrigamixPageSchema;
+}
+
+export type StoredWorkingSchemaFile = LegacyWorkingSchemaFile | WorkingSchemaFile;
 
 export interface RevisionSnapshot {
   revisionId: string;
@@ -80,11 +94,11 @@ export class WorkingSchemaStore {
     return join(page.projectPath, '.origamix', 'changesets', page.pageId, `${changeSetId}.json`);
   }
 
-  readWorking(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile> {
+  readWorking(page: WorkingSchemaPageRef): Promise<StoredWorkingSchemaFile> {
     return readJson(this.workingFile(page));
   }
 
-  readWorkingIfPresent(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile | undefined> {
+  readWorkingIfPresent(page: WorkingSchemaPageRef): Promise<StoredWorkingSchemaFile | undefined> {
     return readJsonIfPresent(this.workingFile(page));
   }
 

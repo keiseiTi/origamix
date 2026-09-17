@@ -6,7 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../projects/project-repository';
-import { commitSchema, getSchema } from '../../schema/schema-service';
+import {
+  commitSchema,
+  getSchema,
+  getWorkingSchemaState,
+  saveWorkingRevision,
+  updateWorkingSchema,
+} from '../../schema/schema-service';
 import { ProjectApplyService } from '../../schema/project-apply-service';
 import { ProjectService } from '../../projects/project-service';
 
@@ -44,9 +50,15 @@ describe('ProjectApplyService', () => {
       pageId: fixture.page.id,
       slug: fixture.page.slug,
     });
+    const working = await getWorkingSchemaState({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
     await expect(
       fixture.apply.apply(fixture.project.id, fixture.page.id, {
         expectedRevisionId: current.revisionId,
+        expectedWorkingVersion: working.workingVersion,
         clientRequestId: '../../../outside',
       }),
     ).rejects.toThrow('应用请求 ID 无效');
@@ -103,12 +115,19 @@ describe('ProjectApplyService', () => {
     );
     expect(await readFile(target, 'utf8')).toBe(before);
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
-      'pending',
+      'saved_pending_apply',
     );
-    const first = await fixture.apply.apply(fixture.project.id, fixture.page.id, {
-      expectedRevisionId: changed.revisionId,
-      clientRequestId: 'request_apply',
+    const workingState = await getWorkingSchemaState({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
     });
+    const input = {
+      expectedRevisionId: changed.revisionId,
+      expectedWorkingVersion: workingState.workingVersion,
+      clientRequestId: 'request_apply',
+    };
+    const first = await fixture.apply.apply(fixture.project.id, fixture.page.id, input);
     const workingPath = join(
       fixture.project.path,
       '.origamix',
@@ -118,10 +137,7 @@ describe('ProjectApplyService', () => {
     );
     const working = JSON.parse(await readFile(workingPath, 'utf8')) as Record<string, unknown>;
     await writeFile(workingPath, JSON.stringify({ ...working, baselineHash: 'stale-baseline' }));
-    const second = await fixture.apply.apply(fixture.project.id, fixture.page.id, {
-      expectedRevisionId: changed.revisionId,
-      clientRequestId: 'request_apply',
-    });
+    const second = await fixture.apply.apply(fixture.project.id, fixture.page.id, input);
     expect(second).toEqual(first);
     expect(JSON.parse(await readFile(target, 'utf8'))).toMatchObject({
       elements: { element_root: { props: { padding: 24 } } },
@@ -152,6 +168,7 @@ describe('ProjectApplyService', () => {
     });
     const input = {
       expectedRevisionId: changed.revisionId,
+      expectedWorkingVersion: (await getWorkingSchemaState(ref)).workingVersion,
       clientRequestId: 'request_concurrent_apply',
     };
     const [first, second] = await Promise.all([
@@ -187,6 +204,7 @@ describe('ProjectApplyService', () => {
     });
     const input = {
       expectedRevisionId: changed.revisionId,
+      expectedWorkingVersion: (await getWorkingSchemaState(ref)).workingVersion,
       clientRequestId: 'request_interrupted_apply',
     };
     await expect(interrupted.apply(fixture.project.id, fixture.page.id, input)).rejects.toThrow(
@@ -239,6 +257,7 @@ describe('ProjectApplyService', () => {
     await expect(
       fixture.apply.apply(fixture.project.id, fixture.page.id, {
         expectedRevisionId: changed.revisionId,
+        expectedWorkingVersion: (await getWorkingSchemaState(ref)).workingVersion,
         clientRequestId: 'request_conflict',
       }),
     ).rejects.toThrow('项目文件已变化');
@@ -280,14 +299,60 @@ describe('ProjectApplyService', () => {
       pageId: fixture.page.id,
       slug: fixture.page.slug,
     });
+    const working = await getWorkingSchemaState({
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    });
 
     await expect(
       fixture.apply.apply(fixture.project.id, fixture.page.id, {
         expectedRevisionId: current.revisionId,
+        expectedWorkingVersion: working.workingVersion,
         clientRequestId: 'request_missing_target',
       }),
     ).rejects.toThrow('页面目标 Schema 路径已变化或文件不存在');
     await expect(readFile(target, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    fixture.database.close();
+  });
+
+  it('requires a dirty Working Schema to be saved before Apply', async () => {
+    const fixture = await setup();
+    const ref = {
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    };
+    const initial = await getWorkingSchemaState(ref);
+    const draftSchema = structuredClone(initial.schema);
+    draftSchema.elements.element_root!.props = { padding: 52 };
+    const draft = await updateWorkingSchema(ref, {
+      baseWorkingVersion: initial.workingVersion,
+      schema: draftSchema,
+    });
+
+    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
+      'draft_unsaved',
+    );
+    await expect(
+      fixture.apply.apply(fixture.project.id, fixture.page.id, {
+        expectedRevisionId: initial.revisionId,
+        expectedWorkingVersion: draft.workingVersion,
+        clientRequestId: 'request_dirty_draft',
+      }),
+    ).rejects.toThrow('当前草稿尚未保存版本');
+
+    const saved = await saveWorkingRevision(ref, draft.workingVersion);
+    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
+      'saved_pending_apply',
+    );
+    await expect(
+      fixture.apply.apply(fixture.project.id, fixture.page.id, {
+        expectedRevisionId: saved.revisionId,
+        expectedWorkingVersion: saved.workingVersion,
+        clientRequestId: 'request_saved_draft',
+      }),
+    ).resolves.toMatchObject({ revisionId: saved.revisionId, status: 'applied' });
     fixture.database.close();
   });
 

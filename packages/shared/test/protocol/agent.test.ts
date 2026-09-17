@@ -87,6 +87,7 @@ describe('agent domain protocol', () => {
       userMessageId: 'message_one',
       requestId: 'request-one',
       baseRevisionId: 'revision_one',
+      baseWorkingVersion: 1,
       mode: 'page_modify',
       status: 'completed',
       budget: {
@@ -187,6 +188,7 @@ describe('agent domain protocol', () => {
         conversationId: 'conversation_one',
         clientRequestId: 'request-one',
         baseRevisionId: 'revision_one',
+        baseWorkingVersion: 1,
         content,
       }).valid,
     ).toBe(true);

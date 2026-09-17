@@ -82,14 +82,19 @@ export class ProjectApplyService {
     const targetSchemaHash = hashSchema(targetSchema);
     return {
       pageId,
-      workingRevisionId: working.revisionId,
+      savedRevisionId: working.revisionId,
+      workingVersion: working.workingVersion,
       status:
-        working.schemaHash === targetSchemaHash
-          ? 'in_sync'
-          : targetSchemaHash === working.baselineHash
-            ? 'pending'
-            : 'external_change',
-      workingSchemaHash: working.schemaHash,
+        working.workingHash !== working.savedSchemaHash
+          ? 'draft_unsaved'
+          : targetSchemaHash !== working.baselineHash &&
+              targetSchemaHash !== working.savedSchemaHash
+            ? 'external_change'
+            : working.savedSchemaHash === targetSchemaHash
+              ? 'in_sync'
+              : 'saved_pending_apply',
+      workingHash: working.workingHash,
+      savedSchemaHash: working.savedSchemaHash,
       targetSchemaHash,
       baselineHash: working.baselineHash,
     };
@@ -104,12 +109,22 @@ export class ProjectApplyService {
   async apply(
     projectId: string,
     pageId: string,
-    input: { expectedRevisionId: string; clientRequestId: string },
+    input: {
+      expectedRevisionId: string;
+      expectedWorkingVersion: number;
+      clientRequestId: string;
+    },
   ): Promise<ApplyPageResult> {
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(input.clientRequestId)) throw invalid('应用请求 ID 无效');
     const page = this.resolve(projectId, pageId);
     const requestHash = createHash('sha256')
-      .update(JSON.stringify({ pageId, expectedRevisionId: input.expectedRevisionId }))
+      .update(
+        JSON.stringify({
+          pageId,
+          expectedRevisionId: input.expectedRevisionId,
+          expectedWorkingVersion: input.expectedWorkingVersion,
+        }),
+      )
       .digest('hex');
     const receiptPath = join(
       page.projectPath,
@@ -125,8 +140,8 @@ export class ProjectApplyService {
       const target = await this.readTarget(page);
       if (hashSchema(target) !== receipt.schemaHash)
         throw conflict('应用回执与项目文件不一致，请检查页面目标文件');
-      if (working.revisionId === receipt.revisionId && working.baselineHash !== receipt.schemaHash)
-        await updateWorkingBaseline(page, receipt.revisionId, receipt.schemaHash);
+      if (working.baselineHash !== receipt.schemaHash)
+        await updateWorkingBaseline(page, working.workingVersion, receipt.schemaHash);
       return {
         pageId: receipt.pageId,
         revisionId: receipt.revisionId,
@@ -135,48 +150,55 @@ export class ProjectApplyService {
         status: receipt.status,
       };
     }
-    return applyWorkingSchemaOperation(page, input.expectedRevisionId, async (working) => {
-      const queuedReceipt = await readJsonIfPresent<ApplyReceipt>(receiptPath);
-      if (queuedReceipt) {
-        if (queuedReceipt.requestHash !== requestHash) throw conflict('请求 ID 已用于其他应用操作');
-        const target = await this.readTarget(page);
-        if (hashSchema(target) !== queuedReceipt.schemaHash)
-          throw conflict('应用回执与项目文件不一致，请检查页面目标文件');
-        return {
-          result: {
-            pageId: queuedReceipt.pageId,
-            revisionId: queuedReceipt.revisionId,
-            schemaHash: queuedReceipt.schemaHash,
-            appliedAt: queuedReceipt.appliedAt,
-            status: queuedReceipt.status,
-          },
-          baselineHash: queuedReceipt.schemaHash,
+    return applyWorkingSchemaOperation(
+      page,
+      input.expectedRevisionId,
+      input.expectedWorkingVersion,
+      async (working) => {
+        const queuedReceipt = await readJsonIfPresent<ApplyReceipt>(receiptPath);
+        if (queuedReceipt) {
+          if (queuedReceipt.requestHash !== requestHash)
+            throw conflict('请求 ID 已用于其他应用操作');
+          const target = await this.readTarget(page);
+          if (hashSchema(target) !== queuedReceipt.schemaHash)
+            throw conflict('应用回执与项目文件不一致，请检查页面目标文件');
+          return {
+            result: {
+              pageId: queuedReceipt.pageId,
+              revisionId: queuedReceipt.revisionId,
+              schemaHash: queuedReceipt.schemaHash,
+              appliedAt: queuedReceipt.appliedAt,
+              status: queuedReceipt.status,
+            },
+            baselineHash: queuedReceipt.schemaHash,
+          };
+        }
+        const targetSchema = await this.readTarget(page);
+        const targetHash = hashSchema(targetSchema);
+        if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)
+          throw conflict('项目文件已变化，请重新读取后再应用');
+        const validation = await validateProjectPageAgainstMaterials(
+          page.projectPath,
+          working.schema,
+        );
+        if (!validation.valid)
+          throw invalid(validation.errors[0]?.message ?? 'Schema 物料校验失败');
+        if (targetHash !== working.schemaHash) await this.targets.write(page, working.schema);
+        await this.options.afterStage?.('target');
+        const verified = await this.targets.read(page);
+        if (hashSchema(verified) !== working.schemaHash) throw invalid('应用后校验失败');
+        const result: ApplyPageResult = {
+          pageId,
+          revisionId: working.revisionId,
+          schemaHash: working.schemaHash,
+          appliedAt: new Date().toISOString(),
+          status: 'applied',
         };
-      }
-      const targetSchema = await this.readTarget(page);
-      const targetHash = hashSchema(targetSchema);
-      if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)
-        throw conflict('项目文件已变化，请重新读取后再应用');
-      const validation = await validateProjectPageAgainstMaterials(
-        page.projectPath,
-        working.schema,
-      );
-      if (!validation.valid) throw invalid(validation.errors[0]?.message ?? 'Schema 物料校验失败');
-      if (targetHash !== working.schemaHash) await this.targets.write(page, working.schema);
-      await this.options.afterStage?.('target');
-      const verified = await this.targets.read(page);
-      if (hashSchema(verified) !== working.schemaHash) throw invalid('应用后校验失败');
-      const result: ApplyPageResult = {
-        pageId,
-        revisionId: working.revisionId,
-        schemaHash: working.schemaHash,
-        appliedAt: new Date().toISOString(),
-        status: 'applied',
-      };
-      await mkdir(dirname(receiptPath), { recursive: true });
-      await writeJsonAtomically(receiptPath, { ...result, requestHash } satisfies ApplyReceipt);
-      await this.options.afterStage?.('receipt');
-      return { result, baselineHash: working.schemaHash };
-    });
+        await mkdir(dirname(receiptPath), { recursive: true });
+        await writeJsonAtomically(receiptPath, { ...result, requestHash } satisfies ApplyReceipt);
+        await this.options.afterStage?.('receipt');
+        return { result, baselineHash: working.schemaHash };
+      },
+    );
   }
 }

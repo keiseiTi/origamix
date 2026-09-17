@@ -161,6 +161,7 @@ export const AgentRunSchema = strictObject({
   userMessageId: MessageIdSchema,
   requestId: RequestIdSchema,
   baseRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
+  baseWorkingVersion: Type.Integer({ minimum: 1 }),
   mode: RunModeSchema,
   status: AgentRunStatusSchema,
   budget: RunBudgetSchema,
@@ -170,6 +171,7 @@ export const AgentRunSchema = strictObject({
   toolsetVersion: Type.String({ minLength: 1 }),
   materialManifestVersion: Type.String({ minLength: 1 }),
   resultRevisionId: Type.Optional(Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' })),
+  resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
   retryOfRunId: Type.Optional(AgentRunIdSchema),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
@@ -249,6 +251,7 @@ export const CreateAgentRunRequestSchema = strictObject({
   conversationId: Type.Optional(ConversationIdSchema),
   clientRequestId: RequestIdSchema,
   baseRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
+  baseWorkingVersion: Type.Integer({ minimum: 1 }),
   content: MessageContentSchema,
   retryOfRunId: Type.Optional(AgentRunIdSchema),
 });

@@ -12,9 +12,50 @@ interface SchemaResult {
   revisionId: string;
 }
 
+interface WorkingSchemaResult extends SchemaResult {
+  workingVersion: number;
+  workingHash: string;
+  savedSchemaHash: string;
+  baselineHash: string;
+}
+
 export const schemaService = {
   get: (projectId: string, pageId: string): Promise<SchemaResult> =>
     request<SchemaResult>(`/pages/${pageId}/schema`, { projectId }),
+  workingState: (projectId: string, pageId: string): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>(`/pages/${pageId}/working-state`, { projectId }),
+  updateWorking: (
+    projectId: string,
+    pageId: string,
+    baseWorkingVersion: number,
+    schema: OrigamixPageSchema,
+  ): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>(`/pages/${pageId}/working-state`, {
+      projectId,
+      method: 'PUT',
+      body: JSON.stringify({ baseWorkingVersion, schema }),
+    }),
+  saveRevision: (
+    projectId: string,
+    pageId: string,
+    expectedWorkingVersion: number,
+  ): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>(`/pages/${pageId}/revisions`, {
+      projectId,
+      method: 'POST',
+      body: JSON.stringify({ expectedWorkingVersion }),
+    }),
+  restoreRevision: (
+    projectId: string,
+    pageId: string,
+    revisionId: string,
+    expectedWorkingVersion: number,
+  ): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>(`/pages/${pageId}/revisions/${revisionId}/restore`, {
+      projectId,
+      method: 'POST',
+      body: JSON.stringify({ expectedWorkingVersion }),
+    }),
   updateProps: (
     projectId: string,
     pageId: string,
@@ -63,6 +104,7 @@ export const schemaService = {
     projectId: string,
     pageId: string,
     expectedRevisionId: string,
+    expectedWorkingVersion: number,
     clientRequestId: string = crypto.randomUUID(),
   ): Promise<ApplyPageResult> =>
     request<ApplyPageResult>(
@@ -72,6 +114,7 @@ export const schemaService = {
         method: 'POST',
         body: JSON.stringify({
           expectedRevisionId,
+          expectedWorkingVersion,
           clientRequestId,
         }),
       },

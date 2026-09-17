@@ -1,6 +1,6 @@
 import { Button, Tooltip } from '@heroui/react';
 import { useState } from 'react';
-import { Eye, SquarePen, MessageSquare, RefreshCw, Undo2 } from 'lucide-react';
+import { Eye, SquarePen, MessageSquare, RefreshCw, Save, Undo2 } from 'lucide-react';
 import type { EditorSaveStatus } from '../editor/use-editor-session';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
@@ -12,11 +12,20 @@ interface WorkspaceHeaderProps {
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
   onUndo: () => Promise<void>;
+  onSaveVersion: () => Promise<void>;
   onApply: () => Promise<void>;
   onReloadFromProject: () => Promise<void>;
-  applyStatus: 'loading' | 'in_sync' | 'pending' | 'external_change' | 'result_pending' | 'error';
+  applyStatus:
+    | 'loading'
+    | 'in_sync'
+    | 'draft_unsaved'
+    | 'saved_pending_apply'
+    | 'external_change'
+    | 'result_pending'
+    | 'error';
   saveStatus: EditorSaveStatus;
   canApply: boolean;
+  canSaveVersion: boolean;
   canUndo: boolean;
   canReload: boolean;
 }
@@ -28,16 +37,19 @@ export const WorkspaceHeader = ({
   onModeChange,
   onPreview,
   onUndo,
+  onSaveVersion,
   onApply,
   onReloadFromProject,
   applyStatus,
   saveStatus,
   canApply,
+  canSaveVersion,
   canUndo,
   canReload,
 }: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  const [savingVersion, setSavingVersion] = useState(false);
   const [applying, setApplying] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +86,17 @@ export const WorkspaceHeader = ({
       setApplying(false);
     }
   };
+  const saveVersion = async (): Promise<void> => {
+    setSavingVersion(true);
+    setError(null);
+    try {
+      await onSaveVersion();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '保存版本失败');
+    } finally {
+      setSavingVersion(false);
+    }
+  };
   const reload = async (): Promise<void> => {
     if (!window.confirm('重新读取项目内容会放弃当前未应用修改，是否继续？')) return;
     setReloading(true);
@@ -102,28 +125,43 @@ export const WorkspaceHeader = ({
           }
         >
           {saveStatus === 'error'
-            ? '保存失败'
+            ? '草稿保留失败'
             : saveStatus === 'saving'
-              ? '保存中…'
+              ? '正在保留草稿…'
               : saveStatus === 'dirty'
-                ? '待保存'
+                ? '草稿待保留'
                 : applyStatus === 'loading'
                   ? '检查状态…'
                   : applyStatus === 'in_sync'
                     ? '与项目一致'
-                    : applyStatus === 'pending'
-                      ? '已保存 · 待应用'
-                      : applyStatus === 'external_change'
-                        ? '项目文件已变化'
-                        : applyStatus === 'result_pending'
-                          ? '应用结果待确认'
-                          : '状态不可用'}
+                    : applyStatus === 'draft_unsaved'
+                      ? '草稿已保留 · 尚未保存版本'
+                      : applyStatus === 'saved_pending_apply'
+                        ? '版本已保存 · 待应用'
+                        : applyStatus === 'external_change'
+                          ? '项目文件已变化'
+                          : applyStatus === 'result_pending'
+                            ? '应用结果待确认'
+                            : '状态不可用'}
         </span>
         {error && (
           <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
             {error}
           </span>
         )}
+        <Tooltip>
+          <Button
+            size='sm'
+            variant='secondary'
+            className='h-7 min-h-7 px-2 text-xs'
+            isDisabled={savingVersion || applying || !canSaveVersion}
+            onPress={() => void saveVersion()}
+          >
+            <Save size={14} />
+            {savingVersion ? '保存中…' : '保存版本'}
+          </Button>
+          <Tooltip.Content placement='bottom'>把当前草稿保存为可恢复的历史版本</Tooltip.Content>
+        </Tooltip>
         <Tooltip>
           <Button
             size='sm'

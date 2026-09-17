@@ -163,8 +163,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       let input: CreateAgentRunRequest | undefined;
       let accepted = false;
       try {
-        const baseRevisionId =
-          retryInput?.baseRevisionId ?? (await schemaService.get(projectId, pageId)).revisionId;
+        const working = retryInput
+          ? undefined
+          : await schemaService.workingState(projectId, pageId);
+        const baseRevisionId = retryInput?.baseRevisionId ?? working!.revisionId;
+        const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
         if (!current()) throw new Error('页面已切换，请返回原页面重试');
         const latest = usePendingOperations.getState().agents[pageKey];
         if (latest?.inFlight || (!retryInput && latest))
@@ -176,6 +179,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
           clientRequestId: requestId(),
           baseRevisionId,
+          baseWorkingVersion,
           content: { version: '1', blocks: [{ type: 'text', text: content }] },
           ...(submission.retryOfRunId ? { retryOfRunId: submission.retryOfRunId } : {}),
         };

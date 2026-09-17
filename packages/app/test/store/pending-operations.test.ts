@@ -9,6 +9,7 @@ const input: CreateAgentRunRequest = {
   pageId: 'page_a',
   clientRequestId: 'request_agent',
   baseRevisionId: 'revision_a',
+  baseWorkingVersion: 1,
   content: { version: '1', blocks: [{ type: 'text', text: 'draft' }] },
 };
 
@@ -23,6 +24,7 @@ describe('pending operation lifetime', () => {
     const operations = usePendingOperations.getState();
     operations.setApply(key, {
       revisionId: 'revision_a',
+      workingVersion: 1,
       clientRequestId: 'request_apply',
       inFlight: true,
     });
@@ -31,6 +33,7 @@ describe('pending operation lifetime', () => {
     operations.finishAgent(key, input.clientRequestId, false);
     expect(usePendingOperations.getState().applies[key]).toEqual({
       revisionId: 'revision_a',
+      workingVersion: 1,
       clientRequestId: 'request_apply',
       inFlight: false,
     });
@@ -44,6 +47,7 @@ describe('pending operation lifetime', () => {
     const operations = usePendingOperations.getState();
     const latestApply = {
       revisionId: 'revision_b',
+      workingVersion: 2,
       clientRequestId: 'request_new',
       inFlight: true,
     };
@@ -63,6 +67,7 @@ describe('pending operation lifetime', () => {
     for (const key of [first, second]) {
       operations.setApply(key, {
         revisionId: 'revision_a',
+        workingVersion: 1,
         clientRequestId: 'request_apply',
         inFlight: true,
       });

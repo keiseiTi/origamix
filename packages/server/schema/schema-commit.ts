@@ -9,6 +9,7 @@ import type {
   RevisionSnapshot,
   CommitJournal,
   ChangeSetReceipt,
+  StoredWorkingSchemaFile,
   WorkingSchemaFile,
 } from './working-schema-store';
 
@@ -46,6 +47,51 @@ export const createRevisionSnapshot = (
   };
 };
 
+const toWorkingV2 = (
+  page: WorkingSchemaPageRef,
+  working: StoredWorkingSchemaFile,
+): WorkingSchemaFile => {
+  if (working.version !== 1 && working.version !== 2) throw invalid('页面工作副本版本无效');
+  if (working.pageId !== page.pageId) throw invalid('页面工作副本归属无效');
+  if (working.version === 2) return working;
+  const schemaHash = hashSchema(working.schema);
+  return {
+    version: 2,
+    pageId: page.pageId,
+    workingVersion: 1,
+    workingHash: schemaHash,
+    lastSavedRevisionId: working.revisionId,
+    savedSchemaHash: schemaHash,
+    baselineHash: working.baselineHash,
+    updatedAt: new Date().toISOString(),
+    schema: working.schema,
+  };
+};
+
+const workingAtSnapshot = (
+  page: WorkingSchemaPageRef,
+  previous: WorkingSchemaFile | undefined,
+  snapshot: RevisionSnapshot,
+): WorkingSchemaFile => {
+  if (
+    previous?.lastSavedRevisionId === snapshot.revisionId &&
+    previous.workingHash === snapshot.schemaHash &&
+    previous.savedSchemaHash === snapshot.schemaHash
+  )
+    return previous;
+  return {
+    version: 2,
+    pageId: page.pageId,
+    workingVersion: (previous?.workingVersion ?? 0) + 1,
+    workingHash: snapshot.schemaHash,
+    lastSavedRevisionId: snapshot.revisionId,
+    savedSchemaHash: snapshot.schemaHash,
+    baselineHash: previous?.baselineHash ?? snapshot.schemaHash,
+    updatedAt: new Date().toISOString(),
+    schema: snapshot.schema,
+  };
+};
+
 /** Internal commit/recovery protocol; callers must hold the page queue. */
 export class SchemaCommit {
   constructor(private readonly store: WorkingSchemaStore) {}
@@ -78,15 +124,9 @@ export class SchemaCommit {
     await options.afterStage?.('prepared');
     await this.store.writeRevision(page, snapshot);
     await options.afterStage?.('revision');
-    const previous = await this.store.readWorkingIfPresent(page);
-    const baselineHash = previous?.baselineHash ?? hashSchema(snapshot.schema);
-    await this.store.writeWorking(page, {
-      version: 1,
-      pageId: page.pageId,
-      revisionId: snapshot.revisionId,
-      baselineHash,
-      schema: snapshot.schema,
-    } satisfies WorkingSchemaFile);
+    const storedPrevious = await this.store.readWorkingIfPresent(page);
+    const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
+    await this.store.writeWorking(page, workingAtSnapshot(page, previous, snapshot));
     await options.afterStage?.('schema');
     await this.writeReceipt(page, snapshot);
     await options.afterStage?.('receipt');
@@ -107,35 +147,30 @@ export class SchemaCommit {
           target.changeSetId !== journal.changeSetId
         )
           throw invalid('页面恢复记录与 Revision 不匹配');
-        const previous = await this.store.readWorkingIfPresent(page);
-        await this.store.writeWorking(page, {
-          version: 1,
-          pageId: page.pageId,
-          revisionId: target.revisionId,
-          baselineHash: previous?.baselineHash ?? target.schemaHash,
-          schema: target.schema,
-        } satisfies WorkingSchemaFile);
+        const storedPrevious = await this.store.readWorkingIfPresent(page);
+        const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
+        await this.store.writeWorking(page, workingAtSnapshot(page, previous, target));
         await this.writeReceipt(page, target);
-      } else if (journal.previousRevisionId) {
-        const previous = await this.store.readRevision(page, journal.previousRevisionId);
-        validateSnapshot(previous);
-        const working = await this.store.readWorkingIfPresent(page);
-        await this.store.writeWorking(page, {
-          version: 1,
-          pageId: page.pageId,
-          revisionId: previous.revisionId,
-          baselineHash: working?.baselineHash ?? previous.schemaHash,
-          schema: previous.schema,
-        } satisfies WorkingSchemaFile);
       }
       await this.store.removeJournal(page);
     }
 
-    const working = await this.store.readWorkingIfPresent(page);
-    if (!working) return;
-    const snapshot = await this.store.readRevision(page, working.revisionId);
+    const storedWorking = await this.store.readWorkingIfPresent(page);
+    if (!storedWorking) return;
+    const working = toWorkingV2(page, storedWorking);
+    const snapshot = await this.store.readRevision(page, working.lastSavedRevisionId);
     validateSnapshot(snapshot);
-    if (hashSchema(working.schema) !== snapshot.schemaHash)
-      throw invalid('页面工作副本与 Revision 不一致');
+    if (
+      working.pageId !== page.pageId ||
+      !Number.isSafeInteger(working.workingVersion) ||
+      working.workingVersion < 1 ||
+      !working.lastSavedRevisionId ||
+      !working.baselineHash ||
+      Number.isNaN(Date.parse(working.updatedAt)) ||
+      hashSchema(working.schema) !== working.workingHash ||
+      working.savedSchemaHash !== snapshot.schemaHash
+    )
+      throw invalid('页面工作副本无效');
+    if (storedWorking.version === 1) await this.store.writeWorking(page, working);
   }
 }

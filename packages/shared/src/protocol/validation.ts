@@ -1,6 +1,15 @@
 import Ajv, { type ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
-import { ChangeSetSchema, PageSchema, type ChangeSet, type OrigamixPageSchema } from './schema';
+import {
+  ChangeSetSchema,
+  PageSchema,
+  SchemaOperationBatchSchema,
+  SchemaOperationSchema,
+  type ChangeSet,
+  type OrigamixPageSchema,
+  type SchemaOperation,
+  type SchemaOperationBatch,
+} from './schema';
 
 export interface ValidationResult {
   valid: boolean;
@@ -22,6 +31,10 @@ addFormats(ajv);
 
 const validatePageSchema = ajv.compile<OrigamixPageSchema>(PageSchema);
 const validateChangeSetSchema = ajv.compile<ChangeSet>(ChangeSetSchema);
+const validateSchemaOperationSchema = ajv.compile<SchemaOperation>(SchemaOperationSchema);
+const validateSchemaOperationBatchSchema = ajv.compile<SchemaOperationBatch>(
+  SchemaOperationBatchSchema,
+);
 
 const result = (errors: ErrorObject[] | null | undefined): ValidationResult => {
   return { valid: !errors, errors: errors ? [...errors] : [] };
@@ -98,4 +111,14 @@ export const validatePage = (value: unknown): PageValidationResult => {
 export const validateChangeSet = (value: unknown): ValidationResult => {
   validateChangeSetSchema(value);
   return result(validateChangeSetSchema.errors);
+};
+
+export const validateSchemaOperation = (value: unknown): ValidationResult => {
+  validateSchemaOperationSchema(value);
+  return result(validateSchemaOperationSchema.errors);
+};
+
+export const validateSchemaOperationBatch = (value: unknown): ValidationResult => {
+  validateSchemaOperationBatchSchema(value);
+  return result(validateSchemaOperationBatchSchema.errors);
 };

@@ -15,11 +15,12 @@ export const derivePageCapabilities = ({
   const agentIdle = agentActivity === 'idle';
   return {
     canEdit: agentIdle,
-    canUndo: agentIdle,
+    canUndo: agentIdle && applyStatus !== 'draft_unsaved',
     canApply:
       agentIdle &&
       saveStatus === 'saved' &&
-      (applyStatus === 'pending' || applyStatus === 'result_pending'),
+      (applyStatus === 'saved_pending_apply' || applyStatus === 'result_pending'),
+    canSaveVersion: agentIdle && saveStatus === 'saved' && applyStatus === 'draft_unsaved',
     canReload: agentIdle,
     canLeave: agentIdle && saveStatus === 'saved',
     agentChecking: agentActivity === 'unknown',

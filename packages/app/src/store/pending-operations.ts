@@ -4,7 +4,12 @@ import type { CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
 export const pageOperationKey = (projectId: string, pageId: string): string =>
   JSON.stringify([projectId, pageId]);
 
-type ApplyRequest = { revisionId: string; clientRequestId: string; inFlight: boolean };
+type ApplyRequest = {
+  revisionId: string;
+  workingVersion: number;
+  clientRequestId: string;
+  inFlight: boolean;
+};
 type AgentRequest = { input: CreateAgentRunRequest; inFlight: boolean };
 
 interface PendingOperations {
