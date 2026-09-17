@@ -41,11 +41,13 @@ export const PageRecordSchema = Type.Object({
 export const CreateProjectSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
+  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   directoryGrantId: Type.String({ minLength: 1 }),
 });
 
 export const OpenProjectSchema = Type.Object({
   directoryGrantId: Type.String({ minLength: 1 }),
+  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   initializeIfNeeded: Type.Optional(Type.Boolean()),
 });
 

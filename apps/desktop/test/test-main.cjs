@@ -76,7 +76,7 @@ app
       return result.data;
     };
     const grant = await window.api.dialog.chooseProjectParent();
-    const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project' });
+    const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
     await request('/projects/' + project.id + '/pages', { name: 'Home', slug: 'home', route: '/' });
     const pages = await request('/projects/' + project.id + '/pages');
     await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });

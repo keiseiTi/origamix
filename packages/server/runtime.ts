@@ -45,8 +45,14 @@ export const startServer = async (input: {
     const project = projects.getProject(projectId);
     const page = projects.getPage(projectId, pageId);
     if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-    return (await getSchema({ projectPath: project.path, pageId: page.id, slug: page.slug }))
-      .revisionId;
+    return (
+      await getSchema({
+        projectPath: project.path,
+        pageId: page.id,
+        slug: page.slug,
+        relativePath: page.relativePath,
+      })
+    ).revisionId;
   };
   const runtimeDiagnostics = new RuntimeDiagnosticService(
     projects,

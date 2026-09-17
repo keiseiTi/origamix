@@ -114,7 +114,12 @@ export class RunExecutor {
 
       this.dependencies.runService.transition(runId, 'generating');
       const assembled = await this.dependencies.context.assemble({
-        page: { projectPath: project.path, pageId: page.id, slug: page.slug },
+        page: {
+          projectPath: project.path,
+          pageId: page.id,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        },
         conversationId: started.conversation.id,
         intent,
         expectedBaseRevisionId: input.baseRevisionId,

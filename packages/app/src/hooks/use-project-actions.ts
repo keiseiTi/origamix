@@ -16,6 +16,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
   const removePages = useWorkspaceStore((state) => state.removePages);
   const [pendingInitialization, setPendingInitialization] = useState<{
     directoryGrantId: string;
+    pageDirectory: string;
     displayPath: string;
     inspection: ProjectInitializationInspection;
   } | null>(null);
@@ -45,14 +46,18 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     });
   };
 
-  const openProject = async (): Promise<void> => {
+  const openProject = async (pageDirectory: string): Promise<void> => {
     await input.flushEditor();
     const grant = await window.api?.dialog?.chooseExistingProject?.();
     if (!grant) return;
-    const result = await projectsService.open({ directoryGrantId: grant.directoryGrantId });
+    const result = await projectsService.open({
+      directoryGrantId: grant.directoryGrantId,
+      pageDirectory,
+    });
     if (result.status === 'initialization_required') {
       setPendingInitialization({
         directoryGrantId: grant.directoryGrantId,
+        pageDirectory,
         displayPath: result.displayPath,
         inspection: result.inspection,
       });
@@ -68,6 +73,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     try {
       const result = await projectsService.open({
         directoryGrantId: pending.directoryGrantId,
+        pageDirectory: pending.pageDirectory,
         initializeIfNeeded: true,
       });
       if (result.status !== 'opened') throw new Error('项目初始化未完成');

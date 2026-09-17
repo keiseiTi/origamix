@@ -6,11 +6,13 @@ export const projectsService = {
   create: (input: {
     name: string;
     code: string;
+    pageDirectory: string;
     directoryGrantId: string;
   }): Promise<ProjectRecord> =>
     request<ProjectRecord>('/projects', { method: 'POST', body: JSON.stringify(input) }),
   open: (input: {
     directoryGrantId: string;
+    pageDirectory: string;
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> =>
     request<OpenProjectResult>('/projects/open', { method: 'POST', body: JSON.stringify(input) }),

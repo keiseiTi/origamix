@@ -18,7 +18,7 @@ export class ProjectManifestStore {
 
   async initializeManifest(
     projectPath: string,
-    input: Pick<ProjectManifest, 'projectId' | 'name'>,
+    input: Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'>,
   ): Promise<void> {
     await this.writeManifest(projectPath, {
       ...input,
@@ -36,6 +36,9 @@ export class ProjectManifestStore {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
         throw invalid('目录尚未初始化为 Origamix 项目');
       throw invalid('项目清单不是有效的 JSON');
+    }
+    if (manifest && typeof manifest === 'object' && !('pageDirectory' in manifest)) {
+      manifest = { ...manifest, pageDirectory: 'pages' };
     }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     const ids = new Set<string>();

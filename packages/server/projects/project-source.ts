@@ -39,14 +39,14 @@ export class ProjectSourceService {
     );
   }
 
-  async createPageEntry(projectPath: string, slug: string): Promise<void> {
+  async createPageEntry(projectPath: string, pageDirectory: string, slug: string): Promise<void> {
     await writeFileAtomically(
-      join(projectPath, 'src', 'pages', slug, 'index.tsx'),
+      join(projectPath, 'src', pageDirectory, slug, 'index.tsx'),
       pageComponentSource(slug),
     );
   }
 
-  removePageDirectory(projectPath: string, slug: string): Promise<void> {
-    return rm(join(projectPath, 'src', 'pages', slug), { recursive: true, force: true });
+  removePageDirectory(projectPath: string, pageDirectory: string, slug: string): Promise<void> {
+    return rm(join(projectPath, 'src', pageDirectory, slug), { recursive: true, force: true });
   }
 }

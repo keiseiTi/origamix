@@ -135,6 +135,7 @@ export const createReadOnlyAgentTools = (
       projectPath: project.path,
       pageId: page.id,
       slug: page.slug,
+      relativePath: page.relativePath,
     });
     const current = await schemaPromise;
     if (current.revisionId !== scope.revisionId) throw conflict('页面 Revision 已变化');

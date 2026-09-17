@@ -1,6 +1,6 @@
 import { KeyedQueue } from '../infrastructure/keyed-queue';
-import { access, mkdir, readFile, rename, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { access, lstat, mkdir, readFile, realpath, rename, rm } from 'node:fs/promises';
+import { isAbsolute, join, relative } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
@@ -22,6 +22,36 @@ const now = (): string => new Date().toISOString();
 const projectQueue = new KeyedQueue();
 const withProjectQueue = <T>(projectId: string, action: () => Promise<T>): Promise<T> =>
   projectQueue.run(projectId, action);
+const normalizePageDirectory = (value = 'pages'): string => {
+  const pageDirectory = value.trim();
+  if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(pageDirectory))
+    throw invalid('页面目录必须是 src 下的相对路径');
+  return pageDirectory;
+};
+const ensurePageDirectory = async (projectPath: string, pageDirectory: string): Promise<string> => {
+  const project = await realpath(projectPath);
+  let directory = join(project, 'src');
+  await mkdir(directory, { recursive: true });
+  for (const segment of pageDirectory.split('/')) {
+    const candidate = join(directory, segment);
+    try {
+      if ((await lstat(candidate)).isSymbolicLink()) throw invalid('页面目录不能是符号链接');
+    } catch (error) {
+      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+      await mkdir(candidate);
+    }
+    const resolved = await realpath(candidate);
+    const fromProject = relative(project, resolved);
+    if (
+      fromProject === '..' ||
+      fromProject.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) ||
+      isAbsolute(fromProject)
+    )
+      throw invalid('页面目录不属于当前项目');
+    directory = resolved;
+  }
+  return directory;
+};
 const schemaTemplate = (): OrigamixPageSchema => ({
   elements: { element_root: { type: 'container', props: {} } },
   layout: { root: 'element_root', structure: { element_root: [] } },
@@ -53,6 +83,7 @@ export class ProjectService {
   async createProject(input: {
     name: string;
     code: string;
+    pageDirectory?: string;
     directoryGrantId: string;
   }): Promise<ProjectRecord> {
     const name = input.name.trim();
@@ -62,6 +93,7 @@ export class ProjectService {
       throw invalid('项目标识仅支持小写字母、数字和连字符');
     }
     const parentPath = this.grants.consumeGrant(input.directoryGrantId);
+    const pageDirectory = normalizePageDirectory(input.pageDirectory);
     const path = join(parentPath, code);
     try {
       await access(path);
@@ -73,7 +105,11 @@ export class ProjectService {
     const id = `project_${nanoid()}`;
     try {
       await this.source.prepareNewProject(temporaryPath, { name, code });
-      await this.manifest.initializeManifest(temporaryPath, { projectId: id, name });
+      await this.manifest.initializeManifest(temporaryPath, {
+        projectId: id,
+        name,
+        pageDirectory,
+      });
       await rename(temporaryPath, path);
     } catch (error) {
       await rm(temporaryPath, { recursive: true, force: true });
@@ -84,9 +120,11 @@ export class ProjectService {
 
   async openProject(input: {
     directoryGrantId: string;
+    pageDirectory?: string;
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> {
     const path = this.grants.resolveGrant(input.directoryGrantId);
+    const pageDirectory = normalizePageDirectory(input.pageDirectory);
     try {
       await access(join(path, 'origamix.project.json'));
     } catch {
@@ -94,9 +132,9 @@ export class ProjectService {
         return {
           status: 'initialization_required',
           displayPath: path,
-          inspection: await this.scaffold.inspectExistingDirectory(path),
+          inspection: await this.scaffold.inspectExistingDirectory(path, pageDirectory),
         };
-      await this.scaffold.initializeExistingDirectory(path);
+      await this.scaffold.initializeExistingDirectory(path, pageDirectory);
     }
     this.grants.consumeGrant(input.directoryGrantId);
     return { status: 'opened', project: await this.reconcile(path) };
@@ -125,9 +163,12 @@ export class ProjectService {
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const name = input.name.trim();
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
-    const pages = await this.manifest.readPages(project.path);
+    const manifest = await this.manifest.readManifest(project.path);
+    const pages = manifest.pages;
     if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
-    const pagePath = join(project.path, 'src', 'pages', input.slug);
+    const relativePath = join('src', manifest.pageDirectory, input.slug);
+    const pagesPath = await ensurePageDirectory(project.path, manifest.pageDirectory);
+    const pagePath = join(pagesPath, input.slug);
     try {
       await access(pagePath);
       throw conflict('页面文件已经存在');
@@ -135,14 +176,14 @@ export class ProjectService {
       if (error instanceof Error && error.message === '页面文件已经存在') throw error;
     }
     const id = `page_${nanoid()}`;
-    const pageRef = { projectPath: project.path, pageId: id, slug: input.slug };
+    const pageRef = { projectPath: project.path, pageId: id, slug: input.slug, relativePath };
     let manifestCommitted = false;
     let pageDirectoryCreated = false;
     try {
       await mkdir(pagePath);
       pageDirectoryCreated = true;
       await this.projectApply.initializeTarget(pageRef, schema);
-      await this.source.createPageEntry(project.path, input.slug);
+      await this.source.createPageEntry(project.path, manifest.pageDirectory, input.slug);
       await initializePageSchema(pageRef, schema);
       const nextPage = { pageId: id, name, slug: input.slug };
       await this.manifest.addPage(project.path, nextPage);
@@ -152,7 +193,7 @@ export class ProjectService {
       if (!manifestCommitted) {
         await Promise.allSettled([
           ...(pageDirectoryCreated
-            ? [this.source.removePageDirectory(project.path, input.slug)]
+            ? [this.source.removePageDirectory(project.path, manifest.pageDirectory, input.slug)]
             : []),
           discardInitializedPageSchema(pageRef),
         ]);
@@ -197,6 +238,7 @@ export class ProjectService {
       projectPath: project.path,
       pageId: page.id,
       slug: page.slug,
+      relativePath: page.relativePath,
     });
     const pages = this.projects.listPages(projectId);
     const baseSlug = `${page.slug}-copy`;
@@ -205,7 +247,7 @@ export class ProjectService {
     while (true) {
       let directoryExists = false;
       try {
-        await access(join(project.path, 'src', 'pages', slug));
+        await access(join(project.path, page.relativePath, '..', slug));
         directoryExists = true;
       } catch {
         // A missing directory is available for the copy.
@@ -227,10 +269,16 @@ export class ProjectService {
       const project = this.projects.getProject(projectId);
       const page = this.projects.getPage(projectId, pageId);
       if (!project || !page) throw notFound('页面不存在');
+      const manifest = await this.manifest.readManifest(project.path);
       await this.manifest.removePage(project.path, pageId);
       await Promise.all([
-        this.source.removePageDirectory(project.path, page.slug),
-        discardInitializedPageSchema({ projectPath: project.path, pageId, slug: page.slug }),
+        this.source.removePageDirectory(project.path, manifest.pageDirectory, page.slug),
+        discardInitializedPageSchema({
+          projectPath: project.path,
+          pageId,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        }),
       ]);
       if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
     });
@@ -247,9 +295,9 @@ export class ProjectService {
     const timestamp = now();
     const pages: PageRecord[] = [];
     for (const item of manifest.pages) {
-      const relativePath = join('src', 'pages', item.slug);
+      const relativePath = join('src', manifest.pageDirectory, item.slug);
       const pagePath = join(path, relativePath);
-      const pageRef = { projectPath: path, pageId: item.pageId, slug: item.slug };
+      const pageRef = { projectPath: path, pageId: item.pageId, slug: item.slug, relativePath };
       try {
         await getSchema(pageRef);
       } catch (error) {

@@ -2,7 +2,7 @@ import { createElement, type ComponentType } from 'react';
 import { createBrowserRouter } from 'react-router';
 import manifest from '../origamix.project.json';
 
-const modules = import.meta.glob<{ default: ComponentType }>('./pages/*/index.tsx', {
+const modules = import.meta.glob<{ default: ComponentType }>('./**/index.tsx', {
   eager: true,
 });
 
@@ -11,8 +11,9 @@ const pages = manifest.pages as Array<{
   name: string;
   slug: string;
 }>;
+const pageDirectory = manifest.pageDirectory;
 const routes = pages.map((page) => {
-  const Component = modules[`./pages/${page.slug}/index.tsx`]?.default;
+  const Component = modules[`./${pageDirectory}/${page.slug}/index.tsx`]?.default;
   if (!Component) throw new Error(`页面入口不存在：${page.slug}`);
   return { path: page.slug === 'home' ? '/' : `/${page.slug}`, Component };
 });

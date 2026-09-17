@@ -17,6 +17,7 @@ export const CreateProjectModal = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [directory, setDirectory] = useState('');
+  const [pageDirectory, setPageDirectory] = useState('pages');
   const [directoryGrantId, setDirectoryGrantId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export const CreateProjectModal = ({
   const close = (): void => {
     setName('');
     setDirectory('');
+    setPageDirectory('pages');
     setDirectoryGrantId('');
     setError(null);
     onClose();
@@ -38,7 +40,7 @@ export const CreateProjectModal = ({
   };
 
   const createProject = async (): Promise<void> => {
-    if (!name.trim() || !code.trim() || !directoryGrantId) {
+    if (!name.trim() || !code.trim() || !pageDirectory.trim() || !directoryGrantId) {
       return setError('请填写所有必填项。');
     }
     setIsSubmitting(true);
@@ -47,6 +49,7 @@ export const CreateProjectModal = ({
       const project = await projectsService.create({
         name: name.trim(),
         code: code.trim(),
+        pageDirectory: pageDirectory.trim(),
         directoryGrantId,
       });
       onCreated({ id: project.id, name: project.name, path: project.path, pages: [] });
@@ -98,6 +101,21 @@ export const CreateProjectModal = ({
                   <FieldError>
                     必须小于或等于 214 个字符，不能包含大写字母、URL 非法字符或空格
                   </FieldError>
+                </TextField>
+                <TextField fullWidth isRequired>
+                  <Label>页面目录路径</Label>
+                  <div className='flex items-center gap-2'>
+                    <span className='text-sm text-zinc-500 dark:text-zinc-400'>src/</span>
+                    <Input
+                      name='pageDirectory'
+                      value={pageDirectory}
+                      placeholder='pages'
+                      pattern='[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*'
+                      onChange={(event) => setPageDirectory(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <FieldError>请输入 src 下的页面目录，例如 pages 或 modules/pages</FieldError>
                 </TextField>
                 <TextField fullWidth isRequired>
                   <Label>生成地址</Label>

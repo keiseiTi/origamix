@@ -4,7 +4,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Ownership and entry points
 
-- `src/main.tsx`, `src/router.ts`, `src/pages/`: portable React/Tangramino scaffold.
+- `src/main.tsx`, `src/router.ts`, and the manifest-configured page directory (default `src/pages/`): portable React/Tangramino scaffold.
 - `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`: standalone tools and build configuration.
 - The template README is also the generated-project usage documentation; ProjectSource only customizes its heading and project code.
 - Copying is owned by `../server/template.ts`; coverage starts in `../server/test/template.test.ts` and `../server/test/test-template.mjs`.
@@ -19,7 +19,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - Use strict TypeScript and Tailwind. Follow root HeroUI/Lucide requirements when adding controls/icons and declare imported packages directly, including stylesheet entry packages such as `@heroui/styles`. Do not add packages for unused future plans.
 - Changed pages support light/dark themes and accessible states. Do not copy workbench navigation, editor chrome or mock persistence into generated applications.
 - Keep source-only content: no installed dependencies, private files, caches, app databases, compiled output or user projects.
-- Generated `.origamix/` content is local editing state, not runtime input; keep it ignored by default and document that deployed pages read `src/pages/*/schema.json`.
+- Generated `.origamix/` content is local editing state, not runtime input; keep it ignored by default and document that deployed pages read `src/<pageDirectory>/*/schema.json`, with `pageDirectory` declared by the project manifest.
 - The Server copier excludes this `AGENTS.md` via its root allowlist. Shipping guidance into generated projects is a separate product change requiring standalone instructions without monorepo-only paths/commands.
 - New runtime/build assets require reviewing the copy allowlist and packaged resources, then testing a project created by ProjectService after a real Schema apply. Copying and building the untouched template is not portability evidence.
 

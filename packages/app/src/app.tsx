@@ -233,13 +233,7 @@ const App = (): React.JSX.Element => {
         })
       }
       onProjectCreated={(project) => setProjects((current) => [...current, project])}
-      onOpenProject={() =>
-        void projectActions
-          .openProject()
-          .catch((error: unknown) =>
-            setTransitionError(error instanceof Error ? error.message : '打开失败'),
-          )
-      }
+      onOpenProject={projectActions.openProject}
       onPageCreated={addPage}
       onRenameProject={projectActions.renameProject}
       onDeleteProject={projectActions.deleteProject}

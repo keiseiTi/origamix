@@ -44,6 +44,7 @@ try {
   const created = await request('/projects', {
     name: 'Template smoke',
     code: 'project',
+    pageDirectory: 'pages',
     directoryGrantId: 'template-test-grant',
   });
   const page = await request(`/projects/${created.id}/pages`, { name: 'Home', slug: 'home' });

@@ -12,6 +12,7 @@ export const ProjectManifestSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   framework: Type.Literal('react'),
   uiLibrary: Type.Literal('antd'),
+  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
 });
 

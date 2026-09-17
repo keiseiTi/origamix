@@ -50,7 +50,12 @@ export class ProjectApplyService {
     const project = this.projects.getProject(projectId);
     const record = this.projects.getPage(projectId, pageId);
     if (!project || !record) throw notFound('页面不存在');
-    const page = { projectPath: project.path, pageId: record.id, slug: record.slug };
+    const page = {
+      projectPath: project.path,
+      pageId: record.id,
+      slug: record.slug,
+      relativePath: record.relativePath,
+    };
     return page;
   }
 

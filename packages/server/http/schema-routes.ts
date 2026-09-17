@@ -12,7 +12,12 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
     const page = input.projects.getPage(projectId, pageId);
     const project = input.projects.getProject(projectId);
     if (!page || !project) throw notFound('页面不存在');
-    return { projectPath: project.path, pageId: page.id, slug: page.slug };
+    return {
+      projectPath: project.path,
+      pageId: page.id,
+      slug: page.slug,
+      relativePath: page.relativePath,
+    };
   };
   server.get(
     '/api/v1/pages/:pageId/schema',

@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { CreatePageModal } from './mod/create-page-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
+import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import type { UserProfile } from '../../store/preferences';
 import type { PageItem, ProjectItem } from '../../store/workspace';
@@ -28,7 +29,7 @@ interface SidebarProps {
   onTemporaryClose: () => void;
   onOpenSettings: () => void;
   onProjectCreated: (project: ProjectItem) => void;
-  onOpenProject: () => void;
+  onOpenProject: (pageDirectory: string) => Promise<void>;
   onPageCreated: (projectId: string, page: PageItem) => void;
   onSelectPage: (pageId: string) => void;
   onRenameProject: (projectId: string, name: string) => Promise<void>;
@@ -60,6 +61,7 @@ export const Sidebar = ({
   supportsNativeProjectDirectories,
 }: SidebarProps): React.JSX.Element => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isOpenProjectModalOpen, setIsOpenProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -123,7 +125,10 @@ export const Sidebar = ({
         <Button
           variant='ghost'
           className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
-          onPress={onOpenProject}
+          onPress={() => {
+            keepSidebarOpen();
+            setIsOpenProjectModalOpen(true);
+          }}
           isDisabled={!supportsNativeProjectDirectories}
           aria-label={
             supportsNativeProjectDirectories ? '打开项目' : '打开项目；浏览器不能直接访问本机目录'
@@ -266,6 +271,11 @@ export const Sidebar = ({
           <Settings size={14} className='text-zinc-400' />
         </Button>
       </aside>
+      <OpenProjectModal
+        isOpen={isOpenProjectModalOpen}
+        onClose={() => setIsOpenProjectModalOpen(false)}
+        onOpenProject={onOpenProject}
+      />
 
       <CreateProjectModal
         isOpen={isProjectModalOpen}

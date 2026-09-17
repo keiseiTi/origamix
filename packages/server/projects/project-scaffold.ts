@@ -11,7 +11,10 @@ import type { ProjectInitializationInspection } from '@origamix/shared/protocol/
 export class ProjectScaffoldService {
   constructor(private readonly templatePath: string) {}
 
-  async inspectExistingDirectory(path: string): Promise<ProjectInitializationInspection> {
+  async inspectExistingDirectory(
+    path: string,
+    pageDirectory: string,
+  ): Promise<ProjectInitializationInspection> {
     const entries = await readdir(path);
     const hasApplicationFiles = entries.some(
       (entry) => entry === 'package.json' || entry === 'src',
@@ -39,7 +42,7 @@ export class ProjectScaffoldService {
     }
 
     const discoveredPages: ProjectInitializationInspection['discoveredPages'] = [];
-    const pagesPath = join(path, 'src', 'pages');
+    const pagesPath = join(path, 'src', pageDirectory);
     let pageEntries: Dirent[] = [];
     try {
       pageEntries = await readdir(pagesPath, { withFileTypes: true });
@@ -82,8 +85,8 @@ export class ProjectScaffoldService {
     };
   }
 
-  async initializeExistingDirectory(path: string): Promise<void> {
-    const inspection = await this.inspectExistingDirectory(path);
+  async initializeExistingDirectory(path: string, pageDirectory: string): Promise<void> {
+    const inspection = await this.inspectExistingDirectory(path, pageDirectory);
     if (inspection.blockers.length > 0)
       throw invalid(`项目尚不能初始化：${inspection.blockers.join('；')}`);
 
@@ -124,7 +127,7 @@ export class ProjectScaffoldService {
       throw invalid('已有工程不符合 React + Vite 项目标准，未写入 Origamix 清单');
 
     const pages: Array<{ pageId: string; name: string; slug: string }> = [];
-    const pagesPath = join(path, 'src', 'pages');
+    const pagesPath = join(path, 'src', pageDirectory);
     await mkdir(pagesPath, { recursive: true });
     for (const entry of await readdir(pagesPath, { withFileTypes: true })) {
       if (!entry.isDirectory() || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) continue;
@@ -161,6 +164,7 @@ export class ProjectScaffoldService {
           code: directoryName,
           framework: 'react',
           uiLibrary: 'antd',
+          pageDirectory,
           pages,
         },
         null,
@@ -170,7 +174,7 @@ export class ProjectScaffoldService {
     if (!hasApplicationFiles)
       await writeFileAtomically(
         join(path, 'README.md'),
-        `# ${directoryName}\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`，并配置未知子路由回退到 \`index.html\`。\n\n\`.origamix/\` 是不参与运行和部署的本机编辑状态，默认不提交到版本库。真实运行页面只读取 \`src/pages/*/schema.json\`。\n`,
+        `# ${directoryName}\n\n## 使用\n\n\`\`\`sh\npnpm install\npnpm dev\npnpm build\npnpm preview\n\`\`\`\n\n生产部署请发布 \`dist/\`，并配置未知子路由回退到 \`index.html\`。\n\n\`.origamix/\` 是不参与运行和部署的本机编辑状态，默认不提交到版本库。真实运行页面只读取 \`src/${pageDirectory}/*/schema.json\`。\n`,
       );
   }
 }

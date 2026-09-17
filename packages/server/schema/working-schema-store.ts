@@ -7,6 +7,7 @@ export interface WorkingSchemaPageRef {
   projectPath: string;
   pageId: string;
   slug: string;
+  relativePath?: string;
 }
 
 export interface WorkingSchemaFile {

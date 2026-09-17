@@ -6,6 +6,7 @@ const manifest = () => ({
   name: '示例项目',
   framework: 'react',
   uiLibrary: 'antd',
+  pageDirectory: 'pages',
   pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
 });
 
@@ -32,5 +33,10 @@ describe('project manifest protocol', () => {
         pages: [{ pageId: 'page_home', name: '首页', slug: '../home' }],
       }),
     ).toBe(false);
+  });
+
+  it('rejects page directories outside src', () => {
+    expect(isProjectManifest({ ...manifest(), pageDirectory: '../pages' })).toBe(false);
+    expect(isProjectManifest({ ...manifest(), pageDirectory: '/pages' })).toBe(false);
   });
 });

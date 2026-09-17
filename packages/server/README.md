@@ -67,7 +67,7 @@ Schema 写工具 `agent/tools/replace-page-schema.ts` 仍调用 `commitSchema`�
 | ------------------------------------------ | ------------------------------------ | ----------------------------------------- |
 | 项目、页面索引、会话、消息、Run            | 业务 Repository + SQLite             | 应用记录；页面清单以项目 Manifest 为准    |
 | Working Schema、Revision、Journal、Receipt | `schema/working-schema-store.ts`     | 可编辑页面数据、历史和恢复记录            |
-| `src/pages/<slug>/schema.json`             | `schema/target-schema-store.ts`      | 初始化或显式 Apply 写入的运行投影         |
+| `src/<pageDirectory>/<slug>/schema.json`   | `schema/target-schema-store.ts`      | 初始化或显式 Apply 写入的运行投影         |
 | `origamix.project.json`                    | `projects/project-manifest-store.ts` | 项目与页面注册清单，SQLite 不能反向重写它 |
 | 渲染诊断                                   | `diagnostics/diagnostic-cache.ts`    | 进程内缓存，重启不保留                    |
 

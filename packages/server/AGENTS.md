@@ -11,7 +11,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - `projects/project-service.ts`: project use-case facade and orchestration; directory grants, manifest store, scaffold and source modules own grants, manifest changes, initialization and generated source respectively.
 - `schema/schema-service.ts`: authoritative edit pipeline and per-page serialization. `schema/schema-commit.ts` owns the internal commit/recovery protocol and must run under that page queue; `schema/schema-hash.ts` owns pure hashing. `schema/working-schema-store.ts` owns Working/Revision/journal/ChangeSet-receipt paths and atomic JSON persistence.
 - `schema/project-apply-service.ts`: apply orchestration. Initial target creation and explicit apply must share one Target Schema Store; `ProjectService` must not retain a separate target `schema.json` writer.
-- `origamix.project.json.pages` is the project page standard. `pageId` is the stable identity; opening a project may rebuild the SQLite index from the manifest, but SQLite must never rewrite the manifest.
+- `origamix.project.json.pages` is the project page standard and `pageDirectory` locates those pages below `src/`. `pageId` is the stable identity; opening a project may rebuild the SQLite index from the manifest, but SQLite must never rewrite the manifest.
 - `schema/material-validation.ts`: pure-data Materials Manifest enforcement before Schema writes.
 - Domain-local `*-repository.ts` files and `database/`: Drizzle over `node:sqlite`, current-schema initialization and safety checks.
 - `template.ts`: clean scaffold copying; `scripts/`: Server-owned builds and integration checks.

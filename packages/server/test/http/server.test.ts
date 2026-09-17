@@ -175,6 +175,7 @@ describe('HTTP authentication and responses', () => {
         payload: {
           name: '测试项目',
           code: 'test-project',
+          pageDirectory: 'pages',
           directoryGrantId: 'grant_missing',
         },
       });

@@ -19,6 +19,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
           name: 'Test',
           framework: 'react',
           uiLibrary: 'antd',
+          pageDirectory: 'pages',
           pages: [first, second],
         }),
       );

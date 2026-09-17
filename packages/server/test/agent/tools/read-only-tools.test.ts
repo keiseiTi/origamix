@@ -106,6 +106,7 @@ describe('read-only Agent tools', () => {
       projectPath: '/authorized/project',
       pageId: 'page_one',
       slug: 'home',
+      relativePath: 'src/pages/home',
     });
   });
 

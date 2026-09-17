@@ -61,7 +61,12 @@ export const createReplacePageSchemaTool = (
       }
       const digest = createHash('sha256').update(JSON.stringify(schema)).digest('hex').slice(0, 16);
       const result = await commitSchema(
-        { projectPath: project.path, pageId: page.id, slug: page.slug },
+        {
+          projectPath: project.path,
+          pageId: page.id,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        },
         {
           changeSetId: `change_${context.runId}_${digest}`,
           pageId: page.id,

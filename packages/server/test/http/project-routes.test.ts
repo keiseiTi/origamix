@@ -42,6 +42,7 @@ describe('Project and Schema HTTP flows', () => {
       payload: {
         name: '客户控制台',
         code: 'customer-console',
+        pageDirectory: 'screens',
         directoryGrantId: 'grant_project',
       },
     });
@@ -78,18 +79,19 @@ describe('Project and Schema HTTP flows', () => {
     const page = pageResult.data;
     expect(page.slug).toBe('customer-list');
     expect(
-      await readFile(join(project.path, 'src', 'pages', page.slug, 'index.tsx'), 'utf8'),
+      await readFile(join(project.path, 'src', 'screens', page.slug, 'index.tsx'), 'utf8'),
     ).toContain('OrigamixPage');
     expect(
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
       framework: 'react',
       uiLibrary: 'antd',
+      pageDirectory: 'screens',
       pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
 
     const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
-    const targetPath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
+    const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
     const targetBeforeEdit = await readFile(targetPath, 'utf8');
     const schemaResponse = await server.inject({
       method: 'GET',
@@ -164,7 +166,11 @@ describe('Project and Schema HTTP flows', () => {
       await readFile(join(directory, 'origamix.project.json'), 'utf8'),
     ) as { name: string; code: string };
 
-    expect(manifest).toMatchObject({ name: basename(directory), code: basename(directory) });
+    expect(manifest).toMatchObject({
+      name: basename(directory),
+      code: basename(directory),
+      pageDirectory: 'pages',
+    });
     expect(project.name).toBe(basename(directory));
     expect(manifest).toMatchObject({
       framework: 'react',
@@ -192,7 +198,7 @@ describe('Project and Schema HTTP flows', () => {
     );
     await mkdir(join(directory, 'src'), { recursive: true });
     await writeFile(join(directory, 'src', 'router.ts'), 'export default [];');
-    const pagePath = join(directory, 'src', 'pages', 'customers');
+    const pagePath = join(directory, 'src', 'screens', 'customers');
     await mkdir(pagePath, { recursive: true });
     await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
     await writeFile(
@@ -210,7 +216,10 @@ describe('Project and Schema HTTP flows', () => {
     const projects = new ProjectRepository(database);
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_existing', directory);
-    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    const pending = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      pageDirectory: 'screens',
+    });
     if (pending.status !== 'initialization_required') throw new Error('expected inspection');
     expect(pending.inspection).toEqual({
       directoryKind: 'existing_application',
@@ -220,12 +229,20 @@ describe('Project and Schema HTTP flows', () => {
     });
     const opened = await service.openProject({
       directoryGrantId: 'grant_existing',
+      pageDirectory: 'screens',
       initializeIfNeeded: true,
     });
     if (opened.status !== 'opened') throw new Error('expected opened project');
     expect(projects.listPages(opened.project.id)).toEqual([
-      expect.objectContaining({ name: 'customers', slug: 'customers' }),
+      expect.objectContaining({
+        name: 'customers',
+        slug: 'customers',
+        relativePath: join('src', 'screens', 'customers'),
+      }),
     ]);
+    expect(
+      JSON.parse(await readFile(join(directory, 'origamix.project.json'), 'utf8')),
+    ).toMatchObject({ pageDirectory: 'screens' });
     database.close();
   });
 

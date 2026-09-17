@@ -7,7 +7,11 @@ import { invalid } from '../errors';
 
 export class TargetSchemaStore {
   pathFor(page: SchemaPageRef): string {
-    return join(page.projectPath, 'src', 'pages', page.slug, 'schema.json');
+    return join(
+      page.projectPath,
+      page.relativePath ?? join('src', 'pages', page.slug),
+      'schema.json',
+    );
   }
 
   async read(page: SchemaPageRef): Promise<OrigamixPageSchema> {

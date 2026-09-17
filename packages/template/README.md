@@ -11,7 +11,7 @@ pnpm preview
 
 生产部署发布 `dist/`。项目使用浏览器历史路由，静态服务器需要将未知子路由回退到 `index.html`。
 
-`.origamix/` 保存本机编辑工作副本、修订和操作回执，不参与项目运行或部署，默认不提交到版本库。运行页面读取 `src/pages/*/schema.json`。
+`.origamix/` 保存本机编辑工作副本、修订和操作回执，不参与项目运行或部署，默认不提交到版本库。运行页面从 `origamix.project.json` 的 `pageDirectory`（默认 `pages`）读取 `src/<pageDirectory>/*/schema.json`。
 
 ## 职责与入口
 

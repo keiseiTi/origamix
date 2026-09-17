@@ -19,7 +19,12 @@ export const recoverAgentRunsOnStartup = async (
     if (!project || !page) return false;
     try {
       return await hasValidRevision(
-        { projectPath: project.path, pageId: page.id, slug: page.slug },
+        {
+          projectPath: project.path,
+          pageId: page.id,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        },
         run.resultRevisionId,
       );
     } catch {
