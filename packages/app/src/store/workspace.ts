@@ -17,7 +17,6 @@ export interface ProjectItem {
 
 export interface WorkspaceSession {
   activeTab: WorkspaceMode;
-  isSettingsOpen: boolean;
   sidebarCollapsed?: boolean;
   activeProjectId: string | null;
   activePageId: string | null;
@@ -33,8 +32,6 @@ interface WorkspaceState extends WorkspaceSession {
   setProjects: (update: ProjectItem[] | ((projects: ProjectItem[]) => ProjectItem[])) => void;
   restoreWorkspace: (projects: ProjectItem[]) => void;
   failWorkspaceRestore: (message: string) => void;
-  setActiveTab: (mode: WorkspaceMode) => void;
-  setSettingsOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   restoreSidebarCollapsed: (collapsed: boolean) => void;
   selectPage: (pageId: string) => void;
@@ -49,7 +46,6 @@ const storageKey = 'origamix:view-session';
 
 const emptySession: WorkspaceSession = {
   activeTab: 'chat',
-  isSettingsOpen: false,
   activeProjectId: null,
   activePageId: null,
   openPageIds: [],
@@ -79,7 +75,6 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
     const modes = stringRecord(record.pageModes);
     return {
       activeTab: record.activeTab === 'edit' ? 'edit' : 'chat',
-      isSettingsOpen: record.isSettingsOpen === true,
       sidebarCollapsed:
         typeof record.sidebarCollapsed === 'boolean' ? record.sidebarCollapsed : undefined,
       activeProjectId: typeof record.activeProjectId === 'string' ? record.activeProjectId : null,
@@ -142,12 +137,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         openPageIds,
         pageModes,
         pageDrafts,
-        activeTab: activePageId && pageModes[activePageId] === 'edit' ? 'edit' : 'chat',
+        activeTab: activePageId ? (pageModes[activePageId] ?? 'chat') : 'chat',
       };
     }),
   failWorkspaceRestore: (workspaceError) => set({ workspaceError }),
-  setActiveTab: (activeTab) => set({ activeTab }),
-  setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
   restoreSidebarCollapsed: (sidebarCollapsed) =>
     set((state) => (state.sidebarCollapsed === undefined ? { sidebarCollapsed } : state)),
@@ -164,7 +157,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
           ? state.openPageIds
           : [...state.openPageIds, pageId],
         pageModes,
-        activeTab: pageModes[pageId] === 'edit' ? 'edit' : 'chat',
+        activeTab: pageModes[pageId] ?? 'chat',
       };
     }),
   closePage: (pageId) =>
@@ -187,8 +180,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         pageDrafts,
         activeTab:
           state.activePageId === pageId
-            ? activePageId && pageModes[activePageId] === 'edit'
-              ? 'edit'
+            ? activePageId
+              ? (pageModes[activePageId] ?? 'chat')
               : 'chat'
             : state.activeTab,
       };
@@ -213,7 +206,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         openPageIds,
         pageModes,
         pageDrafts,
-        activeTab: activePageId && pageModes[activePageId] === 'edit' ? 'edit' : 'chat',
+        activeTab: activePageId ? (pageModes[activePageId] ?? 'chat') : 'chat',
       };
     }),
   setPageMode: (pageId, mode) =>
@@ -230,7 +223,6 @@ useWorkspaceStore.subscribe((state) => {
   try {
     const session: WorkspaceSession = {
       activeTab: state.activeTab,
-      isSettingsOpen: state.isSettingsOpen,
       sidebarCollapsed: state.sidebarCollapsed,
       activeProjectId: state.activeProjectId,
       activePageId: state.activePageId,

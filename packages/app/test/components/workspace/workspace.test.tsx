@@ -131,4 +131,46 @@ describe('workspace recovery controls', () => {
 
     await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2));
   });
+
+  it('keeps retained tab sessions mounted while only the active tab handles shortcuts', async () => {
+    mocks.listConversations.mockResolvedValue({ conversations: [] });
+    mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
+    mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 3 });
+    const second = {
+      ...props,
+      active: false,
+      page: { id: 'page_b', name: 'Second', fileName: 'second' },
+      editorRef: { current: null },
+    };
+    const view = render(
+      <>
+        <Workspace {...props} active />
+        <Workspace {...second} />
+      </>,
+    );
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button', { name: '保存版本' });
+      expect(buttons).toHaveLength(2);
+      expect((buttons[0] as HTMLButtonElement).disabled).toBe(false);
+      expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2));
+    expect(mocks.saveRevision).not.toHaveBeenCalledWith('project_1', 'page_b', 2);
+
+    view.rerender(
+      <>
+        <Workspace {...props} active={false} />
+        <Workspace {...second} active />
+      </>,
+    );
+    await waitFor(() => {
+      const buttons = screen.getAllByRole('button', { name: '保存版本' });
+      expect((buttons[1] as HTMLButtonElement).disabled).toBe(false);
+    });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2));
+    expect(mocks.listConversations).toHaveBeenCalledTimes(2);
+  });
 });

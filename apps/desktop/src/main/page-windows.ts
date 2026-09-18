@@ -27,6 +27,8 @@ export const registerPageWindows = (
   const views = new Map<string, PreviewEntry>();
   const pending = new Map<string, Promise<void>>();
   let activeKey: string | undefined;
+  let attachedKey: string | undefined;
+  let previewVisible = true;
   let boundWindow: BrowserWindow | undefined;
   let previewBounds: PreviewBounds = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -77,6 +79,23 @@ export const registerPageWindows = (
       height: Math.max(1, Math.min(previewBounds.height, windowHeight - previewBounds.y)),
     });
   };
+  const setActivePreviewVisible = (visible: boolean): void => {
+    const window = getWorkbenchWindow();
+    const entry = activeKey ? views.get(activeKey) : undefined;
+    previewVisible = visible;
+    if (!window || window.isDestroyed() || !entry) return;
+    if (visible) {
+      if (attachedKey !== activeKey) {
+        window.contentView.addChildView(entry.view);
+        attachedKey = activeKey;
+      }
+      resizeActiveView();
+      entry.view.webContents.focus();
+    } else if (attachedKey === activeKey) {
+      window.contentView.removeChildView(entry.view);
+      attachedKey = undefined;
+    }
+  };
   const bindWindowLifecycle = (window: BrowserWindow): void => {
     if (boundWindow === window) return;
     boundWindow = window;
@@ -85,6 +104,7 @@ export const registerPageWindows = (
       for (const { view } of views.values()) view.webContents.close();
       views.clear();
       activeKey = undefined;
+      attachedKey = undefined;
       boundWindow = undefined;
     });
   };
@@ -92,8 +112,9 @@ export const registerPageWindows = (
     const window = getWorkbenchWindow();
     const key = keyOf(entry.target);
     if (window && !window.isDestroyed() && activeKey === key) {
-      window.contentView.removeChildView(entry.view);
+      if (attachedKey === key) window.contentView.removeChildView(entry.view);
       activeKey = undefined;
+      attachedKey = undefined;
       const { projectId, pageId, mode } = entry.target;
       window.webContents.send('preview:exited', { projectId, pageId, mode });
     }
@@ -102,8 +123,9 @@ export const registerPageWindows = (
     const window = getWorkbenchWindow();
     const key = keyOf(entry.target);
     if (window && !window.isDestroyed() && activeKey === key) {
-      window.contentView.removeChildView(entry.view);
+      if (attachedKey === key) window.contentView.removeChildView(entry.view);
       activeKey = undefined;
+      attachedKey = undefined;
     }
     views.delete(key);
     entry.view.webContents.close();
@@ -186,6 +208,19 @@ export const registerPageWindows = (
     resizeActiveView();
   });
 
+  ipcMain.handle('window:set-preview-visible', async (event, visible: unknown): Promise<void> => {
+    const window = getWorkbenchWindow();
+    if (
+      !window ||
+      event.sender !== window.webContents ||
+      event.senderFrame !== event.sender.mainFrame
+    ) {
+      throw new Error('工作台窗口未授权');
+    }
+    if (typeof visible !== 'boolean') throw new Error('预览可见性参数无效');
+    setActivePreviewVisible(visible);
+  });
+
   ipcMain.handle('window:close-preview', async (event, input: unknown): Promise<void> => {
     const window = getWorkbenchWindow();
     if (
@@ -245,14 +280,18 @@ export const registerPageWindows = (
     }
     entry.target = input;
 
-    if (activeKey && activeKey !== key) {
-      const active = views.get(activeKey);
+    if (attachedKey && attachedKey !== key) {
+      const active = views.get(attachedKey);
       if (active) window.contentView.removeChildView(active.view);
+      attachedKey = undefined;
     }
     activeKey = key;
-    window.contentView.addChildView(entry.view);
-    resizeActiveView();
-    entry.view.webContents.focus();
+    if (previewVisible) {
+      window.contentView.addChildView(entry.view);
+      attachedKey = key;
+      resizeActiveView();
+      entry.view.webContents.focus();
+    }
   };
 
   ipcMain.handle('window:open-page', async (event, input: unknown) => {

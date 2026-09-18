@@ -24,7 +24,6 @@ describe('workspace store', () => {
       workspaceReady: true,
       workspaceError: null,
       activeTab: 'chat',
-      isSettingsOpen: false,
       sidebarCollapsed: false,
       activeProjectId: 'project-1',
       activePageId: null,
@@ -39,7 +38,6 @@ describe('workspace store', () => {
     (raw) => {
       expect(parseWorkspaceSession(raw)).toMatchObject({
         activeTab: 'chat',
-        isSettingsOpen: false,
         activeProjectId: null,
         activePageId: null,
         openPageIds: [],
@@ -85,6 +83,19 @@ describe('workspace store', () => {
       openPageIds: ['page-1'],
       pageModes: { 'page-1': 'edit' },
       pageDrafts: { 'page-1': 'draft' },
+    });
+  });
+
+  it('restores an in-session preview when its tab becomes active again', () => {
+    useWorkspaceStore.getState().selectPage('page-1');
+    useWorkspaceStore.getState().setPageMode('page-1', 'preview');
+    useWorkspaceStore.getState().selectPage('page-2');
+    useWorkspaceStore.getState().selectPage('page-1');
+
+    expect(useWorkspaceStore.getState()).toMatchObject({
+      activePageId: 'page-1',
+      activeTab: 'preview',
+      pageModes: { 'page-1': 'preview' },
     });
   });
 

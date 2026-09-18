@@ -1,22 +1,39 @@
-import { Button, Card, Chip, Input, Radio, RadioGroup } from '@heroui/react';
+import { Button, Card, Chip, Input, Modal, Radio, RadioGroup } from '@heroui/react';
 import { ArrowLeft, Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppTheme, UserProfile } from '../../store/preferences';
 
 interface SettingsPageProps {
   theme: AppTheme;
-  sidebarCollapsed: boolean;
-  isMacDesktop: boolean;
   userProfile: UserProfile;
   onThemeChange: (theme: AppTheme) => void;
   onProfileChange: (profile: UserProfile) => void;
   onBack: () => void;
 }
 
+interface SettingsModalProps extends Omit<SettingsPageProps, 'onBack'> {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const SettingsModal = ({
+  isOpen,
+  onClose,
+  ...settingsProps
+}: SettingsModalProps): React.JSX.Element => (
+  <Modal isOpen={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
+    <Modal.Backdrop>
+      <Modal.Container className='p-4'>
+        <Modal.Dialog className='flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] max-w-none flex-col overflow-hidden p-0'>
+          <SettingsPage {...settingsProps} onBack={onClose} />
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
+  </Modal>
+);
+
 export const SettingsPage = ({
   theme,
-  sidebarCollapsed,
-  isMacDesktop,
   userProfile,
   onThemeChange,
   onProfileChange,
@@ -104,34 +121,18 @@ export const SettingsPage = ({
 
   return (
     <section className='flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      <header
-        className={`relative flex h-10 min-h-10 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800 ${
-          sidebarCollapsed && isMacDesktop ? 'window-no-drag-region' : 'window-drag-region'
-        }`}
-      >
-        {sidebarCollapsed && isMacDesktop && (
-          <span
-            aria-hidden='true'
-            className='window-drag-region absolute inset-y-0 right-0 left-[108px]'
-          />
-        )}
-        {!sidebarCollapsed && (
-          <Button
-            isIconOnly
-            size='sm'
-            variant='ghost'
-            className='window-no-drag-region mr-2 h-8 min-h-8 w-8 min-w-8'
-            onPress={onBack}
-            aria-label='返回工作区'
-          >
-            <ArrowLeft size={17} />
-          </Button>
-        )}
-        <div
-          className={`relative z-10 ${
-            sidebarCollapsed ? (isMacDesktop ? 'pl-[90px]' : 'pl-10') : ''
-          }`}
+      <header className='window-no-drag-region relative flex h-10 min-h-10 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800'>
+        <Button
+          isIconOnly
+          size='sm'
+          variant='ghost'
+          className='window-no-drag-region mr-2 h-8 min-h-8 w-8 min-w-8'
+          onPress={onBack}
+          aria-label='关闭设置'
         >
+          <ArrowLeft size={17} />
+        </Button>
+        <div className='relative z-10'>
           <h1 className='m-0 text-sm font-semibold'>设置</h1>
         </div>
       </header>

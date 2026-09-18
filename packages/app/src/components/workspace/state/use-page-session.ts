@@ -30,12 +30,14 @@ export const usePageSession = ({
   projectId,
   pageId,
   schemaRefreshKey,
+  active = true,
   editorRef,
   onSchemaCommitted,
 }: {
   projectId: string;
   pageId: string;
   schemaRefreshKey: string;
+  active?: boolean;
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
@@ -43,6 +45,7 @@ export const usePageSession = ({
     projectId,
     pageId,
     schemaRefreshKey,
+    active,
     editorRef,
     onSchemaCommitted,
   });

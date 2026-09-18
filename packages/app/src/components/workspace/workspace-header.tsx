@@ -7,6 +7,7 @@ import { RevisionHistoryModal } from './revision-history-modal';
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
 interface WorkspaceHeaderProps {
+  active: boolean;
   projectName: string;
   pageName: string;
   projectId: string;
@@ -34,6 +35,7 @@ interface WorkspaceHeaderProps {
 }
 
 export const WorkspaceHeader = ({
+  active,
   projectName,
   pageName,
   projectId,
@@ -105,6 +107,7 @@ export const WorkspaceHeader = ({
   };
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (!active) return;
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
       event.preventDefault();
       if (canSaveVersion && !savingVersion) void saveVersion();

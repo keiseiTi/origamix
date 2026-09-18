@@ -9,6 +9,8 @@ const api: DesktopApi = {
       ipcRenderer.invoke('window:open-page', input),
     closePreview: (input: import('@origamix/shared/page-window').PageWindowInput): Promise<void> =>
       ipcRenderer.invoke('window:close-preview', input),
+    setPreviewVisible: (visible: boolean): Promise<void> =>
+      ipcRenderer.invoke('window:set-preview-visible', visible),
     setPreviewBounds: (
       bounds: import('@origamix/shared/page-window').PreviewBounds,
     ): Promise<void> => ipcRenderer.invoke('window:set-preview-bounds', bounds),

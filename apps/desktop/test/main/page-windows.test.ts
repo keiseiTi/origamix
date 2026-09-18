@@ -150,6 +150,17 @@ describe('page preview WebContentsViews', () => {
     });
   });
 
+  it('temporarily detaches and restores the active preview without destroying it', async () => {
+    await open();
+    await mocks.handlers.get('window:set-preview-visible')!(workbenchEvent(), false);
+    expect(mocks.workbench.contentView.removeChildView).toHaveBeenLastCalledWith(mocks.views[0]);
+    expect(mocks.views[0].webContents.close).not.toHaveBeenCalled();
+
+    await mocks.handlers.get('window:set-preview-visible')!(workbenchEvent(), true);
+    expect(mocks.workbench.contentView.addChildView).toHaveBeenLastCalledWith(mocks.views[0]);
+    expect(mocks.views[0].setBounds).toHaveBeenCalled();
+  });
+
   it('serializes concurrent requests for the same page', async () => {
     await Promise.all([open(), open(), open()]);
     expect(mocks.views).toHaveLength(1);

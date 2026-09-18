@@ -18,12 +18,14 @@ export const usePageApplicationState = ({
   projectId,
   pageId,
   schemaRefreshKey,
+  active = true,
   editorRef,
   onSchemaCommitted,
 }: {
   projectId?: string;
   pageId?: string;
   schemaRefreshKey: string;
+  active?: boolean;
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
@@ -81,6 +83,7 @@ export const usePageApplicationState = ({
   }, [pageId, projectId, setApplyStatus]);
 
   useEffect(() => {
+    if (!active) return;
     const pollingState = polling.current;
     const initial = window.setTimeout(() => void refreshApplyState(), 0);
     const timer = window.setInterval(() => void refreshApplyState(), 1500);
@@ -90,7 +93,7 @@ export const usePageApplicationState = ({
       window.clearTimeout(initial);
       window.clearInterval(timer);
     };
-  }, [refreshApplyState, schemaRefreshKey]);
+  }, [active, refreshApplyState, schemaRefreshKey]);
 
   const applyPage = async (): Promise<void> => {
     if (!pageId || !projectId) return;

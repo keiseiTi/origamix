@@ -29,6 +29,7 @@ export interface DesktopApi {
   window: {
     openPage(input: PageWindowInput): Promise<void>;
     closePreview(input: PageWindowInput): Promise<void>;
+    setPreviewVisible(visible: boolean): Promise<void>;
     setPreviewBounds(bounds: PreviewBounds): Promise<void>;
     onPreviewExited(listener: (input: PageWindowInput) => void): () => void;
   };

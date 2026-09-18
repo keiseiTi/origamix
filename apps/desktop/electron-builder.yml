@@ -14,11 +14,14 @@ extraResources:
   - from: dist/template
     to: template
 mac:
+  icon: icon-origamix.png
   entitlementsInherit: ../../build/entitlements.mac.plist
   notarize: false
 win:
+  icon: icon-origamix.png
   executableName: origamix
 linux:
+  icon: icon-origamix.png
   target: [AppImage, snap, deb]
   category: Utility
 npmRebuild: false

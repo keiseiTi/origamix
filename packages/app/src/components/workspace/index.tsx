@@ -7,6 +7,7 @@ import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 import { usePageSession } from './state/use-page-session';
 
 interface WorkspaceProps {
+  active?: boolean;
   page?: PageItem;
   projectId?: string;
   projectName?: string;
@@ -23,6 +24,7 @@ interface WorkspaceProps {
 }
 
 export const Workspace = ({
+  active = true,
   page,
   projectId,
   projectName,
@@ -49,6 +51,7 @@ export const Workspace = ({
 
   return (
     <PageWorkspace
+      active={active}
       page={page}
       projectId={projectId}
       projectName={projectName}
@@ -65,6 +68,7 @@ export const Workspace = ({
 };
 
 const PageWorkspace = ({
+  active = true,
   page,
   projectId,
   projectName,
@@ -87,6 +91,7 @@ const PageWorkspace = ({
     projectId,
     pageId: page.id,
     schemaRefreshKey,
+    active,
     editorRef,
     onSchemaCommitted,
   });
@@ -103,6 +108,7 @@ const PageWorkspace = ({
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       {mode !== 'preview' && (
         <WorkspaceHeader
+          active={active}
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}
           projectId={projectId}
