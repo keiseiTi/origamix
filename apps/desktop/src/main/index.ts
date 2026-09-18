@@ -12,7 +12,6 @@ import {
 import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
-import { registerPageWindows } from './page-windows';
 import type { BackendConnection } from '@origamix/shared/desktop-api';
 
 const isDevelopment = !app.isPackaged;
@@ -303,12 +302,6 @@ app
     app.setAppUserModelId('com.origamix');
 
     await ensureBackend();
-    registerPageWindows(
-      () => ensureBackend(),
-      rendererIndexPath,
-      () => workbenchWindow,
-    );
-
     ipcMain.handle('backend:get-connection', () => ensureBackend());
     ipcMain.handle('dialog:choose-project-parent', async () => {
       const result = await dialog.showOpenDialog({

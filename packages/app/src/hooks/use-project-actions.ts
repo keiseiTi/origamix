@@ -113,9 +113,6 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     await input.flushEditor();
     const project = projects.find((item) => item.id === projectId);
     if (!project) return;
-    for (const page of project.pages) {
-      await window.api?.window?.closePreview?.({ projectId, pageId: page.id, mode: 'preview' });
-    }
     await projectsService.delete(projectId);
     setProjects((current) => current.filter((item) => item.id !== projectId));
     removePages(project.pages.map((page) => page.id));
@@ -123,7 +120,6 @@ export const useProjectActions = (input: ProjectActionsInput) => {
 
   const deletePage = async (projectId: string, pageId: string): Promise<void> => {
     await input.flushEditor();
-    await window.api?.window?.closePreview?.({ projectId, pageId, mode: 'preview' });
     await projectsService.deletePage(projectId, pageId);
     setProjects((current) =>
       current.map((project) =>

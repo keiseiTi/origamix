@@ -7,8 +7,7 @@ export const options = {
   tsconfig: `${desktopRoot}tsconfig.json`,
   entry: {
     'main/index': `${desktopRoot}src/main/index.ts`,
-    'preload/index': `${desktopRoot}src/preload/index.ts`,
-    'preload/preview': `${desktopRoot}src/preload/preview.ts`
+    'preload/index': `${desktopRoot}src/preload/index.ts`
   },
   outDir: `${desktopRoot}dist`,
   format: ['cjs'],

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, utilityProcess, webContents } = require('electron');
+const { app, BrowserWindow, dialog, utilityProcess } = require('electron');
 const { mkdtempSync, mkdirSync, rmSync, existsSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 const { tmpdir } = require('node:os');
@@ -36,7 +36,7 @@ app.on('will-quit', () => {
   if (!passed || !backendExited)
     return fail(new Error('Application quit without passing checks or closing its backend'));
   console.info(
-    'Main test passed: directory IPC, project creation, preview, theme and graceful backend shutdown.',
+    'Main test passed: directory IPC, project creation, iframe preview, theme and graceful backend shutdown.',
   );
 });
 
@@ -79,8 +79,6 @@ app
     const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
     await request('/projects/' + project.id + '/pages', { name: 'Home', slug: 'home', route: '/' });
     const pages = await request('/projects/' + project.id + '/pages');
-    await window.api.window.setPreviewBounds({ x: 256, y: 40, width: innerWidth - 256, height: innerHeight - 40 });
-    await window.api.window.openPage({ projectId: project.id, pageId: pages[0].id, mode: 'preview', theme: 'light' });
     return { path: project.path, projectId: project.id, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
@@ -106,34 +104,55 @@ app
       recoveredProjects.data.some((project) => project.id),
       true,
     );
-    const preview = await waitFor(() =>
-      webContents
-        .getAllWebContents()
-        .find((contents) => contents !== main.webContents && contents.getType() === 'window'),
-    );
+    await main.webContents.executeJavaScript(`localStorage.setItem('origamix:theme', 'light')`);
+    main.reload();
     await waitFor(
       () =>
-        !preview.isLoading() &&
-        preview.executeJavaScript(
-          `document.documentElement.dataset.theme === 'light' && Boolean(document.querySelector('[aria-label="退出预览"]'))`,
+        !main.webContents.isLoading() &&
+        main.webContents.executeJavaScript(
+          `document.body.innerText.includes('Smoke Project') && document.body.innerText.includes('Home')`,
         ),
     );
-    const snapshot = await preview.executeJavaScript('window.preview.readSnapshot()');
-    assert.equal(snapshot.theme, 'light');
-    assert.equal(await preview.executeJavaScript('typeof window.api'), 'undefined');
     await main.webContents.executeJavaScript(`(async () => {
-      localStorage.setItem('origamix:theme', 'dark');
-      await window.api.window.openPage({
-        projectId: ${JSON.stringify(result.projectId)},
-        pageId: ${JSON.stringify(result.pageId)},
-        mode: 'preview',
-        theme: 'dark'
-      });
+      const page = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Home');
+      page?.click();
     })()`);
     await waitFor(() =>
-      preview.executeJavaScript(`document.documentElement.dataset.theme === 'dark'`),
+      main.webContents.executeJavaScript(`Boolean(document.querySelector('button[aria-label="预览"]'))`),
     );
-    await preview.executeJavaScript('window.preview.exit()');
+    await main.webContents.executeJavaScript(
+      `document.querySelector('button[aria-label="预览"]')?.click()`,
+    );
+    await waitFor(() =>
+      main.webContents.executeJavaScript(`(() => {
+        const frame = document.querySelector('iframe[title="Home 预览"]');
+        return Boolean(frame?.contentDocument?.querySelector('[aria-label="退出预览"]'));
+      })()`),
+    );
+    assert.equal(
+      await main.webContents.executeJavaScript(`(() => {
+        const frame = document.querySelector('iframe[title="Home 预览"]');
+        return frame?.contentDocument?.documentElement.dataset.theme;
+      })()`),
+      'light',
+    );
+    assert.equal(
+      await main.webContents.executeJavaScript(`(() => {
+        const frame = document.querySelector('iframe[title="Home 预览"]');
+        return typeof frame?.contentWindow?.api;
+      })()`),
+      'undefined',
+    );
+    await main.webContents.executeJavaScript(`(() => {
+      const frame = document.querySelector('iframe[title="Home 预览"]');
+      frame?.contentDocument?.querySelector('[aria-label="退出预览"]')?.click();
+    })()`);
+    await waitFor(() =>
+      main.webContents.executeJavaScript(
+        `document.querySelector('iframe[title="Home 预览"]')?.parentElement?.classList.contains('hidden') === true`,
+      ),
+    );
+    await main.webContents.executeJavaScript(`localStorage.setItem('origamix:theme', 'dark')`);
     main.reload();
     await waitFor(
       () =>

@@ -34,6 +34,7 @@ const props = {
   projectId: 'project_1',
   page: { id: 'page_a', name: 'Page', fileName: 'page' },
   mode: 'chat' as const,
+  theme: 'light' as const,
   onCreateProject: vi.fn(),
   editorRef: { current: null },
   onModeChange: vi.fn(),

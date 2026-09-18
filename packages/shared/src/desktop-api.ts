@@ -1,11 +1,3 @@
-import type {
-  PageWindowInput,
-  PreviewBounds,
-  PreviewRenderReport,
-  PreviewRenderResult,
-  PreviewSnapshot,
-} from './page-window';
-
 export interface BackendConnection {
   baseUrl: string;
   token: string;
@@ -26,13 +18,6 @@ export interface ModelSettings {
 }
 export interface DesktopApi {
   platform: 'darwin' | 'other';
-  window: {
-    openPage(input: PageWindowInput): Promise<void>;
-    closePreview(input: PageWindowInput): Promise<void>;
-    setPreviewVisible(visible: boolean): Promise<void>;
-    setPreviewBounds(bounds: PreviewBounds): Promise<void>;
-    onPreviewExited(listener: (input: PageWindowInput) => void): () => void;
-  };
   backend: { getConnection(): Promise<BackendConnection> };
   dialog: {
     chooseProjectParent(): Promise<DirectoryGrant | null>;
@@ -46,9 +31,4 @@ export interface DesktopApi {
     getProfile(): Promise<UserProfile>;
     saveProfile(input: UserProfile): Promise<UserProfile>;
   };
-}
-export interface PreviewApi {
-  readSnapshot(): Promise<PreviewSnapshot>;
-  reportRender(report: PreviewRenderReport): Promise<PreviewRenderResult>;
-  exit(): Promise<void>;
 }

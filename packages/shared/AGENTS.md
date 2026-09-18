@@ -8,7 +8,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
 - `src/protocol/schema.ts`: page Schema, IDs and typed operation variants.
 - `src/protocol/validation.ts`: structural and semantic validators.
-- `src/desktop-api.ts`, `src/page-window.ts`: workbench/preview bridge contracts and window inputs.
+- `src/desktop-api.ts`: workbench bridge contracts; `src/page-window.ts`: iframe preview snapshot and diagnostic contracts.
 
 ## Contract rules
 

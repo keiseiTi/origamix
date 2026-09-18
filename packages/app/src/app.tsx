@@ -19,7 +19,6 @@ const App = (): React.JSX.Element => {
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const projects = useWorkspaceStore((state) => state.projects);
   const setProjects = useWorkspaceStore((state) => state.setProjects);
-  const activeTab = useWorkspaceStore((state) => state.activeTab);
   const sessionSidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useWorkspaceStore((state) => state.setSidebarCollapsed);
   const selectedPageId = useWorkspaceStore((state) => state.activePageId);
@@ -50,8 +49,6 @@ const App = (): React.JSX.Element => {
     return refs;
   });
   const emptyEditorRef = useRef<EditorHandle>(null);
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  const previousPreviewMode = useRef<Record<string, Exclude<WorkspaceMode, 'preview'>>>({});
   const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const [mountedPageIds, setMountedPageIds] = useState<string[]>(() => {
     const initialPageId = useWorkspaceStore.getState().activePageId;
@@ -70,19 +67,13 @@ const App = (): React.JSX.Element => {
     return existing;
   };
 
-  const openSettings = async (): Promise<void> => {
+  const openSettings = (): void => {
     setSidebarPeek(false);
-    if (activeTab === 'preview') {
-      await window.api?.window?.setPreviewVisible?.(false);
-    }
     setIsSettingsOpen(true);
   };
 
-  const closeSettings = async (): Promise<void> => {
+  const closeSettings = (): void => {
     setIsSettingsOpen(false);
-    if (activeTab === 'preview') {
-      await window.api?.window?.setPreviewVisible?.(true);
-    }
   };
 
   const flushEditor = useCallback(async (): Promise<void> => {
@@ -90,17 +81,6 @@ const App = (): React.JSX.Element => {
     await editorRefs.get(selectedPageId)?.current?.flush();
   }, [editorRefs, selectedPageId]);
   const { transition, transitionError, setTransitionError } = useWorkspaceTransitions(flushEditor);
-  const syncPreviewBounds = useCallback(async (): Promise<void> => {
-    const element = workspaceRef.current;
-    if (!element || !window.api?.window?.setPreviewBounds) return;
-    const bounds = element.getBoundingClientRect();
-    await window.api.window.setPreviewBounds({
-      x: Math.round(bounds.x),
-      y: Math.round(bounds.y),
-      width: Math.max(1, Math.round(bounds.width)),
-      height: Math.max(1, Math.round(bounds.height)),
-    });
-  }, []);
   const changeMode = async (pageId: string, mode: WorkspaceMode): Promise<void> =>
     transition(() => {
       const currentMode = pageModes[pageId] ?? 'chat';
@@ -115,57 +95,22 @@ const App = (): React.JSX.Element => {
       setPageMode(pageId, mode);
     });
 
-  const showPreview = async (pageId: string): Promise<void> => {
-    const project = projects.find((item) => item.pages.some((page) => page.id === pageId));
-    const page = project?.pages.find((item) => item.id === pageId);
-    if (!project || !page) throw new Error('请先选择需要预览的页面');
-    if (!window.api?.window?.openPage) throw new Error('应用级预览仅在桌面端可用');
-    await syncPreviewBounds();
-    await window.api.window.openPage({
-      projectId: project.id,
-      pageId: page.id,
-      mode: 'preview',
-      theme,
-    });
-    await window.api.window.setPreviewVisible?.(true);
-  };
-
   const openPreview = async (pageId: string): Promise<void> => {
     await editorRefs.get(pageId)?.current?.flush();
-    await showPreview(pageId);
-    const currentMode = pageModes[pageId] ?? 'chat';
-    previousPreviewMode.current[pageId] =
-      currentMode === 'preview' ? (previousPreviewMode.current[pageId] ?? 'chat') : currentMode;
     setPageMode(pageId, 'preview');
   };
 
-  const selectPage = async (pageId: string): Promise<void> => {
+  const selectPage = (pageId: string): void => {
     if (!editorRefs.has(pageId)) editorRefs.set(pageId, { current: null });
     setMountedPageIds((current) => (current.includes(pageId) ? current : [...current, pageId]));
     selectWorkspacePage(pageId);
     setSidebarPeek(false);
-    const nextMode = useWorkspaceStore.getState().activeTab;
-    if (nextMode === 'preview') await showPreview(pageId);
-    else await window.api?.window?.setPreviewVisible?.(false);
   };
 
-  const closePage = async (pageId: string): Promise<void> => {
-    if (pageModes[pageId] === 'preview') {
-      const project = projects.find((item) => item.pages.some((page) => page.id === pageId));
-      if (project && window.api?.window?.closePreview) {
-        await window.api.window.closePreview({ projectId: project.id, pageId, mode: 'preview' });
-      }
-    }
-    delete previousPreviewMode.current[pageId];
+  const closePage = (pageId: string): void => {
     closeWorkspacePage(pageId);
     setMountedPageIds((current) => current.filter((id) => id !== pageId));
     editorRefs.delete(pageId);
-    const next = useWorkspaceStore.getState();
-    if (next.activePageId && next.activeTab === 'preview') {
-      await showPreview(next.activePageId);
-    } else {
-      await window.api?.window?.setPreviewVisible?.(false);
-    }
   };
 
   useEffect(() => {
@@ -210,22 +155,6 @@ const App = (): React.JSX.Element => {
       .catch(() => undefined);
   }, [setUserProfile]);
 
-  useEffect(() => {
-    return window.api?.window?.onPreviewExited?.((target) => {
-      const restored = previousPreviewMode.current[target.pageId] ?? 'chat';
-      setPageMode(target.pageId, restored);
-    });
-  }, [setPageMode]);
-
-  useEffect(() => {
-    const element = workspaceRef.current;
-    if (activeTab !== 'preview' || !element) return;
-    const observer = new ResizeObserver(() => void syncPreviewBounds());
-    observer.observe(element);
-    void syncPreviewBounds();
-    return () => observer.disconnect();
-  }, [activeTab, sidebarCollapsed, syncPreviewBounds]);
-
   const collapseSidebar = (): void => {
     setSidebarCollapsed(true);
     setSidebarPeek(false);
@@ -261,7 +190,7 @@ const App = (): React.JSX.Element => {
       userProfile={userProfile}
       onPin={pinSidebarOpen}
       onTemporaryClose={() => setSidebarPeek(false)}
-      onOpenSettings={() => void openSettings()}
+      onOpenSettings={openSettings}
       onProjectCreated={(project) => setProjects((current) => [...current, project])}
       onOpenProject={projectActions.openProject}
       onPageCreated={addPage}
@@ -353,7 +282,7 @@ const App = (): React.JSX.Element => {
               <span className='window-drag-region min-w-0 flex-1' />
             </div>
           )}
-          <div ref={workspaceRef} className='relative flex min-h-0 flex-1'>
+          <div className='relative flex min-h-0 flex-1'>
             {mountedPages.map(({ pageId, project, page }) => {
               const active = pageId === selectedPageId;
               return (
@@ -369,6 +298,7 @@ const App = (): React.JSX.Element => {
                     projectId={project.id}
                     projectName={project.name}
                     mode={pageModes[pageId] ?? 'chat'}
+                    theme={theme}
                     editorRef={editorRefForPage(pageId)}
                     onModeChange={(mode) => changeMode(pageId, mode)}
                     onPreview={() => openPreview(pageId)}
@@ -390,6 +320,7 @@ const App = (): React.JSX.Element => {
             {mountedPages.length === 0 && (
               <Workspace
                 mode='chat'
+                theme={theme}
                 editorRef={emptyEditorRef}
                 onModeChange={async () => undefined}
                 onPreview={async () => undefined}
@@ -411,7 +342,7 @@ const App = (): React.JSX.Element => {
         userProfile={userProfile}
         onThemeChange={setTheme}
         onProfileChange={setUserProfile}
-        onClose={() => void closeSettings()}
+        onClose={closeSettings}
       />
 
       <CreateProjectModal

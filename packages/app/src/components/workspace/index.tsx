@@ -1,10 +1,12 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import type { PageItem } from '../../store/workspace';
+import type { AppTheme } from '../../store/preferences';
 import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 import { usePageSession } from './state/use-page-session';
+import { PagePreviewFrame } from './page-preview-frame';
 
 interface WorkspaceProps {
   active?: boolean;
@@ -12,6 +14,7 @@ interface WorkspaceProps {
   projectId?: string;
   projectName?: string;
   mode: WorkspaceMode;
+  theme: AppTheme;
   onCreateProject: () => void;
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
@@ -29,6 +32,7 @@ export const Workspace = ({
   projectId,
   projectName,
   mode,
+  theme,
   onCreateProject,
   editorRef,
   onModeChange,
@@ -56,6 +60,7 @@ export const Workspace = ({
       projectId={projectId}
       projectName={projectName}
       mode={mode}
+      theme={theme}
       editorRef={editorRef}
       onModeChange={onModeChange}
       onPreview={onPreview}
@@ -73,6 +78,7 @@ const PageWorkspace = ({
   projectId,
   projectName,
   mode,
+  theme,
   editorRef,
   onModeChange,
   onPreview,
@@ -87,6 +93,10 @@ const PageWorkspace = ({
   page: PageItem;
   projectId: string;
 }): React.JSX.Element => {
+  const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
+  useEffect(() => {
+    if (mode !== 'preview') previousMode.current = mode;
+  }, [mode]);
   const { application, agent, capabilities } = usePageSession({
     projectId,
     pageId: page.id,
@@ -141,6 +151,16 @@ const PageWorkspace = ({
               capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined
             }
             onSaveStatusChange={application.setSaveStatus}
+          />
+        </div>
+        <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <PagePreviewFrame
+            active={active && mode === 'preview'}
+            projectId={projectId}
+            pageId={page.id}
+            pageName={page.name}
+            theme={theme}
+            onExit={() => void onModeChange(previousMode.current)}
           />
         </div>
       </>

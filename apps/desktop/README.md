@@ -5,9 +5,8 @@ Electron 宿主，负责窗口、目录授权、safeStorage 凭据和后端进�
 ## 接口与组装
 
 - [src/main/index.ts](src/main/index.ts)：应用启动、设置、命名 IPC 和后端恢复。
-- [src/main/page-windows.ts](src/main/page-windows.ts)：预览视图生命周期和权限。
 - [src/preload/index.ts](src/preload/index.ts)：工作台桥。
-- [src/preload/preview.ts](src/preload/preview.ts)：只读预览桥；Main 绑定页面后代取快照，预览不能取得后端凭据。
+- 页面预览由 App Renderer 在各 Tab 内通过沙箱 iframe 承载；Desktop 不创建独立预览视图，也不向 iframe 暴露桥接能力。
 - [scripts](scripts)：编译、开发监听、资源组装与 Electron 集成测试。
 
 Main/Preload/Server 的自包含 bundle 进入 `app.asar`，打包排除重复的 `node_modules`；Renderer 和干净模板是外部资源。Server 自己编译，Desktop 只复制产物；模板打包使用 Server 的 `template-artifact` 方法，不维护另一份复制规则。图标源位于仓库 `build/`。

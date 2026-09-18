@@ -9,7 +9,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - `src/store/`: window-scoped workspace and preference projections; `pending-operations.ts` retains unresolved Apply/Agent request identities in memory across view unmounts.
 - `src/hooks/`: cross-component workflow orchestration; feature-owned editor, Agent and Apply sessions remain beside their components.
 - `src/components/agent-chat/`, `src/components/editor/`, `src/components/settings/`: feature-owned UI and state.
-- `src/components/editor/`: editing UI and its save session; `src/runtime/` and `src/components/workspace/page-window.tsx`: reusable runtime rendering and the read-only preview surface.
+- `src/components/editor/`: editing UI and its save session; `src/runtime/` and `src/components/workspace/page-preview-frame.tsx`: reusable runtime rendering and the retained iframe preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
 ## Runtime boundaries
@@ -25,7 +25,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Agent recovery starts as unknown and blocks editing, undo, Apply and new submissions until authority is loaded; failures must retain a visible retry path. Pending operation records are never written to browser storage, and remounting must not automatically replay a mutation.
 - Retain one Apply request ID for the same page Revision and Working version until the result is known; an ambiguous transport failure must not turn an explicit retry into a different logical operation. Apply is available only for a clean, explicitly saved Revision.
 - Renderer transports cache backend authority only as a convenience. After a desktop Server restart, refresh it through the named connection bridge; never replay an ambiguous failed mutation automatically, and recover Agent views from durable Run/Message/Schema state.
-- Preview uses the read-only preview bridge, never a fallback that requests desktop credentials. Rendering errors must remain visible without corrupting the editing session.
+- Preview data access stays in the trusted workbench and renders through a portal into a sandboxed iframe. Never expose Desktop credentials or a broad bridge to the iframe. Rendering errors must remain visible without corrupting the editing session.
 
 ## Interaction contract
 
