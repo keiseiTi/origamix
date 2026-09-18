@@ -229,7 +229,7 @@ describe('Schema Service', () => {
     expect((await getWorkingSchemaState(page)).workingHash).toBe(first.workingHash);
   });
 
-  it('atomically upgrades a valid v1 Working file on first read', async () => {
+  it('rejects a non-current Working file instead of migrating it', async () => {
     const page = await createPageFixture();
     const revisionId = await initializePageSchema(page, schema);
     const workingPath = join(page.projectPath, '.origamix', 'pages', page.pageId, 'working.json');
@@ -245,16 +245,9 @@ describe('Schema Service', () => {
       }),
     );
 
-    const migrated = await getWorkingSchemaState(page);
+    await expect(getWorkingSchemaState(page)).rejects.toThrow('页面工作副本版本无效');
     const persisted = JSON.parse(await readFile(workingPath, 'utf8')) as Record<string, unknown>;
-    expect(migrated).toMatchObject({ revisionId, workingVersion: 1 });
-    expect(persisted).toMatchObject({
-      version: 2,
-      pageId: page.pageId,
-      workingVersion: 1,
-      lastSavedRevisionId: revisionId,
-    });
-    expect(persisted).not.toHaveProperty('revisionId');
+    expect(persisted).toMatchObject({ version: 1, revisionId });
   });
 
   it('rejects Manifest-invalid Schema before creating a revision', async () => {

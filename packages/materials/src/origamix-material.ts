@@ -63,15 +63,3 @@ export const toEditorMaterial = (
 
 export const isOrigamixEditorMaterial = (material: Material): boolean =>
   editorMaterials.has(material);
-
-export const fromLegacyEditorMaterial = (
-  manifest: MaterialManifest,
-  material: Material,
-): Material =>
-  toEditorMaterial(
-    fromMaterialManifest(manifest, {
-      editorConfig: material.editorConfig,
-      isContainer: material.isContainer,
-    }),
-    material.Component,
-  );

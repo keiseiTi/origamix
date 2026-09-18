@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import type { Material } from '../../src/material';
-import { fromLegacyEditorMaterial } from '../../src/origamix-material';
+import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { basicPageManifest } from './manifest';
 
 const BasicPageMaterial: Material = {
@@ -72,4 +72,10 @@ const BasicPageMaterial: Material = {
   },
 };
 
-export default fromLegacyEditorMaterial(basicPageManifest, BasicPageMaterial);
+export default toEditorMaterial(
+  fromMaterialManifest(basicPageManifest, {
+    editorConfig: BasicPageMaterial.editorConfig,
+    isContainer: BasicPageMaterial.isContainer,
+  }),
+  BasicPageMaterial.Component,
+);

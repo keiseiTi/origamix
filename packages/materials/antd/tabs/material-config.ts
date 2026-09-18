@@ -2,7 +2,7 @@ import React from 'react';
 
 const Tabs = React.lazy(() => import('./index'));
 import type { Material } from '../../src/material';
-import { fromLegacyEditorMaterial } from '../../src/origamix-material';
+import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { tabsManifest } from './manifest';
 
 const TabsMaterial: Material = {
@@ -84,4 +84,10 @@ const TabsMaterial: Material = {
   },
 };
 
-export default fromLegacyEditorMaterial(tabsManifest, TabsMaterial);
+export default toEditorMaterial(
+  fromMaterialManifest(tabsManifest, {
+    editorConfig: TabsMaterial.editorConfig,
+    isContainer: TabsMaterial.isContainer,
+  }),
+  TabsMaterial.Component,
+);

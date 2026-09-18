@@ -8,7 +8,6 @@ import type {
   WorkingSchemaPageRef,
   RevisionSnapshot,
   CommitJournal,
-  StoredWorkingSchemaFile,
   WorkingSchemaFile,
 } from './working-schema-store';
 
@@ -46,25 +45,13 @@ export const createRevisionSnapshot = (
   };
 };
 
-const toWorkingV2 = (
+const requireCurrentWorking = (
   page: WorkingSchemaPageRef,
-  working: StoredWorkingSchemaFile,
+  working: WorkingSchemaFile,
 ): WorkingSchemaFile => {
-  if (working.version !== 1 && working.version !== 2) throw invalid('页面工作副本版本无效');
+  if (working.version !== 2) throw invalid('页面工作副本版本无效');
   if (working.pageId !== page.pageId) throw invalid('页面工作副本归属无效');
-  if (working.version === 2) return working;
-  const schemaHash = hashSchema(working.schema);
-  return {
-    version: 2,
-    pageId: page.pageId,
-    workingVersion: 1,
-    workingHash: schemaHash,
-    lastSavedRevisionId: working.revisionId,
-    savedSchemaHash: schemaHash,
-    baselineHash: working.baselineHash,
-    updatedAt: new Date().toISOString(),
-    schema: working.schema,
-  };
+  return working;
 };
 
 const workingAtSnapshot = (
@@ -111,7 +98,7 @@ export class SchemaCommit {
     await this.store.writeRevision(page, snapshot);
     await options.afterStage?.('revision');
     const storedPrevious = await this.store.readWorkingIfPresent(page);
-    const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
+    const previous = storedPrevious ? requireCurrentWorking(page, storedPrevious) : undefined;
     await this.store.writeWorking(page, workingAtSnapshot(page, previous, snapshot));
     await options.afterStage?.('schema');
     await this.store.removeJournal(page);
@@ -129,7 +116,7 @@ export class SchemaCommit {
         if (target.parentRevisionId !== journal.previousRevisionId)
           throw invalid('页面恢复记录与 Revision 不匹配');
         const storedPrevious = await this.store.readWorkingIfPresent(page);
-        const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
+        const previous = storedPrevious ? requireCurrentWorking(page, storedPrevious) : undefined;
         await this.store.writeWorking(page, workingAtSnapshot(page, previous, target));
       }
       await this.store.removeJournal(page);
@@ -137,7 +124,7 @@ export class SchemaCommit {
 
     const storedWorking = await this.store.readWorkingIfPresent(page);
     if (!storedWorking) return;
-    const working = toWorkingV2(page, storedWorking);
+    const working = requireCurrentWorking(page, storedWorking);
     const snapshot = await this.store.readRevision(page, working.lastSavedRevisionId);
     validateSnapshot(snapshot);
     if (
@@ -151,6 +138,5 @@ export class SchemaCommit {
       working.savedSchemaHash !== snapshot.schemaHash
     )
       throw invalid('页面工作副本无效');
-    if (storedWorking.version === 1) await this.store.writeWorking(page, working);
   }
 }
