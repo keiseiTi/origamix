@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  validateChangeSet,
   validatePage,
   validateSchemaOperation,
   validateSchemaOperationBatch,
@@ -73,21 +72,6 @@ describe('page protocol validation', () => {
       },
     });
     expect(result.semanticErrors[0]?.code).toBe('LAYOUT_CYCLE');
-  });
-
-  it('accepts a replaceSchema change set', () => {
-    expect(
-      validateChangeSet({
-        changeSetId: 'change_1',
-        pageId: 'page_1',
-        baseRevisionId: 'revision_1',
-        baseWorkingVersion: 1,
-        source: { kind: 'user' },
-        createdAt: '2026-08-27T00:00:00.000Z',
-        operation: 'replaceSchema',
-        schema: emptyPage,
-      }).valid,
-    ).toBe(true);
   });
 
   it('validates a typed Schema operation', () => {

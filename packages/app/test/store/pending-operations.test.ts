@@ -8,7 +8,6 @@ const input: CreateAgentRunRequest = {
   projectId: 'project_a',
   pageId: 'page_a',
   clientRequestId: 'request_agent',
-  baseRevisionId: 'revision_a',
   baseWorkingVersion: 1,
   content: { version: '1', blocks: [{ type: 'text', text: 'draft' }] },
 };

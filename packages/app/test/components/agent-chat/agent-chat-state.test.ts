@@ -14,7 +14,6 @@ const run = (status: AgentRun['status'] = 'queued'): AgentRun => ({
   conversationId: 'conversation_one',
   userMessageId: 'message_one',
   requestId: 'request-one',
-  baseRevisionId: 'revision_one',
   baseWorkingVersion: 1,
   mode: 'page_modify',
   status,
@@ -64,7 +63,7 @@ describe('agent chat reducer', () => {
     expect(second.lastEventId).toBe(2);
   });
 
-  it('tracks stages, tools, committed revision and terminal state independently', () => {
+  it('tracks stages, tools, Working updates and terminal state independently', () => {
     let state = agentChatReducer(initialAgentChatState, { type: 'run.queued', run: run() });
     state = agentChatReducer(state, {
       type: 'event.received',
@@ -72,16 +71,18 @@ describe('agent chat reducer', () => {
     });
     state = agentChatReducer(state, {
       type: 'event.received',
-      event: event(2, 'tool.started', { toolCallId: 'tool_1', toolName: 'replace_page_schema' }),
+      event: event(2, 'tool.started', { toolCallId: 'tool_1', toolName: 'apply_page_operations' }),
     });
     state = agentChatReducer(state, {
       type: 'event.received',
-      event: { ...event(3, 'schema.committed'), revisionId: 'revision_two' },
+      event: event(3, 'run.completed', { status: 'completed', workingVersion: 2 }),
     });
     state = agentChatReducer(state, { type: 'event.received', event: event(4, 'run.cancelled') });
     expect(state.stage).toBe('cancelled');
-    expect(state.tools).toEqual([{ id: 'tool_1', name: 'replace_page_schema', status: 'running' }]);
-    expect(state.committedRevisionId).toBe('revision_two');
+    expect(state.tools).toEqual([
+      { id: 'tool_1', name: 'apply_page_operations', status: 'running' },
+    ]);
+    expect(state.workingRefreshKey).toBe('working_run_one_2');
     expect(isRunActive(state.stage)).toBe(false);
   });
 
@@ -98,10 +99,10 @@ describe('agent chat reducer', () => {
     const previous = {
       ...initialAgentChatState,
       lastEventId: 9,
-      committedRevisionId: 'revision_old',
+      workingRefreshKey: 'working_old',
     };
     const state = agentChatReducer(previous, { type: 'run.queued', run: run() });
     expect(state.lastEventId).toBe(-1);
-    expect(state.committedRevisionId).toBeNull();
+    expect(state.workingRefreshKey).toBeNull();
   });
 });

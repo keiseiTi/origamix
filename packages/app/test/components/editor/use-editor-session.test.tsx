@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const schemaMocks = vi.hoisted(() => ({
   workingState: vi.fn(),
   updateWorking: vi.fn(),
+  applyWorkingOperations: vi.fn(),
 }));
 
 vi.mock('../../../src/services/schema', () => ({ schemaService: schemaMocks }));
@@ -40,7 +41,7 @@ describe('useEditorSession', () => {
   it('retains visual edits in Working without creating a Revision', async () => {
     const next = structuredClone(schema);
     next.elements.element_root!.props = { padding: 24 };
-    schemaMocks.updateWorking.mockResolvedValue({
+    schemaMocks.applyWorkingOperations.mockResolvedValue({
       schema: next,
       revisionId: 'revision_saved',
       workingVersion: 5,
@@ -53,7 +54,10 @@ describe('useEditorSession', () => {
     act(() => hook.result.current.onChange(next as Schema));
     await act(async () => hook.result.current.flush());
 
-    expect(schemaMocks.updateWorking).toHaveBeenCalledWith('project_one', 'page_one', 4, next);
+    expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledWith('project_one', 'page_one', 4, [
+      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 24 } },
+    ]);
+    expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     expect(hook.result.current.status).toBe('saved');
     expect(hook.result.current.initial?.revisionId).toBe('revision_saved');
   });

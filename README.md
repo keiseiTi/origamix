@@ -32,7 +32,7 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 | [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime/react`             |
 | [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                    |
 
-保存与撤销只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
+自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
 
 包内使用方法放在各自 README；维护约束放在对应 `AGENTS.md`。忽略目录 `_doc/` 是历史产品规划，不作为当前实现说明，也不是新贡献者的必需文件。
 

@@ -1,20 +1,23 @@
 import { Button, Tooltip } from '@heroui/react';
-import { useState } from 'react';
-import { Eye, SquarePen, MessageSquare, RefreshCw, Save, Undo2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Clock3, Eye, SquarePen, MessageSquare, RefreshCw, Save } from 'lucide-react';
 import type { EditorSaveStatus } from '../editor/use-editor-session';
+import { RevisionHistoryModal } from './revision-history-modal';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
 interface WorkspaceHeaderProps {
   projectName: string;
   pageName: string;
+  projectId: string;
+  pageId: string;
   mode: WorkspaceMode;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
-  onUndo: () => Promise<void>;
   onSaveVersion: () => Promise<void>;
   onApply: () => Promise<void>;
   onReloadFromProject: () => Promise<void>;
+  onRestoreRevision: (revisionId: string) => Promise<void>;
   applyStatus:
     | 'loading'
     | 'in_sync'
@@ -26,33 +29,35 @@ interface WorkspaceHeaderProps {
   saveStatus: EditorSaveStatus;
   canApply: boolean;
   canSaveVersion: boolean;
-  canUndo: boolean;
   canReload: boolean;
+  canRestore: boolean;
 }
 
 export const WorkspaceHeader = ({
   projectName,
   pageName,
+  projectId,
+  pageId,
   mode,
   onModeChange,
   onPreview,
-  onUndo,
   onSaveVersion,
   onApply,
   onReloadFromProject,
+  onRestoreRevision,
   applyStatus,
   saveStatus,
   canApply,
   canSaveVersion,
-  canUndo,
   canReload,
+  canRestore,
 }: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
-  const [undoing, setUndoing] = useState(false);
   const [savingVersion, setSavingVersion] = useState(false);
   const [applying, setApplying] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const openWindow = async (): Promise<void> => {
     setOpening(true);
     setError(null);
@@ -62,17 +67,6 @@ export const WorkspaceHeader = ({
       setError(reason instanceof Error ? reason.message : '无法打开预览标签');
     } finally {
       setOpening(false);
-    }
-  };
-  const undo = async (): Promise<void> => {
-    setUndoing(true);
-    setError(null);
-    try {
-      await onUndo();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '无法撤销页面修改');
-    } finally {
-      setUndoing(false);
     }
   };
   const apply = async (): Promise<void> => {
@@ -109,131 +103,151 @@ export const WorkspaceHeader = ({
       setReloading(false);
     }
   };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
+      event.preventDefault();
+      if (canSaveVersion && !savingVersion) void saveVersion();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
   return (
-    <header className='relative z-10 flex h-9 min-h-9 items-center justify-between gap-3 px-3 text-xs'>
-      <div className='min-w-0 font-medium text-zinc-500 dark:text-zinc-400'>
-        <span className='block truncate' title={`${projectName} - ${pageName}`}>
-          {projectName} / {pageName}
-        </span>
-      </div>
-      <div className='flex shrink-0 items-center gap-1'>
-        <span
-          className={
-            applyStatus === 'external_change' || applyStatus === 'error'
-              ? 'text-danger'
-              : 'text-zinc-500 dark:text-zinc-400'
-          }
-        >
-          {saveStatus === 'error'
-            ? '草稿保留失败'
-            : saveStatus === 'saving'
-              ? '正在保留草稿…'
-              : saveStatus === 'dirty'
-                ? '草稿待保留'
-                : applyStatus === 'loading'
-                  ? '检查状态…'
-                  : applyStatus === 'in_sync'
-                    ? '与项目一致'
-                    : applyStatus === 'draft_unsaved'
-                      ? '草稿已保留 · 尚未保存版本'
-                      : applyStatus === 'saved_pending_apply'
-                        ? '版本已保存 · 待应用'
-                        : applyStatus === 'external_change'
-                          ? '项目文件已变化'
-                          : applyStatus === 'result_pending'
-                            ? '应用结果待确认'
-                            : '状态不可用'}
-        </span>
-        {error && (
-          <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
-            {error}
+    <>
+      <header className='relative z-10 flex h-9 min-h-9 items-center justify-between gap-3 px-3 text-xs'>
+        <div className='min-w-0 font-medium text-zinc-500 dark:text-zinc-400'>
+          <span className='block truncate' title={`${projectName} - ${pageName}`}>
+            {projectName} / {pageName}
           </span>
-        )}
-        <Tooltip>
-          <Button
-            size='sm'
-            variant='secondary'
-            className='h-7 min-h-7 px-2 text-xs'
-            isDisabled={savingVersion || applying || !canSaveVersion}
-            onPress={() => void saveVersion()}
+        </div>
+        <div className='flex shrink-0 items-center gap-1'>
+          <span
+            className={
+              applyStatus === 'external_change' || applyStatus === 'error'
+                ? 'text-danger'
+                : 'text-zinc-500 dark:text-zinc-400'
+            }
           >
-            <Save size={14} />
-            {savingVersion ? '保存中…' : '保存版本'}
-          </Button>
-          <Tooltip.Content placement='bottom'>把当前草稿保存为可恢复的历史版本</Tooltip.Content>
-        </Tooltip>
-        <Tooltip>
-          <Button
-            size='sm'
-            variant='secondary'
-            className='h-7 min-h-7 px-2 text-xs'
-            isDisabled={opening || undoing || applying || !canApply}
-            onPress={() => void apply()}
-          >
-            {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
-          </Button>
-          <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
-        </Tooltip>
-        {applyStatus === 'external_change' && (
+            {saveStatus === 'error'
+              ? '草稿保留失败'
+              : saveStatus === 'saving'
+                ? '正在保留草稿…'
+                : saveStatus === 'dirty'
+                  ? '草稿待保留'
+                  : applyStatus === 'loading'
+                    ? '检查状态…'
+                    : applyStatus === 'in_sync'
+                      ? '与项目一致'
+                      : applyStatus === 'draft_unsaved'
+                        ? '草稿已保留 · 尚未保存版本'
+                        : applyStatus === 'saved_pending_apply'
+                          ? '版本已保存 · 待应用'
+                          : applyStatus === 'external_change'
+                            ? '项目文件已变化'
+                            : applyStatus === 'result_pending'
+                              ? '应用结果待确认'
+                              : '状态不可用'}
+          </span>
+          {error && (
+            <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
+              {error}
+            </span>
+          )}
           <Tooltip>
             <Button
               isIconOnly
               size='sm'
               variant='ghost'
-              aria-label='重新读取项目内容'
-              isDisabled={reloading || applying || !canReload}
-              onPress={() => void reload()}
+              aria-label='版本历史'
+              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
+              onPress={() => setHistoryOpen(true)}
             >
-              <RefreshCw size={15} />
+              <Clock3 size={15} />
             </Button>
-            <Tooltip.Content placement='bottom'>放弃草稿并重新读取项目 Schema</Tooltip.Content>
+            <Tooltip.Content placement='bottom'>查看和恢复历史版本</Tooltip.Content>
           </Tooltip>
-        )}
-        <Tooltip>
-          <Button
-            isIconOnly
-            size='sm'
-            aria-label='撤销页面修改'
-            variant='ghost'
-            className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-            isDisabled={opening || undoing || !canUndo}
-            onPress={() => void undo()}
-          >
-            <Undo2 size={15} />
-          </Button>
-          <Tooltip.Content placement='bottom'>撤销上一次页面修改</Tooltip.Content>
-        </Tooltip>
-        <Tooltip>
-          <Button
-            isIconOnly
-            size='sm'
-            aria-label={mode === 'edit' ? '返回对话' : '编辑'}
-            variant='ghost'
-            className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-            isDisabled={opening}
-            onPress={() => void onModeChange(mode === 'edit' ? 'chat' : 'edit')}
-          >
-            {mode === 'edit' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
-          </Button>
-          <Tooltip.Content placement='bottom'>
-            {mode === 'edit' ? '返回对话' : '编辑'}
-          </Tooltip.Content>
-        </Tooltip>
-        <Tooltip>
-          <Button
-            isIconOnly
-            size='sm'
-            variant='ghost'
-            className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-            aria-label='预览'
-            isDisabled={opening}
-            onPress={() => void openWindow()}
-          >
-            <Eye size={15} />
-          </Button>
-          <Tooltip.Content placement='bottom'>在应用标签中打开预览</Tooltip.Content>
-        </Tooltip>
-      </div>
-    </header>
+          <Tooltip>
+            <Button
+              size='sm'
+              variant='secondary'
+              className='h-7 min-h-7 px-2 text-xs'
+              isDisabled={savingVersion || applying || !canSaveVersion}
+              onPress={() => void saveVersion()}
+            >
+              <Save size={14} />
+              {savingVersion ? '保存中…' : '保存版本'}
+            </Button>
+            <Tooltip.Content placement='bottom'>把当前草稿保存为可恢复的历史版本</Tooltip.Content>
+          </Tooltip>
+          <Tooltip>
+            <Button
+              size='sm'
+              variant='secondary'
+              className='h-7 min-h-7 px-2 text-xs'
+              isDisabled={opening || applying || !canApply}
+              onPress={() => void apply()}
+            >
+              {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
+            </Button>
+            <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
+          </Tooltip>
+          {applyStatus === 'external_change' && (
+            <Tooltip>
+              <Button
+                isIconOnly
+                size='sm'
+                variant='ghost'
+                aria-label='重新读取项目内容'
+                isDisabled={reloading || applying || !canReload}
+                onPress={() => void reload()}
+              >
+                <RefreshCw size={15} />
+              </Button>
+              <Tooltip.Content placement='bottom'>放弃草稿并重新读取项目 Schema</Tooltip.Content>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <Button
+              isIconOnly
+              size='sm'
+              aria-label={mode === 'edit' ? '返回对话' : '编辑'}
+              variant='ghost'
+              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
+              isDisabled={opening}
+              onPress={() => void onModeChange(mode === 'edit' ? 'chat' : 'edit')}
+            >
+              {mode === 'edit' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
+            </Button>
+            <Tooltip.Content placement='bottom'>
+              {mode === 'edit' ? '返回对话' : '编辑'}
+            </Tooltip.Content>
+          </Tooltip>
+          <Tooltip>
+            <Button
+              isIconOnly
+              size='sm'
+              variant='ghost'
+              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
+              aria-label='预览'
+              isDisabled={opening}
+              onPress={() => void openWindow()}
+            >
+              <Eye size={15} />
+            </Button>
+            <Tooltip.Content placement='bottom'>在应用标签中打开预览</Tooltip.Content>
+          </Tooltip>
+        </div>
+      </header>
+      {historyOpen && (
+        <RevisionHistoryModal
+          isOpen
+          projectId={projectId}
+          pageId={pageId}
+          canRestore={canRestore}
+          onClose={() => setHistoryOpen(false)}
+          onRestore={onRestoreRevision}
+        />
+      )}
+    </>
   );
 };

@@ -7,7 +7,7 @@ import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../projects/project-repository';
 import { ProjectService } from '../../projects/project-service';
 import { ProjectApplyService } from '../../schema/project-apply-service';
-import { getSchema, getWorkingSchemaState } from '../../schema/schema-service';
+import { getSchema, getWorkingSchemaState, saveWorkingRevision } from '../../schema/schema-service';
 import { AgentRunRepository } from '../../agent/run-repository';
 import { AgentRunService } from '../../agent/run-service';
 import { AgentService } from '../../agent/agent-service';
@@ -19,7 +19,7 @@ import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ConversationRepository } from '../../conversations/conversation-repository';
 import { ConversationService } from '../../conversations/conversation-service';
 import { createDefaultAgentToolEntries } from '../../agent/tools/registry';
-import { createApplyPageOperationsTool } from '../../agent/tools/replace-page-schema';
+import { createApplyPageOperationsTool } from '../../agent/tools/apply-page-operations';
 import { createDeterministicFakeAgentEngine } from '../../testing/deterministic-engine';
 import { createHttpServer } from '../../http/server';
 
@@ -60,7 +60,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       conversations,
       engine,
       context: new ContextAssembler(
-        { getCurrent: getSchema },
+        { getCurrent: getWorkingSchemaState },
         conversationRecords,
         new ProductDocsProvider(),
       ),
@@ -99,7 +99,6 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       version: '1',
       projectId: project.id,
       pageId: page.id,
-      baseRevisionId: before.revisionId,
       baseWorkingVersion: (await getWorkingSchemaState(pageRef)).workingVersion,
       clientRequestId: 'agent-edit',
       content: { version: '1', blocks: [{ type: 'text', text: '创建客户表单和表格' }] },
@@ -115,17 +114,17 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const result = await started.completion;
     expect(result, runs.get(started.run.id)?.errorMessage).toMatchObject({
       status: 'completed',
-      resultRevisionId: expect.any(String),
+      resultWorkingVersion: expect.any(Number),
     });
     const edited = await getSchema(pageRef);
-    expect(edited.revisionId).not.toBe(before.revisionId);
-    expect(Object.values(edited.schema.elements).map((element) => element.type)).toEqual(
-      expect.arrayContaining(['form', 'table']),
-    );
+    expect(edited.revisionId).toBe(before.revisionId);
+    expect(edited.schema.elements.element_root.props.padding).toEqual(expect.any(Number));
     expect(await readFile(target, 'utf8')).toBe(originalTarget);
-    expect(runs.get(started.run.id)?.resultRevisionId).toBe(edited.revisionId);
+    expect(runs.get(started.run.id)?.resultWorkingVersion).toBe(
+      (await getWorkingSchemaState(pageRef)).workingVersion,
+    );
     const revisions = join(project.path, '.origamix', 'revisions', page.id);
-    expect(await readdir(revisions)).toHaveLength(2);
+    expect(await readdir(revisions)).toHaveLength(1);
 
     const duplicate = await server.inject({
       method: 'POST',
@@ -136,7 +135,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     expect(duplicate.statusCode).toBe(202);
     expect(duplicate.json().data.runId).toBe(started.run.id);
     expect(modelCall).toHaveBeenCalledTimes(1);
-    expect(await readdir(revisions)).toHaveLength(2);
+    expect(await readdir(revisions)).toHaveLength(1);
     const stale = await server.inject({
       method: 'POST',
       url: '/api/v1/agent/runs',
@@ -146,13 +145,25 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     expect(stale.statusCode).toBe(409);
     expect(modelCall).toHaveBeenCalledTimes(1);
     const working = await getWorkingSchemaState(pageRef);
+    const unsavedApply = await server.inject({
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/apply`,
+      headers,
+      payload: {
+        expectedRevisionId: edited.revisionId,
+        expectedWorkingVersion: working.workingVersion,
+        clientRequestId: 'unsaved-apply',
+      },
+    });
+    expect(unsavedApply.statusCode).toBe(409);
+    const saved = await saveWorkingRevision(pageRef, working.workingVersion);
     const foreign = await server.inject({
       method: 'POST',
       url: `/api/v1/pages/${page.id}/apply`,
       headers: { ...headers, 'x-origamix-project-id': 'project_other' },
       payload: {
-        expectedRevisionId: edited.revisionId,
-        expectedWorkingVersion: working.workingVersion,
+        expectedRevisionId: saved.revisionId,
+        expectedWorkingVersion: saved.workingVersion,
         clientRequestId: 'foreign-apply',
       },
     });
@@ -163,14 +174,15 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       url: `/api/v1/pages/${page.id}/apply`,
       headers,
       payload: {
-        expectedRevisionId: edited.revisionId,
-        expectedWorkingVersion: working.workingVersion,
+        expectedRevisionId: saved.revisionId,
+        expectedWorkingVersion: saved.workingVersion,
         clientRequestId: 'explicit-apply',
       },
     });
     expect(applied.statusCode).toBe(200);
     expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(edited.schema);
-    expect((await getSchema(pageRef)).revisionId).toBe(edited.revisionId);
+    expect((await getSchema(pageRef)).revisionId).toBe(saved.revisionId);
+    expect(await readdir(revisions)).toHaveLength(2);
   } finally {
     await server?.close();
     database.close();

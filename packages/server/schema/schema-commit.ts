@@ -1,26 +1,29 @@
 import { nanoid } from 'nanoid';
-import type { ChangeSet, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { validatePage } from '@origamix/shared/protocol/validation';
 import { invalid } from '../errors';
-import { hashSchema, hashValue } from './schema-hash';
+import { hashSchema } from './schema-hash';
 import type {
   WorkingSchemaStore,
   WorkingSchemaPageRef,
   RevisionSnapshot,
   CommitJournal,
-  ChangeSetReceipt,
   StoredWorkingSchemaFile,
   WorkingSchemaFile,
 } from './working-schema-store';
 
-export type SchemaWriteStage = 'prepared' | 'revision' | 'schema' | 'receipt';
+export type SchemaWriteStage = 'prepared' | 'revision' | 'schema';
 export interface SchemaCommitOptions {
   /** Test/host hook used to simulate interruption after a durable write stage. */
   afterStage?: (stage: SchemaWriteStage) => void | Promise<void>;
 }
 
 export const validateSnapshot = (snapshot: RevisionSnapshot): void => {
-  if (!snapshot.revisionId || hashSchema(snapshot.schema) !== snapshot.schemaHash)
+  if (
+    !snapshot.revisionId ||
+    Number.isNaN(Date.parse(snapshot.createdAt)) ||
+    hashSchema(snapshot.schema) !== snapshot.schemaHash
+  )
     throw invalid('Revision 内容校验失败');
   const validation = validatePage(snapshot.schema);
   if (!validation.valid)
@@ -30,16 +33,12 @@ export const validateSnapshot = (snapshot: RevisionSnapshot): void => {
 };
 export const createRevisionSnapshot = (
   schema: OrigamixPageSchema,
-  source: ChangeSet['source'],
+  source: ChangeSource,
   parentRevisionId: string | null,
-  changeSet?: ChangeSet,
 ): RevisionSnapshot => {
   return {
     revisionId: `revision_${nanoid()}`,
     parentRevisionId,
-    ...(changeSet
-      ? { changeSetId: changeSet.changeSetId, changeSetHash: hashValue(changeSet) }
-      : {}),
     source,
     createdAt: new Date().toISOString(),
     schemaHash: hashSchema(schema),
@@ -95,18 +94,6 @@ const workingAtSnapshot = (
 /** Internal commit/recovery protocol; callers must hold the page queue. */
 export class SchemaCommit {
   constructor(private readonly store: WorkingSchemaStore) {}
-  private async writeReceipt(
-    page: WorkingSchemaPageRef,
-    snapshot: RevisionSnapshot,
-  ): Promise<void> {
-    if (!snapshot.changeSetId) return;
-    await this.store.writeReceipt(page, {
-      changeSetId: snapshot.changeSetId,
-      changeSetHash: snapshot.changeSetHash!,
-      revisionId: snapshot.revisionId,
-      schemaHash: snapshot.schemaHash,
-    } satisfies ChangeSetReceipt);
-  }
 
   async commit(
     page: WorkingSchemaPageRef,
@@ -118,7 +105,6 @@ export class SchemaCommit {
       pageId: page.pageId,
       previousRevisionId: snapshot.parentRevisionId,
       targetRevisionId: snapshot.revisionId,
-      ...(snapshot.changeSetId ? { changeSetId: snapshot.changeSetId } : {}),
       createdAt: snapshot.createdAt,
     } satisfies CommitJournal);
     await options.afterStage?.('prepared');
@@ -128,8 +114,6 @@ export class SchemaCommit {
     const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
     await this.store.writeWorking(page, workingAtSnapshot(page, previous, snapshot));
     await options.afterStage?.('schema');
-    await this.writeReceipt(page, snapshot);
-    await options.afterStage?.('receipt');
     await this.store.removeJournal(page);
     return { schema: snapshot.schema, revisionId: snapshot.revisionId };
   }
@@ -142,15 +126,11 @@ export class SchemaCommit {
       const target = await this.store.readRevisionIfPresent(page, journal.targetRevisionId);
       if (target) {
         validateSnapshot(target);
-        if (
-          target.parentRevisionId !== journal.previousRevisionId ||
-          target.changeSetId !== journal.changeSetId
-        )
+        if (target.parentRevisionId !== journal.previousRevisionId)
           throw invalid('页面恢复记录与 Revision 不匹配');
         const storedPrevious = await this.store.readWorkingIfPresent(page);
         const previous = storedPrevious ? toWorkingV2(page, storedPrevious) : undefined;
         await this.store.writeWorking(page, workingAtSnapshot(page, previous, target));
-        await this.writeReceipt(page, target);
       }
       await this.store.removeJournal(page);
     }

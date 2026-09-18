@@ -16,30 +16,6 @@ const schema: OrigamixPageSchema = {
 describe('schema service', () => {
   beforeEach(() => request.mockReset());
 
-  it('commits editor output as a revision-checked replaceSchema ChangeSet', async () => {
-    request.mockResolvedValue({ schema, revisionId: 'revision_next' });
-    const { schemaService } = await import('../../src/services/schema');
-
-    await schemaService.replace('project_one', 'page_one', {
-      baseRevisionId: 'revision_base',
-      schema,
-    });
-
-    expect(request).toHaveBeenCalledWith('/pages/page_one/changesets', {
-      projectId: 'project_one',
-      method: 'POST',
-      body: expect.any(String),
-    });
-    const input = request.mock.calls[0]?.[1] as { body: string };
-    expect(JSON.parse(input.body)).toMatchObject({
-      pageId: 'page_one',
-      baseRevisionId: 'revision_base',
-      source: { kind: 'user' },
-      operation: 'replaceSchema',
-      schema,
-    });
-  });
-
   it('uses the caller-provided stable apply request ID and response validator', async () => {
     request.mockResolvedValue({
       pageId: 'page_one',
@@ -79,27 +55,48 @@ describe('schema service', () => {
     const { schemaService } = await import('../../src/services/schema');
 
     await schemaService.workingState('project_one', 'page_one');
+    await schemaService.listRevisions('project_one', 'page_one');
+    await schemaService.getRevision('project_one', 'page_one', 'revision_saved');
     await schemaService.updateWorking('project_one', 'page_one', 3, schema);
-    await schemaService.saveRevision('project_one', 'page_one', 4);
-    await schemaService.restoreRevision('project_one', 'page_one', 'revision_old', 5);
+    await schemaService.applyWorkingOperations('project_one', 'page_one', 4, [
+      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 12 } },
+    ]);
+    await schemaService.saveRevision('project_one', 'page_one', 5);
+    await schemaService.restoreRevision('project_one', 'page_one', 'revision_old', 6);
 
     expect(request).toHaveBeenNthCalledWith(1, '/pages/page_one/working-state', {
       projectId: 'project_one',
     });
-    expect(request).toHaveBeenNthCalledWith(2, '/pages/page_one/working-state', {
+    expect(request).toHaveBeenNthCalledWith(2, '/pages/page_one/revisions', {
+      projectId: 'project_one',
+    });
+    expect(request).toHaveBeenNthCalledWith(3, '/pages/page_one/revisions/revision_saved/schema', {
+      projectId: 'project_one',
+    });
+    expect(request).toHaveBeenNthCalledWith(4, '/pages/page_one/working-state', {
       projectId: 'project_one',
       method: 'PUT',
       body: JSON.stringify({ baseWorkingVersion: 3, schema }),
     });
-    expect(request).toHaveBeenNthCalledWith(3, '/pages/page_one/revisions', {
+    expect(request).toHaveBeenNthCalledWith(5, '/pages/page_one/working-operations', {
       projectId: 'project_one',
       method: 'POST',
-      body: JSON.stringify({ expectedWorkingVersion: 4 }),
+      body: JSON.stringify({
+        baseWorkingVersion: 4,
+        operations: [
+          { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 12 } },
+        ],
+      }),
     });
-    expect(request).toHaveBeenNthCalledWith(4, '/pages/page_one/revisions/revision_old/restore', {
+    expect(request).toHaveBeenNthCalledWith(6, '/pages/page_one/revisions', {
       projectId: 'project_one',
       method: 'POST',
       body: JSON.stringify({ expectedWorkingVersion: 5 }),
+    });
+    expect(request).toHaveBeenNthCalledWith(7, '/pages/page_one/revisions/revision_old/restore', {
+      projectId: 'project_one',
+      method: 'POST',
+      body: JSON.stringify({ expectedWorkingVersion: 6 }),
     });
   });
 });

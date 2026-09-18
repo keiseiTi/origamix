@@ -18,10 +18,10 @@ const recordedObservation = (
     outputTokens: 8,
     modelCalls: testCase.expectedMode === 'page_modify' ? 1 : 0,
     toolCalls: testCase.expectedTool ? 1 : 0,
-    schemaBytes: testCase.expectRevision ? 1_024 : 0,
+    schemaBytes: testCase.expectWorkingUpdate ? 1_024 : 0,
     repairAttempts: testCase.expectRepair ? 1 : 0,
     toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
-    ...(testCase.expectRevision ? { resultRevisionId: `revision_${testCase.id}` } : {}),
+    ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
     ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
   };
 };
@@ -60,7 +60,7 @@ describe('fixed Agent evaluation harness', () => {
         run: async () => ({
           ...recordedObservation(FIXED_AGENT_EVALUATION_CASES[0]!),
           mode: 'page_question',
-          resultRevisionId: undefined,
+          resultWorkingVersion: undefined,
           toolTrace: [],
         }),
       },

@@ -31,32 +31,8 @@ export const ChangeSourceSchema = Type.Union([
     runId: Type.String(),
     messageId: Type.Optional(Type.String()),
   }),
-  Type.Object({ kind: Type.Literal('undo'), revisionId: RevisionIdSchema }),
+  Type.Object({ kind: Type.Literal('restore'), revisionId: RevisionIdSchema }),
 ]);
-
-const ChangeSetBaseSchema = Type.Object({
-  changeSetId: Type.String({ pattern: '^change_[A-Za-z0-9_-]+$' }),
-  pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
-  baseRevisionId: RevisionIdSchema,
-  source: ChangeSourceSchema,
-  createdAt: Type.String({ format: 'date-time' }),
-});
-
-export const ReplaceSchemaChangeSet = Type.Composite([
-  ChangeSetBaseSchema,
-  Type.Object({ operation: Type.Literal('replaceSchema'), schema: PageSchema }),
-]);
-
-export const UpdateElementPropsChangeSet = Type.Composite([
-  ChangeSetBaseSchema,
-  Type.Object({
-    operation: Type.Literal('updateElementProps'),
-    elementId: ElementIdSchema,
-    props: Type.Record(Type.String(), Type.Unknown()),
-  }),
-]);
-
-export const ChangeSetSchema = Type.Union([ReplaceSchemaChangeSet, UpdateElementPropsChangeSet]);
 
 const OperationIndexSchema = Type.Integer({ minimum: 0 });
 const OperationPropsSchema = Type.Record(Type.String(), Type.Unknown());
@@ -190,6 +166,6 @@ export const SchemaOperationBatchSchema = Type.Object(
 );
 
 export type OrigamixPageSchema = Static<typeof PageSchema>;
-export type ChangeSet = Static<typeof ChangeSetSchema>;
+export type ChangeSource = Static<typeof ChangeSourceSchema>;
 export type SchemaOperation = Static<typeof SchemaOperationSchema>;
 export type SchemaOperationBatch = Static<typeof SchemaOperationBatchSchema>;

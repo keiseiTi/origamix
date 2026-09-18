@@ -41,7 +41,7 @@ export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
     title: 'Agent 修改与恢复',
     keywords: ['Agent', '修改', '校验', '撤销', '版本'],
     markdown:
-      '# Agent 修改与恢复\n\n每次修改基于当前页面 Revision。提交失败不会覆盖有效页面；成功修改会生成新 Revision。可使用工作区顶部的撤销按钮恢复上一个版本。网络中断后可重试同一次请求，系统不会重复提交。页面修改会分别显示已提交、已加载和已渲染状态；若新版本渲染失败，预览会回退到最近一次正常渲染的版本。',
+      '# Agent 修改与恢复\n\n每次修改基于当前页面 Working Version，并通过 Operation List 原子更新 Working Schema。提交失败不会覆盖有效草稿；成功修改只保留草稿，不会自动保存 Revision 或应用到真实项目。用户可点击“保存版本”创建历史检查点，也可从版本历史恢复到 Working 草稿。网络中断后可使用同一请求重试，系统不会重复执行已确认的请求。',
   },
   {
     id: 'builder-agent-scope',

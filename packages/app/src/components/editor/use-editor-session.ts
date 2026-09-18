@@ -2,6 +2,7 @@ import type { Schema } from '@tangramino/engine';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '../../services/schema';
+import { deriveSchemaOperations } from './derive-schema-operations';
 
 export type EditorSaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
 
@@ -61,8 +62,18 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
       if (readOnly) throw new Error('AI 正在修改当前页面，请等待本轮完成');
       setStatus('saving');
       setError(null);
-      const operation = schemaService
-        .updateWorking(projectId, pageId, workingVersionRef.current, draft)
+      const saved = JSON.parse(savedHashRef.current) as OrigamixPageSchema;
+      const operations = deriveSchemaOperations(saved, draft);
+      const request =
+        operations && operations.length > 0
+          ? schemaService.applyWorkingOperations(
+              projectId,
+              pageId,
+              workingVersionRef.current,
+              operations,
+            )
+          : schemaService.updateWorking(projectId, pageId, workingVersionRef.current, draft);
+      const operation = request
         .then((result) => {
           workingVersionRef.current = result.workingVersion;
           savedHashRef.current = JSON.stringify(result.schema);

@@ -1,29 +1,27 @@
-import { nanoid } from 'nanoid';
 import type { Static } from '@sinclair/typebox';
 import {
+  ApplyWorkingOperationsSchema,
   RestoreWorkingRevisionSchema,
   SaveWorkingRevisionSchema,
   UpdateWorkingSchemaSchema,
 } from '@origamix/shared/protocol/api';
-import type { ChangeSet } from '@origamix/shared/protocol/schema';
 import {
-  commitSchema,
+  applyWorkingSchemaOperations,
   getSchema,
   getSchemaRevision,
   getWorkingSchemaState,
+  listRevisionHistory,
   restoreRevisionToWorking,
   saveWorkingRevision,
-  undoSchema,
   updateWorkingSchema,
 } from '../schema/schema-service';
 import { invalid, notFound } from '../errors';
 import type { RouteRegistrationContext } from './types';
 
-type WithoutChangeSetId<T> = T extends unknown ? Omit<T, 'changeSetId'> : never;
-type ChangeSetRequest = WithoutChangeSetId<ChangeSet>;
 type SaveWorkingRevisionRequest = Static<typeof SaveWorkingRevisionSchema>;
 type RestoreWorkingRevisionRequest = Static<typeof RestoreWorkingRevisionSchema>;
 type UpdateWorkingSchemaRequest = Static<typeof UpdateWorkingSchemaSchema>;
+type ApplyWorkingOperationsRequest = Static<typeof ApplyWorkingOperationsSchema>;
 
 export const registerSchemaRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   const revisionId = (value: string): string => {
@@ -49,6 +47,25 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
       ),
     ),
   );
+  server.post(
+    '/api/v1/pages/:pageId/working-operations',
+    { schema: { body: ApplyWorkingOperationsSchema } },
+    route<ApplyWorkingOperationsRequest>(async (request) => {
+      try {
+        return await applyWorkingSchemaOperations(
+          resolvePage(
+            String(request.headers['x-origamix-project-id'] ?? ''),
+            request.params.pageId,
+          ),
+          request.body,
+        );
+      } catch (error) {
+        if (error instanceof Error && error.name === 'SchemaOperationError')
+          throw invalid(error.message);
+        throw error;
+      }
+    }),
+  );
   server.put(
     '/api/v1/pages/:pageId/working-state',
     { schema: { body: UpdateWorkingSchemaSchema } },
@@ -63,6 +80,14 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
     '/api/v1/pages/:pageId/working-state',
     route<void>((request) =>
       getWorkingSchemaState(
+        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
+      ),
+    ),
+  );
+  server.get(
+    '/api/v1/pages/:pageId/revisions',
+    route<void>((request) =>
+      listRevisionHistory(
         resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
       ),
     ),
@@ -94,26 +119,6 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
         resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
         revisionId(request.params.revisionId),
         request.body.expectedWorkingVersion,
-      ),
-    ),
-  );
-  server.post(
-    '/api/v1/pages/:pageId/changesets',
-    route<ChangeSetRequest>((request) => {
-      const page = resolvePage(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-      );
-      const changeSet = { ...request.body, changeSetId: `change_${nanoid()}` } as ChangeSet;
-      if (changeSet.pageId !== page.pageId) throw invalid('变更集与页面不匹配');
-      return commitSchema(page, changeSet);
-    }),
-  );
-  server.post(
-    '/api/v1/pages/:pageId/undo',
-    route<void>((request) =>
-      undoSchema(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
       ),
     ),
   );

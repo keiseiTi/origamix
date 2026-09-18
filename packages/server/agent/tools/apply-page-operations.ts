@@ -7,17 +7,16 @@ import { conflict, invalid, notFound } from '../../errors';
 import { applyWorkingSchemaOperations } from '../../schema/schema-service';
 import { AgentEngineError, type AgentEngineTool } from '../engine';
 
-export interface ReplacePageSchemaToolContext {
+export interface ApplyPageOperationsToolContext {
   runId: string;
   messageId: string;
   projectId: string;
   pageId: string;
-  baseRevisionId: string;
   baseWorkingVersion: number;
   maxSchemaBytes: number;
 }
 
-export interface ReplacePageSchemaToolDependencies {
+export interface ApplyPageOperationsToolDependencies {
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   runs: Pick<AgentRunRepository, 'get'>;
 }
@@ -32,8 +31,8 @@ const assertNotCancelled = (signal: AbortSignal): void => {
 };
 
 export const createApplyPageOperationsTool = (
-  dependencies: ReplacePageSchemaToolDependencies,
-  context: ReplacePageSchemaToolContext,
+  dependencies: ApplyPageOperationsToolDependencies,
+  context: ApplyPageOperationsToolContext,
 ): AgentEngineTool => {
   return {
     name: 'apply_page_operations',
@@ -49,7 +48,6 @@ export const createApplyPageOperationsTool = (
         run.projectId !== context.projectId ||
         run.pageId !== context.pageId ||
         run.userMessageId !== context.messageId ||
-        run.baseRevisionId !== context.baseRevisionId ||
         run.baseWorkingVersion !== context.baseWorkingVersion
       ) {
         throw conflict('Agent Run 无权修改当前页面');
@@ -74,7 +72,7 @@ export const createApplyPageOperationsTool = (
         { baseWorkingVersion: context.baseWorkingVersion, operations },
         { beforeWrite: () => assertNotCancelled(signal) },
       );
-      return { revisionId: result.revisionId, workingVersion: result.workingVersion };
+      return { workingVersion: result.workingVersion };
     },
   };
 };

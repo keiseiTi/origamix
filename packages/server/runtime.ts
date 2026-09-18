@@ -19,7 +19,7 @@ import { ContextAssembler } from './agent/context-assembler';
 import { ProductDocsProvider } from './agent/product-docs-provider';
 import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
 import { createDomainAgentTools } from './agent/tools/domain-tools';
-import { createApplyPageOperationsTool } from './agent/tools/replace-page-schema';
+import { createApplyPageOperationsTool } from './agent/tools/apply-page-operations';
 import { createDefaultAgentToolEntries } from './agent/tools/registry';
 import { MVP_MODEL_ID } from './agent/engine';
 import { PiAgentEngine } from './agent/pi-agent-engine';
@@ -62,7 +62,11 @@ export const startServer = async (input: {
   const projectApplyService = new ProjectApplyService(projects);
   const projectService = new ProjectService(projects, input.templatePath, projectApplyService);
   const productDocs = new ProductDocsProvider();
-  const context = new ContextAssembler({ getCurrent: getSchema }, conversations, productDocs);
+  const context = new ContextAssembler(
+    { getCurrent: getWorkingSchemaState },
+    conversations,
+    productDocs,
+  );
   const pi = createMvpPiModels();
   const executor = new RunExecutor({
     projects,
@@ -85,7 +89,7 @@ export const startServer = async (input: {
             runId: scope.runId,
             projectId: scope.projectId,
             pageId: scope.pageId,
-            revisionId: scope.baseRevisionId,
+            workingVersion: scope.baseWorkingVersion,
           },
           { projects },
         ),

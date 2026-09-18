@@ -108,18 +108,22 @@ describe('Project and Schema HTTP flows', () => {
         };
       };
     };
-    const editedSchema = structuredClone(workingBefore.data.schema);
-    editedSchema.elements.element_root!.props = { padding: 28 };
     const draftResponse = await server.inject({
-      method: 'PUT',
-      url: `/api/v1/pages/${page.id}/working-state`,
+      method: 'POST',
+      url: `/api/v1/pages/${page.id}/working-operations`,
       headers: projectHeaders,
       payload: {
         baseWorkingVersion: workingBefore.data.workingVersion,
-        schema: editedSchema,
+        operations: [
+          {
+            operation: 'updateElementProps',
+            elementId: 'element_root',
+            set: { padding: 28 },
+          },
+        ],
       },
     });
-    expect(draftResponse.statusCode).toBe(200);
+    expect(draftResponse.statusCode, draftResponse.body).toBe(200);
     expect(await readFile(targetPath, 'utf8')).toBe(targetBeforeEdit);
     const draft = draftResponse.json() as {
       success: true;
@@ -158,6 +162,21 @@ describe('Project and Schema HTTP flows', () => {
     };
     expect(saved.data.workingVersion).toBeGreaterThan(workingState.data.workingVersion);
     expect(saved.data.revisionId).not.toBe(workingBefore.data.revisionId);
+    const historyResponse = await server.inject({
+      method: 'GET',
+      url: `/api/v1/pages/${page.id}/revisions`,
+      headers: projectHeaders,
+    });
+    expect(historyResponse.statusCode).toBe(200);
+    expect(historyResponse.json()).toMatchObject({
+      success: true,
+      data: {
+        revisions: [
+          { revisionId: saved.data.revisionId, isCurrent: true, isApplied: false },
+          { revisionId: workingBefore.data.revisionId, isCurrent: false, isApplied: true },
+        ],
+      },
+    });
     const applyResponse = await server.inject({
       method: 'POST',
       url: `/api/v1/pages/${page.id}/apply`,
@@ -409,7 +428,7 @@ describe('Project and Schema HTTP flows', () => {
       .prepare(
         `INSERT INTO agent_runs (
           id, project_id, page_id, conversation_id, user_message_id, client_request_id,
-          base_revision_id, model_ref, mode, status, budget_json, prompt_version,
+          base_working_version, model_ref, mode, status, budget_json, prompt_version,
           policy_version, toolset_version, material_manifest_version, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
@@ -420,7 +439,7 @@ describe('Project and Schema HTTP flows', () => {
         'conversation_lifecycle',
         'message_lifecycle',
         'request_lifecycle',
-        'revision_base',
+        1,
         'fake/model',
         'page_modify',
         8,

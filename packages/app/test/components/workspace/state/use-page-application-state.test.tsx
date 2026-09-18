@@ -11,6 +11,7 @@ const schemaMocks = vi.hoisted(() => ({
   saveRevision: vi.fn(),
   apply: vi.fn(),
   reloadFromProject: vi.fn(),
+  restoreRevision: vi.fn(),
 }));
 
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
@@ -43,6 +44,39 @@ describe('usePageApplicationState', () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+  });
+
+  it('restores a selected Revision into Working without saving another Revision', async () => {
+    schemaMocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
+    schemaMocks.workingState.mockResolvedValue({
+      revisionId: 'revision_current',
+      workingVersion: 4,
+    });
+    schemaMocks.restoreRevision.mockResolvedValue({
+      revisionId: 'revision_current',
+      workingVersion: 5,
+    });
+    const onSchemaCommitted = vi.fn();
+    const { result } = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        schemaRefreshKey: 'working_4',
+        editorRef,
+        onSchemaCommitted,
+      }),
+    );
+
+    await act(async () => result.current.restoreRevision('revision_old'));
+
+    expect(schemaMocks.restoreRevision).toHaveBeenCalledWith(
+      'project_1',
+      'page_a',
+      'revision_old',
+      4,
+    );
+    expect(onSchemaCommitted).toHaveBeenCalledWith('page_a', 'working_restore_5');
+    expect(schemaMocks.saveRevision).not.toHaveBeenCalled();
   });
 
   it('ignores a polling result that returns after switching pages', async () => {

@@ -156,6 +156,23 @@ export const usePageApplicationState = ({
     await refreshApplyState();
   };
 
+  const restoreRevision = async (revisionId: string): Promise<void> => {
+    if (!pageId || !projectId) return;
+    const requestPageKey = pageOperationKey(projectId, pageId);
+    await editorRef.current?.flush();
+    const current = await schemaService.workingState(projectId, pageId);
+    if (pageKeyRef.current !== requestPageKey) return;
+    const restored = await schemaService.restoreRevision(
+      projectId,
+      pageId,
+      revisionId,
+      current.workingVersion,
+    );
+    if (pageKeyRef.current !== requestPageKey) return;
+    onSchemaCommitted(pageId, `working_restore_${restored.workingVersion}`);
+    await refreshApplyState();
+  };
+
   return {
     applyStatus,
     saveStatus,
@@ -163,5 +180,6 @@ export const usePageApplicationState = ({
     saveVersion,
     applyPage,
     reloadFromProject,
+    restoreRevision,
   };
 };

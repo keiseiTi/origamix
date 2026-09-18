@@ -41,7 +41,7 @@ const clarification = (pageId: string, reason: string, requirement?: string): Pa
   return {
     mode: 'clarification_required',
     scope: 'page',
-    targetPageIds: [pageId],
+    pageId,
     ...(requirement ? { normalizedRequirement: requirement } : {}),
     confidence: 1,
     reason,
@@ -69,7 +69,7 @@ const fromClassification = (
     return {
       mode: result.mode,
       scope: 'page',
-      targetPageIds: [pageId],
+      pageId,
       ...(result.normalizedRequirement
         ? { normalizedRequirement: result.normalizedRequirement }
         : {}),
@@ -83,7 +83,7 @@ const fromClassification = (
   return {
     mode: result.mode,
     scope: 'page',
-    targetPageIds: [pageId],
+    pageId,
     normalizedRequirement: result.normalizedRequirement,
     confidence: result.confidence,
     reason: result.reason,
@@ -111,7 +111,7 @@ export class ScopeRouter {
       return {
         mode: 'page_modify',
         scope: 'page',
-        targetPageIds: [pageId],
+        pageId,
         normalizedRequirement: text,
         confidence: 0.99,
         reason: '明确要求创建低代码页面',
@@ -149,7 +149,7 @@ export class ScopeRouter {
       return {
         mode: 'page_modify',
         scope: 'page',
-        targetPageIds: [pageId],
+        pageId,
         normalizedRequirement: text,
         confidence: 0.96,
         reason: '包含明确页面对象和修改动作',
@@ -160,7 +160,7 @@ export class ScopeRouter {
       return {
         mode: 'page_question',
         scope: 'page',
-        targetPageIds: [pageId],
+        pageId,
         normalizedRequirement: text,
         confidence: 0.95,
         reason: '询问页面或搭建器信息',

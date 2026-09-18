@@ -15,7 +15,6 @@ export const derivePageCapabilities = ({
   const agentIdle = agentActivity === 'idle';
   return {
     canEdit: agentIdle,
-    canUndo: agentIdle && applyStatus !== 'draft_unsaved',
     canApply:
       agentIdle &&
       saveStatus === 'saved' &&
@@ -48,19 +47,19 @@ export const usePageSession = ({
     onSchemaCommitted,
   });
   const agent = useAgentChat(projectId, pageId);
-  const notifiedRevisionRef = useRef<{ pageId: string; revisionId: string } | null>(null);
+  const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
 
   useEffect(() => {
-    const revisionId = agent.state.committedRevisionId;
+    const refreshKey = agent.state.workingRefreshKey;
     if (
-      !revisionId ||
-      (notifiedRevisionRef.current?.pageId === pageId &&
-        notifiedRevisionRef.current.revisionId === revisionId)
+      !refreshKey ||
+      (notifiedWorkingRef.current?.pageId === pageId &&
+        notifiedWorkingRef.current.refreshKey === refreshKey)
     )
       return;
-    notifiedRevisionRef.current = { pageId, revisionId };
-    onSchemaCommitted(pageId, revisionId);
-  }, [agent.state.committedRevisionId, onSchemaCommitted, pageId]);
+    notifiedWorkingRef.current = { pageId, refreshKey };
+    onSchemaCommitted(pageId, refreshKey);
+  }, [agent.state.workingRefreshKey, onSchemaCommitted, pageId]);
 
   return {
     application,

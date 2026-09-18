@@ -24,11 +24,13 @@ export const ChatWorkspace = ({
   draft,
   onDraftChange,
   session,
+  onViewChanges,
 }: {
   pageName: string;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
+  onViewChanges: () => Promise<void>;
 }): React.JSX.Element => {
   const { state, activity, pendingSubmission, send, cancel, retry } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -60,7 +62,7 @@ export const ChatWorkspace = ({
           <div>
             <strong className='text-sm'>准备好修改“{pageName}”</strong>
             <p className='mt-1 max-w-155 text-zinc-600 dark:text-zinc-300'>
-              只处理当前页面的搭建与使用问题。页面变更会先通过校验，再写入一个可撤销版本。
+              只处理当前页面的搭建与使用问题。页面变更会先通过校验并保留为草稿，由你决定何时保存版本。
             </p>
           </div>
         </div>
@@ -125,10 +127,13 @@ export const ChatWorkspace = ({
             {state.connection === 'recovering' ? ' · 正在重新连接' : ''}
           </p>
         )}
-        {state.committedRevisionId && (
-          <p className='mt-2 text-xs text-success' role='status'>
-            页面已提交，编辑器正在加载该版本。
-          </p>
+        {state.workingRefreshKey && (
+          <div className='mt-3 flex items-center gap-2' role='status'>
+            <span className='text-xs text-success'>AI 已修改草稿，尚未保存版本。</span>
+            <Button size='sm' variant='ghost' onPress={() => void onViewChanges()}>
+              查看修改
+            </Button>
+          </div>
         )}
         {(state.error || pendingSubmission) && (
           <div

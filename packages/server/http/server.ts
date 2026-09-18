@@ -95,7 +95,11 @@ const route: RouteAdapter =
   };
 
 export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
-  const server = Fastify({ bodyLimit: 512 * 1024, logger: false });
+  const server = Fastify({
+    bodyLimit: 512 * 1024,
+    logger: false,
+    ajv: { customOptions: { removeAdditional: false } },
+  });
   installRequestBoundary(server, input);
   server.get('/api/v1/health', async () => ({
     success: true,

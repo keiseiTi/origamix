@@ -48,26 +48,27 @@ try {
     directoryGrantId: 'template-test-grant',
   });
   const page = await request(`/projects/${created.id}/pages`, { name: 'Home', slug: 'home' });
-  const current = await request(`/pages/${page.id}/schema`, undefined, created.id, 'GET');
-  const updated = await request(
-    `/pages/${page.id}/changesets`,
+  const working = await request(`/pages/${page.id}/working-state`, undefined, created.id, 'GET');
+  const draft = await request(
+    `/pages/${page.id}/working-operations`,
     {
-      pageId: page.id,
-      baseRevisionId: current.revisionId,
-      source: { kind: 'user' },
-      createdAt: new Date().toISOString(),
-      operation: 'updateElementProps',
-      elementId: 'element_root',
-      props: { height: 321 },
+      baseWorkingVersion: working.workingVersion,
+      operations: [
+        { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
+      ],
     },
     created.id,
   );
-  const working = await request(`/pages/${page.id}/working-state`, undefined, created.id, 'GET');
+  const updated = await request(
+    `/pages/${page.id}/revisions`,
+    { expectedWorkingVersion: draft.workingVersion },
+    created.id,
+  );
   await request(
     `/pages/${page.id}/apply`,
     {
       expectedRevisionId: updated.revisionId,
-      expectedWorkingVersion: working.workingVersion,
+      expectedWorkingVersion: updated.workingVersion,
       clientRequestId: 'template-test-apply',
     },
     created.id,

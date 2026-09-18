@@ -9,7 +9,6 @@ import { PageTabs } from './components/workspace/page-tabs';
 import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
 import { projectsService } from './services/projects';
-import { schemaService } from './services/schema';
 import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
 import { useProjectActions } from './hooks/use-project-actions';
 import { usePreferencesStore } from './store/preferences';
@@ -106,13 +105,6 @@ const App = (): React.JSX.Element => {
         ? (previousPreviewMode.current[selectedPage.id] ?? 'chat')
         : activeTab;
     setPageMode(selectedPage.id, 'preview');
-  };
-
-  const undoPage = async (): Promise<void> => {
-    if (!selectedProject || !selectedPage) throw new Error('请先选择需要撤销的页面');
-    await flushEditor();
-    const result = await schemaService.undo(selectedProject.id, selectedPage.id);
-    setSchemaRefreshKeys((current) => ({ ...current, [selectedPage.id]: result.revisionId }));
   };
 
   const selectPage = (pageId: string): void => {
@@ -346,7 +338,6 @@ const App = (): React.JSX.Element => {
               editorRef={editorRef}
               onModeChange={changeMode}
               onPreview={openPreview}
-              onUndo={undoPage}
               draft={selectedPageId ? (pageDrafts[selectedPageId] ?? '') : ''}
               onDraftChange={(draft) => {
                 if (selectedPageId) {

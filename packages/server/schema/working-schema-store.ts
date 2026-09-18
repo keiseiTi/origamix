@@ -1,7 +1,7 @@
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { ChangeSet, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 
 export interface WorkingSchemaPageRef {
   projectPath: string;
@@ -35,9 +35,7 @@ export type StoredWorkingSchemaFile = LegacyWorkingSchemaFile | WorkingSchemaFil
 export interface RevisionSnapshot {
   revisionId: string;
   parentRevisionId: string | null;
-  changeSetId?: string;
-  changeSetHash?: string;
-  source: ChangeSet['source'];
+  source: ChangeSource;
   createdAt: string;
   schemaHash: string;
   schema: OrigamixPageSchema;
@@ -48,15 +46,7 @@ export interface CommitJournal {
   pageId: string;
   previousRevisionId: string | null;
   targetRevisionId: string;
-  changeSetId?: string;
   createdAt: string;
-}
-
-export interface ChangeSetReceipt {
-  changeSetId: string;
-  changeSetHash: string;
-  revisionId: string;
-  schemaHash: string;
 }
 
 const readJson = async <T>(path: string): Promise<T> => {
@@ -90,10 +80,6 @@ export class WorkingSchemaStore {
     return join(page.projectPath, '.origamix', 'transactions', `${page.pageId}.json`);
   }
 
-  private receiptFile(page: WorkingSchemaPageRef, changeSetId: string): string {
-    return join(page.projectPath, '.origamix', 'changesets', page.pageId, `${changeSetId}.json`);
-  }
-
   readWorking(page: WorkingSchemaPageRef): Promise<StoredWorkingSchemaFile> {
     return readJson(this.workingFile(page));
   }
@@ -117,6 +103,21 @@ export class WorkingSchemaStore {
     return readJsonIfPresent(this.revisionFile(page, revisionId));
   }
 
+  async listRevisions(page: WorkingSchemaPageRef): Promise<RevisionSnapshot[]> {
+    const directory = join(page.projectPath, '.origamix', 'revisions', page.pageId);
+    let entries: string[];
+    try {
+      entries = await readdir(directory);
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
+      throw error;
+    }
+    const revisionFiles = entries.filter((entry) => /^revision_[A-Za-z0-9_-]+\.json$/.test(entry));
+    return Promise.all(
+      revisionFiles.map((entry) => readJson<RevisionSnapshot>(join(directory, entry))),
+    );
+  }
+
   writeRevision(page: WorkingSchemaPageRef, snapshot: RevisionSnapshot): Promise<void> {
     return this.writeJson(this.revisionFile(page, snapshot.revisionId), snapshot);
   }
@@ -133,17 +134,6 @@ export class WorkingSchemaStore {
     return rm(this.journalFile(page), { force: true });
   }
 
-  readReceipt(
-    page: WorkingSchemaPageRef,
-    changeSetId: string,
-  ): Promise<ChangeSetReceipt | undefined> {
-    return readJsonIfPresent(this.receiptFile(page, changeSetId));
-  }
-
-  writeReceipt(page: WorkingSchemaPageRef, receipt: ChangeSetReceipt): Promise<void> {
-    return this.writeJson(this.receiptFile(page, receipt.changeSetId), receipt);
-  }
-
   async removePage(page: WorkingSchemaPageRef): Promise<void> {
     await Promise.all([
       rm(join(page.projectPath, '.origamix', 'pages', page.pageId), {
@@ -151,10 +141,6 @@ export class WorkingSchemaStore {
         force: true,
       }),
       rm(join(page.projectPath, '.origamix', 'revisions', page.pageId), {
-        recursive: true,
-        force: true,
-      }),
-      rm(join(page.projectPath, '.origamix', 'changesets', page.pageId), {
         recursive: true,
         force: true,
       }),

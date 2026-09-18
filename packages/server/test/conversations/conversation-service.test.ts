@@ -66,7 +66,6 @@ const input = (overrides: Partial<StartConversationRunInput> = {}): StartConvers
     projectId: 'project_a',
     pageId: 'page_a',
     clientRequestId: 'request-1',
-    baseRevisionId: 'revision_base',
     baseWorkingVersion: 1,
     content: content('创建表单'),
     modelRef: 'deepseek/deepseek-v4-flash',
@@ -91,7 +90,7 @@ describe('Conversation persistence', () => {
     const duplicate = service.startRun(input());
     expect(duplicate.run.id).toBe(first.run.id);
     expect(service.history('project_a', 'page_a', first.conversation.id)).toHaveLength(1);
-    expect(() => service.startRun(input({ baseRevisionId: 'revision_other' }))).toThrow('不同请求');
+    expect(() => service.startRun(input({ baseWorkingVersion: 2 }))).toThrow('不同请求');
     database.close();
   });
 
@@ -286,11 +285,13 @@ describe('Agent Run state and recovery', () => {
     expect(runService.transition(run.id, 'classifying').status).toBe('classifying');
     expect(runService.transition(run.id, 'generating').status).toBe('generating');
     expect(() => runService.transition(run.id, 'queued')).toThrow('不能');
-    expect(() => runService.transition(run.id, 'completed')).toThrow('Revision');
+    expect(() => runService.transition(run.id, 'completed')).toThrow('Working 版本');
     expect(runService.transition(run.id, 'validating').status).toBe('validating');
     expect(runService.transition(run.id, 'committing').status).toBe('committing');
     expect(
-      runService.transition(run.id, 'completed', { resultRevisionId: 'revision_result' }).status,
+      runService.transition(run.id, 'completed', {
+        resultWorkingVersion: 2,
+      }).status,
     ).toBe('completed');
     expect(runService.cancel(run.id).status).toBe('completed');
     database.close();
@@ -302,7 +303,9 @@ describe('Agent Run state and recovery', () => {
     expect(runService.cancel(run.id).status).toBe('cancelling');
     expect(runService.cancel(run.id).status).toBe('cancelling');
     expect(
-      runService.transition(run.id, 'completed', { resultRevisionId: 'revision_race' }).status,
+      runService.transition(run.id, 'completed', {
+        resultWorkingVersion: 2,
+      }).status,
     ).toBe('completed');
     expect(runService.cancel(run.id).status).toBe('completed');
     database.close();
@@ -315,14 +318,14 @@ describe('Agent Run state and recovery', () => {
     runs.updateStatus(committed.id, ['classifying'], {
       status: 'committing',
       updatedAt: new Date().toISOString(),
-      resultRevisionId: 'revision_done',
+      resultWorkingVersion: 2,
     });
     const pending = service.startRun(input({ clientRequestId: 'request-2' })).run;
     runService.transition(pending.id, 'classifying');
     let checks = 0;
     const recovered = await runService.recover((run) => {
       checks += 1;
-      return run.resultRevisionId === 'revision_done';
+      return run.resultWorkingVersion === 2;
     });
     expect(checks).toBe(1);
     expect(recovered.map((run) => [run.id, run.status])).toEqual([

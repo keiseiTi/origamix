@@ -23,14 +23,14 @@ describe('agent domain protocol', () => {
     const intent = {
       scope: 'page',
       mode: 'page_modify',
-      targetPageIds: ['page_customer'],
+      pageId: 'page_customer',
       normalizedRequirement: '创建客户表单',
       confidence: 0.98,
       requiresConfirmation: false,
     };
     expect(validatePageIntent(intent).valid).toBe(true);
     expect(validatePageIntent({ ...intent, confidence: 2 }).valid).toBe(false);
-    expect(validatePageIntent({ ...intent, targetPageIds: [] }).valid).toBe(false);
+    expect(validatePageIntent({ ...intent, pageId: '' }).valid).toBe(false);
     expect(validatePageIntent({ ...intent, extra: true }).valid).toBe(false);
   });
 
@@ -39,7 +39,7 @@ describe('agent domain protocol', () => {
       validatePageIntent({
         scope: 'page',
         mode: 'page_question',
-        targetPageIds: ['page_customer'],
+        pageId: 'page_customer',
         normalizedRequirement: '说明表格有哪些列',
         confidence: 0.96,
         requiresConfirmation: false,
@@ -49,6 +49,7 @@ describe('agent domain protocol', () => {
       validatePageIntent({
         scope: 'page',
         mode: 'clarification_required',
+        pageId: 'page_customer',
         confidence: 0.55,
         reason: '请求可能是页面需求，也可能是现实信息查询',
         suggestedQuestion: '你希望创建一个天气展示页面吗？',
@@ -68,7 +69,7 @@ describe('agent domain protocol', () => {
       validatePageIntent({
         scope: 'page',
         mode: 'out_of_scope',
-        targetPageIds: ['page_customer'],
+        pageId: 'page_customer',
         normalizedRequirement: '修改页面',
         confidence: 0.99,
         reason: '不应携带页面写入需求',
@@ -86,7 +87,6 @@ describe('agent domain protocol', () => {
       conversationId: 'conversation_one',
       userMessageId: 'message_one',
       requestId: 'request-one',
-      baseRevisionId: 'revision_one',
       baseWorkingVersion: 1,
       mode: 'page_modify',
       status: 'completed',
@@ -103,7 +103,7 @@ describe('agent domain protocol', () => {
       policyVersion: '1',
       toolsetVersion: '1',
       materialManifestVersion: '1',
-      resultRevisionId: 'revision_two',
+      resultWorkingVersion: 2,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -187,7 +187,6 @@ describe('agent domain protocol', () => {
         pageId: 'page_one',
         conversationId: 'conversation_one',
         clientRequestId: 'request-one',
-        baseRevisionId: 'revision_one',
         baseWorkingVersion: 1,
         content,
       }).valid,

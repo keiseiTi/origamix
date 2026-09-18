@@ -3,7 +3,7 @@ import { runAgentEvaluation } from '../../evaluation/evaluation-harness';
 import { evaluateMvpGate } from '../../evaluation/mvp-gate';
 
 describe('MVP performance and release gate', () => {
-  it('accepts bounded multi-page/continuous/cancel evidence after resources are released', async () => {
+  it('accepts bounded continuous/cancel evidence after resources are released', async () => {
     const report = await runAgentEvaluation({
       kind: 'fake',
       run: async (testCase) => ({
@@ -15,10 +15,10 @@ describe('MVP performance and release gate', () => {
         outputTokens: 0,
         modelCalls: 0,
         toolCalls: testCase.expectedTool ? 1 : 0,
-        schemaBytes: testCase.expectRevision ? 4_096 : 0,
+        schemaBytes: testCase.expectWorkingUpdate ? 4_096 : 0,
         repairAttempts: testCase.expectRepair ? 1 : 0,
         toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
-        ...(testCase.expectRevision ? { resultRevisionId: `revision_${testCase.id}` } : {}),
+        ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
         ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
       }),
     });
@@ -46,7 +46,7 @@ describe('MVP performance and release gate', () => {
         schemaBytes: 300_000,
         repairAttempts: testCase.expectRepair ? 1 : 0,
         toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
-        ...(testCase.expectRevision ? { resultRevisionId: `revision_${testCase.id}` } : {}),
+        ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
         ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
       }),
     });

@@ -11,7 +11,7 @@ import {
   getWorkingSchemaState,
   initializePageSchema,
 } from '../../../schema/schema-service';
-import { createApplyPageOperationsTool } from '../../../agent/tools/replace-page-schema';
+import { createApplyPageOperationsTool } from '../../../agent/tools/apply-page-operations';
 
 const directories: string[] = [];
 const pageSchema = (type = 'container'): OrigamixPageSchema => ({
@@ -67,7 +67,6 @@ const setup = async () => {
     conversationId: 'conversation_test',
     userMessageId: 'message_test',
     clientRequestId: 'request_test',
-    baseRevisionId: initialRevisionId,
     baseWorkingVersion: 1,
     modelRef: 'deepseek/deepseek-v4-flash',
     mode: 'page_modify',
@@ -100,7 +99,6 @@ const setup = async () => {
       messageId: run.userMessageId,
       projectId: run.projectId,
       pageId: run.pageId,
-      baseRevisionId: run.baseRevisionId,
       baseWorkingVersion: run.baseWorkingVersion,
       maxSchemaBytes: run.budget.maxSchemaBytes,
     },
@@ -126,11 +124,7 @@ describe('apply_page_operations tool', () => {
         ],
       },
       new AbortController().signal,
-    )) as {
-      revisionId: string;
-      workingVersion: number;
-    };
-    expect(result.revisionId).toBe(fixture.initialRevisionId);
+    )) as { workingVersion: number };
     expect(result.workingVersion).toBe(2);
     expect((await getWorkingSchemaState(fixture.pageRef)).schema.elements.text_title).toBeDefined();
     expect(
@@ -187,7 +181,6 @@ describe('apply_page_operations tool', () => {
         messageId: 'message_forged',
         projectId: 'project_test',
         pageId: 'page_home',
-        baseRevisionId: fixture.initialRevisionId,
         baseWorkingVersion: 1,
         maxSchemaBytes: 1,
       },
@@ -213,11 +206,12 @@ describe('apply_page_operations tool', () => {
         ],
       },
       controller.signal,
-    )) as {
-      revisionId: string;
-    };
+    )) as { workingVersion: number };
     controller.abort();
-    expect((await getSchema(fixture.pageRef)).revisionId).toBe(result.revisionId);
+    expect((await getWorkingSchemaState(fixture.pageRef)).workingVersion).toBe(
+      result.workingVersion,
+    );
+    expect((await getSchema(fixture.pageRef)).revisionId).toBe(fixture.initialRevisionId);
     fixture.database.close();
   });
 });

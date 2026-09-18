@@ -28,3 +28,8 @@ pre-commit:
                     - 'apps/**/*.{ts,tsx}'
                     - 'packages/**/*.{ts,tsx}'
                   run: pnpm typecheck
+                - name: test
+                  glob:
+                    - 'apps/**/*.{ts,tsx}'
+                    - 'packages/**/*.{ts,tsx}'
+                  run: pnpm test

@@ -44,9 +44,7 @@ export class AgentService {
       getCurrentState: (
         projectId: string,
         pageId: string,
-      ) =>
-        | { revisionId: string; workingVersion: number }
-        | Promise<{ revisionId: string; workingVersion: number }>;
+      ) => { workingVersion: number } | Promise<{ workingVersion: number }>;
       modelRef?: string;
       budget?: RunBudget;
     },
@@ -68,10 +66,7 @@ export class AgentService {
         return this.startResult(started);
       }
       const current = await this.dependencies.getCurrentState(request.projectId, request.pageId);
-      if (
-        current.revisionId !== request.baseRevisionId ||
-        current.workingVersion !== request.baseWorkingVersion
-      ) {
+      if (current.workingVersion !== request.baseWorkingVersion) {
         throw conflict('页面版本已变化，请刷新后重试');
       }
       const message = request.content.blocks
@@ -123,7 +118,6 @@ export class AgentService {
       runId,
       pageId: run.pageId,
       requestId,
-      ...(run.resultRevisionId ? { revisionId: run.resultRevisionId } : {}),
       payload: { status: run.status },
     });
     return run;
@@ -160,7 +154,6 @@ export class AgentService {
         mode: settled.mode,
         status: settled.status as RunResult['status'],
         text: '',
-        ...(settled.resultRevisionId ? { resultRevisionId: settled.resultRevisionId } : {}),
         ...(settled.resultWorkingVersion
           ? { resultWorkingVersion: settled.resultWorkingVersion }
           : {}),
@@ -171,7 +164,6 @@ export class AgentService {
       runId: result.runId,
       pageId: started.run.pageId,
       requestId: started.run.clientRequestId,
-      ...(result.resultRevisionId ? { revisionId: result.resultRevisionId } : {}),
       payload: {
         status: result.status,
         ...(result.resultWorkingVersion ? { workingVersion: result.resultWorkingVersion } : {}),

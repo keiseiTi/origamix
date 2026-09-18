@@ -10,7 +10,7 @@ export interface AgentEvaluationCase {
   input: string;
   expectedMode: RunMode;
   expectedStatus: AgentRunStatus;
-  expectRevision: boolean;
+  expectWorkingUpdate: boolean;
   expectedTool?: string;
   expectRepair?: boolean;
   expectedErrorCode?: string;
@@ -28,7 +28,7 @@ export interface AgentEvaluationObservation {
   schemaBytes: number;
   repairAttempts: number;
   toolTrace: string[];
-  resultRevisionId?: string;
+  resultWorkingVersion?: number;
   errorCode?: string;
 }
 
@@ -56,23 +56,25 @@ const observation = (
     schemaBytes: revision ? 4_096 : 0,
     repairAttempts: 0,
     toolTrace,
-    ...(revision ? { resultRevisionId: `revision_recorded_${mode}` } : {}),
+    ...(revision ? { resultWorkingVersion: 2 } : {}),
     ...(errorCode ? { errorCode } : {}),
   };
 };
 
 const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservation>> = {
-  eval_login_form: observation('page_modify', 'completed', true, ['replace_page_schema']),
-  eval_customer_form_table: observation('page_modify', 'completed', true, ['replace_page_schema']),
-  eval_add_table_column: observation('page_modify', 'completed', true, ['replace_page_schema']),
-  eval_modify_button: observation('page_modify', 'completed', true, ['replace_page_schema']),
+  eval_login_form: observation('page_modify', 'completed', true, ['apply_page_operations']),
+  eval_customer_form_table: observation('page_modify', 'completed', true, [
+    'apply_page_operations',
+  ]),
+  eval_add_table_column: observation('page_modify', 'completed', true, ['apply_page_operations']),
+  eval_modify_button: observation('page_modify', 'completed', true, ['apply_page_operations']),
   eval_page_question: observation('page_question', 'completed'),
   eval_weather_rejected: observation('out_of_scope', 'completed'),
-  eval_weather_page: observation('page_modify', 'completed', true, ['replace_page_schema']),
+  eval_weather_page: observation('page_modify', 'completed', true, ['apply_page_operations']),
   eval_ambiguous: observation('clarification_required', 'completed'),
   eval_unknown_material: observation('page_modify', 'failed', false, [], 'TOOL_ERROR'),
   eval_single_repair: {
-    ...observation('page_modify', 'completed', true, ['replace_page_schema']),
+    ...observation('page_modify', 'completed', true, ['apply_page_operations']),
     repairAttempts: 1,
   },
   eval_revision_conflict: observation('page_modify', 'failed', false, [], 'REVISION_CONFLICT'),
@@ -97,68 +99,68 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
     input: '创建登录表单',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_customer_form_table',
     input: '创建客户表单和表格',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_add_table_column',
     input: '给已有表格增加状态列',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_modify_button',
     input: '把提交按钮改成主要按钮',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_page_question',
     input: '表格在搭建器里如何配置',
     expectedMode: 'page_question',
     expectedStatus: 'completed',
-    expectRevision: false,
+    expectWorkingUpdate: false,
   },
   {
     id: 'eval_weather_rejected',
     input: '今天天气怎么样',
     expectedMode: 'out_of_scope',
     expectedStatus: 'completed',
-    expectRevision: false,
+    expectWorkingUpdate: false,
   },
   {
     id: 'eval_weather_page',
     input: '创建一个天气展示页面',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_ambiguous',
     input: '加一个天气',
     expectedMode: 'clarification_required',
     expectedStatus: 'completed',
-    expectRevision: false,
+    expectWorkingUpdate: false,
   },
   {
     id: 'eval_unknown_material',
     input: '使用不存在的物料生成页面',
     expectedMode: 'page_modify',
     expectedStatus: 'failed',
-    expectRevision: false,
+    expectWorkingUpdate: false,
     expectedErrorCode: 'TOOL_ERROR',
   },
   {
@@ -166,8 +168,8 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
     input: '创建需要一次修复的表单',
     expectedMode: 'page_modify',
     expectedStatus: 'completed',
-    expectRevision: true,
-    expectedTool: 'replace_page_schema',
+    expectWorkingUpdate: true,
+    expectedTool: 'apply_page_operations',
     expectRepair: true,
   },
   {
@@ -175,7 +177,7 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
     input: '在过期版本上修改表格',
     expectedMode: 'page_modify',
     expectedStatus: 'failed',
-    expectRevision: false,
+    expectWorkingUpdate: false,
     expectedErrorCode: 'REVISION_CONFLICT',
   },
   {
@@ -183,7 +185,7 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
     input: '创建一个大型客户页面后取消',
     expectedMode: 'page_modify',
     expectedStatus: 'cancelled',
-    expectRevision: false,
+    expectWorkingUpdate: false,
   },
 ] as const;
 
@@ -202,8 +204,8 @@ const failuresFor = (
     failures.push(`意图应为 ${testCase.expectedMode}`);
   if (observation.status !== testCase.expectedStatus)
     failures.push(`状态应为 ${testCase.expectedStatus}`);
-  if (Boolean(observation.resultRevisionId) !== testCase.expectRevision)
-    failures.push('Revision 结果不符合预期');
+  if (Boolean(observation.resultWorkingVersion) !== testCase.expectWorkingUpdate)
+    failures.push('Working 更新结果不符合预期');
   if (testCase.expectedTool && !observation.toolTrace.includes(testCase.expectedTool))
     failures.push(`缺少工具轨迹 ${testCase.expectedTool}`);
   if (testCase.expectRepair && observation.repairAttempts !== 1) failures.push('应且只能修复一次');

@@ -89,7 +89,7 @@ const setup = (
   });
   const events = new AgentEventBroker();
   const router = new ScopeRouter();
-  const getCurrentState = vi.fn(async () => ({ revisionId: 'revision_base', workingVersion: 1 }));
+  const getCurrentState = vi.fn(async () => ({ workingVersion: 1 }));
   const service = new AgentService({
     conversations,
     runs,
@@ -104,7 +104,6 @@ const setup = (
     projectId: 'project_test',
     pageId: 'page_test',
     clientRequestId,
-    baseRevisionId: 'revision_base',
     baseWorkingVersion: 1,
     content: { version: '1' as const, blocks: [{ type: 'text' as const, text: message }] },
   });
@@ -178,11 +177,11 @@ describe('Agent execution through AgentService', () => {
     expect(result).toMatchObject({
       status: 'completed',
       text: '已提交。',
-      resultRevisionId: 'revision_result',
+      resultWorkingVersion: 2,
     });
     expect(fixture.runs.get(result.runId)).toMatchObject({
       status: 'completed',
-      resultRevisionId: 'revision_result',
+      resultWorkingVersion: 2,
       modelCalls: 1,
       toolCalls: 1,
       inputTokens: 2,
@@ -214,7 +213,7 @@ describe('Agent execution through AgentService', () => {
     });
     await expect(repaired.run(repaired.input('创建一个表单页面'))).resolves.toMatchObject({
       status: 'completed',
-      resultRevisionId: 'revision_result',
+      resultWorkingVersion: 2,
     });
     expect(repaired.calls()).toBe(2);
     repaired.database.close();
@@ -299,7 +298,7 @@ describe('Agent startup ownership', () => {
     const fixture = setup(async () => ({ text: 'ok', usage }));
     try {
       const request = fixture.input('表单如何搭建');
-      await expect(fixture.service.start({ ...request, baseRevisionId: 'old' })).rejects.toThrow(
+      await expect(fixture.service.start({ ...request, baseWorkingVersion: 2 })).rejects.toThrow(
         '页面版本已变化',
       );
       await expect(

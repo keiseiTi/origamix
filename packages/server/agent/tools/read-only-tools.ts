@@ -8,7 +8,11 @@ import {
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { ProjectRepository } from '../../projects/project-repository';
 import { conflict, invalid, notFound } from '../../errors';
-import { getSchema, type SchemaPageRef, type SchemaReadResult } from '../../schema/schema-service';
+import {
+  getWorkingSchemaState,
+  type SchemaPageRef,
+  type WorkingSchemaReadResult,
+} from '../../schema/schema-service';
 import type { AgentEngineTool } from '../engine';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
@@ -17,7 +21,7 @@ const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
 const ScopeSchema = {
   projectId: Type.String({ minLength: 1, maxLength: 160 }),
   pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
-  revisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
+  workingVersion: Type.Integer({ minimum: 1 }),
 };
 const PageScopeInputSchema = strictObject(ScopeSchema);
 const SchemaFragmentInputSchema = strictObject({
@@ -45,12 +49,14 @@ export interface ReadOnlyToolScope {
   runId: string;
   projectId: string;
   pageId: string;
-  revisionId: string;
+  workingVersion: number;
 }
 
 export interface ReadOnlyToolDependencies {
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
-  readSchema?: (page: SchemaPageRef) => Promise<SchemaReadResult>;
+  readSchema?: (
+    page: SchemaPageRef,
+  ) => Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>>;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -106,39 +112,43 @@ const elementSummary = (schema: OrigamixPageSchema, elementId: string): JsonObje
   };
 };
 
-/** Creates read-only tools whose project/page/revision authority is fixed for one Agent Run. */
+/** Creates read-only tools whose project/page/Working authority is fixed for one Agent Run. */
 export const createReadOnlyAgentTools = (
   scope: ReadOnlyToolScope,
   dependencies: ReadOnlyToolDependencies,
 ): AgentEngineTool[] => {
   const cache = new Map<string, Promise<unknown>>();
-  let schemaPromise: Promise<SchemaReadResult> | undefined;
+  let schemaPromise:
+    Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> | undefined;
 
   const assertNotAborted = (signal: AbortSignal): void => {
     if (signal.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError');
   };
 
-  const load = async (input: PageScopeInput, signal: AbortSignal): Promise<SchemaReadResult> => {
+  const load = async (
+    input: PageScopeInput,
+    signal: AbortSignal,
+  ): Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> => {
     assertNotAborted(signal);
     if (
       input.projectId !== scope.projectId ||
       input.pageId !== scope.pageId ||
-      input.revisionId !== scope.revisionId
+      input.workingVersion !== scope.workingVersion
     ) {
-      throw notFound('页面或 Revision 不属于当前 Agent Run');
+      throw notFound('页面 Working 状态不属于当前 Agent Run');
     }
     const project = dependencies.projects.getProject(scope.projectId);
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
     if (!page || page.status !== 0) throw notFound('页面不存在或不属于该项目');
-    schemaPromise ??= (dependencies.readSchema ?? getSchema)({
+    schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)({
       projectPath: project.path,
       pageId: page.id,
       slug: page.slug,
       relativePath: page.relativePath,
     });
     const current = await schemaPromise;
-    if (current.revisionId !== scope.revisionId) throw conflict('页面 Revision 已变化');
+    if (current.workingVersion !== scope.workingVersion) throw conflict('页面草稿已变化');
     return current;
   };
 

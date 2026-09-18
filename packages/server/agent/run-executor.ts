@@ -23,7 +23,6 @@ export interface RunResult {
   mode: PageIntent['mode'];
   status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
   text: string;
-  resultRevisionId?: string;
   resultWorkingVersion?: number;
 }
 
@@ -39,7 +38,6 @@ export interface RunExecutorDependencies {
     messageId: string;
     projectId: string;
     pageId: string;
-    baseRevisionId: string;
     baseWorkingVersion: number;
   }) => RegisteredAgentTool[];
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
@@ -76,7 +74,6 @@ export class RunExecutor {
         mode: intent.mode,
         status: started.run.status as RunResult['status'],
         text: '',
-        ...(started.run.resultRevisionId ? { resultRevisionId: started.run.resultRevisionId } : {}),
         ...(started.run.resultWorkingVersion
           ? { resultWorkingVersion: started.run.resultWorkingVersion }
           : {}),
@@ -94,7 +91,6 @@ export class RunExecutor {
     this.active.set(runId, controller);
     const tracker = new RunBudgetController(started.run.budget);
     let assistantText = '';
-    let resultRevisionId: string | undefined;
     let resultWorkingVersion: number | undefined;
     let inputTokens = 0;
     const registry = new AgentToolRegistry();
@@ -104,7 +100,6 @@ export class RunExecutor {
         messageId: started.message.messageId,
         projectId: input.projectId,
         pageId: input.pageId,
-        baseRevisionId: input.baseRevisionId,
         baseWorkingVersion: input.baseWorkingVersion,
       }))
         registry.register(entry);
@@ -129,7 +124,7 @@ export class RunExecutor {
         },
         conversationId: started.conversation.id,
         intent,
-        expectedBaseRevisionId: input.baseRevisionId,
+        expectedWorkingVersion: input.baseWorkingVersion,
         docsQuery: intent.mode === 'page_question' ? message : undefined,
       });
       const execute = async (repair: boolean): Promise<void> => {
@@ -155,12 +150,8 @@ export class RunExecutor {
               !event.isError &&
               event.toolName === 'apply_page_operations'
             ) {
-              const result = event.result as { revisionId?: unknown; workingVersion?: unknown };
-              if (
-                typeof result?.revisionId === 'string' &&
-                typeof result?.workingVersion === 'number'
-              ) {
-                resultRevisionId = result.revisionId;
+              const result = event.result as { workingVersion?: unknown };
+              if (typeof result?.workingVersion === 'number') {
                 resultWorkingVersion = result.workingVersion;
               }
             }
@@ -184,8 +175,8 @@ export class RunExecutor {
         ),
       );
       const current = this.dependencies.runs.get(runId);
-      if (resultRevisionId && resultWorkingVersion) {
-        const resultPatch = { resultRevisionId, resultWorkingVersion };
+      if (resultWorkingVersion) {
+        const resultPatch = { resultWorkingVersion };
         if (current?.status === 'cancelling') {
           this.dependencies.runService.transition(runId, 'completed', resultPatch);
         } else {
@@ -204,7 +195,6 @@ export class RunExecutor {
         mode: intent.mode,
         status: 'completed',
         text: assistantText,
-        ...(resultRevisionId ? { resultRevisionId } : {}),
         ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
       };
     } catch (error) {

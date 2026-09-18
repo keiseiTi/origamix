@@ -75,7 +75,6 @@ export class AgentRunService {
     runId: string,
     status: AgentRunStatus,
     patch: {
-      resultRevisionId?: string;
       resultWorkingVersion?: number;
       errorCode?: string;
       errorMessage?: string;
@@ -133,11 +132,11 @@ export class AgentRunService {
   }
 
   async recover(
-    isRevisionCommitted: (run: AgentRunRecord) => boolean | Promise<boolean>,
+    isWorkingUpdateDurable: (run: AgentRunRecord) => boolean | Promise<boolean>,
   ): Promise<AgentRunRecord[]> {
     const recovered: AgentRunRecord[] = [];
     for (const run of this.runs.listActive()) {
-      if (run.resultRevisionId && (await isRevisionCommitted(run))) {
+      if (run.resultWorkingVersion && (await isWorkingUpdateDurable(run))) {
         const timestamp = new Date().toISOString();
         this.runs.updateStatus(run.id, active, {
           status: 'completed',

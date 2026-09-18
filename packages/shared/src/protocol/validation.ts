@@ -1,11 +1,9 @@
 import Ajv, { type ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import {
-  ChangeSetSchema,
   PageSchema,
   SchemaOperationBatchSchema,
   SchemaOperationSchema,
-  type ChangeSet,
   type OrigamixPageSchema,
   type SchemaOperation,
   type SchemaOperationBatch,
@@ -30,7 +28,6 @@ const ajv = new Ajv({ allErrors: true, strict: true });
 addFormats(ajv);
 
 const validatePageSchema = ajv.compile<OrigamixPageSchema>(PageSchema);
-const validateChangeSetSchema = ajv.compile<ChangeSet>(ChangeSetSchema);
 const validateSchemaOperationSchema = ajv.compile<SchemaOperation>(SchemaOperationSchema);
 const validateSchemaOperationBatchSchema = ajv.compile<SchemaOperationBatch>(
   SchemaOperationBatchSchema,
@@ -106,11 +103,6 @@ export const validatePage = (value: unknown): PageValidationResult => {
     valid: structuralResult.valid && semanticErrors.length === 0,
     semanticErrors,
   };
-};
-
-export const validateChangeSet = (value: unknown): ValidationResult => {
-  validateChangeSetSchema(value);
-  return result(validateChangeSetSchema.errors);
 };
 
 export const validateSchemaOperation = (value: unknown): ValidationResult => {

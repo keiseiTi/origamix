@@ -24,7 +24,7 @@ const schema: OrigamixPageSchema = {
   extensions: { origamix: { schemaVersion: '1.0' } },
 };
 
-const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
+const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVersion: 1 }))) => {
   const projects = {
     getProject: vi.fn((id: string) =>
       id === 'project_one'
@@ -58,7 +58,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
       runId: 'run_one',
       projectId: 'project_one',
       pageId: 'page_one',
-      revisionId,
+      workingVersion: 1,
     },
     { projects, readSchema },
   );
@@ -70,7 +70,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId }))) => {
   return { execute, projects, readSchema, tools };
 };
 
-const scope = { projectId: 'project_one', pageId: 'page_one', revisionId };
+const scope = { projectId: 'project_one', pageId: 'page_one', workingVersion: 1 };
 
 describe('read-only Agent tools', () => {
   it('publishes only the five bounded read tools', () => {
@@ -120,7 +120,9 @@ describe('read-only Agent tools', () => {
     ).rejects.toMatchObject({ statusCode: 422 });
     expect(current.readSchema).not.toHaveBeenCalled();
 
-    const stale = setup(vi.fn(async () => ({ schema, revisionId: 'revision_new' })));
+    const stale = setup(
+      vi.fn(async () => ({ schema, revisionId: 'revision_new', workingVersion: 2 })),
+    );
     await expect(stale.execute('get_page_context', scope)).rejects.toMatchObject({
       statusCode: 409,
     });

@@ -15,7 +15,6 @@ export interface StartConversationRunInput {
   pageId: string;
   conversationId?: string;
   clientRequestId: string;
-  baseRevisionId: string;
   baseWorkingVersion: number;
   content: MessageContent;
   modelRef: string;
@@ -138,7 +137,6 @@ export class ConversationService {
       conversationId: conversation.id,
       userMessageId: message.messageId,
       clientRequestId: input.clientRequestId,
-      baseRevisionId: input.baseRevisionId,
       baseWorkingVersion: input.baseWorkingVersion,
       modelRef: input.modelRef,
       mode: input.mode,
@@ -244,7 +242,7 @@ export class ConversationService {
   ) {
     const storedMessage = conversations.getMessage(run.userMessageId);
     if (
-      run.baseRevisionId !== input.baseRevisionId ||
+      run.baseWorkingVersion !== input.baseWorkingVersion ||
       run.conversationId !== (input.conversationId ?? run.conversationId) ||
       run.modelRef !== input.modelRef ||
       run.mode !== input.mode ||

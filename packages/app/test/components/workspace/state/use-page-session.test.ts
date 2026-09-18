@@ -11,7 +11,6 @@ describe('derivePageCapabilities', () => {
       }),
     ).toEqual({
       canEdit: false,
-      canUndo: false,
       canApply: false,
       canSaveVersion: false,
       canReload: false,
@@ -29,7 +28,6 @@ describe('derivePageCapabilities', () => {
       }),
     ).toMatchObject({
       canEdit: true,
-      canUndo: true,
       canApply: true,
       canSaveVersion: false,
       canReload: true,
@@ -51,7 +49,6 @@ describe('derivePageCapabilities', () => {
     ).toMatchObject({
       canApply: false,
       canSaveVersion: true,
-      canUndo: false,
       canLeave: true,
     });
   });

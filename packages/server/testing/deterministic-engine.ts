@@ -115,7 +115,7 @@ export const createDeterministicFakeAgentEngine = (): AgentEngine => {
         {
           operation: 'updateElementProps',
           elementId: schema.layout.root,
-          set: { agentPrompt: request.prompt, agentRunId: runId },
+          set: { padding: request.prompt.length + runId.length },
         },
       ];
       await request.onEvent?.({

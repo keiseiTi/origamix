@@ -5,14 +5,11 @@ import {
   validateSnapshot,
   type SchemaCommitOptions,
 } from './schema-commit';
-import { hashSchema, hashValue } from './schema-hash';
-import type {
-  ChangeSet,
-  OrigamixPageSchema,
-  SchemaOperation,
-} from '@origamix/shared/protocol/schema';
-import { validateChangeSet, validatePage } from '@origamix/shared/protocol/validation';
-import { conflict, invalid, notFound } from '../errors';
+import { hashSchema } from './schema-hash';
+import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
+import type { RevisionHistory } from '@origamix/shared/protocol/api';
+import { validatePage } from '@origamix/shared/protocol/validation';
+import { conflict, invalid } from '../errors';
 import { validateProjectPageAgainstMaterials } from './material-validation';
 import {
   WorkingSchemaStore,
@@ -37,13 +34,35 @@ export interface WorkingSchemaReadResult extends SchemaReadResult {
   baselineHash: string;
 }
 
-// One process-wide page queue is shared by reads, commits, undo and Apply.
+// One process-wide page queue is shared by reads, Working writes, revisions and Apply.
 const pageQueue = new KeyedQueue();
 const store = new WorkingSchemaStore();
 const commits = new SchemaCommit(store);
 
 const withSchemaPageQueue = <T>(page: SchemaPageRef, action: () => Promise<T>): Promise<T> =>
   pageQueue.run(`${page.projectPath}\0${page.pageId}`, action);
+
+export const listRevisionHistory = async (page: SchemaPageRef): Promise<RevisionHistory> => {
+  return withSchemaPageQueue(page, async () => {
+    await commits.recover(page);
+    const working = await getSchemaUnlocked(page);
+    const snapshots = await store.listRevisions(page);
+    for (const snapshot of snapshots) validateSnapshot(snapshot);
+    return {
+      revisions: snapshots
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .map((snapshot) => ({
+          revisionId: snapshot.revisionId,
+          parentRevisionId: snapshot.parentRevisionId,
+          source: snapshot.source,
+          createdAt: snapshot.createdAt,
+          schemaHash: snapshot.schemaHash,
+          isCurrent: snapshot.revisionId === working.lastSavedRevisionId,
+          isApplied: snapshot.schemaHash === working.baselineHash,
+        })),
+    };
+  });
+};
 
 export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void> =>
   withSchemaPageQueue(page, () => store.removePage(page));
@@ -315,83 +334,6 @@ export const restoreRevisionToWorking = async (
     return writeWorkingDraft(page, current, snapshot.schema);
   });
 };
-const applyChangeSet = (schema: OrigamixPageSchema, changeSet: ChangeSet): OrigamixPageSchema => {
-  if (changeSet.operation === 'replaceSchema') return changeSet.schema;
-  const element = schema.elements[changeSet.elementId];
-  if (!element) throw notFound('目标元素不存在');
-  return {
-    ...schema,
-    elements: {
-      ...schema.elements,
-      [changeSet.elementId]: { ...element, props: { ...element.props, ...changeSet.props } },
-    },
-  };
-};
-
-export const commitSchema = async (
-  page: SchemaPageRef,
-  changeSet: ChangeSet,
-  options: SchemaWriteOptions = {},
-): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
-    if (!validateChangeSet(changeSet).valid) throw invalid('ChangeSet 格式无效');
-    if (changeSet.pageId !== page.pageId) throw invalid('ChangeSet 页面不匹配');
-    const receipt = await store.readReceipt(page, changeSet.changeSetId);
-    if (receipt) {
-      const snapshot = await store.readRevision(page, receipt.revisionId);
-      validateSnapshot(snapshot);
-      if (
-        snapshot.changeSetId !== changeSet.changeSetId ||
-        snapshot.schemaHash !== receipt.schemaHash ||
-        snapshot.changeSetHash !== receipt.changeSetHash
-      )
-        throw invalid('ChangeSet 幂等记录无效');
-      if (receipt.changeSetHash !== hashValue(changeSet))
-        throw conflict('ChangeSet ID 已用于其他请求');
-      return { schema: snapshot.schema, revisionId: snapshot.revisionId };
-    }
-    const current = await getSchemaUnlocked(page);
-    if (
-      changeSet.baseRevisionId !== current.lastSavedRevisionId ||
-      current.workingHash !== current.savedSchemaHash
-    )
-      throw conflict('页面已更新，请重新加载后再提交');
-    const candidate = applyChangeSet(current.schema, changeSet);
-    await validateWritableSchema(page, candidate);
-    await options.beforeWrite?.();
-    return commits.commit(
-      page,
-      createRevisionSnapshot(candidate, changeSet.source, current.lastSavedRevisionId, changeSet),
-      options,
-    );
-  });
-};
-
-export const undoSchema = async (
-  page: SchemaPageRef,
-  options: SchemaWriteOptions = {},
-): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
-    const current = await getSchemaUnlocked(page);
-    if (current.workingHash !== current.savedSchemaHash)
-      throw conflict('当前草稿尚未保存版本，无法撤销历史版本');
-    const currentRevision = await store.readRevision(page, current.lastSavedRevisionId);
-    if (!currentRevision.parentRevisionId) throw conflict('当前页面没有可撤销的 Revision');
-    const parent = await store.readRevision(page, currentRevision.parentRevisionId);
-    validateSnapshot(parent);
-    return commits.commit(
-      page,
-      createRevisionSnapshot(
-        parent.schema,
-        { kind: 'undo', revisionId: current.lastSavedRevisionId },
-        current.lastSavedRevisionId,
-      ),
-      options,
-    );
-  });
-};
-
 export const getSchemaRevision = async (
   page: SchemaPageRef,
   revisionId: string,

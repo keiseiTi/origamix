@@ -19,12 +19,11 @@ export const RunModeSchema = Type.Union([
 ]);
 
 const PageIntentBase = {
-  scope: Type.Union([Type.Literal('page'), Type.Literal('selection'), Type.Literal('project')]),
+  scope: Type.Union([Type.Literal('page'), Type.Literal('selection')]),
   confidence: Type.Number({ minimum: 0, maximum: 1 }),
   requiresConfirmation: Type.Boolean(),
 } as const;
 
-const TargetPageIdsSchema = Type.Array(PageIdSchema, { minItems: 1, uniqueItems: true });
 const TargetElementIdsSchema = Type.Array(Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }), {
   minItems: 1,
   uniqueItems: true,
@@ -34,7 +33,7 @@ export const PageIntentSchema = Type.Union([
   strictObject({
     ...PageIntentBase,
     mode: Type.Literal('page_modify'),
-    targetPageIds: TargetPageIdsSchema,
+    pageId: PageIdSchema,
     targetElementIds: Type.Optional(TargetElementIdsSchema),
     normalizedRequirement: Type.String({ minLength: 1, maxLength: 20_000 }),
     reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
@@ -42,7 +41,7 @@ export const PageIntentSchema = Type.Union([
   strictObject({
     ...PageIntentBase,
     mode: Type.Literal('page_question'),
-    targetPageIds: TargetPageIdsSchema,
+    pageId: PageIdSchema,
     targetElementIds: Type.Optional(TargetElementIdsSchema),
     normalizedRequirement: Type.String({ minLength: 1, maxLength: 20_000 }),
     reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
@@ -50,7 +49,7 @@ export const PageIntentSchema = Type.Union([
   strictObject({
     ...PageIntentBase,
     mode: Type.Literal('clarification_required'),
-    targetPageIds: Type.Optional(TargetPageIdsSchema),
+    pageId: PageIdSchema,
     targetElementIds: Type.Optional(TargetElementIdsSchema),
     normalizedRequirement: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
     reason: Type.String({ minLength: 1, maxLength: 2_000 }),
@@ -98,12 +97,7 @@ export const RunBudgetSchema = strictObject({
 
 export const ToolPolicySchema = strictObject({
   toolName: Type.String({ pattern: '^[a-z][a-z0-9_]*$' }),
-  scope: Type.Union([
-    Type.Literal('read'),
-    Type.Literal('page_write'),
-    Type.Literal('project_write'),
-    Type.Literal('external'),
-  ]),
+  scope: Type.Union([Type.Literal('read'), Type.Literal('page_write')]),
   risk: Type.Union([Type.Literal('low'), Type.Literal('medium'), Type.Literal('high')]),
   requiresConfirmation: Type.Boolean(),
 });
@@ -160,7 +154,6 @@ export const AgentRunSchema = strictObject({
   conversationId: ConversationIdSchema,
   userMessageId: MessageIdSchema,
   requestId: RequestIdSchema,
-  baseRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
   baseWorkingVersion: Type.Integer({ minimum: 1 }),
   mode: RunModeSchema,
   status: AgentRunStatusSchema,
@@ -170,7 +163,6 @@ export const AgentRunSchema = strictObject({
   policyVersion: Type.String({ minLength: 1 }),
   toolsetVersion: Type.String({ minLength: 1 }),
   materialManifestVersion: Type.String({ minLength: 1 }),
-  resultRevisionId: Type.Optional(Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' })),
   resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
   retryOfRunId: Type.Optional(AgentRunIdSchema),
   createdAt: IsoDateTimeSchema,
@@ -250,7 +242,6 @@ export const CreateAgentRunRequestSchema = strictObject({
   pageId: PageIdSchema,
   conversationId: Type.Optional(ConversationIdSchema),
   clientRequestId: RequestIdSchema,
-  baseRevisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
   baseWorkingVersion: Type.Integer({ minimum: 1 }),
   content: MessageContentSchema,
   retryOfRunId: Type.Optional(AgentRunIdSchema),

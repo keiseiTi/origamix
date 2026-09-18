@@ -111,7 +111,7 @@ const payload = {
   projectId: 'project_a',
   pageId: 'page_a',
   clientRequestId: 'request-1',
-  baseRevisionId: 'revision_base',
+  baseWorkingVersion: 1,
   content: { version: '1', blocks: [{ type: 'text', text: '创建表单' }] },
 };
 

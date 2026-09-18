@@ -19,9 +19,7 @@ export interface AgentRunRecord {
   conversationId: string;
   userMessageId: string;
   clientRequestId: string;
-  baseRevisionId: string;
   baseWorkingVersion: number;
-  resultRevisionId?: string;
   resultWorkingVersion?: number;
   modelRef: string;
   mode: RunMode;
@@ -63,9 +61,7 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     conversationId: row.conversationId,
     userMessageId: row.userMessageId,
     clientRequestId: row.clientRequestId,
-    baseRevisionId: row.baseRevisionId,
     baseWorkingVersion: row.baseWorkingVersion,
-    ...(row.resultRevisionId ? { resultRevisionId: row.resultRevisionId } : {}),
     ...(row.resultWorkingVersion === null
       ? {}
       : { resultWorkingVersion: row.resultWorkingVersion }),
@@ -95,7 +91,6 @@ const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
   ...run,
   status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
-  resultRevisionId: run.resultRevisionId ?? null,
   resultWorkingVersion: run.resultWorkingVersion ?? null,
   retryOfRunId: run.retryOfRunId ?? null,
   durationMs: run.durationMs ?? null,
@@ -158,7 +153,6 @@ export class AgentRunRepository {
       status: AgentRunStatus;
       updatedAt: string;
       finishedAt?: string;
-      resultRevisionId?: string;
       resultWorkingVersion?: number;
       errorCode?: string;
       errorMessage?: string;
@@ -170,7 +164,6 @@ export class AgentRunRepository {
       status: agentRunStatus.encode(patch.status),
       updatedAt: patch.updatedAt,
       ...(patch.finishedAt ? { finishedAt: patch.finishedAt } : {}),
-      ...(patch.resultRevisionId ? { resultRevisionId: patch.resultRevisionId } : {}),
       ...(patch.resultWorkingVersion === undefined
         ? {}
         : { resultWorkingVersion: patch.resultWorkingVersion }),

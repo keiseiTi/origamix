@@ -35,9 +35,11 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 ### 保存 Schema
 
-`http/schema-routes.ts` → `schema/schema-service.ts#commitSchema` → 页面串行队列 → 恢复检查 → ChangeSet、页面归属、Revision 和 Materials 校验 → Journal / Revision / Working Schema / Receipt 写入。
+可视化编辑通常通过 `http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
 
-普通保存与撤销更新 Working Schema，不会隐式写入真实项目的目标 Schema。
+版本历史由 `GET /pages/:pageId/revisions` 返回轻量元数据，完整快照仅在查看指定 Revision 时读取。恢复历史只把所选快照复制到 Working，并将其标记为未保存草稿；不会创建 Revision 或写入目标项目。
+
+自动保留草稿、显式保存版本和历史恢复只更新 Working Schema / Revision，不会隐式写入真实项目的目标 Schema。
 
 ### Apply 到项目
 
@@ -49,7 +51,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 `http/agent-routes.ts` → `agent/agent-service.ts#start` → 路由意图并由 ConversationService 创建消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
 
-Schema 写工具 `agent/tools/replace-page-schema.ts` 仍调用 `commitSchema`。`agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
+Schema 写工具 `agent/tools/apply-page-operations.ts` 暴露 `apply_page_operations`，通过版本化 Operation Batch 原子更新 Working Schema，不自动创建 Revision。`agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
 
 ### 同步调用与重复请求
 
@@ -63,13 +65,13 @@ Schema 写工具 `agent/tools/replace-page-schema.ts` 仍调用 `commitSchema`�
 
 ## 数据存在哪里
 
-| 数据                                       | 所有者                               | 意义                                      |
-| ------------------------------------------ | ------------------------------------ | ----------------------------------------- |
-| 项目、页面索引、会话、消息、Run            | 业务 Repository + SQLite             | 应用记录；页面清单以项目 Manifest 为准    |
-| Working Schema、Revision、Journal、Receipt | `schema/working-schema-store.ts`     | 可编辑页面数据、历史和恢复记录            |
-| `src/<pageDirectory>/<slug>/schema.json`   | `schema/target-schema-store.ts`      | 初始化或显式 Apply 写入的运行投影         |
-| `origamix.project.json`                    | `projects/project-manifest-store.ts` | 项目与页面注册清单，SQLite 不能反向重写它 |
-| 渲染诊断                                   | `diagnostics/diagnostic-cache.ts`    | 进程内缓存，重启不保留                    |
+| 数据                                     | 所有者                               | 意义                                      |
+| ---------------------------------------- | ------------------------------------ | ----------------------------------------- |
+| 项目、页面索引、会话、消息、Run          | 业务 Repository + SQLite             | 应用记录；页面清单以项目 Manifest 为准    |
+| Working Schema、Revision、Journal        | `schema/working-schema-store.ts`     | 可编辑页面数据、历史和恢复记录            |
+| `src/<pageDirectory>/<slug>/schema.json` | `schema/target-schema-store.ts`      | 初始化或显式 Apply 写入的运行投影         |
+| `origamix.project.json`                  | `projects/project-manifest-store.ts` | 项目与页面注册清单，SQLite 不能反向重写它 |
+| 渲染诊断                                 | `diagnostics/diagnostic-cache.ts`    | 进程内缓存，重启不保留                    |
 
 ## 修改与验证
 

@@ -1,6 +1,6 @@
-import { Type } from '@sinclair/typebox';
+import { Type, type Static } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import { PageSchema, RevisionIdSchema } from './schema';
+import { ChangeSourceSchema, PageSchema, RevisionIdSchema, SchemaOperationSchema } from './schema';
 
 export const ApiResultSchema = Type.Union([
   Type.Object(
@@ -99,6 +99,32 @@ export const UpdateWorkingSchemaSchema = Type.Object(
     baseWorkingVersion: Type.Integer({ minimum: 1 }),
     schema: PageSchema,
   },
+  { additionalProperties: false },
+);
+
+export const ApplyWorkingOperationsSchema = Type.Object(
+  {
+    baseWorkingVersion: Type.Integer({ minimum: 1 }),
+    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 }),
+  },
+  { additionalProperties: false },
+);
+
+export const RevisionHistoryItemSchema = Type.Object(
+  {
+    revisionId: RevisionIdSchema,
+    parentRevisionId: Type.Union([RevisionIdSchema, Type.Null()]),
+    source: ChangeSourceSchema,
+    createdAt: Type.String({ minLength: 1 }),
+    schemaHash: SchemaHashSchema,
+    isCurrent: Type.Boolean(),
+    isApplied: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
+export const RevisionHistorySchema = Type.Object(
+  { revisions: Type.Array(RevisionHistoryItemSchema) },
   { additionalProperties: false },
 );
 
@@ -207,3 +233,6 @@ export interface ApplyPageResult {
   appliedAt: string;
   status: 'applied';
 }
+
+export type RevisionHistoryItem = Static<typeof RevisionHistoryItemSchema>;
+export type RevisionHistory = Static<typeof RevisionHistorySchema>;

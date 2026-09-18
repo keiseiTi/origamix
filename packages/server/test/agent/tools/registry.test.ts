@@ -21,13 +21,13 @@ const registry = () => {
   const value = new AgentToolRegistry();
   value.register({
     tool: {
-      name: 'replace_page_schema',
+      name: 'apply_page_operations',
       description: 'write',
       parameters: Type.Object({}),
       execute: async () => ({ revisionId: 'revision_test' }),
     },
     policy: {
-      toolName: 'replace_page_schema',
+      toolName: 'apply_page_operations',
       scope: 'page_write',
       risk: 'low',
       requiresConfirmation: false,
@@ -50,7 +50,7 @@ describe('Agent tool policy and budget', () => {
       value.toolsForRun({
         ...input,
         mode: 'page_question',
-        requestedToolNames: ['replace_page_schema'],
+        requestedToolNames: ['apply_page_operations'],
       }),
     ).toThrowError(expect.objectContaining({ code: 'POLICY_DENIED' }));
   });

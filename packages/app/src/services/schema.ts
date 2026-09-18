@@ -1,9 +1,10 @@
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
 import {
   isApplyPageResult,
   isPageApplyState,
   type ApplyPageResult,
   type PageApplyState,
+  type RevisionHistory,
 } from '@origamix/shared/protocol/api';
 import { request } from './request';
 
@@ -24,6 +25,10 @@ export const schemaService = {
     request<SchemaResult>(`/pages/${pageId}/schema`, { projectId }),
   workingState: (projectId: string, pageId: string): Promise<WorkingSchemaResult> =>
     request<WorkingSchemaResult>(`/pages/${pageId}/working-state`, { projectId }),
+  listRevisions: (projectId: string, pageId: string): Promise<RevisionHistory> =>
+    request<RevisionHistory>(`/pages/${pageId}/revisions`, { projectId }),
+  getRevision: (projectId: string, pageId: string, revisionId: string): Promise<SchemaResult> =>
+    request<SchemaResult>(`/pages/${pageId}/revisions/${revisionId}/schema`, { projectId }),
   updateWorking: (
     projectId: string,
     pageId: string,
@@ -34,6 +39,17 @@ export const schemaService = {
       projectId,
       method: 'PUT',
       body: JSON.stringify({ baseWorkingVersion, schema }),
+    }),
+  applyWorkingOperations: (
+    projectId: string,
+    pageId: string,
+    baseWorkingVersion: number,
+    operations: readonly SchemaOperation[],
+  ): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>(`/pages/${pageId}/working-operations`, {
+      projectId,
+      method: 'POST',
+      body: JSON.stringify({ baseWorkingVersion, operations }),
     }),
   saveRevision: (
     projectId: string,
@@ -56,43 +72,6 @@ export const schemaService = {
       method: 'POST',
       body: JSON.stringify({ expectedWorkingVersion }),
     }),
-  updateProps: (
-    projectId: string,
-    pageId: string,
-    input: { baseRevisionId: string; elementId: string; props: Record<string, unknown> },
-  ): Promise<SchemaResult> =>
-    request<SchemaResult>(`/pages/${pageId}/changesets`, {
-      projectId,
-      method: 'POST',
-      body: JSON.stringify({
-        pageId,
-        baseRevisionId: input.baseRevisionId,
-        source: { kind: 'user' },
-        createdAt: new Date().toISOString(),
-        operation: 'updateElementProps',
-        elementId: input.elementId,
-        props: input.props,
-      }),
-    }),
-  replace: (
-    projectId: string,
-    pageId: string,
-    input: { baseRevisionId: string; schema: OrigamixPageSchema },
-  ): Promise<SchemaResult> =>
-    request<SchemaResult>(`/pages/${pageId}/changesets`, {
-      projectId,
-      method: 'POST',
-      body: JSON.stringify({
-        pageId,
-        baseRevisionId: input.baseRevisionId,
-        source: { kind: 'user' },
-        createdAt: new Date().toISOString(),
-        operation: 'replaceSchema',
-        schema: input.schema,
-      }),
-    }),
-  undo: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>(`/pages/${pageId}/undo`, { projectId, method: 'POST' }),
   applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
     request<PageApplyState>(`/pages/${pageId}/apply-state`, { projectId }, isPageApplyState),
   reloadFromProject: (projectId: string, pageId: string): Promise<SchemaResult> =>

@@ -15,7 +15,6 @@ interface WorkspaceProps {
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
-  onUndo: () => Promise<void>;
   draft: string;
   onDraftChange: (draft: string) => void;
   supportsNativeProjectDirectories: boolean;
@@ -32,7 +31,6 @@ export const Workspace = ({
   editorRef,
   onModeChange,
   onPreview,
-  onUndo,
   draft,
   onDraftChange,
   supportsNativeProjectDirectories,
@@ -58,7 +56,6 @@ export const Workspace = ({
       editorRef={editorRef}
       onModeChange={onModeChange}
       onPreview={onPreview}
-      onUndo={onUndo}
       draft={draft}
       onDraftChange={onDraftChange}
       schemaRefreshKey={schemaRefreshKey}
@@ -75,7 +72,6 @@ const PageWorkspace = ({
   editorRef,
   onModeChange,
   onPreview,
-  onUndo,
   draft,
   onDraftChange,
   schemaRefreshKey,
@@ -100,6 +96,7 @@ const PageWorkspace = ({
       draft={draft}
       onDraftChange={onDraftChange}
       session={agent}
+      onViewChanges={() => onModeChange('edit')}
     />
   );
   return (
@@ -108,19 +105,21 @@ const PageWorkspace = ({
         <WorkspaceHeader
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}
+          projectId={projectId}
+          pageId={page.id}
           mode={mode}
           onModeChange={onModeChange}
           onPreview={onPreview}
-          onUndo={onUndo}
           onSaveVersion={application.saveVersion}
           onApply={application.applyPage}
           onReloadFromProject={application.reloadFromProject}
+          onRestoreRevision={application.restoreRevision}
           applyStatus={application.applyStatus}
           saveStatus={application.saveStatus}
           canApply={capabilities.canApply}
           canSaveVersion={capabilities.canSaveVersion}
-          canUndo={capabilities.canUndo}
           canReload={capabilities.canReload}
+          canRestore={capabilities.canEdit && application.saveStatus === 'saved'}
         />
       )}
       <>

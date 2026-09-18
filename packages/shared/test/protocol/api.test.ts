@@ -1,8 +1,10 @@
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
+  ApplyWorkingOperationsSchema,
   ApiResultSchema,
   ApplyPageSchema,
+  RevisionHistorySchema,
   UpdateWorkingSchemaSchema,
   isApiResultEnvelope,
   isApplyPageResult,
@@ -111,5 +113,40 @@ describe('Working Schema request protocol', () => {
         unexpected: true,
       }),
     ).toBe(false);
+  });
+
+  it('requires a non-empty typed Operation List', () => {
+    expect(
+      Value.Check(ApplyWorkingOperationsSchema, {
+        baseWorkingVersion: 2,
+        operations: [
+          { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 12 } },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(ApplyWorkingOperationsSchema, {
+        baseWorkingVersion: 2,
+        operations: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('validates Revision history metadata without embedding Schema snapshots', () => {
+    expect(
+      Value.Check(RevisionHistorySchema, {
+        revisions: [
+          {
+            revisionId: 'revision_one',
+            parentRevisionId: null,
+            source: { kind: 'user' },
+            createdAt: '2026-09-17T00:00:00.000Z',
+            schemaHash: 'a'.repeat(64),
+            isCurrent: true,
+            isApplied: false,
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 });

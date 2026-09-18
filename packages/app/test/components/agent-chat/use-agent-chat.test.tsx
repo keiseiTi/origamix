@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
   createAgentRun: vi.fn(),
   cancelAgentRun: vi.fn(),
   subscribeAgentEvents: vi.fn(),
-  get: vi.fn(),
+  workingState: vi.fn(),
 }));
 vi.mock('../../../src/services/agent', () => mocks);
-vi.mock('../../../src/services/schema', () => ({ schemaService: { get: mocks.get } }));
+vi.mock('../../../src/services/schema', () => ({
+  schemaService: { workingState: mocks.workingState },
+}));
 import { ApiRequestError } from '../../../src/services/request';
 import { useAgentChat } from '../../../src/components/agent-chat/use-agent-chat';
 
@@ -31,7 +33,7 @@ describe('Agent recovery', () => {
     usePendingOperations.setState({ applies: {}, agents: {} });
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.listAllMessages.mockResolvedValue({ messages: [] });
-    mocks.get.mockResolvedValue({ revisionId: 'revision_1' });
+    mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
     mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'completed' } });
     mocks.subscribeAgentEvents.mockReturnValue(() => undefined);
   });
@@ -66,7 +68,7 @@ describe('Agent recovery', () => {
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
-    mocks.get.mockResolvedValue({ revisionId: 'revision_2' });
+    mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
     const next = renderHook(() => useAgentChat('project_1', 'page_a'));
     await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
     expect(next.result.current.pendingSubmission).toBe(true);

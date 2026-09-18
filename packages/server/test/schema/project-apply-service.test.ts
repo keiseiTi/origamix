@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../projects/project-repository';
 import {
-  commitSchema,
   getSchema,
   getWorkingSchemaState,
   saveWorkingRevision,
@@ -18,6 +17,27 @@ import { ProjectService } from '../../projects/project-service';
 
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 const directories: string[] = [];
+
+const savePaddingRevision = async (
+  page: { projectPath: string; pageId: string; slug: string },
+  padding: number,
+) => {
+  const working = await getWorkingSchemaState(page);
+  const draft = await updateWorkingSchema(page, {
+    baseWorkingVersion: working.workingVersion,
+    schema: {
+      ...working.schema,
+      elements: {
+        ...working.schema.elements,
+        element_root: {
+          ...working.schema.elements.element_root!,
+          props: { ...working.schema.elements.element_root!.props, padding },
+        },
+      },
+    },
+  });
+  return saveWorkingRevision(page, draft.workingVersion);
+};
 
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true })));
@@ -95,23 +115,9 @@ describe('ProjectApplyService', () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
     const before = await readFile(target, 'utf8');
-    const current = await getSchema({
-      projectPath: fixture.project.path,
-      pageId: fixture.page.id,
-      slug: fixture.page.slug,
-    });
-    const changed = await commitSchema(
+    const changed = await savePaddingRevision(
       { projectPath: fixture.project.path, pageId: fixture.page.id, slug: fixture.page.slug },
-      {
-        changeSetId: 'change_apply_test',
-        pageId: fixture.page.id,
-        baseRevisionId: current.revisionId,
-        source: { kind: 'user' },
-        createdAt: new Date().toISOString(),
-        operation: 'updateElementProps',
-        elementId: 'element_root',
-        props: { padding: 24 },
-      },
+      24,
     );
     expect(await readFile(target, 'utf8')).toBe(before);
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
@@ -155,17 +161,7 @@ describe('ProjectApplyService', () => {
       pageId: fixture.page.id,
       slug: fixture.page.slug,
     };
-    const current = await getSchema(ref);
-    const changed = await commitSchema(ref, {
-      changeSetId: 'change_concurrent_apply',
-      pageId: fixture.page.id,
-      baseRevisionId: current.revisionId,
-      source: { kind: 'user' },
-      createdAt: new Date().toISOString(),
-      operation: 'updateElementProps',
-      elementId: 'element_root',
-      props: { padding: 30 },
-    });
+    const changed = await savePaddingRevision(ref, 30);
     const input = {
       expectedRevisionId: changed.revisionId,
       expectedWorkingVersion: (await getWorkingSchemaState(ref)).workingVersion,
@@ -186,17 +182,7 @@ describe('ProjectApplyService', () => {
       pageId: fixture.page.id,
       slug: fixture.page.slug,
     };
-    const current = await getSchema(ref);
-    const changed = await commitSchema(ref, {
-      changeSetId: 'change_interrupted_apply',
-      pageId: fixture.page.id,
-      baseRevisionId: current.revisionId,
-      source: { kind: 'user' },
-      createdAt: new Date().toISOString(),
-      operation: 'updateElementProps',
-      elementId: 'element_root',
-      props: { padding: 44 },
-    });
+    const changed = await savePaddingRevision(ref, 44);
     const interrupted = new ProjectApplyService(fixture.projects, undefined, {
       afterStage: (stage) => {
         if (stage === 'receipt') throw new Error('simulated process interruption');
@@ -240,16 +226,7 @@ describe('ProjectApplyService', () => {
       slug: fixture.page.slug,
     };
     const current = await getSchema(ref);
-    const changed = await commitSchema(ref, {
-      changeSetId: 'change_conflict_test',
-      pageId: fixture.page.id,
-      baseRevisionId: current.revisionId,
-      source: { kind: 'user' },
-      createdAt: new Date().toISOString(),
-      operation: 'updateElementProps',
-      elementId: 'element_root',
-      props: { padding: 24 },
-    });
+    const changed = await savePaddingRevision(ref, 24);
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
     const external = structuredClone(current.schema);
     external.elements.element_root!.props = { padding: 12 };
