@@ -1,4 +1,5 @@
-import { Button, FieldError, Form, Input, Label, Modal, TextField } from '@heroui/react';
+import { Button, FieldError, Form, Input, Label, Modal, TextField, Tooltip } from '@heroui/react';
+import { Info } from 'lucide-react';
 import { useState } from 'react';
 import type { ProjectItem } from '../../../store/workspace';
 import { projectsService } from '../../../services/projects';
@@ -80,6 +81,7 @@ export const CreateProjectModal = ({
                 <TextField fullWidth isRequired>
                   <Label>项目名称</Label>
                   <Input
+                    className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
                     name='projectName'
                     value={name}
                     placeholder='请输入'
@@ -92,6 +94,7 @@ export const CreateProjectModal = ({
                 <TextField fullWidth isRequired>
                   <Label>项目标识</Label>
                   <Input
+                    className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
                     name='projectCode'
                     value={code}
                     placeholder='请输入'
@@ -103,10 +106,24 @@ export const CreateProjectModal = ({
                   </FieldError>
                 </TextField>
                 <TextField fullWidth isRequired>
-                  <Label>页面目录路径</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Label>页面目录路径</Label>
+                    <Tooltip>
+                      <Button
+                        isIconOnly
+                        size='sm'
+                        variant='tertiary'
+                        className='size-5 min-h-5 min-w-5 text-zinc-500 dark:text-zinc-400'
+                        aria-label='页面目录路径说明'
+                      >
+                        <Info size={14} />
+                      </Button>
+                      <Tooltip.Content placement='top'>页面创建在 src 路径下</Tooltip.Content>
+                    </Tooltip>
+                  </div>
                   <div className='flex items-center gap-2'>
-                    <span className='text-sm text-zinc-500 dark:text-zinc-400'>src/</span>
                     <Input
+                      className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
                       name='pageDirectory'
                       value={pageDirectory}
                       placeholder='pages'
@@ -118,10 +135,24 @@ export const CreateProjectModal = ({
                   <FieldError>请输入 src 下的页面目录，例如 pages 或 modules/pages</FieldError>
                 </TextField>
                 <TextField fullWidth isRequired>
-                  <Label>生成地址</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Label>生成地址</Label>
+                    <Tooltip>
+                      <Button
+                        isIconOnly
+                        size='sm'
+                        variant='tertiary'
+                        className='size-5 min-h-5 min-w-5 text-zinc-500 dark:text-zinc-400'
+                        aria-label='页面目录路径说明'
+                      >
+                        <Info size={14} />
+                      </Button>
+                      <Tooltip.Content placement='top'>项目生成的路径地址</Tooltip.Content>
+                    </Tooltip>
+                  </div>
                   <Input
                     name='directory'
-                    className='flex-1'
+                    className='flex-1 focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
                     onClick={chooseDirectory}
                     value={directory}
                     readOnly

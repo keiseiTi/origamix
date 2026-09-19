@@ -1,4 +1,4 @@
-import { Button, Modal, Spinner } from '@heroui/react';
+import { Button, Spinner } from '@heroui/react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/sidebar';
@@ -192,7 +192,11 @@ const App = (): React.JSX.Element => {
       onTemporaryClose={() => setSidebarPeek(false)}
       onOpenSettings={openSettings}
       onProjectCreated={(project) => setProjects((current) => [...current, project])}
+      pendingProjectInitialization={projectActions.pendingInitialization}
+      projectInitializing={projectActions.initializing}
       onOpenProject={projectActions.openProject}
+      onCancelProjectInitialization={() => projectActions.setPendingInitialization(null)}
+      onInitializeProject={projectActions.initializePendingProject}
       onPageCreated={addPage}
       onRenameProject={projectActions.renameProject}
       onDeleteProject={projectActions.deleteProject}
@@ -350,71 +354,6 @@ const App = (): React.JSX.Element => {
         onClose={() => setIsHomeProjectModalOpen(false)}
         onCreated={(project) => setProjects((current) => [...current, project])}
       />
-      <Modal
-        isOpen={projectActions.pendingInitialization !== null}
-        onOpenChange={(open: boolean) => !open && projectActions.setPendingInitialization(null)}
-      >
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading>初始化项目</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className='grid gap-3'>
-                <p className='text-sm text-zinc-700 dark:text-zinc-300'>
-                  选择的目录尚未初始化为 Origamix 项目。请确认检测结果和将写入的内容。
-                </p>
-                <p className='break-all text-xs text-zinc-400 dark:text-zinc-500'>
-                  {projectActions.pendingInitialization?.displayPath}
-                </p>
-                <p className='text-xs text-zinc-400 dark:text-zinc-500'>计划变更：</p>
-                <ul className='list-disc pl-5 text-xs text-zinc-500 dark:text-zinc-400'>
-                  {projectActions.pendingInitialization?.inspection.plannedChanges.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-                {(projectActions.pendingInitialization?.inspection.discoveredPages.length ?? 0) >
-                  0 && (
-                  <p className='text-xs text-zinc-500 dark:text-zinc-400'>
-                    已发现页面：
-                    {projectActions.pendingInitialization?.inspection.discoveredPages
-                      .map((page) => page.name)
-                      .join('、')}
-                  </p>
-                )}
-                {(projectActions.pendingInitialization?.inspection.blockers.length ?? 0) > 0 && (
-                  <div role='alert' className='rounded-lg bg-danger/10 p-3 text-xs text-danger'>
-                    <p className='font-medium'>初始化前需要处理：</p>
-                    <ul className='mt-1 list-disc pl-4'>
-                      {projectActions.pendingInitialization?.inspection.blockers.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button
-                  variant='tertiary'
-                  onPress={() => projectActions.setPendingInitialization(null)}
-                >
-                  取消
-                </Button>
-                <Button
-                  isDisabled={
-                    projectActions.initializing ||
-                    (projectActions.pendingInitialization?.inspection.blockers.length ?? 0) > 0
-                  }
-                  onPress={() => void projectActions.initializePendingProject()}
-                >
-                  {projectActions.initializing ? '初始化中…' : '初始化并打开'}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </main>
   );
 };

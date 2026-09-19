@@ -1,6 +1,6 @@
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { access, lstat, mkdir, readFile, realpath, rename, rm } from 'node:fs/promises';
-import { isAbsolute, join, relative } from 'node:path';
+import { basename, isAbsolute, join, relative } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
@@ -108,6 +108,7 @@ export class ProjectService {
       await this.manifest.initializeManifest(temporaryPath, {
         projectId: id,
         name,
+        code,
         pageDirectory,
       });
       await rename(temporaryPath, path);
@@ -119,11 +120,24 @@ export class ProjectService {
   }
 
   async openProject(input: {
+    name?: string;
+    code?: string;
     directoryGrantId: string;
     pageDirectory?: string;
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> {
     const path = this.grants.resolveGrant(input.directoryGrantId);
+    const directoryName = basename(path);
+    const name = (input.name ?? directoryName).trim();
+    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const inferredCode =
+      directoryName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'imported-project';
+    const code = (input.code ?? inferredCode).trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code))
+      throw invalid('项目标识仅支持小写字母、数字和连字符');
     const pageDirectory = normalizePageDirectory(input.pageDirectory);
     try {
       await access(join(path, 'origamix.project.json'));
@@ -132,10 +146,10 @@ export class ProjectService {
         return {
           status: 'initialization_required',
           displayPath: path,
-          inspection: await this.scaffold.inspectExistingDirectory(path, pageDirectory),
         };
-      await this.scaffold.initializeExistingDirectory(path, pageDirectory);
+      await this.scaffold.initializeDirectoryAsNewProject(path, { name, code, pageDirectory });
     }
+    await this.manifest.completeMissingManifestFields(path, { name, code, pageDirectory });
     this.grants.consumeGrant(input.directoryGrantId);
     return { status: 'opened', project: await this.reconcile(path) };
   }

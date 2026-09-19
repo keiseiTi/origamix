@@ -46,6 +46,8 @@ export const CreateProjectSchema = Type.Object({
 });
 
 export const OpenProjectSchema = Type.Object({
+  name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
+  code: Type.Optional(Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })),
   directoryGrantId: Type.String({ minLength: 1 }),
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   initializeIfNeeded: Type.Optional(Type.Boolean()),
@@ -194,15 +196,7 @@ export type OpenProjectResult =
   | {
       status: 'initialization_required';
       displayPath: string;
-      inspection: ProjectInitializationInspection;
     };
-
-export interface ProjectInitializationInspection {
-  directoryKind: 'empty' | 'existing_application';
-  discoveredPages: Array<{ name: string; slug: string }>;
-  plannedChanges: string[];
-  blockers: string[];
-}
 
 export interface PageRecord {
   id: string;

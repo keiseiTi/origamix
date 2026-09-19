@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { ProjectInitializationInspection } from '@origamix/shared/protocol/api';
 import { projectsService } from '../services/projects';
 import { useWorkspaceStore, type PageItem, type ProjectItem } from '../store/workspace';
 
@@ -9,17 +8,18 @@ interface ProjectActionsInput {
   onError: (message: string) => void;
 }
 
+export interface PendingProjectInitialization {
+  directoryGrantId: string;
+  displayPath: string;
+}
+
 export const useProjectActions = (input: ProjectActionsInput) => {
   const projects = useWorkspaceStore((state) => state.projects);
   const setProjects = useWorkspaceStore((state) => state.setProjects);
   const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
   const removePages = useWorkspaceStore((state) => state.removePages);
-  const [pendingInitialization, setPendingInitialization] = useState<{
-    directoryGrantId: string;
-    pageDirectory: string;
-    displayPath: string;
-    inspection: ProjectInitializationInspection;
-  } | null>(null);
+  const [pendingInitialization, setPendingInitialization] =
+    useState<PendingProjectInitialization | null>(null);
   const [initializing, setInitializing] = useState(false);
 
   const installOpenedProject = async (project: {
@@ -46,34 +46,38 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     });
   };
 
-  const openProject = async (pageDirectory: string): Promise<void> => {
+  const openProject = async (): Promise<void> => {
     await input.flushEditor();
     const grant = await window.api?.dialog?.chooseExistingProject?.();
     if (!grant) return;
     const result = await projectsService.open({
       directoryGrantId: grant.directoryGrantId,
-      pageDirectory,
+      pageDirectory: 'pages',
     });
     if (result.status === 'initialization_required') {
       setPendingInitialization({
         directoryGrantId: grant.directoryGrantId,
-        pageDirectory,
         displayPath: result.displayPath,
-        inspection: result.inspection,
       });
       return;
     }
     await installOpenedProject(result.project);
   };
 
-  const initializePendingProject = async (): Promise<void> => {
+  const initializePendingProject = async (initializationInput: {
+    name: string;
+    code: string;
+    pageDirectory: string;
+  }): Promise<void> => {
     const pending = pendingInitialization;
     if (!pending) return;
     setInitializing(true);
     try {
       const result = await projectsService.open({
+        name: initializationInput.name,
+        code: initializationInput.code,
         directoryGrantId: pending.directoryGrantId,
-        pageDirectory: pending.pageDirectory,
+        pageDirectory: initializationInput.pageDirectory,
         initializeIfNeeded: true,
       });
       if (result.status !== 'opened') throw new Error('项目初始化未完成');

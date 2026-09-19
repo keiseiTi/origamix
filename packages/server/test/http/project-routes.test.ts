@@ -1,6 +1,6 @@
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../database/database';
@@ -203,20 +203,20 @@ describe('Project and Schema HTTP flows', () => {
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_existing', directory);
 
-    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
+    const pending = await service.openProject({
+      directoryGrantId: 'grant_existing',
+      name: '导入项目',
+      code: 'imported-project',
+    });
     expect(pending.status).toBe('initialization_required');
     if (pending.status !== 'initialization_required') throw new Error('expected inspection');
-    expect(pending.inspection).toMatchObject({
-      directoryKind: 'empty',
-      discoveredPages: [],
-      blockers: [],
-    });
-    expect(pending.inspection.plannedChanges).toContain('生成完整项目模板');
     await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
       code: 'ENOENT',
     });
     const opened = await service.openProject({
       directoryGrantId: 'grant_existing',
+      name: '导入项目',
+      code: 'imported-project',
       initializeIfNeeded: true,
     });
     if (opened.status !== 'opened') throw new Error('expected opened project');
@@ -226,11 +226,11 @@ describe('Project and Schema HTTP flows', () => {
     ) as { name: string; code: string };
 
     expect(manifest).toMatchObject({
-      name: basename(directory),
-      code: basename(directory),
+      name: '导入项目',
+      code: 'imported-project',
       pageDirectory: 'pages',
     });
-    expect(project.name).toBe(basename(directory));
+    expect(project.name).toBe('导入项目');
     expect(manifest).toMatchObject({
       framework: 'react',
       uiLibrary: 'antd',
@@ -238,111 +238,6 @@ describe('Project and Schema HTTP flows', () => {
     });
     await access(join(directory, 'src', 'router.ts'));
     await access(join(directory, 'vite.config.ts'));
-    database.close();
-  });
-
-  it('discovers only standard Schema pages while initializing an existing React Vite project', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-react-'));
-    directories.push(directory);
-    await writeFile(
-      join(directory, 'package.json'),
-      JSON.stringify({
-        dependencies: {
-          react: '^19.0.0',
-          '@origamix/runtime': 'workspace:*',
-          '@origamix/materials': 'workspace:*',
-        },
-        devDependencies: { vite: '^8.0.0' },
-      }),
-    );
-    await mkdir(join(directory, 'src'), { recursive: true });
-    await writeFile(join(directory, 'src', 'router.ts'), 'export default [];');
-    const pagePath = join(directory, 'src', 'screens', 'customers');
-    await mkdir(pagePath, { recursive: true });
-    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
-    await writeFile(
-      join(pagePath, 'schema.json'),
-      JSON.stringify({
-        elements: { element_root: { type: 'container', props: {} } },
-        layout: { root: 'element_root', structure: { element_root: [] } },
-        flows: {},
-        bindElements: [],
-        context: { globalVariables: [] },
-        extensions: { origamix: { schemaVersion: '1.0' } },
-      }),
-    );
-    const database = new ApplicationDatabase(join(directory, 'app.db'));
-    const projects = new ProjectRepository(database);
-    const service = new ProjectService(projects, templatePath);
-    service.registerGrant('grant_existing', directory);
-    const pending = await service.openProject({
-      directoryGrantId: 'grant_existing',
-      pageDirectory: 'screens',
-    });
-    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
-    expect(pending.inspection).toEqual({
-      directoryKind: 'existing_application',
-      discoveredPages: [{ name: 'customers', slug: 'customers' }],
-      plannedChanges: ['写入 origamix.project.json', '按发现页面建立本地索引和工作副本'],
-      blockers: [],
-    });
-    const opened = await service.openProject({
-      directoryGrantId: 'grant_existing',
-      pageDirectory: 'screens',
-      initializeIfNeeded: true,
-    });
-    if (opened.status !== 'opened') throw new Error('expected opened project');
-    expect(projects.listPages(opened.project.id)).toEqual([
-      expect.objectContaining({
-        name: 'customers',
-        slug: 'customers',
-        relativePath: join('src', 'screens', 'customers'),
-      }),
-    ]);
-    expect(
-      JSON.parse(await readFile(join(directory, 'origamix.project.json'), 'utf8')),
-    ).toMatchObject({ pageDirectory: 'screens' });
-    database.close();
-  });
-
-  it('reports initialization blockers without writing a project manifest', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'origamix-existing-blocked-'));
-    directories.push(directory);
-    await writeFile(
-      join(directory, 'package.json'),
-      JSON.stringify({ dependencies: { react: '^19.0.0' }, devDependencies: { vite: '^8.0.0' } }),
-    );
-    const pagePath = join(directory, 'src', 'pages', 'customers');
-    await mkdir(pagePath, { recursive: true });
-    await writeFile(join(pagePath, 'index.tsx'), 'const Page = () => null; export default Page;');
-    await writeFile(
-      join(pagePath, 'schema.json'),
-      JSON.stringify({
-        elements: { element_root: { type: 'container', props: {} } },
-        layout: { root: 'element_root', structure: { element_root: [] } },
-        flows: {},
-        bindElements: [],
-        context: { globalVariables: [] },
-        extensions: { origamix: { schemaVersion: '1.0' } },
-      }),
-    );
-    const database = new ApplicationDatabase(join(directory, 'app.db'));
-    const projects = new ProjectRepository(database);
-    const service = new ProjectService(projects, templatePath);
-    service.registerGrant('grant_existing', directory);
-
-    const pending = await service.openProject({ directoryGrantId: 'grant_existing' });
-    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
-    expect(pending.inspection.blockers).toEqual([
-      '已有页面需要声明 @origamix/runtime 与 @origamix/materials 依赖',
-      '已有页面需要挂载标准 src/router.ts',
-    ]);
-    await expect(
-      service.openProject({ directoryGrantId: 'grant_existing', initializeIfNeeded: true }),
-    ).rejects.toThrow('项目尚不能初始化');
-    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
     database.close();
   });
 

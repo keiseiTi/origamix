@@ -11,6 +11,8 @@ export const projectsService = {
   }): Promise<ProjectRecord> =>
     request<ProjectRecord>('/projects', { method: 'POST', body: JSON.stringify(input) }),
   open: (input: {
+    name?: string;
+    code?: string;
     directoryGrantId: string;
     pageDirectory: string;
     initializeIfNeeded?: boolean;
