@@ -21,6 +21,8 @@ interface WorkspaceProps {
   onPreview: () => Promise<void>;
   draft: string;
   onDraftChange: (draft: string) => void;
+  hasModelApiKey?: boolean;
+  onConfigureModel?: () => void;
   supportsNativeProjectDirectories: boolean;
   schemaRefreshKey: string;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
@@ -39,6 +41,8 @@ export const Workspace = ({
   onPreview,
   draft,
   onDraftChange,
+  hasModelApiKey,
+  onConfigureModel,
   supportsNativeProjectDirectories,
   schemaRefreshKey,
   onSchemaCommitted,
@@ -66,6 +70,8 @@ export const Workspace = ({
       onPreview={onPreview}
       draft={draft}
       onDraftChange={onDraftChange}
+      hasModelApiKey={hasModelApiKey}
+      onConfigureModel={onConfigureModel}
       schemaRefreshKey={schemaRefreshKey}
       onSchemaCommitted={onSchemaCommitted}
     />
@@ -84,6 +90,8 @@ const PageWorkspace = ({
   onPreview,
   draft,
   onDraftChange,
+  hasModelApiKey,
+  onConfigureModel,
   schemaRefreshKey,
   onSchemaCommitted,
 }: Omit<
@@ -112,6 +120,8 @@ const PageWorkspace = ({
       onDraftChange={onDraftChange}
       session={agent}
       onViewChanges={() => onModeChange('edit')}
+      hasModelApiKey={hasModelApiKey}
+      onConfigureModel={onConfigureModel}
     />
   );
   return (

@@ -91,6 +91,17 @@ describe('workspace recovery controls', () => {
     },
   );
 
+  it('guides users to model settings when the DeepSeek API Key is missing', async () => {
+    mocks.listConversations.mockResolvedValue({ conversations: [] });
+    const onConfigureModel = vi.fn();
+    render(<Workspace {...props} hasModelApiKey={false} onConfigureModel={onConfigureModel} />);
+
+    expect(await screen.findByText('尚未配置 DeepSeek API Key')).toBeTruthy();
+    expect(disabled('发送')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '前往设置' }));
+    expect(onConfigureModel).toHaveBeenCalledOnce();
+  });
+
   it('exposes an explicit Apply retry after leaving and returning to the workspace', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.apply.mockRejectedValueOnce(new Error('连接中断')).mockResolvedValueOnce({});

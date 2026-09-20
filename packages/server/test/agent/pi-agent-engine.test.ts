@@ -97,7 +97,32 @@ describe('PiAgentEngine', () => {
     ]);
     await expect(
       engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
-    ).rejects.toMatchObject({ code: 'PROVIDER_ERROR', message: '模型服务调用失败' });
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: 'DeepSeek 服务暂时不可用，请稍后重试',
+    });
+  });
+
+  it('distinguishes invalid credentials from network failures', async () => {
+    const invalidCredential = setup([
+      fauxAssistantMessage('', { stopReason: 'error', errorMessage: '401 unauthorized' }),
+    ]);
+    await expect(
+      invalidCredential.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: 'DeepSeek API Key 无效或已失效',
+    });
+
+    const networkFailure = setup([
+      fauxAssistantMessage('', { stopReason: 'error', errorMessage: 'fetch failed: ECONNRESET' }),
+    ]);
+    await expect(
+      networkFailure.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: '无法连接 DeepSeek，请检查网络后重试',
+    });
   });
 
   it('maps rate limits and keeps tool failures inside normalized tool events', async () => {
@@ -106,7 +131,10 @@ describe('PiAgentEngine', () => {
     ]);
     await expect(
       limited.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
-    ).rejects.toMatchObject({ code: 'RATE_LIMITED', message: '模型服务当前繁忙，请稍后重试' });
+    ).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+      message: '请求过于频繁或额度不足，请稍后重试',
+    });
 
     const toolFailure = setup([
       fauxAssistantMessage(fauxToolCall('fail_safely', {}), { stopReason: 'toolUse' }),
@@ -169,6 +197,9 @@ describe('PiAgentEngine', () => {
           throw new Error('listener detail');
         },
       }),
-    ).rejects.toMatchObject({ code: 'PROVIDER_ERROR', message: '模型服务调用失败' });
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: 'DeepSeek 服务暂时不可用，请稍后重试',
+    });
   });
 });

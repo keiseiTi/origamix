@@ -1,5 +1,13 @@
 import { Button, Spinner, TextArea } from '@heroui/react';
-import { CircleStop, LayoutPanelLeft, RotateCcw, Send, Sparkles, Wrench } from 'lucide-react';
+import {
+  CircleStop,
+  KeyRound,
+  LayoutPanelLeft,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Wrench,
+} from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { isRunActive, messageText } from './agent-chat-state';
 import type { AgentChatSession } from './use-agent-chat';
@@ -25,22 +33,27 @@ export const ChatWorkspace = ({
   onDraftChange,
   session,
   onViewChanges,
+  hasModelApiKey,
+  onConfigureModel,
 }: {
   pageName: string;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
   onViewChanges: () => Promise<void>;
+  hasModelApiKey?: boolean;
+  onConfigureModel?: () => void;
 }): React.JSX.Element => {
   const { state, activity, pendingSubmission, send, cancel, retry } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = isRunActive(state.stage);
+  const modelConfigurationRequired = hasModelApiKey === false;
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages, state.streamedText]);
 
   const submit = async (): Promise<void> => {
-    if (!draft.trim() || activity !== 'idle') return;
+    if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
     try {
       await send(draft);
       onDraftChange('');
@@ -151,6 +164,23 @@ export const ChatWorkspace = ({
         )}
       </div>
       <div className='w-[min(780px,calc(100%-40px))] rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)] sm:w-[min(780px,calc(100%-64px))]'>
+        {modelConfigurationRequired && (
+          <div
+            className='mb-2 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100'
+            role='status'
+          >
+            <KeyRound size={16} className='shrink-0 text-amber-600 dark:text-amber-400' />
+            <div className='min-w-0 flex-1'>
+              <strong className='block text-xs'>尚未配置 DeepSeek API Key</strong>
+              <span className='text-[11px] text-amber-700 dark:text-amber-300'>
+                配置后即可开始 AI 对话。
+              </span>
+            </div>
+            <Button size='sm' variant='ghost' onPress={onConfigureModel}>
+              前往设置
+            </Button>
+          </div>
+        )}
         <TextArea
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -160,16 +190,18 @@ export const ChatWorkspace = ({
               void submit();
             }
           }}
-          disabled={activity !== 'idle'}
+          disabled={activity !== 'idle' || modelConfigurationRequired}
           variant='secondary'
           className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
           aria-label='发送消息'
           placeholder={
-            activity === 'unknown'
-              ? '正在确认页面状态…'
-              : active
-                ? '本轮完成后可继续修改'
-                : '描述你想创建或修改的页面'
+            modelConfigurationRequired
+              ? '请先配置 DeepSeek API Key'
+              : activity === 'unknown'
+                ? '正在确认页面状态…'
+                : active
+                  ? '本轮完成后可继续修改'
+                  : '描述你想创建或修改的页面'
           }
         />
         <footer className='flex items-center justify-between'>
@@ -193,7 +225,7 @@ export const ChatWorkspace = ({
               size='sm'
               className='h-7 min-h-7 w-7 min-w-7'
               aria-label='发送'
-              isDisabled={!draft.trim() || activity !== 'idle'}
+              isDisabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
               onPress={() => void submit()}
             >
               <Send size={15} />

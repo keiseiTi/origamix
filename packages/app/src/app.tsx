@@ -37,6 +37,8 @@ const App = (): React.JSX.Element => {
   const [sidebarPeek, setSidebarPeek] = useState(false);
   const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<'general' | 'model'>('general');
+  const [hasModelApiKey, setHasModelApiKey] = useState<boolean | undefined>(undefined);
   const theme = usePreferencesStore((state) => state.theme);
   const setTheme = usePreferencesStore((state) => state.setTheme);
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
@@ -69,6 +71,13 @@ const App = (): React.JSX.Element => {
 
   const openSettings = (): void => {
     setSidebarPeek(false);
+    setSettingsSection('general');
+    setIsSettingsOpen(true);
+  };
+
+  const openModelSettings = (): void => {
+    setSidebarPeek(false);
+    setSettingsSection('model');
     setIsSettingsOpen(true);
   };
 
@@ -154,6 +163,13 @@ const App = (): React.JSX.Element => {
       .then(setUserProfile)
       .catch(() => undefined);
   }, [setUserProfile]);
+
+  useEffect(() => {
+    window.api?.settings
+      ?.getModel?.()
+      .then((settings) => setHasModelApiKey(settings.hasApiKey))
+      .catch(() => setHasModelApiKey(undefined));
+  }, []);
 
   const collapseSidebar = (): void => {
     setSidebarCollapsed(true);
@@ -307,6 +323,8 @@ const App = (): React.JSX.Element => {
                     onPreview={() => openPreview(pageId)}
                     draft={pageDrafts[pageId] ?? ''}
                     onDraftChange={(draft) => setPageDraft(pageId, draft)}
+                    hasModelApiKey={hasModelApiKey}
+                    onConfigureModel={openModelSettings}
                     supportsNativeProjectDirectories={supportsNativeProjectDirectories}
                     schemaRefreshKey={schemaRefreshKeys[pageId] ?? ''}
                     onSchemaCommitted={(committedPageId, revisionId) => {
@@ -341,10 +359,12 @@ const App = (): React.JSX.Element => {
 
       <SettingsModal
         isOpen={isSettingsOpen}
+        initialSection={settingsSection}
         theme={theme}
         userProfile={userProfile}
         onThemeChange={setTheme}
         onProfileChange={setUserProfile}
+        onModelConfiguredChange={setHasModelApiKey}
         onClose={closeSettings}
       />
 

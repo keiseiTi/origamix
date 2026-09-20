@@ -26,9 +26,28 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
   if (error instanceof AgentEngineError) return error;
   const message = error instanceof Error ? error.message.toLowerCase() : '';
   if (message.includes('rate') || message.includes('429')) {
-    return new AgentEngineError('RATE_LIMITED', '模型服务当前繁忙，请稍后重试', true);
+    return new AgentEngineError('RATE_LIMITED', '请求过于频繁或额度不足，请稍后重试', true);
   }
-  return new AgentEngineError('PROVIDER_ERROR', '模型服务调用失败', true);
+  if (
+    message.includes('401') ||
+    message.includes('403') ||
+    message.includes('unauthorized') ||
+    message.includes('authentication') ||
+    message.includes('invalid api key')
+  ) {
+    return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek API Key 无效或已失效');
+  }
+  if (
+    message.includes('fetch failed') ||
+    message.includes('network') ||
+    message.includes('econn') ||
+    message.includes('enotfound') ||
+    message.includes('socket') ||
+    message.includes('connection')
+  ) {
+    return new AgentEngineError('PROVIDER_ERROR', '无法连接 DeepSeek，请检查网络后重试', true);
+  }
+  return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek 服务暂时不可用，请稍后重试', true);
 };
 
 const adaptTool = (tool: AgentEngineTool): AgentTool => {

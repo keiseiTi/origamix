@@ -1,6 +1,6 @@
 import { Button, Card, Chip, Input, Modal, Radio, RadioGroup } from '@heroui/react';
 import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AppTheme, UserProfile } from '../../store/preferences';
 
 interface SettingsPageProps {
@@ -8,16 +8,19 @@ interface SettingsPageProps {
   userProfile: UserProfile;
   onThemeChange: (theme: AppTheme) => void;
   onProfileChange: (profile: UserProfile) => void;
+  onModelConfiguredChange: (configured: boolean) => void;
   onClose: () => void;
 }
 
 interface SettingsModalProps extends Omit<SettingsPageProps, 'onClose'> {
   isOpen: boolean;
+  initialSection: 'general' | 'model';
   onClose: () => void;
 }
 
 export const SettingsModal = ({
   isOpen,
+  initialSection,
   onClose,
   ...settingsProps
 }: SettingsModalProps): React.JSX.Element => (
@@ -25,7 +28,7 @@ export const SettingsModal = ({
     <Modal.Backdrop>
       <Modal.Container className='p-4'>
         <Modal.Dialog className='flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] max-w-none flex-col overflow-hidden p-0'>
-          <SettingsPage {...settingsProps} onClose={onClose} />
+          <SettingsPage {...settingsProps} initialSection={initialSection} onClose={onClose} />
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
@@ -37,8 +40,10 @@ export const SettingsPage = ({
   userProfile,
   onThemeChange,
   onProfileChange,
+  onModelConfiguredChange,
+  initialSection = 'general',
   onClose,
-}: SettingsPageProps): React.JSX.Element => {
+}: SettingsPageProps & { initialSection?: 'general' | 'model' }): React.JSX.Element => {
   const [apiKey, setApiKey] = useState('');
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
@@ -52,17 +57,32 @@ export const SettingsPage = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const modelSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (initialSection === 'model') modelSectionRef.current?.scrollIntoView({ block: 'start' });
+      else scrollContainerRef.current?.scrollTo({ top: 0 });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialSection]);
 
   useEffect(() => {
     let active = true;
     Promise.resolve(window.api?.settings?.getModel?.())
-      .then((settings) => active && setHasSavedKey(settings?.hasApiKey ?? false))
+      .then((settings) => {
+        if (!active) return;
+        const configured = settings?.hasApiKey ?? false;
+        setHasSavedKey(configured);
+        if (settings) onModelConfiguredChange(configured);
+      })
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
       .finally(() => active && setIsLoading(false));
     return () => {
       active = false;
     };
-  }, []);
+  }, [onModelConfiguredChange]);
 
   const save = async (): Promise<void> => {
     setIsSaving(true);
@@ -75,6 +95,7 @@ export const SettingsPage = ({
       });
       if (!result) throw new Error('当前环境不支持保存模型设置，请在桌面应用中操作。');
       setHasSavedKey(result.hasApiKey);
+      onModelConfiguredChange(result.hasApiKey);
       setApiKey('');
       setStatus({ kind: 'success', message: '模型设置已安全保存。' });
     } catch (reason) {
@@ -137,7 +158,7 @@ export const SettingsPage = ({
         </Button>
       </header>
 
-      <div className='min-h-0 flex-1 overflow-auto'>
+      <div ref={scrollContainerRef} className='min-h-0 flex-1 overflow-auto'>
         <div className='mx-auto w-full max-w-3xl px-8 py-9'>
           <p className='mt-0 mb-8 text-sm text-zinc-500 dark:text-zinc-400'>应用外观与模型连接</p>
           <section className='mb-10'>
@@ -258,7 +279,7 @@ export const SettingsPage = ({
             </RadioGroup>
           </section>
 
-          <section>
+          <section ref={modelSectionRef}>
             <div className='mb-4 flex items-start justify-between gap-4'>
               <div>
                 <h2 className='m-0 text-base font-semibold'>模型设置</h2>
