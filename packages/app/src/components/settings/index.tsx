@@ -1,5 +1,5 @@
 import { Button, Card, Chip, Input, Modal, Radio, RadioGroup } from '@heroui/react';
-import { ArrowLeft, Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User } from 'lucide-react';
+import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppTheme, UserProfile } from '../../store/preferences';
 
@@ -8,10 +8,10 @@ interface SettingsPageProps {
   userProfile: UserProfile;
   onThemeChange: (theme: AppTheme) => void;
   onProfileChange: (profile: UserProfile) => void;
-  onBack: () => void;
+  onClose: () => void;
 }
 
-interface SettingsModalProps extends Omit<SettingsPageProps, 'onBack'> {
+interface SettingsModalProps extends Omit<SettingsPageProps, 'onClose'> {
   isOpen: boolean;
   onClose: () => void;
 }
@@ -25,7 +25,7 @@ export const SettingsModal = ({
     <Modal.Backdrop>
       <Modal.Container className='p-4'>
         <Modal.Dialog className='flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] max-w-none flex-col overflow-hidden p-0'>
-          <SettingsPage {...settingsProps} onBack={onClose} />
+          <SettingsPage {...settingsProps} onClose={onClose} />
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
@@ -37,7 +37,7 @@ export const SettingsPage = ({
   userProfile,
   onThemeChange,
   onProfileChange,
-  onBack,
+  onClose,
 }: SettingsPageProps): React.JSX.Element => {
   const [apiKey, setApiKey] = useState('');
   const [userName, setUserName] = useState(userProfile.name);
@@ -122,19 +122,19 @@ export const SettingsPage = ({
   return (
     <section className='flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <header className='window-no-drag-region relative flex h-10 min-h-10 items-center border-b border-zinc-200 px-4.5 dark:border-zinc-800'>
+        <div className='relative z-10'>
+          <h1 className='m-0 text-sm font-semibold'>设置</h1>
+        </div>
         <Button
           isIconOnly
           size='sm'
           variant='ghost'
-          className='window-no-drag-region mr-2 h-8 min-h-8 w-8 min-w-8'
-          onPress={onBack}
+          className='window-no-drag-region ml-auto h-8 min-h-8 w-8 min-w-8'
+          onPress={onClose}
           aria-label='关闭设置'
         >
-          <ArrowLeft size={17} />
+          <X size={17} />
         </Button>
-        <div className='relative z-10'>
-          <h1 className='m-0 text-sm font-semibold'>设置</h1>
-        </div>
       </header>
 
       <div className='min-h-0 flex-1 overflow-auto'>

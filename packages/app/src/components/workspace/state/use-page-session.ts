@@ -6,22 +6,17 @@ import { usePageApplicationState } from './use-page-application-state';
 export const derivePageCapabilities = ({
   agentActivity,
   applyStatus,
-  saveStatus,
 }: {
   agentActivity: 'unknown' | 'idle' | 'running';
   applyStatus: ReturnType<typeof usePageApplicationState>['applyStatus'];
-  saveStatus: ReturnType<typeof usePageApplicationState>['saveStatus'];
 }) => {
   const agentIdle = agentActivity === 'idle';
   return {
     canEdit: agentIdle,
     canApply:
-      agentIdle &&
-      saveStatus === 'saved' &&
-      (applyStatus === 'saved_pending_apply' || applyStatus === 'result_pending'),
-    canSaveVersion: agentIdle && saveStatus === 'saved' && applyStatus === 'draft_unsaved',
+      agentIdle && (applyStatus === 'saved_pending_apply' || applyStatus === 'result_pending'),
+    canSaveVersion: agentIdle && applyStatus === 'draft_unsaved',
     canReload: agentIdle,
-    canLeave: agentIdle && saveStatus === 'saved',
     agentChecking: agentActivity === 'unknown',
   };
 };
@@ -70,7 +65,6 @@ export const usePageSession = ({
     capabilities: derivePageCapabilities({
       agentActivity: agent.activity,
       applyStatus: application.applyStatus,
-      saveStatus: application.saveStatus,
     }),
   };
 };

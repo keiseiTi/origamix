@@ -3,9 +3,6 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  Copy,
-  Pencil,
-  Trash2,
   MessageSquareText,
   Plus,
   Settings,
@@ -16,6 +13,7 @@ import { CreatePageModal } from './mod/create-page-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
 import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
+import { SidebarActionMenu } from './action-menu';
 import type { UserProfile } from '../../store/preferences';
 import type { PageItem, ProjectItem } from '../../store/workspace';
 import type { PendingProjectInitialization } from '../../hooks/use-project-actions';
@@ -45,7 +43,6 @@ interface SidebarProps {
   onDeleteProject: (projectId: string) => Promise<void>;
   onRenamePage: (projectId: string, pageId: string, name: string) => Promise<void>;
   onDeletePage: (projectId: string, pageId: string) => Promise<void>;
-  onDuplicatePage: (projectId: string, pageId: string) => Promise<void>;
   supportsNativeProjectDirectories: boolean;
 }
 
@@ -70,7 +67,6 @@ export const Sidebar = ({
   onDeleteProject,
   onRenamePage,
   onDeletePage,
-  onDuplicatePage,
   supportsNativeProjectDirectories,
 }: SidebarProps): React.JSX.Element => {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -161,43 +157,28 @@ export const Sidebar = ({
               <div className='group flex h-8.5 items-center gap-2 rounded-lg px-2 text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-900'>
                 <Folder size={14} />
                 <span className='min-w-0 flex-1 truncate'>{project.name}</span>
-                <Button
-                  isIconOnly
-                  size='sm'
-                  variant='ghost'
-                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
-                  aria-label={`修改项目 ${project.name} 名称`}
-                  onPress={() =>
+                <SidebarActionMenu
+                  label={`${project.name} 项目操作`}
+                  onRename={() =>
                     setLifecycleTarget({
                       kind: 'rename-project',
                       id: project.id,
                       name: project.name,
                     })
                   }
-                >
-                  <Pencil size={13} />
-                </Button>
-                <Button
-                  isIconOnly
-                  size='sm'
-                  variant='ghost'
-                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 text-danger'
-                  aria-label={`删除项目 ${project.name}`}
-                  onPress={() =>
+                  onDelete={() =>
                     setLifecycleTarget({
                       kind: 'delete-project',
                       id: project.id,
                       name: project.name,
                     })
                   }
-                >
-                  <Trash2 size={13} />
-                </Button>
+                />
                 <Button
                   isIconOnly
                   size='sm'
                   variant='ghost'
-                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                  className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
                   onPress={() => openPageModal(project.id)}
                   aria-label={`在 ${project.name} 中新建页面`}
                 >
@@ -205,40 +186,25 @@ export const Sidebar = ({
                 </Button>
               </div>
               {project.pages.map((page) => (
-                <div key={page.id} className='group flex items-center'>
+                <div
+                  key={page.id}
+                  className={`group ml-2.5 flex h-8.5 items-center rounded-lg pr-1 transition-colors ${
+                    selectedPageId === page.id
+                      ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                      : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                >
                   <Button
                     variant='ghost'
                     onPress={() => onSelectPage(page.id)}
-                    className={`ml-2.5 h-8.5 min-w-0 flex-1 justify-start gap-2 px-4 text-left ${
-                      selectedPageId === page.id
-                        ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                        : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
-                    }`}
+                    className='h-full min-w-0 flex-1 justify-start gap-2 bg-transparent px-4 text-left text-inherit hover:bg-transparent'
                   >
                     <MessageSquareText size={13} />
                     <span className='truncate'>{page.name}</span>
                   </Button>
-                  <Button
-                    isIconOnly
-                    size='sm'
-                    variant='ghost'
-                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
-                    aria-label={`复制页面 ${page.name}`}
-                    onPress={() =>
-                      void onDuplicatePage(project.id, page.id).catch((reason: unknown) =>
-                        setActionError(reason instanceof Error ? reason.message : '复制页面失败'),
-                      )
-                    }
-                  >
-                    <Copy size={12} />
-                  </Button>
-                  <Button
-                    isIconOnly
-                    size='sm'
-                    variant='ghost'
-                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100'
-                    aria-label={`修改页面 ${page.name} 名称`}
-                    onPress={() =>
+                  <SidebarActionMenu
+                    label={`${page.name} 页面操作`}
+                    onRename={() =>
                       setLifecycleTarget({
                         kind: 'rename-page',
                         projectId: project.id,
@@ -246,16 +212,7 @@ export const Sidebar = ({
                         name: page.name,
                       })
                     }
-                  >
-                    <Pencil size={12} />
-                  </Button>
-                  <Button
-                    isIconOnly
-                    size='sm'
-                    variant='ghost'
-                    className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 text-danger'
-                    aria-label={`删除页面 ${page.name}`}
-                    onPress={() =>
+                    onDelete={() =>
                       setLifecycleTarget({
                         kind: 'delete-page',
                         projectId: project.id,
@@ -263,9 +220,7 @@ export const Sidebar = ({
                         name: page.name,
                       })
                     }
-                  >
-                    <Trash2 size={12} />
-                  </Button>
+                  />
                 </div>
               ))}
             </section>

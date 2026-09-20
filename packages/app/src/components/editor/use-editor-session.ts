@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '../../services/schema';
 import { deriveSchemaOperations } from './derive-schema-operations';
 
-export type EditorSaveStatus = 'saved' | 'dirty' | 'saving' | 'error';
-
 export const useEditorSession = (projectId: string, pageId: string, readOnly: boolean) => {
   const [initial, setInitial] = useState<{
     schema: OrigamixPageSchema;
@@ -13,7 +11,6 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
     workingVersion: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<EditorSaveStatus>('saved');
   const [error, setError] = useState<string | null>(null);
   const draftRef = useRef<OrigamixPageSchema | null>(null);
   const savedHashRef = useRef('');
@@ -34,13 +31,11 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
         savedHashRef.current = hash;
         workingVersionRef.current = result.workingVersion;
         setInitial(result);
-        setStatus('saved');
         setError(null);
       })
       .catch((reason) => {
         if (!active) return;
         setError(reason instanceof Error ? reason.message : '无法读取 Schema');
-        setStatus('error');
       })
       .finally(() => active && setLoading(false));
     return () => {
@@ -60,8 +55,6 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
       const draftHash = draft ? JSON.stringify(draft) : '';
       if (!draft || draftHash === savedHashRef.current) return;
       if (readOnly) throw new Error('AI 正在修改当前页面，请等待本轮完成');
-      setStatus('saving');
-      setError(null);
       const saved = JSON.parse(savedHashRef.current) as OrigamixPageSchema;
       const operations = deriveSchemaOperations(saved, draft);
       const request =
@@ -77,12 +70,6 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
         .then((result) => {
           workingVersionRef.current = result.workingVersion;
           savedHashRef.current = JSON.stringify(result.schema);
-          setStatus(JSON.stringify(draftRef.current) === savedHashRef.current ? 'saved' : 'dirty');
-        })
-        .catch((reason) => {
-          setError(reason instanceof Error ? reason.message : '保存 Schema 失败');
-          setStatus('error');
-          throw reason;
         })
         .finally(() => {
           pendingRef.current = null;
@@ -98,12 +85,7 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
       const next = schema as OrigamixPageSchema;
       const nextHash = JSON.stringify(next);
       draftRef.current = next;
-      if (nextHash === savedHashRef.current) {
-        setStatus('saved');
-        return;
-      }
-      setStatus('dirty');
-      setError(null);
+      if (nextHash === savedHashRef.current) return;
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => void flush().catch(() => undefined), 700);
     },
@@ -123,5 +105,5 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
     [initial, pageId, projectId],
   );
 
-  return { initial, loading, status, error, flush, onChange, providerKey };
+  return { initial, loading, error, flush, onChange, providerKey };
 };

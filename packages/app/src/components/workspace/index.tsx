@@ -131,11 +131,10 @@ const PageWorkspace = ({
           onReloadFromProject={application.reloadFromProject}
           onRestoreRevision={application.restoreRevision}
           applyStatus={application.applyStatus}
-          saveStatus={application.saveStatus}
           canApply={capabilities.canApply}
           canSaveVersion={capabilities.canSaveVersion}
           canReload={capabilities.canReload}
-          canRestore={capabilities.canEdit && application.saveStatus === 'saved'}
+          canRestore={capabilities.canEdit}
         />
       )}
       <>
@@ -150,7 +149,6 @@ const PageWorkspace = ({
             readOnlyMessage={
               capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined
             }
-            onSaveStatusChange={application.setSaveStatus}
           />
         </div>
         <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>

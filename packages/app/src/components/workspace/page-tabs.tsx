@@ -27,13 +27,13 @@ export const PageTabs = ({
       {sidebarCollapsed && isMacDesktop && (
         <span
           aria-hidden='true'
-          className='window-no-drag-region w-27 shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
+          className='window-no-drag-region w-32 shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
         />
       )}
       {sidebarCollapsed && !isMacDesktop && (
         <span
           aria-hidden='true'
-          className='window-no-drag-region w-10 shrink-0 border-b border-zinc-200 dark:border-zinc-800'
+          className='window-no-drag-region w-12 shrink-0 border-b border-zinc-200 dark:border-zinc-800'
         />
       )}
       {pages.map((page, index) => {

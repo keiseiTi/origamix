@@ -202,7 +202,6 @@ const App = (): React.JSX.Element => {
       onDeleteProject={projectActions.deleteProject}
       onRenamePage={projectActions.renamePage}
       onDeletePage={projectActions.deletePage}
-      onDuplicatePage={projectActions.duplicatePage}
       onSelectPage={(pageId) => void transition(() => selectPage(pageId))}
       supportsNativeProjectDirectories={supportsNativeProjectDirectories}
     />
@@ -281,7 +280,7 @@ const App = (): React.JSX.Element => {
               className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
             >
               {sidebarCollapsed && isMacDesktop && (
-                <span className='window-no-drag-region w-27 shrink-0' />
+                <span className='window-no-drag-region w-32 shrink-0' />
               )}
               <span className='window-drag-region min-w-0 flex-1' />
             </div>

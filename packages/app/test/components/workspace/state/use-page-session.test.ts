@@ -7,14 +7,12 @@ describe('derivePageCapabilities', () => {
       derivePageCapabilities({
         agentActivity: 'unknown',
         applyStatus: 'saved_pending_apply',
-        saveStatus: 'saved',
       }),
     ).toEqual({
       canEdit: false,
       canApply: false,
       canSaveVersion: false,
       canReload: false,
-      canLeave: false,
       agentChecking: true,
     });
   });
@@ -24,32 +22,21 @@ describe('derivePageCapabilities', () => {
       derivePageCapabilities({
         agentActivity: 'idle',
         applyStatus: 'saved_pending_apply',
-        saveStatus: 'saved',
       }),
     ).toMatchObject({
       canEdit: true,
       canApply: true,
       canSaveVersion: false,
       canReload: true,
-      canLeave: true,
     });
     expect(
       derivePageCapabilities({
         agentActivity: 'idle',
-        applyStatus: 'saved_pending_apply',
-        saveStatus: 'dirty',
-      }),
-    ).toMatchObject({ canApply: false, canLeave: false });
-    expect(
-      derivePageCapabilities({
-        agentActivity: 'idle',
         applyStatus: 'draft_unsaved',
-        saveStatus: 'saved',
       }),
     ).toMatchObject({
       canApply: false,
       canSaveVersion: true,
-      canLeave: true,
     });
   });
 });

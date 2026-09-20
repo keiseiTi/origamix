@@ -1,7 +1,6 @@
 import { Button, Tooltip } from '@heroui/react';
 import { useEffect, useState } from 'react';
 import { Clock3, Eye, SquarePen, MessageSquare, RefreshCw, Save } from 'lucide-react';
-import type { EditorSaveStatus } from '../editor/use-editor-session';
 import { RevisionHistoryModal } from './revision-history-modal';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
@@ -27,7 +26,6 @@ interface WorkspaceHeaderProps {
     | 'external_change'
     | 'result_pending'
     | 'error';
-  saveStatus: EditorSaveStatus;
   canApply: boolean;
   canSaveVersion: boolean;
   canReload: boolean;
@@ -48,7 +46,6 @@ export const WorkspaceHeader = ({
   onReloadFromProject,
   onRestoreRevision,
   applyStatus,
-  saveStatus,
   canApply,
   canSaveVersion,
   canReload,
@@ -124,33 +121,27 @@ export const WorkspaceHeader = ({
           </span>
         </div>
         <div className='flex shrink-0 items-center gap-1'>
-          <span
-            className={
-              applyStatus === 'external_change' || applyStatus === 'error'
-                ? 'text-danger'
-                : 'text-zinc-500 dark:text-zinc-400'
-            }
-          >
-            {saveStatus === 'error'
-              ? '草稿保留失败'
-              : saveStatus === 'saving'
-                ? '正在保留草稿…'
-                : saveStatus === 'dirty'
-                  ? '草稿待保留'
-                  : applyStatus === 'loading'
-                    ? '检查状态…'
-                    : applyStatus === 'in_sync'
-                      ? '与项目一致'
-                      : applyStatus === 'draft_unsaved'
-                        ? '草稿已保留 · 尚未保存版本'
-                        : applyStatus === 'saved_pending_apply'
-                          ? '版本已保存 · 待应用'
-                          : applyStatus === 'external_change'
-                            ? '项目文件已变化'
-                            : applyStatus === 'result_pending'
-                              ? '应用结果待确认'
-                              : '状态不可用'}
-          </span>
+          {applyStatus !== 'draft_unsaved' && (
+            <span
+              className={
+                applyStatus === 'external_change' || applyStatus === 'error'
+                  ? 'text-danger'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }
+            >
+              {applyStatus === 'loading'
+                ? '检查状态…'
+                : applyStatus === 'in_sync'
+                  ? '与项目一致'
+                  : applyStatus === 'saved_pending_apply'
+                    ? '版本已保存 · 待应用'
+                    : applyStatus === 'external_change'
+                      ? '项目文件已变化'
+                      : applyStatus === 'result_pending'
+                        ? '应用结果待确认'
+                        : '状态不可用'}
+            </span>
+          )}
           {error && (
             <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
               {error}

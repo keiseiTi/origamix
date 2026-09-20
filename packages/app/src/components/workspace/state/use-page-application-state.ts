@@ -3,7 +3,6 @@ import { schemaService } from '../../../services/schema';
 import { pageOperationKey, usePendingOperations } from '../../../store/pending-operations';
 import { ApiRequestError } from '../../../services/request';
 import type { EditorHandle } from '../../editor';
-import type { EditorSaveStatus } from '../../editor/use-editor-session';
 
 export type PageApplyStatus =
   | 'loading'
@@ -35,10 +34,6 @@ export const usePageApplicationState = ({
     pageKey,
     value: 'loading',
   });
-  const [saveState, setSaveState] = useState<{ pageKey: string; value: EditorSaveStatus }>({
-    pageKey,
-    value: 'saved',
-  });
   const pageKeyRef = useRef(pageKey);
   const polling = useRef({ issued: 0, accepted: 0 });
 
@@ -53,13 +48,8 @@ export const usePageApplicationState = ({
     : applyState.pageKey === pageKey
       ? applyState.value
       : 'loading';
-  const saveStatus = saveState.pageKey === pageKey ? saveState.value : 'saved';
   const setApplyStatus = useCallback(
     (value: PageApplyStatus): void => setApplyState({ pageKey, value }),
-    [pageKey],
-  );
-  const setSaveStatus = useCallback(
-    (value: EditorSaveStatus): void => setSaveState({ pageKey, value }),
     [pageKey],
   );
 
@@ -178,8 +168,6 @@ export const usePageApplicationState = ({
 
   return {
     applyStatus,
-    saveStatus,
-    setSaveStatus,
     saveVersion,
     applyPage,
     reloadFromProject,

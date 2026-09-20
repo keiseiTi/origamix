@@ -114,7 +114,7 @@ const PreviewSurface = ({
         isIconOnly
         size='sm'
         variant='secondary'
-        className='fixed top-4 right-4 z-50 shadow-md'
+        className='fixed top-3 right-3 z-50 shadow-md'
         aria-label='退出预览'
         onClick={onExit}
       >

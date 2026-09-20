@@ -8,12 +8,12 @@ import {
 } from '@tangramino/base-editor';
 import type { Schema } from '@tangramino/engine';
 import materialGroups from '@origamix/materials/antd/group';
-import { forwardRef, useEffect, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { AttributePanel } from './mods/attribute-panel';
 import { DropIndicator, EditableElement, EditorOverlay } from './mods/canvas-tools';
 import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MaterialPanel, type MaterialGroup } from './mods/material-panel';
-import { useEditorSession, type EditorSaveStatus } from './use-editor-session';
+import { useEditorSession } from './use-editor-session';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
@@ -24,7 +24,6 @@ interface EditorProps {
   pageId: string;
   readOnly?: boolean;
   readOnlyMessage?: string;
-  onSaveStatusChange?: (status: EditorSaveStatus, error: string | null) => void;
 }
 
 const groups = materialGroups as MaterialGroup[];
@@ -65,14 +64,9 @@ const EditorCanvas = (): React.JSX.Element => {
 };
 
 export const Editor = forwardRef<EditorHandle, EditorProps>(
-  (
-    { projectId, pageId, readOnly = false, readOnlyMessage, onSaveStatusChange },
-    ref,
-  ): React.JSX.Element => {
+  ({ projectId, pageId, readOnly = false, readOnlyMessage }, ref): React.JSX.Element => {
     const session = useEditorSession(projectId, pageId, readOnly);
-    const { initial, loading, status, error, flush, onChange, providerKey } = session;
-
-    useEffect(() => onSaveStatusChange?.(status, error), [error, onSaveStatusChange, status]);
+    const { initial, loading, error, flush, onChange, providerKey } = session;
 
     useImperativeHandle(ref, () => ({ flush }), [flush]);
 
@@ -114,22 +108,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
             </span>
           </div>
         )}
-        <div
-          role={status === 'error' ? 'alert' : 'status'}
-          className={`pointer-events-none absolute right-4 bottom-3 rounded-full border bg-white/90 px-2.5 py-1 text-[11px] shadow-sm backdrop-blur dark:bg-zinc-900/90 ${
-            status === 'error'
-              ? 'border-danger/40 text-danger'
-              : 'border-zinc-200 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'
-          }`}
-        >
-          {status === 'saving'
-            ? '正在保留草稿…'
-            : status === 'dirty'
-              ? '草稿待保留'
-              : status === 'error'
-                ? error
-                : '草稿已保留'}
-        </div>
       </div>
     );
   },
