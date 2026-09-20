@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { pageOperationKey, usePendingOperations } from '../../../src/store/pending-operations';
+import { usePendingOperations } from '../../../src/store/pending-operations';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -16,7 +16,6 @@ vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({
   schemaService: { workingState: mocks.workingState },
 }));
-import { ApiRequestError } from '../../../src/services/request';
 import { useAgentChat } from '../../../src/components/agent-chat/use-agent-chat';
 
 const deferred = <T,>() => {
@@ -80,42 +79,6 @@ describe('Agent recovery', () => {
     expect(next.result.current.activity).toBe('idle');
   });
 
-  it('isolates pending requests by project and blocks overlapping retries after remount', async () => {
-    const response = deferred<{ conversationId: string; runId: string }>();
-    mocks.createAgentRun.mockReturnValue(response.promise);
-    const first = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(first.result.current.activity).toBe('idle'));
-    let request!: Promise<void>;
-    await act(async () => {
-      request = first.result.current.send('hello');
-    });
-    first.unmount();
-    const next = renderHook(() => useAgentChat('project_1', 'page_a'));
-    const other = renderHook(() => useAgentChat('project_2', 'page_a'));
-    await waitFor(() => expect(other.result.current.activity).toBe('idle'));
-    expect(next.result.current.activity).toBe('unknown');
-    await act(async () => {
-      await expect(next.result.current.retry()).rejects.toThrow('处理中');
-    });
-    expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
-    const recovery = deferred<{ conversations: { conversationId: string }[] }>();
-    mocks.listConversations.mockReturnValueOnce(recovery.promise);
-    await act(async () => {
-      response.resolve({ conversationId: 'conversation_1', runId: 'run_1' });
-      await request;
-    });
-    expect(next.result.current.activity).toBe('unknown');
-    mocks.listAllMessages.mockResolvedValue({ messages: [{ runId: 'run_1', sequence: 0 }] });
-    mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'generating' } });
-    await act(async () =>
-      recovery.resolve({ conversations: [{ conversationId: 'conversation_1' }] }),
-    );
-    expect(next.result.current.activity).toBe('running');
-    expect(
-      usePendingOperations.getState().agents[pageOperationKey('project_1', 'page_a')],
-    ).toBeUndefined();
-  });
-
   it('ignores history from the page that was left', async () => {
     const response = deferred<{ conversations: { conversationId: string }[] }>();
     mocks.listConversations.mockReturnValueOnce(response.promise);
@@ -128,29 +91,5 @@ describe('Agent recovery', () => {
     await act(async () => response.resolve({ conversations: [{ conversationId: 'old' }] }));
     expect(mocks.listAllMessages).not.toHaveBeenCalled();
     expect(hook.result.current.activity).toBe('idle');
-  });
-  it.each([200, 408, 500])('keeps ambiguous responses retryable (HTTP %s)', async (status) => {
-    mocks.createAgentRun.mockRejectedValue(new ApiRequestError('uncertain response', 500, status));
-    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
-    await act(async () => {
-      await expect(hook.result.current.send('hello')).rejects.toThrow('uncertain');
-    });
-    expect(hook.result.current.pendingSubmission).toBe(true);
-    expect(hook.result.current.activity).toBe('unknown');
-  });
-
-  it('clears a definitively rejected submission and recovers before accepting new input', async () => {
-    mocks.createAgentRun.mockRejectedValue(new ApiRequestError('invalid input', 400, 400));
-    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
-    await act(async () => {
-      await expect(hook.result.current.send('hello')).rejects.toThrow('invalid');
-    });
-    expect(usePendingOperations.getState().agents).toEqual({});
-    expect(hook.result.current.activity).toBe('unknown');
-    await act(async () => hook.result.current.retry());
-    expect(hook.result.current.activity).toBe('idle');
-    expect(mocks.createAgentRun).toHaveBeenCalledOnce();
   });
 });

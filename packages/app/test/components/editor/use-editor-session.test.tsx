@@ -60,26 +60,4 @@ describe('useEditorSession', () => {
     expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     expect(hook.result.current.initial?.revisionId).toBe('revision_saved');
   });
-
-  it('automatically retains visual edits in Working without saving a Revision', async () => {
-    const next = structuredClone(schema);
-    next.elements.element_root!.props = { padding: 16 };
-    schemaMocks.applyWorkingOperations.mockResolvedValue({
-      schema: next,
-      revisionId: 'revision_saved',
-      workingVersion: 5,
-    });
-    const hook = renderHook(() => useEditorSession('project_one', 'page_one', false));
-    await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
-    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
-
-    act(() => hook.result.current.onChange(next as Schema));
-    await waitFor(() => expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledOnce(), {
-      timeout: 1_000,
-    });
-
-    expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledWith('project_one', 'page_one', 4, [
-      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 16 } },
-    ]);
-  });
 });

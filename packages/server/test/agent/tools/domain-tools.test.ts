@@ -41,19 +41,6 @@ const tools = (maxResultBytes?: number) => {
 };
 
 describe('documentation, validation and diagnostic tools', () => {
-  it('returns safe product documentation and no result for an unknown query', async () => {
-    const [search] = tools();
-    const signal = new AbortController().signal;
-    const found = (await search!.execute(
-      { projectId: 'project_test', pageId: 'page_test', query: '表单搭建器' },
-      signal,
-    )) as Array<{ trust: string }>;
-    expect(found[0]?.trust).toBe('untrusted_reference');
-    await expect(
-      search!.execute({ projectId: 'project_other', pageId: 'page_test', query: '表单' }, signal),
-    ).rejects.toThrow('不属于');
-  });
-
   it('preflights malformed and material-invalid candidates without committing', async () => {
     const validate = tools()[1]!;
     const malformed = (await validate.execute(

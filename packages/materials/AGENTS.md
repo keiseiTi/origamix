@@ -38,6 +38,6 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials build
 ```
 
-- Add registry/manifest tests when the package-local contracts are available and when changing types, grouping, defaults or public exports. Add component tests for non-trivial prop translation and state behavior.
+- Keep registry/manifest tests focused on serializability and agreement between public catalogs. Prefer extending an existing invariant when types, grouping, defaults or exports change. Do not add component tests; verify material rendering and interaction in the consuming editor/runtime.
 - Run the root gates after source or public-contract changes. A package-only typecheck does not verify App, preview and generated-project integration.
 - UI changes require rendering representative materials in the consuming editor/runtime; report if graphical verification is unavailable.

@@ -49,6 +49,35 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Verification and definition of done
 
+### Automated test scope
+
+Automated tests cover only the product's core flow and the rejection or recovery behavior required to keep that flow safe. The core flow is:
+
+> Open an authorized project and page → Agent or visual editor updates the page's sole Working Schema → user previews or continues editing → user explicitly saves an immutable Revision → user explicitly applies that saved Revision to the real project.
+
+Keep automated coverage for these core-flow behaviors:
+
+1. **Open and resume:** authorized project/page ownership is enforced, and reopening a page restores its retained Working Schema.
+2. **Agent edit:** one Run is bound to one project/page and its starting Working version; typed operations are validated and applied atomically without creating a Revision or writing the target project.
+3. **Visual edit:** visual edits use the same version-checked Working pipeline as Agent edits; a successful edit increments Working while stale or invalid edits leave the previous draft intact.
+4. **Save Revision:** only an explicit save creates an immutable, page-scoped Revision; repeated requests are safe and ordinary edits never create checkpoints.
+5. **History restore:** history can be listed and inspected; restoring a Revision changes Working into an unsaved draft and never saves or applies automatically.
+6. **Apply to project:** Apply accepts only the current explicitly saved state with clean Working, writes only the authorized target `schema.json`, detects external changes, is safe to retry with the same request identity, and records a receipt.
+7. **Recovery and isolation:** retained drafts and durable Agent/Apply outcomes can be recovered after interruption; stale responses, retries or Runs cannot cross project/page boundaries or repeat an ambiguous mutation automatically.
+
+The minimum rejection coverage inside those flows is invalid operations/materials, stale Working versions, unsaved Apply, external target changes, unauthorized paths or ownership, authentication failure and interrupted/ambiguous writes. These are part of the core flow, not broad edge-case coverage.
+
+Do not add automated tests for copy, styling, layout, visual appearance, simple controls, component composition, ordinary request forwarding, getters/setters, implementation details, behavior-preserving refactors, third-party behavior or exhaustive input combinations. Verify UI appearance and basic control behavior through interaction checks instead. Evaluation/release gates and architecture enforcement may retain focused tests because they protect the core flow mechanically.
+
+Each business rule has one primary test layer:
+
+- **Shared:** representative protocol validation only.
+- **Server service:** business rules, persistence, authorization, concurrency and recovery; this is the primary automated test layer.
+- **HTTP:** authentication, request/response adaptation and a small number of end-to-end core flows; do not repeat service matrices.
+- **App:** only browser-owned core-flow risks that Server cannot prove, such as stale page responses, failed-save draft retention and stable retry identity; do not add presentation-component tests.
+
+Before adding a test, identify the core-flow failure it prevents and why an existing scenario at the owning layer cannot cover it. Prefer modifying or replacing an existing scenario. Ordinary changes should add zero tests; when a genuinely uncovered core risk is introduced, add the smallest representative scenario rather than an exhaustive matrix. Security and data-integrity risks are not subject to a numeric cap.
+
 Run commands from the repository root unless a package guide says otherwise. Setup and development entry points (not required for every task):
 
 ```sh
@@ -67,14 +96,14 @@ pnpm build
 ```
 
 - Use package-filtered checks while iterating, then root gates before handoff. Add relevant integration checks from package guides for changed boundaries. Packaging is required only for packaging changes or explicit requests.
-- Add regression tests for protocols, validators, persistence, authorization and non-trivial state transitions. Exercise rejection and recovery, not only happy paths; use temporary directories and fake credentials.
+- Keep tests within the automated-test scope above. Exercise the required rejection and recovery behavior, not only the successful path; use temporary directories and fake credentials.
 - UI changes need actual interaction checks in both themes. Build/unit success is not visual verification; report unavailable graphical checks.
 - Documentation-only changes require checking referenced paths, commands, scope and Markdown formatting. Do not claim application tests were run when they were not.
 - Review the final diff. Report changes, checks and results, plus remaining risks. Distinguish existing failures from regressions using evidence; never weaken checks just to obtain a green result.
 
 ## Keep the harness useful
 
-- Make recurring mistakes mechanically detectable: prefer regression tests, validators or lint rules over another paragraph. Add enforcement when in scope; otherwise name the gap rather than claiming coverage.
+- Make recurring high-impact mistakes mechanically detectable: prefer an existing regression scenario, validator or lint rule over a new isolated test. Add enforcement when justified by an uncovered core risk; otherwise name the gap rather than claiming coverage.
 - Server import/entry-point enforcement lives in `packages/server/scripts/eslint-boundaries.mjs`, loaded by `eslint.config.mjs`; the Server package's `test:architecture` tests the rule and runs through root `pnpm test`. Server lint includes the rule source; the staged gate verifies changes to architecture rules.
 - Other existing enforcement lives in `eslint.config.mjs`, strict tsconfigs, Shared validation tests, Server schema/persistence/HTTP tests, package smoke scripts and the Lefthook pre-commit gate. These cover specific cases, not every invariant above.
 - When changing a boundary, command or directory, update its owning guide in the same change. Link to code/tests instead of copying implementation inventories; remove stale guidance.

@@ -49,7 +49,8 @@ pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build
 ```
 
-- Extend `test/store/workspace.test.ts` and `test/services/request.test.ts` for affected transitions/transport; keep new tests under `test/` mirroring their source area.
+- App automation is limited to browser-owned core-flow risks that Server cannot prove: stale page responses, failed-save draft retention, stable retry identity, recovery and transition blocking. Prefer extending an existing workflow scenario. Do not add tests for presentation components, layout, ordinary request forwarding or component composition.
+- Add a new App scenario only for a distinct uncovered workflow risk, and record why existing workflow coverage cannot express it. Keep new tests under `test/` mirroring their source area.
 - Web host/proxy changes: `pnpm --filter @origamix/app test:web`. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
 - Use `pnpm dev:web` for browser interaction checks. Directory pickers, settings and independent windows need `pnpm dev` and Desktop smoke checks, not only browser screenshots.
 - Run root gates before handoff and report both-theme interaction evidence. Existing unit/smoke tests are not complete visual coverage.

@@ -47,22 +47,4 @@ describe('deriveSchemaOperations', () => {
       ]),
     );
   });
-
-  it('falls back when the root identity changes', () => {
-    const before = schema();
-    const after = structuredClone(before);
-    after.layout.root = 'text_one';
-    expect(deriveSchemaOperations(before, after)).toBeNull();
-  });
-
-  it('uses one recursive removal for a deleted subtree', () => {
-    const before = schema();
-    const after = schema();
-    delete after.elements.text_one;
-    delete after.layout.structure.text_one;
-    after.layout.structure.element_root = [];
-    expect(deriveSchemaOperations(before, after)).toEqual([
-      { operation: 'removeElement', elementId: 'text_one', removeDescendants: true },
-    ]);
-  });
 });

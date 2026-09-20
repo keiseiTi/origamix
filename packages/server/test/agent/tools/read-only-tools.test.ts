@@ -73,16 +73,6 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVers
 const scope = { projectId: 'project_one', pageId: 'page_one', workingVersion: 1 };
 
 describe('read-only Agent tools', () => {
-  it('publishes only the five bounded read tools', () => {
-    expect(setup().tools.map(({ name }) => name)).toEqual([
-      'get_page_context',
-      'get_schema_outline',
-      'get_schema_fragment',
-      'search_materials',
-      'get_material_manifest',
-    ]);
-  });
-
   it('loads one revision once per Run and returns compact page context and outline', async () => {
     const { execute, readSchema } = setup();
     await expect(execute('get_page_context', scope)).resolves.toMatchObject({
@@ -152,12 +142,5 @@ describe('read-only Agent tools', () => {
     await expect(
       execute('get_material_manifest', { ...scope, type: 'unknown' }),
     ).rejects.toMatchObject({ statusCode: 404 });
-  });
-
-  it('honors an already-aborted Run signal', async () => {
-    const { tools } = setup();
-    const controller = new AbortController();
-    controller.abort(new Error('cancelled'));
-    await expect(tools[0]!.execute(scope, controller.signal)).rejects.toThrow('cancelled');
   });
 });

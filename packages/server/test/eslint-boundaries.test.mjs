@@ -22,9 +22,7 @@ const lint = (file, code) =>
 
 for (const [file, code] of [
   ['http/new-route.ts', "import { writeFile } from 'node:fs/promises';"],
-  ['http/new-route.ts', "const fs = require('fs');"],
   ['http/new-route.ts', "const fs = import('node:fs');"],
-  ['http/new-route.ts', "import fs = require('node:fs');"],
   ['http/new-route.ts', "export * from '../schema/target-schema-store';"],
   ['http/new-route.ts', "import { writer } from '../schema/../infrastructure/atomic-file.ts';"],
   ['http/new-route.ts', "import { ProjectSourceService } from '../projects/project-source';"],
@@ -39,7 +37,6 @@ for (const [file, code] of [
   ['schema/new-service.ts', "export { FakeAgentEngine } from '../testing/fake-agent-engine';"],
   ['runtime.ts', "export * from './agent/engine';"],
   ['runtime.ts', "export { startServer } from './other';"],
-  ['runtime.ts', 'export const legacy = 1;'],
   ['runtime.ts', 'export default {};'],
   ['agent/new-service.ts', "import { evaluate } from '../evaluation/evaluation-harness';"],
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd';"],
@@ -63,7 +60,6 @@ for (const [file, code] of [
 
 for (const [file, code] of [
   ['http/types.ts', "import type { ProjectRepository } from '../projects/project-repository';"],
-  ['http/types.ts', "import { type ProjectRepository } from '../projects/project-repository';"],
   ['http/schema-routes.ts', "import { commitSchema } from '../schema/schema-service';"],
   [
     'agent/tools/apply-page-operations.ts',

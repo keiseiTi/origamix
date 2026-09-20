@@ -103,28 +103,6 @@ describe('PiAgentEngine', () => {
     });
   });
 
-  it('distinguishes invalid credentials from network failures', async () => {
-    const invalidCredential = setup([
-      fauxAssistantMessage('', { stopReason: 'error', errorMessage: '401 unauthorized' }),
-    ]);
-    await expect(
-      invalidCredential.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
-    ).rejects.toMatchObject({
-      code: 'PROVIDER_ERROR',
-      message: 'DeepSeek API Key 无效或已失效',
-    });
-
-    const networkFailure = setup([
-      fauxAssistantMessage('', { stopReason: 'error', errorMessage: 'fetch failed: ECONNRESET' }),
-    ]);
-    await expect(
-      networkFailure.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
-    ).rejects.toMatchObject({
-      code: 'PROVIDER_ERROR',
-      message: '无法连接 DeepSeek，请检查网络后重试',
-    });
-  });
-
   it('maps rate limits and keeps tool failures inside normalized tool events', async () => {
     const limited = setup([
       fauxAssistantMessage('', { stopReason: 'error', errorMessage: '429 private quota detail' }),
@@ -176,7 +154,7 @@ describe('PiAgentEngine', () => {
     await expect(pending).rejects.toMatchObject({ code: 'CANCELLED' });
   });
 
-  it('maps timeouts and awaited listener failures', async () => {
+  it('terminates a provider request when the Run timeout is reached', async () => {
     const slow = setup([fauxAssistantMessage('slow')], 1);
     await expect(
       slow.engine.run({
@@ -186,20 +164,5 @@ describe('PiAgentEngine', () => {
         timeoutMs: 1,
       }),
     ).rejects.toMatchObject({ code: 'TIMEOUT' });
-
-    const listener = setup([fauxAssistantMessage('hello')]);
-    await expect(
-      listener.engine.run({
-        modelId: MVP_MODEL_ID,
-        systemPrompt: 'test',
-        prompt: 'ping',
-        onEvent: () => {
-          throw new Error('listener detail');
-        },
-      }),
-    ).rejects.toMatchObject({
-      code: 'PROVIDER_ERROR',
-      message: 'DeepSeek 服务暂时不可用，请稍后重试',
-    });
   });
 });

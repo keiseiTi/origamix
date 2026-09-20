@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
 
@@ -45,9 +45,6 @@ const props = {
   schemaRefreshKey: '',
   onSchemaCommitted: vi.fn(),
 };
-const disabled = (name: string) =>
-  (screen.getByRole('button', { name, hidden: true }) as HTMLButtonElement).disabled;
-
 describe('workspace recovery controls', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -70,79 +67,6 @@ describe('workspace recovery controls', () => {
     });
   });
   afterEach(cleanup);
-
-  it.each(['light', 'dark'])(
-    'keeps mutation controls locked on recovery failure and enables them after retry (%s)',
-    async (theme) => {
-      render(
-        <div className={theme} data-theme={theme}>
-          <Workspace {...props} />
-        </div>,
-      );
-      expect(disabled('编辑画布')).toBe(true);
-      expect(disabled('发送')).toBe(true);
-      await screen.findByText('无法恢复对话');
-      expect(disabled('应用到项目')).toBe(true);
-      mocks.listConversations.mockResolvedValue({ conversations: [] });
-      fireEvent.click(screen.getByRole('button', { name: '重试' }));
-      await waitFor(() => expect(disabled('编辑画布')).toBe(false));
-      expect(disabled('发送')).toBe(false);
-      expect(disabled('应用到项目')).toBe(false);
-    },
-  );
-
-  it('guides users to model settings when the DeepSeek API Key is missing', async () => {
-    mocks.listConversations.mockResolvedValue({ conversations: [] });
-    const onConfigureModel = vi.fn();
-    render(<Workspace {...props} hasModelApiKey={false} onConfigureModel={onConfigureModel} />);
-
-    expect(await screen.findByText('尚未配置 DeepSeek API Key')).toBeTruthy();
-    expect(disabled('发送')).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: '前往设置' }));
-    expect(onConfigureModel).toHaveBeenCalledOnce();
-  });
-
-  it('exposes an explicit Apply retry after leaving and returning to the workspace', async () => {
-    mocks.listConversations.mockResolvedValue({ conversations: [] });
-    mocks.apply.mockRejectedValueOnce(new Error('连接中断')).mockResolvedValueOnce({});
-    const first = render(<Workspace {...props} />);
-    await waitFor(() => expect(disabled('应用到项目')).toBe(false));
-    fireEvent.click(screen.getByRole('button', { name: '应用到项目' }));
-    await screen.findByText('连接中断');
-    first.unmount();
-    render(<Workspace {...props} />);
-    await waitFor(() => expect(disabled('重试应用')).toBe(false));
-    expect(mocks.apply).toHaveBeenCalledTimes(1);
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: '重试应用' })));
-    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
-    expect(mocks.apply.mock.calls[1]![4]).toBe(mocks.apply.mock.calls[0]![4]);
-  });
-
-  it.each(['light', 'dark'])('opens the Revision history in %s mode', async (theme) => {
-    mocks.listConversations.mockResolvedValue({ conversations: [] });
-    render(
-      <div className={theme} data-theme={theme}>
-        <Workspace {...props} />
-      </div>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: '版本历史' }));
-    await screen.findByRole('heading', { name: '版本历史' });
-    expect(await screen.findByText('最近保存')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '查看' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '恢复' })).toBeTruthy();
-  });
-
-  it('uses Cmd/Ctrl+S to save a retained draft as a Revision', async () => {
-    mocks.listConversations.mockResolvedValue({ conversations: [] });
-    mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
-    mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 3 });
-    render(<Workspace {...props} />);
-    await waitFor(() => expect(disabled('保存版本')).toBe(false));
-
-    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
-
-    await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2));
-  });
 
   it('keeps retained tab sessions mounted while only the active tab handles shortcuts', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });

@@ -34,6 +34,6 @@ pnpm --filter @origamix/template build
 pnpm --filter @origamix/server test:template
 ```
 
-- This package has no `test` script; root `pnpm test` does not establish template behavior coverage. Do not invent a test command. Use Server copy tests and standalone smoke checks; add suitable tests for new non-trivial logic.
+- This package has no `test` script; root `pnpm test` does not establish template behavior coverage. Do not invent a test command. Prefer the existing Server copy flow and standalone smoke checks; add a scenario only for a distinct portability or packaging risk those checks cannot express.
 - `test:template` installs dependencies into an isolated generated project and needs registry access or populated cache. Report missing prerequisites; never substitute a real user project.
 - For UI changes run the template dev server and verify both themes. Run root gates for source changes; coordinate Desktop resource checks when scaffold packaging changes.

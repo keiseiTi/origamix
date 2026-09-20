@@ -30,26 +30,6 @@ const docs: ProductDocument[] = [
 
 describe('ProductDocsProvider', () => {
   const provider = new ProductDocsProvider(docs);
-  it('searches title, keywords and full text', () => {
-    expect(provider.search({ query: '如何搭建表单' })[0]?.documentId).toBe('form-v1');
-    expect(provider.search({ query: '如何搭建表单' })[0]?.sectionId).toBe('fields');
-    expect(provider.search({ query: '添加字段' })[0]?.documentId).toBe('form-v1');
-  });
-  it('returns no result for an unrelated query', () =>
-    expect(provider.search({ query: '天气气温' })).toEqual([]));
-  it('filters exact document versions', () => {
-    expect(
-      provider.search({ query: '表单', version: '2.0.0' }).map(({ documentId }) => documentId),
-    ).toEqual(['form-v2']);
-  });
-  it('truncates bounded snippets', () => {
-    const result = new ProductDocsProvider([{ ...docs[0]!, markdown: '表单'.repeat(100) }]).search({
-      query: '表单',
-      maxSnippetChars: 64,
-    })[0]!;
-    expect(result.snippet.length).toBe(64);
-    expect(result.truncated).toBe(true);
-  });
   it('marks hostile content untrusted and neutralizes delimiters', () => {
     const result = provider.search({ query: '安全' })[0]!;
     expect(result.trust).toBe('untrusted_reference');

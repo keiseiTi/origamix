@@ -44,14 +44,13 @@ const message = (sequence: number, text: string): StoredMessage => ({
 });
 
 describe('ContextAssembler', () => {
-  it.each([0, 2, 100])('assembles current Schema for page size %i', async (count) => {
-    const getCurrent = vi
-      .fn()
-      .mockResolvedValue({
-        schema: schema(count),
-        revisionId: 'revision_current',
-        workingVersion: 1,
-      });
+  it('assembles the current Schema', async () => {
+    const count = 2;
+    const getCurrent = vi.fn().mockResolvedValue({
+      schema: schema(count),
+      revisionId: 'revision_current',
+      workingVersion: 1,
+    });
     const result = await new ContextAssembler(
       { getCurrent },
       { listMessages: () => [] },
@@ -81,28 +80,6 @@ describe('ContextAssembler', () => {
         expectedWorkingVersion: 1,
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
-  });
-
-  it('keeps newest history within a deterministic budget', async () => {
-    const messages = Array.from({ length: 20 }, (_, index) =>
-      message(index, `消息-${index}-` + '长'.repeat(40)),
-    );
-    const result = await new ContextAssembler(
-      {
-        getCurrent: async () => ({
-          schema: schema(),
-          revisionId: 'revision_current',
-          workingVersion: 1,
-        }),
-      },
-      { listMessages: () => messages },
-      new ProductDocsProvider(),
-      { maxChars: 4_000, maxHistoryMessages: 3, maxHistoryChars: 120 },
-    ).assemble({ page, conversationId: 'conversation_one', intent });
-    expect(result.history.at(-1)?.sequence).toBe(19);
-    expect(result.history[0]!.sequence).toBeGreaterThanOrEqual(17);
-    expect(result.truncated.history).toBe(true);
-    expect(result.sizeChars).toBeLessThanOrEqual(4_000);
   });
 
   it('does not use a hostile summary as Schema authority', async () => {
