@@ -30,7 +30,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Interaction contract
 
-- Use HeroUI foundations, Tailwind and Lucide under root rules; consult installed APIs and existing usage rather than assuming another major version.
+- Use the repository-owned shadcn/ui components in `src/components/ui/`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
 - Conversation/editor share one page context. The editor already loads and mutates Working Schema; keep that authority in the service-backed editor session rather than duplicating it in Workspace state.
 - Revision history is page-scoped and loaded on demand. Listing returns metadata; viewing fetches one immutable snapshot, while restoring copies it into Working as an unsaved draft. History actions never auto-save or auto-apply.
 - Editor fills the work area; overlay navigation must not resize the canvas. When editable state returns, flush pending edits before page/mode switches and preview, block transitions on save failure and safely clear invalid selections after Schema changes.

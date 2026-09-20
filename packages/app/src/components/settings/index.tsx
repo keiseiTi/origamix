@@ -1,4 +1,9 @@
-import { Button, Card, Chip, Input, Modal, Radio, RadioGroup } from '@heroui/react';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Dialog, DialogContent } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { AppTheme, UserProfile } from '../../store/preferences';
@@ -24,15 +29,14 @@ export const SettingsModal = ({
   onClose,
   ...settingsProps
 }: SettingsModalProps): React.JSX.Element => (
-  <Modal isOpen={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-    <Modal.Backdrop>
-      <Modal.Container className='p-4'>
-        <Modal.Dialog className='flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] max-w-none flex-col overflow-hidden p-0'>
-          <SettingsPage {...settingsProps} initialSection={initialSection} onClose={onClose} />
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
-  </Modal>
+  <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
+    <DialogContent
+      showCloseButton={false}
+      className='flex h-[min(760px,calc(100vh-32px))] w-[min(920px,calc(100vw-32px))] max-w-none flex-col overflow-hidden p-0 sm:max-w-none'
+    >
+      <SettingsPage {...settingsProps} initialSection={initialSection} onClose={onClose} />
+    </DialogContent>
+  </Dialog>
 );
 
 export const SettingsPage = ({
@@ -147,11 +151,10 @@ export const SettingsPage = ({
           <h1 className='m-0 text-sm font-semibold'>设置</h1>
         </div>
         <Button
-          isIconOnly
-          size='sm'
+          size='icon'
           variant='ghost'
           className='window-no-drag-region ml-auto h-8 min-h-8 w-8 min-w-8'
-          onPress={onClose}
+          onClick={onClose}
           aria-label='关闭设置'
         >
           <X size={17} />
@@ -168,7 +171,7 @@ export const SettingsPage = ({
                 设置显示在侧边栏底部的名称与图标颜色。
               </p>
             </div>
-            <Card className='p-4' variant='secondary'>
+            <Card className='p-4'>
               <div className='flex items-start gap-4'>
                 <span
                   className='grid h-12 w-12 shrink-0 place-items-center rounded-full text-white shadow-sm'
@@ -191,8 +194,7 @@ export const SettingsPage = ({
                       {profileColors.map((color) => (
                         <Button
                           key={color}
-                          isIconOnly
-                          size='sm'
+                          size='icon'
                           variant='ghost'
                           className={`h-8 min-h-8 w-8 min-w-8 rounded-full border-2 p-0 ${
                             iconBackground === color
@@ -200,7 +202,7 @@ export const SettingsPage = ({
                               : 'border-transparent'
                           }`}
                           style={{ backgroundColor: color }}
-                          onPress={() => setIconBackground(color)}
+                          onClick={() => setIconBackground(color)}
                           aria-label={`选择背景色 ${color}`}
                         >
                           {iconBackground === color && <Check size={14} className='text-white' />}
@@ -226,8 +228,8 @@ export const SettingsPage = ({
                     <Button
                       size='sm'
                       className='gap-1.5'
-                      onPress={saveProfile}
-                      isDisabled={isSavingProfile || !userName.trim()}
+                      onClick={saveProfile}
+                      disabled={isSavingProfile || !userName.trim()}
                     >
                       <Save size={14} />
                       {isSavingProfile ? '保存中…' : '保存用户设置'}
@@ -248,34 +250,25 @@ export const SettingsPage = ({
             <RadioGroup
               aria-label='主题设置'
               value={theme}
-              onChange={(value) => onThemeChange(value as AppTheme)}
-              orientation='horizontal'
+              onValueChange={(value) => onThemeChange(value as AppTheme)}
               className='grid grid-cols-2 gap-3'
             >
-              <Radio value='light'>
-                <Radio.Content className='flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900'>
-                  <Radio.Control>
-                    <Radio.Indicator />
-                  </Radio.Control>
-                  <Sun size={17} className='text-amber-500' />
-                  <span>
-                    <strong className='block'>浅色</strong>
-                    <small className='text-zinc-500'>明亮、清晰的默认主题</small>
-                  </span>
-                </Radio.Content>
-              </Radio>
-              <Radio value='dark'>
-                <Radio.Content className='flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900'>
-                  <Radio.Control>
-                    <Radio.Indicator />
-                  </Radio.Control>
-                  <Moon size={17} className='text-blue-500' />
-                  <span>
-                    <strong className='block'>深色</strong>
-                    <small className='text-zinc-500'>适合低光环境</small>
-                  </span>
-                </Radio.Content>
-              </Radio>
+              <label className='flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900'>
+                <RadioGroupItem value='light' />
+                <Sun size={17} className='text-amber-500' />
+                <span>
+                  <strong className='block'>浅色</strong>
+                  <small className='text-zinc-500'>明亮、清晰的默认主题</small>
+                </span>
+              </label>
+              <label className='flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900'>
+                <RadioGroupItem value='dark' />
+                <Moon size={17} className='text-blue-500' />
+                <span>
+                  <strong className='block'>深色</strong>
+                  <small className='text-zinc-500'>适合低光环境</small>
+                </span>
+              </label>
             </RadioGroup>
           </section>
 
@@ -288,10 +281,10 @@ export const SettingsPage = ({
                 </p>
               </div>
               {hasSavedKey && (
-                <Chip size='sm' color='success' variant='soft'>
+                <Badge variant='secondary' className='text-emerald-700 dark:text-emerald-300'>
                   <Check size={12} />
                   已配置
-                </Chip>
+                </Badge>
               )}
             </div>
 
@@ -301,10 +294,7 @@ export const SettingsPage = ({
               </span>
               选择模型
             </div>
-            <Card
-              className='mb-6 border-blue-500 bg-blue-50/60 p-4 dark:border-blue-700 dark:bg-blue-950/20'
-              variant='secondary'
-            >
+            <Card className='mb-6 border-blue-500 bg-blue-50/60 p-4 dark:border-blue-700 dark:bg-blue-950/20'>
               <div className='flex items-center gap-3'>
                 <span className='grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-white'>
                   <Bot size={18} />
@@ -312,9 +302,7 @@ export const SettingsPage = ({
                 <div className='min-w-0 flex-1'>
                   <div className='flex items-center gap-2'>
                     <strong>DeepSeek V4 Flash</strong>
-                    <Chip size='sm' variant='soft'>
-                      当前唯一支持
-                    </Chip>
+                    <Badge variant='secondary'>当前唯一支持</Badge>
                   </div>
                   <p className='mt-1 mb-0 text-xs text-zinc-500 dark:text-zinc-400'>
                     deepseek-v4-flash · 支持工具调用与结构化输出
@@ -332,7 +320,7 @@ export const SettingsPage = ({
               </span>
               设置 API Key
             </div>
-            <Card className='p-4' variant='secondary'>
+            <Card className='p-4'>
               <label className='mb-2 block text-xs font-medium'>DeepSeek API Key</label>
               <div className='flex items-center gap-2'>
                 <div className='relative min-w-0 flex-1'>
@@ -352,11 +340,10 @@ export const SettingsPage = ({
                     aria-label='DeepSeek API Key'
                   />
                   <Button
-                    isIconOnly
-                    size='sm'
+                    size='icon-sm'
                     variant='ghost'
                     className='absolute top-1/2 right-1 h-7 min-h-7 w-7 min-w-7 -translate-y-1/2'
-                    onPress={() => setShowApiKey((value) => !value)}
+                    onClick={() => setShowApiKey((value) => !value)}
                     aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}
                   >
                     {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -364,8 +351,8 @@ export const SettingsPage = ({
                 </div>
                 <Button
                   className='gap-1.5'
-                  onPress={save}
-                  isDisabled={isLoading || isSaving || (!apiKey && !hasSavedKey)}
+                  onClick={save}
+                  disabled={isLoading || isSaving || (!apiKey && !hasSavedKey)}
                 >
                   <Save size={14} />
                   {isSaving ? '保存中…' : '保存'}

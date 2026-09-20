@@ -1,4 +1,5 @@
-import { Button, Spinner } from '@heroui/react';
+import { Button } from '../ui/button';
+import { Spinner } from '../ui/spinner';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -111,8 +112,7 @@ const PreviewSurface = ({
   return (
     <main className='relative flex h-full flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
       <Button
-        isIconOnly
-        size='sm'
+        size='icon-sm'
         variant='secondary'
         className='fixed top-3 right-3 z-50 shadow-md'
         aria-label='退出预览'
@@ -129,12 +129,11 @@ const PreviewSurface = ({
             {error}。{snapshot ? '保留上次成功预览。' : '请重试。'}
           </span>
           <Button
-            isIconOnly
-            size='sm'
+            size='icon-sm'
             variant='secondary'
             aria-label='重试预览'
-            isDisabled={refreshing}
-            onPress={() => void refresh(true)}
+            disabled={refreshing}
+            onClick={() => void refresh(true)}
           >
             <RefreshCw size={15} />
           </Button>

@@ -1,4 +1,5 @@
-import { Button, Tooltip } from '@heroui/react';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { useEffect, useState } from 'react';
 import { Clock3, Eye, SquarePen, MessageSquare, RefreshCw, Save } from 'lucide-react';
 import { RevisionHistoryModal } from './revision-history-modal';
@@ -148,87 +149,105 @@ export const WorkspaceHeader = ({
             </span>
           )}
           <Tooltip>
-            <Button
-              isIconOnly
-              size='sm'
-              variant='ghost'
-              aria-label='版本历史'
-              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-              onPress={() => setHistoryOpen(true)}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='icon-sm'
+                  variant='ghost'
+                  aria-label='版本历史'
+                  className='text-zinc-500 dark:text-zinc-400'
+                  onClick={() => setHistoryOpen(true)}
+                />
+              }
             >
               <Clock3 size={15} />
-            </Button>
-            <Tooltip.Content placement='bottom'>查看和恢复历史版本</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent side='bottom'>查看和恢复历史版本</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <Button
-              size='sm'
-              variant='secondary'
-              className='h-7 min-h-7 px-2 text-xs'
-              isDisabled={savingVersion || applying || !canSaveVersion}
-              onPress={() => void saveVersion()}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  className='px-2 text-xs'
+                  disabled={savingVersion || applying || !canSaveVersion}
+                  onClick={() => void saveVersion()}
+                />
+              }
             >
               <Save size={14} />
               {savingVersion ? '保存中…' : '保存版本'}
-            </Button>
-            <Tooltip.Content placement='bottom'>把当前草稿保存为可恢复的历史版本</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent side='bottom'>把当前草稿保存为可恢复的历史版本</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <Button
-              size='sm'
-              variant='secondary'
-              className='h-7 min-h-7 px-2 text-xs'
-              isDisabled={opening || applying || !canApply}
-              onPress={() => void apply()}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  className='px-2 text-xs'
+                  disabled={opening || applying || !canApply}
+                  onClick={() => void apply()}
+                />
+              }
             >
               {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
-            </Button>
-            <Tooltip.Content placement='bottom'>把当前已保存页面写入真实项目</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent side='bottom'>把当前已保存页面写入真实项目</TooltipContent>
           </Tooltip>
           {applyStatus === 'external_change' && (
             <Tooltip>
-              <Button
-                isIconOnly
-                size='sm'
-                variant='ghost'
-                aria-label='重新读取项目内容'
-                isDisabled={reloading || applying || !canReload}
-                onPress={() => void reload()}
+              <TooltipTrigger
+                render={
+                  <Button
+                    size='icon-sm'
+                    variant='ghost'
+                    aria-label='重新读取项目内容'
+                    disabled={reloading || applying || !canReload}
+                    onClick={() => void reload()}
+                  />
+                }
               >
                 <RefreshCw size={15} />
-              </Button>
-              <Tooltip.Content placement='bottom'>放弃草稿并重新读取项目 Schema</Tooltip.Content>
+              </TooltipTrigger>
+              <TooltipContent side='bottom'>放弃草稿并重新读取项目 Schema</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
-            <Button
-              isIconOnly
-              size='sm'
-              aria-label={mode === 'edit' ? '返回对话' : '编辑'}
-              variant='ghost'
-              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-              isDisabled={opening}
-              onPress={() => void onModeChange(mode === 'edit' ? 'chat' : 'edit')}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='icon-sm'
+                  aria-label={mode === 'edit' ? '返回对话' : '编辑'}
+                  variant='ghost'
+                  className='text-zinc-500 dark:text-zinc-400'
+                  disabled={opening}
+                  onClick={() => void onModeChange(mode === 'edit' ? 'chat' : 'edit')}
+                />
+              }
             >
               {mode === 'edit' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
-            </Button>
-            <Tooltip.Content placement='bottom'>
-              {mode === 'edit' ? '返回对话' : '编辑'}
-            </Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent side='bottom'>{mode === 'edit' ? '返回对话' : '编辑'}</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <Button
-              isIconOnly
-              size='sm'
-              variant='ghost'
-              className='h-7 min-h-7 w-7 min-w-7 text-zinc-500 dark:text-zinc-400'
-              aria-label='预览'
-              isDisabled={opening}
-              onPress={() => void openWindow()}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='icon-sm'
+                  variant='ghost'
+                  className='text-zinc-500 dark:text-zinc-400'
+                  aria-label='预览'
+                  disabled={opening}
+                  onClick={() => void openWindow()}
+                />
+              }
             >
               <Eye size={15} />
-            </Button>
-            <Tooltip.Content placement='bottom'>在应用标签中打开预览</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent side='bottom'>在应用标签中打开预览</TooltipContent>
           </Tooltip>
         </div>
       </header>

@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button } from '../ui/button';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -87,8 +87,7 @@ export const SidebarActionMenu = ({
     <>
       <Button
         ref={triggerRef}
-        isIconOnly
-        size='sm'
+        size='icon-xs'
         variant='ghost'
         className={`h-6 min-h-6 w-6 min-w-6 hover:bg-zinc-200 focus-visible:opacity-100 dark:hover:bg-zinc-800 ${
           isOpen
@@ -98,7 +97,7 @@ export const SidebarActionMenu = ({
         aria-label={label}
         aria-haspopup='menu'
         aria-expanded={isOpen}
-        onPress={toggleMenu}
+        onClick={toggleMenu}
       >
         <Ellipsis size={15} />
       </Button>

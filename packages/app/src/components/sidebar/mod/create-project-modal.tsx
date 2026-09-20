@@ -1,4 +1,15 @@
-import { Button, FieldError, Form, Input, Label, Modal, TextField, Tooltip } from '@heroui/react';
+import { Button } from '../../ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../ui/dialog';
+import { Field, FieldLabel } from '../../ui/field';
+import { Input } from '../../ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import type { ProjectItem } from '../../../store/workspace';
@@ -63,118 +74,113 @@ export const CreateProjectModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => !open && close()}>
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void createProject();
-              }}
-            >
-              <Modal.Header>
-                <Modal.Heading>新建项目</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className='grid gap-4'>
-                <TextField fullWidth isRequired>
-                  <Label>项目名称</Label>
-                  <Input
-                    className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
-                    name='projectName'
-                    value={name}
-                    placeholder='请输入'
-                    onChange={(event) => setName(event.target.value)}
-                    autoFocus
-                    required
-                  />
-                  <FieldError>请输入项目名称</FieldError>
-                </TextField>
-                <TextField fullWidth isRequired>
-                  <Label>项目标识</Label>
-                  <Input
-                    className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
-                    name='projectCode'
-                    value={code}
-                    placeholder='请输入'
-                    onChange={(event) => setCode(event.target.value)}
-                    required
-                  />
-                  <FieldError>
-                    必须小于或等于 214 个字符，不能包含大写字母、URL 非法字符或空格
-                  </FieldError>
-                </TextField>
-                <TextField fullWidth isRequired>
-                  <div className='flex items-center gap-1.5'>
-                    <Label>页面目录路径</Label>
-                    <Tooltip>
-                      <Button
-                        isIconOnly
-                        size='sm'
-                        variant='tertiary'
-                        className='size-5 min-h-5 min-w-5 text-zinc-500 dark:text-zinc-400'
-                        aria-label='页面目录路径说明'
-                      >
-                        <Info size={14} />
-                      </Button>
-                      <Tooltip.Content placement='top'>页面创建在 src 路径下</Tooltip.Content>
-                    </Tooltip>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    <Input
-                      className='focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
-                      name='pageDirectory'
-                      value={pageDirectory}
-                      placeholder='pages'
-                      pattern='[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*'
-                      onChange={(event) => setPageDirectory(event.target.value)}
-                      required
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void createProject();
+          }}
+          className='grid gap-4'
+        >
+          <DialogHeader>
+            <DialogTitle>新建项目</DialogTitle>
+          </DialogHeader>
+          <Field>
+            <FieldLabel htmlFor='projectName'>项目名称</FieldLabel>
+            <Input
+              id='projectName'
+              name='projectName'
+              value={name}
+              placeholder='请输入'
+              onChange={(event) => setName(event.target.value)}
+              autoFocus
+              required
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor='projectCode'>项目标识</FieldLabel>
+            <Input
+              id='projectCode'
+              name='projectCode'
+              value={code}
+              placeholder='请输入'
+              onChange={(event) => setCode(event.target.value)}
+              required
+            />
+          </Field>
+          <Field>
+            <div className='flex items-center gap-1.5'>
+              <FieldLabel htmlFor='pageDirectory'>页面目录路径</FieldLabel>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type='button'
+                      size='icon-xs'
+                      variant='ghost'
+                      className='size-5 text-zinc-500 dark:text-zinc-400'
+                      aria-label='页面目录路径说明'
                     />
-                  </div>
-                  <FieldError>请输入 src 下的页面目录，例如 pages 或 modules/pages</FieldError>
-                </TextField>
-                <TextField fullWidth isRequired>
-                  <div className='flex items-center gap-1.5'>
-                    <Label>生成地址</Label>
-                    <Tooltip>
-                      <Button
-                        isIconOnly
-                        size='sm'
-                        variant='tertiary'
-                        className='size-5 min-h-5 min-w-5 text-zinc-500 dark:text-zinc-400'
-                        aria-label='页面目录路径说明'
-                      >
-                        <Info size={14} />
-                      </Button>
-                      <Tooltip.Content placement='top'>项目生成的路径地址</Tooltip.Content>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    name='directory'
-                    className='flex-1 focus:!ring-0 data-[focused=true]:!ring-0 data-[focus-visible=true]:!ring-0'
-                    onClick={chooseDirectory}
-                    value={directory}
-                    readOnly
-                    placeholder='选择目录'
-                    required
-                  />
-                  <FieldError>请选择项目所在的目录</FieldError>
-                </TextField>
-                {error && <p className='text-sm text-danger'>{error}</p>}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button slot='close' variant='tertiary' type='button'>
-                  取消
-                </Button>
-                <Button type='submit' isDisabled={isSubmitting}>
-                  {isSubmitting ? '创建中…' : '创建项目'}
-                </Button>
-              </Modal.Footer>
-            </Form>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                  }
+                >
+                  <Info size={14} />
+                </TooltipTrigger>
+                <TooltipContent>页面创建在 src 路径下</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className='flex items-center gap-2'>
+              <Input
+                id='pageDirectory'
+                name='pageDirectory'
+                value={pageDirectory}
+                placeholder='pages'
+                pattern='[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*'
+                onChange={(event) => setPageDirectory(event.target.value)}
+                required
+              />
+            </div>
+          </Field>
+          <Field>
+            <div className='flex items-center gap-1.5'>
+              <FieldLabel htmlFor='directory'>生成地址</FieldLabel>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type='button'
+                      size='icon-xs'
+                      variant='ghost'
+                      className='size-5 text-zinc-500 dark:text-zinc-400'
+                      aria-label='生成地址说明'
+                    />
+                  }
+                >
+                  <Info size={14} />
+                </TooltipTrigger>
+                <TooltipContent>项目生成的路径地址</TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              id='directory'
+              name='directory'
+              className='flex-1'
+              onClick={chooseDirectory}
+              value={directory}
+              readOnly
+              placeholder='选择目录'
+              required
+            />
+          </Field>
+          {error && <p className='text-sm text-danger'>{error}</p>}
+          <DialogFooter>
+            <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>
+            <Button type='submit' disabled={isSubmitting}>
+              {isSubmitting ? '创建中…' : '创建项目'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

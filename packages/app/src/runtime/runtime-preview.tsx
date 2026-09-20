@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button } from '../components/ui/button';
 import materialComponents from '@origamix/materials/antd';
 import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime/react';
 import type { Schema } from '@tangramino/engine';
@@ -39,7 +39,7 @@ export const RuntimePreview = ({
           >
             <strong className='block'>页面渲染失败</strong>
             <span className='mt-1 block'>{error.message}</span>
-            <Button className='mt-4' size='sm' variant='secondary' onPress={retry}>
+            <Button className='mt-4' size='sm' variant='secondary' onClick={retry}>
               重试渲染
             </Button>
           </div>

@@ -1,4 +1,14 @@
-import { Button, Form, Input, Label, Modal, TextField } from '@heroui/react';
+import { Button } from '../../ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../ui/dialog';
+import { Field, FieldLabel } from '../../ui/field';
+import { Input } from '../../ui/input';
 import { useState } from 'react';
 
 export type LifecycleTarget =
@@ -38,70 +48,63 @@ export const LifecycleModal = ({
   };
 
   return (
-    <Modal isOpen={target !== null} onOpenChange={(open) => !open && onClose()}>
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submit();
-              }}
+    <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+          className='grid gap-4'
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {deleting
+                ? `删除${project ? '项目' : '页面'}`
+                : `修改${project ? '项目' : '页面'}名称`}
+            </DialogTitle>
+          </DialogHeader>
+          {deleting ? (
+            <>
+              <p className='text-sm text-zinc-700 dark:text-zinc-300'>
+                确定删除“{target?.name}”吗？相关桌面端记录将被删除，且无法恢复。
+              </p>
+              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                不会删除磁盘中的实际{project ? '项目' : '页面'}文件。
+              </p>
+            </>
+          ) : (
+            <Field>
+              <FieldLabel htmlFor='lifecycleName'>{project ? '项目名称' : '页面名称'}</FieldLabel>
+              <Input
+                id='lifecycleName'
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                autoFocus
+                required
+              />
+              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                不会修改磁盘中的{project ? '项目文件夹' : '页面路径'}。
+              </p>
+            </Field>
+          )}
+          {error && (
+            <p role='alert' className='text-sm text-danger'>
+              {error}
+            </p>
+          )}
+          <DialogFooter>
+            <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>
+            <Button
+              type='submit'
+              variant={deleting ? 'destructive' : 'default'}
+              disabled={submitting}
             >
-              <Modal.Header>
-                <Modal.Heading>
-                  {deleting
-                    ? `删除${project ? '项目' : '页面'}`
-                    : `修改${project ? '项目' : '页面'}名称`}
-                </Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className='grid gap-4'>
-                {deleting ? (
-                  <>
-                    <p className='text-sm text-zinc-700 dark:text-zinc-300'>
-                      确定删除“{target?.name}”吗？相关桌面端记录将被删除，且无法恢复。
-                    </p>
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
-                      不会删除磁盘中的实际{project ? '项目' : '页面'}文件。
-                    </p>
-                  </>
-                ) : (
-                  <TextField fullWidth isRequired>
-                    <Label>{project ? '项目名称' : '页面名称'}</Label>
-                    <Input
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
-                      不会修改磁盘中的{project ? '项目文件夹' : '页面路径'}。
-                    </p>
-                  </TextField>
-                )}
-                {error && (
-                  <p role='alert' className='text-sm text-danger'>
-                    {error}
-                  </p>
-                )}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button slot='close' variant='tertiary' type='button'>
-                  取消
-                </Button>
-                <Button
-                  type='submit'
-                  className={deleting ? 'bg-danger text-danger-foreground' : undefined}
-                  isDisabled={submitting}
-                >
-                  {submitting ? '处理中…' : deleting ? '删除' : '保存'}
-                </Button>
-              </Modal.Footer>
-            </Form>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+              {submitting ? '处理中…' : deleting ? '删除' : '保存'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

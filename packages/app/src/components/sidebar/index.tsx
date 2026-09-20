@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button } from '../ui/button';
 import {
   Folder,
   FolderOpen,
@@ -121,8 +121,8 @@ export const Sidebar = ({
         <Button
           variant='ghost'
           className='mt-2 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
-          onPress={openProjectModal}
-          isDisabled={!supportsNativeProjectDirectories}
+          onClick={openProjectModal}
+          disabled={!supportsNativeProjectDirectories}
           aria-label={
             supportsNativeProjectDirectories ? '新建项目' : '新建项目；浏览器端下载与导入尚未接入'
           }
@@ -133,14 +133,14 @@ export const Sidebar = ({
         <Button
           variant='ghost'
           className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
-          onPress={() => {
+          onClick={() => {
             keepSidebarOpen();
             setActionError(null);
             void onOpenProject().catch((reason: unknown) =>
               setActionError(reason instanceof Error ? reason.message : '项目打开失败'),
             );
           }}
-          isDisabled={!supportsNativeProjectDirectories}
+          disabled={!supportsNativeProjectDirectories}
           aria-label={
             supportsNativeProjectDirectories ? '打开项目' : '打开项目；浏览器不能直接访问本机目录'
           }
@@ -175,11 +175,10 @@ export const Sidebar = ({
                   }
                 />
                 <Button
-                  isIconOnly
-                  size='sm'
+                  size='icon-xs'
                   variant='ghost'
                   className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-                  onPress={() => openPageModal(project.id)}
+                  onClick={() => openPageModal(project.id)}
                   aria-label={`在 ${project.name} 中新建页面`}
                 >
                   <Plus size={14} />
@@ -196,7 +195,7 @@ export const Sidebar = ({
                 >
                   <Button
                     variant='ghost'
-                    onPress={() => onSelectPage(page.id)}
+                    onClick={() => onSelectPage(page.id)}
                     className='h-full min-w-0 flex-1 justify-start gap-2 bg-transparent px-4 text-left text-inherit hover:bg-transparent'
                   >
                     <MessageSquareText size={13} />
@@ -229,7 +228,7 @@ export const Sidebar = ({
         <Button
           variant='ghost'
           className='mt-auto h-10 w-full justify-start gap-2.5 px-2 text-zinc-600 hover:bg-white hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
-          onPress={openSettingsModal}
+          onClick={openSettingsModal}
         >
           <span
             className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-white shadow-sm'
@@ -279,7 +278,7 @@ export const Sidebar = ({
           className='fixed bottom-4 left-4 z-50 rounded-lg bg-danger p-3 text-sm text-danger-foreground'
         >
           {actionError}
-          <Button size='sm' variant='ghost' onPress={() => setActionError(null)}>
+          <Button size='sm' variant='ghost' onClick={() => setActionError(null)}>
             关闭
           </Button>
         </div>

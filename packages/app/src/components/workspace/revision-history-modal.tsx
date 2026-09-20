@@ -1,4 +1,13 @@
-import { Button, Modal, Spinner } from '@heroui/react';
+import { Button } from '../ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { Spinner } from '../ui/spinner';
 import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { Check, GitCommitHorizontal, RotateCcw } from 'lucide-react';
@@ -81,92 +90,81 @@ export const RevisionHistoryModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Modal.Backdrop>
-        <Modal.Container>
-          <Modal.Dialog className='max-w-3xl'>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>版本历史</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className='grid max-h-[70vh] gap-3 overflow-y-auto'>
-              {loading ? (
-                <div className='grid min-h-36 place-items-center'>
-                  <Spinner aria-label='加载版本历史' />
-                </div>
-              ) : revisions.length === 0 ? (
-                <p className='rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-                  暂无已保存版本
-                </p>
-              ) : (
-                <ol className='grid gap-2' aria-label='版本列表'>
-                  {revisions.map((revision) => (
-                    <li
-                      key={revision.revisionId}
-                      className='flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700'
-                    >
-                      <GitCommitHorizontal className='shrink-0 text-zinc-400' size={17} />
-                      <div className='min-w-0 flex-1'>
-                        <div className='flex flex-wrap items-center gap-2 text-sm font-medium'>
-                          <span>{sourceLabel(revision)}</span>
-                          {revision.isCurrent && (
-                            <span className='rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary'>
-                              最近保存
-                            </span>
-                          )}
-                          {revision.isApplied && (
-                            <span className='inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] text-success'>
-                              <Check size={11} /> 已应用
-                            </span>
-                          )}
-                        </div>
-                        <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
-                          {new Date(revision.createdAt).toLocaleString()} ·{' '}
-                          {revision.schemaHash.slice(0, 10)}
-                        </p>
-                      </div>
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        onPress={() => void view(revision.revisionId)}
-                      >
-                        查看
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant='secondary'
-                        isDisabled={!canRestore || restoring !== null}
-                        onPress={() => void restore(revision.revisionId)}
-                      >
-                        <RotateCcw size={13} />
-                        {restoring === revision.revisionId ? '恢复中…' : '恢复'}
-                      </Button>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              {selected && (
-                <section aria-label='版本内容' className='grid gap-2'>
-                  <h3 className='text-sm font-medium'>版本内容</h3>
-                  <pre className='max-h-64 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
-                    {JSON.stringify(selected.schema, null, 2)}
-                  </pre>
-                </section>
-              )}
-              {error && (
-                <p role='alert' className='text-sm text-danger'>
-                  {error}
-                </p>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button slot='close' variant='tertiary'>
-                关闭
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className='max-w-3xl sm:max-w-3xl'>
+        <DialogHeader>
+          <DialogTitle>版本历史</DialogTitle>
+        </DialogHeader>
+        <div className='grid max-h-[70vh] gap-3 overflow-y-auto'>
+          {loading ? (
+            <div className='grid min-h-36 place-items-center'>
+              <Spinner aria-label='加载版本历史' />
+            </div>
+          ) : revisions.length === 0 ? (
+            <p className='rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
+              暂无已保存版本
+            </p>
+          ) : (
+            <ol className='grid gap-2' aria-label='版本列表'>
+              {revisions.map((revision) => (
+                <li
+                  key={revision.revisionId}
+                  className='flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700'
+                >
+                  <GitCommitHorizontal className='shrink-0 text-zinc-400' size={17} />
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex flex-wrap items-center gap-2 text-sm font-medium'>
+                      <span>{sourceLabel(revision)}</span>
+                      {revision.isCurrent && (
+                        <span className='rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary'>
+                          最近保存
+                        </span>
+                      )}
+                      {revision.isApplied && (
+                        <span className='inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] text-success'>
+                          <Check size={11} /> 已应用
+                        </span>
+                      )}
+                    </div>
+                    <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
+                      {new Date(revision.createdAt).toLocaleString()} ·{' '}
+                      {revision.schemaHash.slice(0, 10)}
+                    </p>
+                  </div>
+                  <Button size='sm' variant='ghost' onClick={() => void view(revision.revisionId)}>
+                    查看
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    disabled={!canRestore || restoring !== null}
+                    onClick={() => void restore(revision.revisionId)}
+                  >
+                    <RotateCcw size={13} />
+                    {restoring === revision.revisionId ? '恢复中…' : '恢复'}
+                  </Button>
+                </li>
+              ))}
+            </ol>
+          )}
+          {selected && (
+            <section aria-label='版本内容' className='grid gap-2'>
+              <h3 className='text-sm font-medium'>版本内容</h3>
+              <pre className='max-h-64 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
+                {JSON.stringify(selected.schema, null, 2)}
+              </pre>
+            </section>
+          )}
+          {error && (
+            <p role='alert' className='text-sm text-danger'>
+              {error}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <DialogClose render={<Button variant='outline' />}>关闭</DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

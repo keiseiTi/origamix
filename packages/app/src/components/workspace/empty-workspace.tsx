@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button } from '../ui/button';
 import { Plus, Sparkles } from 'lucide-react';
 
 export const EmptyWorkspace = ({
@@ -21,8 +21,8 @@ export const EmptyWorkspace = ({
       </p>
       <Button
         className='gap-1.5'
-        onPress={onCreateProject}
-        isDisabled={!supportsNativeProjectDirectories}
+        onClick={onCreateProject}
+        disabled={!supportsNativeProjectDirectories}
       >
         <Plus size={14} />
         新建项目

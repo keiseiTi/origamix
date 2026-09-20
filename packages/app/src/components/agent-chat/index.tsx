@@ -1,4 +1,6 @@
-import { Button, Spinner, TextArea } from '@heroui/react';
+import { Button } from '../ui/button';
+import { Spinner } from '../ui/spinner';
+import { Textarea } from '../ui/textarea';
 import {
   CircleStop,
   KeyRound,
@@ -81,7 +83,7 @@ export const ChatWorkspace = ({
         </div>
         {state.connection === 'recovering' && state.messages.length === 0 ? (
           <div className='flex items-center gap-2 text-zinc-500' role='status'>
-            <Spinner size='sm' />
+            <Spinner className='size-3.5' />
             正在恢复对话…
           </div>
         ) : state.messages.length === 0 && !state.error ? (
@@ -143,7 +145,7 @@ export const ChatWorkspace = ({
         {state.workingRefreshKey && (
           <div className='mt-3 flex items-center gap-2' role='status'>
             <span className='text-xs text-success'>AI 已修改草稿，尚未保存版本。</span>
-            <Button size='sm' variant='ghost' onPress={() => void onViewChanges()}>
+            <Button size='sm' variant='ghost' onClick={() => void onViewChanges()}>
               查看修改
             </Button>
           </div>
@@ -156,7 +158,7 @@ export const ChatWorkspace = ({
             <span className='min-w-0 flex-1'>
               {state.error ?? '上次发送结果待确认，请重试确认结果。'}
             </span>
-            <Button size='sm' variant='ghost' onPress={() => void retry().catch(() => undefined)}>
+            <Button size='sm' variant='ghost' onClick={() => void retry().catch(() => undefined)}>
               <RotateCcw size={13} />
               重试
             </Button>
@@ -176,12 +178,12 @@ export const ChatWorkspace = ({
                 配置后即可开始 AI 对话。
               </span>
             </div>
-            <Button size='sm' variant='ghost' onPress={onConfigureModel}>
+            <Button size='sm' variant='ghost' onClick={onConfigureModel}>
               前往设置
             </Button>
           </div>
         )}
-        <TextArea
+        <Textarea
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={(event) => {
@@ -191,7 +193,6 @@ export const ChatWorkspace = ({
             }
           }}
           disabled={activity !== 'idle' || modelConfigurationRequired}
-          variant='secondary'
           className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
           aria-label='发送消息'
           placeholder={
@@ -213,7 +214,7 @@ export const ChatWorkspace = ({
             <Button
               size='sm'
               variant='secondary'
-              onPress={() => void cancel()}
+              onClick={() => void cancel()}
               aria-label='停止生成'
             >
               <CircleStop size={14} />
@@ -221,12 +222,11 @@ export const ChatWorkspace = ({
             </Button>
           ) : (
             <Button
-              isIconOnly
-              size='sm'
+              size='icon-sm'
               className='h-7 min-h-7 w-7 min-w-7'
               aria-label='发送'
-              isDisabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
-              onPress={() => void submit()}
+              disabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
+              onClick={() => void submit()}
             >
               <Send size={15} />
             </Button>

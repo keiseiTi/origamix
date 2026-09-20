@@ -1,4 +1,6 @@
-import { Button, Spinner } from '@heroui/react';
+import { Button } from './components/ui/button';
+import { Spinner } from './components/ui/spinner';
+import { TooltipProvider } from './components/ui/tooltip';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './components/sidebar';
@@ -223,157 +225,159 @@ const App = (): React.JSX.Element => {
     />
   );
   return (
-    <main
-      className='flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'
-      data-theme={theme}
-    >
-      {sidebarVisible && sidebar}
-      {transitionError && (
-        <div
-          role='alert'
-          className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
-        >
-          操作未完成：{transitionError}。编辑内容已保留，请重试。
-        </div>
-      )}
-      <button
-        type='button'
-        className={`window-no-drag-region fixed top-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
-          isMacDesktop ? 'left-21' : 'left-1.5'
-        } grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary`}
-        onMouseEnter={() => sidebarCollapsed && sidebarPeekEnabled && setSidebarPeek(true)}
-        onMouseLeave={() => sidebarCollapsed && setSidebarPeekEnabled(true)}
-        onClick={sidebarCollapsed ? pinSidebarOpen : collapseSidebar}
-        aria-expanded={sidebarPeek}
-        aria-controls='project-sidebar'
-        aria-label={
-          sidebarCollapsed ? (sidebarPeek ? '固定展开侧边栏' : '展开侧边栏') : '收起侧边栏'
-        }
+    <TooltipProvider>
+      <main
+        className='flex h-full w-full overflow-hidden bg-white text-[13px] text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'
+        data-theme={theme}
       >
-        {sidebarCollapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
-      </button>
-
-      {!workspaceReady ? (
-        <section
-          className='flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400'
-          aria-busy={!workspaceError}
-          aria-label='恢复工作区'
+        {sidebarVisible && sidebar}
+        {transitionError && (
+          <div
+            role='alert'
+            className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
+          >
+            操作未完成：{transitionError}。编辑内容已保留，请重试。
+          </div>
+        )}
+        <button
+          type='button'
+          className={`window-no-drag-region fixed top-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
+            isMacDesktop ? 'left-21' : 'left-1.5'
+          } grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary`}
+          onMouseEnter={() => sidebarCollapsed && sidebarPeekEnabled && setSidebarPeek(true)}
+          onMouseLeave={() => sidebarCollapsed && setSidebarPeekEnabled(true)}
+          onClick={sidebarCollapsed ? pinSidebarOpen : collapseSidebar}
+          aria-expanded={sidebarPeek}
+          aria-controls='project-sidebar'
+          aria-label={
+            sidebarCollapsed ? (sidebarPeek ? '固定展开侧边栏' : '展开侧边栏') : '收起侧边栏'
+          }
         >
-          {workspaceError ? (
-            <>
-              <p role='alert'>工作区恢复失败：{workspaceError}</p>
-              <Button variant='secondary' onPress={() => window.location.reload()}>
-                重新加载
-              </Button>
-            </>
-          ) : (
-            <>
-              <Spinner aria-label='正在恢复工作区' />
-              <p role='status'>正在恢复工作区…</p>
-            </>
-          )}
-        </section>
-      ) : (
-        <section className='flex min-w-0 flex-1 flex-col'>
-          {openPageIds.length > 0 && (
-            <PageTabs
-              pages={openPageIds.flatMap((pageId) => {
-                const page = projects
-                  .flatMap((project) => project.pages)
-                  .find((item) => item.id === pageId);
-                return page ? [page] : [];
-              })}
-              activePageId={selectedPageId}
-              sidebarCollapsed={sidebarCollapsed}
-              isMacDesktop={isMacDesktop}
-              onSelect={(pageId) => void transition(() => selectPage(pageId))}
-              onClose={(pageId) => void transition(() => closePage(pageId))}
-            />
-          )}
-          {openPageIds.length === 0 && (
-            <div
-              aria-hidden='true'
-              className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
-            >
-              {sidebarCollapsed && isMacDesktop && (
-                <span className='window-no-drag-region w-32 shrink-0' />
-              )}
-              <span className='window-drag-region min-w-0 flex-1' />
-            </div>
-          )}
-          <div className='relative flex min-h-0 flex-1'>
-            {mountedPages.map(({ pageId, project, page }) => {
-              const active = pageId === selectedPageId;
-              return (
-                <div
-                  key={pageId}
-                  className={`absolute inset-0 flex min-h-0 ${active ? 'visible' : 'invisible pointer-events-none'}`}
-                  aria-hidden={!active}
-                  inert={active ? undefined : true}
-                >
-                  <Workspace
-                    active={active}
-                    page={page}
-                    projectId={project.id}
-                    projectName={project.name}
-                    mode={pageModes[pageId] ?? 'chat'}
-                    theme={theme}
-                    editorRef={editorRefForPage(pageId)}
-                    onModeChange={(mode) => changeMode(pageId, mode)}
-                    onPreview={() => openPreview(pageId)}
-                    draft={pageDrafts[pageId] ?? ''}
-                    onDraftChange={(draft) => setPageDraft(pageId, draft)}
-                    hasModelApiKey={hasModelApiKey}
-                    onConfigureModel={openModelSettings}
-                    supportsNativeProjectDirectories={supportsNativeProjectDirectories}
-                    schemaRefreshKey={schemaRefreshKeys[pageId] ?? ''}
-                    onSchemaCommitted={(committedPageId, revisionId) => {
-                      setSchemaRefreshKeys((current) => ({
-                        ...current,
-                        [committedPageId]: revisionId,
-                      }));
-                    }}
-                    onCreateProject={() => setIsHomeProjectModalOpen(true)}
-                  />
-                </div>
-              );
-            })}
-            {mountedPages.length === 0 && (
-              <Workspace
-                mode='chat'
-                theme={theme}
-                editorRef={emptyEditorRef}
-                onModeChange={async () => undefined}
-                onPreview={async () => undefined}
-                draft=''
-                onDraftChange={() => undefined}
-                supportsNativeProjectDirectories={supportsNativeProjectDirectories}
-                schemaRefreshKey=''
-                onSchemaCommitted={() => undefined}
-                onCreateProject={() => setIsHomeProjectModalOpen(true)}
+          {sidebarCollapsed ? <PanelLeft size={17} /> : <PanelLeftClose size={17} />}
+        </button>
+
+        {!workspaceReady ? (
+          <section
+            className='flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400'
+            aria-busy={!workspaceError}
+            aria-label='恢复工作区'
+          >
+            {workspaceError ? (
+              <>
+                <p role='alert'>工作区恢复失败：{workspaceError}</p>
+                <Button variant='secondary' onClick={() => window.location.reload()}>
+                  重新加载
+                </Button>
+              </>
+            ) : (
+              <>
+                <Spinner aria-label='正在恢复工作区' />
+                <p role='status'>正在恢复工作区…</p>
+              </>
+            )}
+          </section>
+        ) : (
+          <section className='flex min-w-0 flex-1 flex-col'>
+            {openPageIds.length > 0 && (
+              <PageTabs
+                pages={openPageIds.flatMap((pageId) => {
+                  const page = projects
+                    .flatMap((project) => project.pages)
+                    .find((item) => item.id === pageId);
+                  return page ? [page] : [];
+                })}
+                activePageId={selectedPageId}
+                sidebarCollapsed={sidebarCollapsed}
+                isMacDesktop={isMacDesktop}
+                onSelect={(pageId) => void transition(() => selectPage(pageId))}
+                onClose={(pageId) => void transition(() => closePage(pageId))}
               />
             )}
-          </div>
-        </section>
-      )}
+            {openPageIds.length === 0 && (
+              <div
+                aria-hidden='true'
+                className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
+              >
+                {sidebarCollapsed && isMacDesktop && (
+                  <span className='window-no-drag-region w-32 shrink-0' />
+                )}
+                <span className='window-drag-region min-w-0 flex-1' />
+              </div>
+            )}
+            <div className='relative flex min-h-0 flex-1'>
+              {mountedPages.map(({ pageId, project, page }) => {
+                const active = pageId === selectedPageId;
+                return (
+                  <div
+                    key={pageId}
+                    className={`absolute inset-0 flex min-h-0 ${active ? 'visible' : 'invisible pointer-events-none'}`}
+                    aria-hidden={!active}
+                    inert={active ? undefined : true}
+                  >
+                    <Workspace
+                      active={active}
+                      page={page}
+                      projectId={project.id}
+                      projectName={project.name}
+                      mode={pageModes[pageId] ?? 'chat'}
+                      theme={theme}
+                      editorRef={editorRefForPage(pageId)}
+                      onModeChange={(mode) => changeMode(pageId, mode)}
+                      onPreview={() => openPreview(pageId)}
+                      draft={pageDrafts[pageId] ?? ''}
+                      onDraftChange={(draft) => setPageDraft(pageId, draft)}
+                      hasModelApiKey={hasModelApiKey}
+                      onConfigureModel={openModelSettings}
+                      supportsNativeProjectDirectories={supportsNativeProjectDirectories}
+                      schemaRefreshKey={schemaRefreshKeys[pageId] ?? ''}
+                      onSchemaCommitted={(committedPageId, revisionId) => {
+                        setSchemaRefreshKeys((current) => ({
+                          ...current,
+                          [committedPageId]: revisionId,
+                        }));
+                      }}
+                      onCreateProject={() => setIsHomeProjectModalOpen(true)}
+                    />
+                  </div>
+                );
+              })}
+              {mountedPages.length === 0 && (
+                <Workspace
+                  mode='chat'
+                  theme={theme}
+                  editorRef={emptyEditorRef}
+                  onModeChange={async () => undefined}
+                  onPreview={async () => undefined}
+                  draft=''
+                  onDraftChange={() => undefined}
+                  supportsNativeProjectDirectories={supportsNativeProjectDirectories}
+                  schemaRefreshKey=''
+                  onSchemaCommitted={() => undefined}
+                  onCreateProject={() => setIsHomeProjectModalOpen(true)}
+                />
+              )}
+            </div>
+          </section>
+        )}
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        initialSection={settingsSection}
-        theme={theme}
-        userProfile={userProfile}
-        onThemeChange={setTheme}
-        onProfileChange={setUserProfile}
-        onModelConfiguredChange={setHasModelApiKey}
-        onClose={closeSettings}
-      />
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          initialSection={settingsSection}
+          theme={theme}
+          userProfile={userProfile}
+          onThemeChange={setTheme}
+          onProfileChange={setUserProfile}
+          onModelConfiguredChange={setHasModelApiKey}
+          onClose={closeSettings}
+        />
 
-      <CreateProjectModal
-        isOpen={isHomeProjectModalOpen}
-        onClose={() => setIsHomeProjectModalOpen(false)}
-        onCreated={(project) => setProjects((current) => [...current, project])}
-      />
-    </main>
+        <CreateProjectModal
+          isOpen={isHomeProjectModalOpen}
+          onClose={() => setIsHomeProjectModalOpen(false)}
+          onCreated={(project) => setProjects((current) => [...current, project])}
+        />
+      </main>
+    </TooltipProvider>
   );
 };
 

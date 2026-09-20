@@ -1,5 +1,10 @@
-import { Checkbox, Input, Label, ListBox, Radio, RadioGroup, Select, Switch } from '@heroui/react';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Checkbox } from '../../ui/checkbox';
+import { FieldLabel } from '../../ui/field';
+import { Input } from '../../ui/input';
+import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { Switch } from '../../ui/switch';
+import { SlidersHorizontal } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import { useEditorCore, type AttributeConfig } from '@tangramino/base-editor';
 
@@ -76,34 +81,30 @@ export const AttributePanel = (): React.JSX.Element => {
         if (options.length)
           return <p className='m-0 text-xs text-zinc-500'>多选配置将在后续版本支持。</p>;
         return (
-          <Checkbox
-            isSelected={Boolean(value)}
-            onChange={(selected) => update(config.field, selected)}
-          >
-            <Checkbox.Control>
-              <Checkbox.Indicator />
-            </Checkbox.Control>
-            <Checkbox.Content>{label}</Checkbox.Content>
-          </Checkbox>
+          <label className='flex items-center gap-2 text-sm'>
+            <Checkbox
+              checked={Boolean(value)}
+              onCheckedChange={(selected) => update(config.field, selected)}
+            />
+            {label}
+          </label>
         );
       case 'switch':
         return (
-          <Switch
-            isSelected={Boolean(value)}
-            onChange={(selected) => update(config.field, selected)}
-          >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-            <Switch.Content>{label}</Switch.Content>
-          </Switch>
+          <label className='flex items-center gap-2 text-sm'>
+            <Switch
+              checked={Boolean(value)}
+              onCheckedChange={(selected) => update(config.field, selected)}
+            />
+            {label}
+          </label>
         );
       case 'radio':
         return (
           <RadioGroup
             aria-label={label}
             value={String(value ?? '')}
-            onChange={(next) =>
+            onValueChange={(next) =>
               update(
                 config.field,
                 options.find((option) => String(option.value) === next)?.value ?? next,
@@ -111,14 +112,10 @@ export const AttributePanel = (): React.JSX.Element => {
             }
           >
             {options.map((option) => (
-              <Radio key={String(option.value)} value={String(option.value)}>
-                <Radio.Content>
-                  <Radio.Control>
-                    <Radio.Indicator />
-                  </Radio.Control>
-                  {option.label}
-                </Radio.Content>
-              </Radio>
+              <label key={String(option.value)} className='flex items-center gap-2 text-sm'>
+                <RadioGroupItem value={String(option.value)} />
+                {option.label}
+              </label>
             ))}
           </RadioGroup>
         );
@@ -126,33 +123,24 @@ export const AttributePanel = (): React.JSX.Element => {
         return (
           <Select
             aria-label={label}
-            selectedKey={value == null ? null : String(value)}
-            onSelectionChange={(key) =>
+            value={value == null ? null : String(value)}
+            onValueChange={(key: string | null) =>
               update(
                 config.field,
                 options.find((option) => String(option.value) === String(key))?.value,
               )
             }
           >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator>
-                <ChevronDown size={14} />
-              </Select.Indicator>
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                {options.map((option) => (
-                  <ListBox.Item
-                    key={String(option.value)}
-                    id={String(option.value)}
-                    textValue={option.label}
-                  >
-                    {option.label}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
+            <SelectTrigger className='w-full'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={String(option.value)} value={String(option.value)}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         );
       case 'text':
@@ -202,10 +190,10 @@ export const AttributePanel = (): React.JSX.Element => {
                     return (
                       <div key={config.field}>
                         {!standalone && (
-                          <Label className='mb-1.5 block text-[11px] text-zinc-500'>
+                          <FieldLabel className='mb-1.5 block text-[11px] text-zinc-500'>
                             {label}
                             {config.required ? ' *' : ''}
-                          </Label>
+                          </FieldLabel>
                         )}
                         {field}
                       </div>

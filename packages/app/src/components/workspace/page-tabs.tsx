@@ -1,4 +1,4 @@
-import { Button } from '@heroui/react';
+import { Button } from '../ui/button';
 import { X } from 'lucide-react';
 import type { PageItem } from '../../store/workspace';
 
@@ -59,12 +59,11 @@ export const PageTabs = ({
               {page.name}
             </button>
             <Button
-              isIconOnly
-              size='sm'
+              size='icon-sm'
               variant='ghost'
               className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 focus:opacity-100'
               aria-label={`关闭 ${page.name}`}
-              onPress={() => onClose(page.id)}
+              onClick={() => onClose(page.id)}
             >
               <X size={14} />
             </Button>

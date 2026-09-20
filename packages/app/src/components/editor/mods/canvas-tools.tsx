@@ -1,4 +1,5 @@
-import { Button, Tooltip } from '@heroui/react';
+import { Button } from '../../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import {
   Movable,
   useEditorCore,
@@ -51,23 +52,32 @@ export const EditorOverlay = (): React.JSX.Element | null => {
           onClick={(event) => event.stopPropagation()}
         >
           <Tooltip>
-            <Movable className='grid h-6 w-6 cursor-move place-items-center rounded hover:bg-white/15'>
+            <TooltipTrigger
+              render={
+                <Movable className='grid h-6 w-6 cursor-move place-items-center rounded hover:bg-white/15'>
+                  {null}
+                </Movable>
+              }
+            >
               <GripVertical size={14} />
-            </Movable>
-            <Tooltip.Content>移动元素</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent>移动元素</TooltipContent>
           </Tooltip>
           <Tooltip>
-            <Button
-              isIconOnly
-              size='sm'
-              variant='ghost'
-              className='h-6 min-h-6 w-6 min-w-6 text-white hover:bg-white/15'
-              aria-label='删除元素'
-              onPress={remove}
+            <TooltipTrigger
+              render={
+                <Button
+                  size='icon-xs'
+                  variant='ghost'
+                  className='text-white hover:bg-white/15'
+                  aria-label='删除元素'
+                  onClick={remove}
+                />
+              }
             >
               <Trash2 size={13} />
-            </Button>
-            <Tooltip.Content>删除元素</Tooltip.Content>
+            </TooltipTrigger>
+            <TooltipContent>删除元素</TooltipContent>
           </Tooltip>
         </div>
       )}
