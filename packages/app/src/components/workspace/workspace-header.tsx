@@ -1,8 +1,31 @@
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Input } from '../ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { useEffect, useState } from 'react';
-import { Clock3, Eye, SquarePen, MessageSquare, RefreshCw, Save } from 'lucide-react';
+import {
+  Braces,
+  Eye,
+  GitBranch,
+  History,
+  ListTree,
+  MessageSquare,
+  Monitor,
+  Redo2,
+  RefreshCw,
+  Save,
+  Smartphone,
+  SquarePen,
+  TableOfContents,
+  Undo2,
+} from 'lucide-react';
 import { RevisionHistoryModal } from './revision-history-modal';
+import type { EditorHistoryState, EditorTool } from '../editor';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
@@ -31,6 +54,12 @@ interface WorkspaceHeaderProps {
   canSaveVersion: boolean;
   canReload: boolean;
   canRestore: boolean;
+  viewportWidth: number;
+  onViewportWidthChange: (width: number) => void;
+  historyState: EditorHistoryState;
+  onUndo: () => void;
+  onRedo: () => void;
+  onOpenEditorTool: (tool: EditorTool | null) => void;
 }
 
 export const WorkspaceHeader = ({
@@ -51,6 +80,12 @@ export const WorkspaceHeader = ({
   canSaveVersion,
   canReload,
   canRestore,
+  viewportWidth,
+  onViewportWidthChange,
+  historyState,
+  onUndo,
+  onRedo,
+  onOpenEditorTool,
 }: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
   const [savingVersion, setSavingVersion] = useState(false);
@@ -115,12 +150,99 @@ export const WorkspaceHeader = ({
   });
   return (
     <>
-      <header className='relative z-10 flex h-9 min-h-9 items-center justify-between gap-3 px-3 text-xs'>
-        <div className='min-w-0 font-medium text-zinc-500 dark:text-zinc-400'>
-          <span className='block truncate' title={`${projectName} - ${pageName}`}>
+      <header className='relative z-10 flex h-12 min-h-12 items-center justify-between gap-3 border-b border-border px-3 text-xs'>
+        <div className='flex min-w-0 items-center gap-1'>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size='icon-sm'
+                  variant='ghost'
+                  aria-label='页面工具'
+                  className='shrink-0 text-zinc-500 dark:text-zinc-400'
+                />
+              }
+            >
+              <TableOfContents size={16} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='start'>
+              <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
+                <History /> Schema 历史管理
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
+                <ListTree /> 全局变量
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenEditorTool('logic')}>
+                <GitBranch /> 逻辑编辑
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
+                <Braces /> Schema 编辑器
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <span
+            className='block truncate text-sm font-medium text-zinc-600 dark:text-zinc-300'
+            title={`${projectName} - ${pageName}`}
+          >
             {projectName} / {pageName}
           </span>
         </div>
+        {mode === 'edit' && (
+          <div className='flex min-w-0 flex-1 items-center justify-center gap-2'>
+            <div className='flex rounded-lg bg-muted p-0.5' aria-label='画布设备'>
+              <Button
+                size='sm'
+                variant={viewportWidth === 1440 ? 'secondary' : 'ghost'}
+                onClick={() => onViewportWidthChange(1440)}
+              >
+                <Monitor /> PC
+              </Button>
+              <Button
+                size='sm'
+                variant={viewportWidth === 375 ? 'secondary' : 'ghost'}
+                onClick={() => onViewportWidthChange(375)}
+              >
+                <Smartphone /> MOBILE
+              </Button>
+            </div>
+            <label className='flex items-center gap-1 text-muted-foreground'>
+              画布宽度
+              <Input
+                type='number'
+                min={240}
+                value={viewportWidth}
+                className='h-7 w-20'
+                aria-label='画布宽度'
+                onChange={(event) =>
+                  onViewportWidthChange(Math.max(240, Number(event.target.value) || 240))
+                }
+              />
+              px
+            </label>
+            <div className='flex overflow-hidden rounded-lg border border-border'>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                className='rounded-none border-r border-border'
+                aria-label='撤销'
+                disabled={!historyState.canUndo}
+                onClick={onUndo}
+              >
+                <Undo2 />
+              </Button>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                className='rounded-none'
+                aria-label='重做'
+                disabled={!historyState.canRedo}
+                onClick={onRedo}
+              >
+                <Redo2 />
+              </Button>
+            </div>
+          </div>
+        )}
         <div className='flex shrink-0 items-center gap-1'>
           {applyStatus !== 'draft_unsaved' && (
             <span
@@ -148,22 +270,6 @@ export const WorkspaceHeader = ({
               {error}
             </span>
           )}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size='icon-sm'
-                  variant='ghost'
-                  aria-label='版本历史'
-                  className='text-zinc-500 dark:text-zinc-400'
-                  onClick={() => setHistoryOpen(true)}
-                />
-              }
-            >
-              <Clock3 size={15} />
-            </TooltipTrigger>
-            <TooltipContent side='bottom'>查看和恢复历史版本</TooltipContent>
-          </Tooltip>
           <Tooltip>
             <TooltipTrigger
               render={

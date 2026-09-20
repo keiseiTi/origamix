@@ -165,10 +165,10 @@ export const ChatWorkspace = ({
           </div>
         )}
       </div>
-      <div className='w-[min(780px,calc(100%-40px))] rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)] sm:w-[min(780px,calc(100%-64px))]'>
+      <div className='w-[min(780px,calc(100%-40px))] sm:w-[min(780px,calc(100%-64px))]'>
         {modelConfigurationRequired && (
           <div
-            className='mb-2 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100'
+            className='mb-2 flex items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-md dark:border-amber-800/70 dark:bg-amber-950 dark:text-amber-100'
             role='status'
           >
             <KeyRound size={16} className='shrink-0 text-amber-600 dark:text-amber-400' />
@@ -183,55 +183,57 @@ export const ChatWorkspace = ({
             </Button>
           </div>
         )}
-        <Textarea
-          value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              void submit();
+        <div className='rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)]'>
+          <Textarea
+            value={draft}
+            onChange={(event) => onDraftChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                void submit();
+              }
+            }}
+            disabled={activity !== 'idle' || modelConfigurationRequired}
+            className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
+            aria-label='发送消息'
+            placeholder={
+              modelConfigurationRequired
+                ? '请先配置 DeepSeek API Key'
+                : activity === 'unknown'
+                  ? '正在确认页面状态…'
+                  : active
+                    ? '本轮完成后可继续修改'
+                    : '描述你想创建或修改的页面'
             }
-          }}
-          disabled={activity !== 'idle' || modelConfigurationRequired}
-          className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
-          aria-label='发送消息'
-          placeholder={
-            modelConfigurationRequired
-              ? '请先配置 DeepSeek API Key'
-              : activity === 'unknown'
-                ? '正在确认页面状态…'
-                : active
-                  ? '本轮完成后可继续修改'
-                  : '描述你想创建或修改的页面'
-          }
-        />
-        <footer className='flex items-center justify-between'>
-          <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
-            <LayoutPanelLeft size={14} />
-            当前页面
-          </span>
-          {active ? (
-            <Button
-              size='sm'
-              variant='secondary'
-              onClick={() => void cancel()}
-              aria-label='停止生成'
-            >
-              <CircleStop size={14} />
-              停止
-            </Button>
-          ) : (
-            <Button
-              size='icon-sm'
-              className='h-7 min-h-7 w-7 min-w-7'
-              aria-label='发送'
-              disabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
-              onClick={() => void submit()}
-            >
-              <Send size={15} />
-            </Button>
-          )}
-        </footer>
+          />
+          <footer className='flex items-center justify-between'>
+            <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
+              <LayoutPanelLeft size={14} />
+              当前页面
+            </span>
+            {active ? (
+              <Button
+                size='sm'
+                variant='secondary'
+                onClick={() => void cancel()}
+                aria-label='停止生成'
+              >
+                <CircleStop size={14} />
+                停止
+              </Button>
+            ) : (
+              <Button
+                size='icon-sm'
+                className='h-7 min-h-7 w-7 min-w-7'
+                aria-label='发送'
+                disabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
+                onClick={() => void submit()}
+              >
+                <Send size={15} />
+              </Button>
+            )}
+          </footer>
+        </div>
       </div>
       <p className='mt-2 mb-2.5 text-[10px] text-zinc-400 dark:text-zinc-500'>
         AI 可能会出错，请检查生成结果。

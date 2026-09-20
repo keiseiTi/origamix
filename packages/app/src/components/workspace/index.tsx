@@ -1,9 +1,14 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '../../store/preferences';
 import { useWorkspaceStore, type PageItem } from '../../store/workspace';
 import { ChatWorkspace } from '../agent-chat';
-import { Editor, type EditorHandle } from '../editor';
+import {
+  Editor,
+  type EditorHandle,
+  type EditorHistoryState,
+  type EditorTool,
+} from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 import { usePageSession } from './state/use-page-session';
@@ -91,6 +96,15 @@ const PageWorkspace = ({
   );
   const theme = usePreferencesStore((state) => state.theme);
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
+  const [viewportWidth, setViewportWidth] = useState(1440);
+  const [editorTool, setEditorTool] = useState<EditorTool | null>(null);
+  const [historyState, setHistoryState] = useState<EditorHistoryState>({
+    canUndo: false,
+    canRedo: false,
+  });
+  const updateHistoryState = useCallback((state: EditorHistoryState): void => {
+    setHistoryState(state);
+  }, []);
   useEffect(() => {
     if (mode !== 'preview') previousMode.current = mode;
   }, [mode]);
@@ -133,6 +147,12 @@ const PageWorkspace = ({
           canSaveVersion={capabilities.canSaveVersion}
           canReload={capabilities.canReload}
           canRestore={capabilities.canEdit}
+          viewportWidth={viewportWidth}
+          onViewportWidthChange={setViewportWidth}
+          historyState={historyState}
+          onUndo={() => editorRef.current?.undo()}
+          onRedo={() => editorRef.current?.redo()}
+          onOpenEditorTool={setEditorTool}
         />
       )}
       <>
@@ -143,6 +163,10 @@ const PageWorkspace = ({
             ref={editorRef}
             projectId={projectId}
             pageId={page.id}
+            viewportWidth={viewportWidth}
+            tool={editorTool === 'history' ? null : editorTool}
+            onCloseTool={() => setEditorTool(null)}
+            onHistoryStateChange={updateHistoryState}
             readOnly={!capabilities.canEdit}
             readOnlyMessage={
               capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined

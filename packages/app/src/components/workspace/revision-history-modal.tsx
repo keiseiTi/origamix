@@ -91,25 +91,25 @@ export const RevisionHistoryModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className='max-w-3xl sm:max-w-3xl'>
+      <DialogContent className='h-[80vh] w-[60vw] max-w-[60vw] sm:max-w-[60vw]'>
         <DialogHeader>
           <DialogTitle>版本历史</DialogTitle>
         </DialogHeader>
-        <div className='grid max-h-[70vh] gap-3 overflow-y-auto'>
+        <div className='grid min-h-0 flex-1 grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] gap-3 overflow-hidden'>
           {loading ? (
-            <div className='grid min-h-36 place-items-center'>
+            <div className='col-span-2 grid min-h-36 place-items-center'>
               <Spinner aria-label='加载版本历史' />
             </div>
           ) : revisions.length === 0 ? (
-            <p className='rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
+            <p className='col-span-2 rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
               暂无已保存版本
             </p>
           ) : (
-            <ol className='grid gap-2' aria-label='版本列表'>
+            <ol className='grid content-start gap-2 overflow-y-auto pr-1' aria-label='版本列表'>
               {revisions.map((revision) => (
                 <li
                   key={revision.revisionId}
-                  className='flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700'
+                  className={`flex flex-wrap items-center gap-2 rounded-lg border p-3 ${selected?.revisionId === revision.revisionId ? 'border-primary bg-primary/5' : 'border-zinc-200 dark:border-zinc-700'}`}
                 >
                   <GitCommitHorizontal className='shrink-0 text-zinc-400' size={17} />
                   <div className='min-w-0 flex-1'>
@@ -147,16 +147,20 @@ export const RevisionHistoryModal = ({
               ))}
             </ol>
           )}
-          {selected && (
-            <section aria-label='版本内容' className='grid gap-2'>
+          {selected ? (
+            <section aria-label='版本内容' className='flex min-h-0 flex-col gap-2 rounded-lg border border-border p-3'>
               <h3 className='text-sm font-medium'>版本内容</h3>
-              <pre className='max-h-64 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
+              <pre className='min-h-0 flex-1 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
                 {JSON.stringify(selected.schema, null, 2)}
               </pre>
             </section>
-          )}
+          ) : !loading && revisions.length > 0 ? (
+            <div className='grid place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground'>
+              选择左侧版本查看 Schema 内容
+            </div>
+          ) : null}
           {error && (
-            <p role='alert' className='text-sm text-danger'>
+            <p role='alert' className='col-span-2 text-sm text-danger'>
               {error}
             </p>
           )}
