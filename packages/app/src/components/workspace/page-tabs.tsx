@@ -1,10 +1,10 @@
 import { Button } from '../ui/button';
 import { X } from 'lucide-react';
-import type { PageItem } from '../../store/workspace';
+import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { useWorkspaceStore } from '../../store/workspace';
 
 interface PageTabsProps {
-  pages: PageItem[];
-  activePageId: string | null;
   sidebarCollapsed: boolean;
   isMacDesktop: boolean;
   onSelect: (pageId: string) => void;
@@ -12,13 +12,28 @@ interface PageTabsProps {
 }
 
 export const PageTabs = ({
-  pages,
-  activePageId,
   sidebarCollapsed,
   isMacDesktop,
   onSelect,
   onClose,
 }: PageTabsProps): React.JSX.Element => {
+  const { projects, openPageIds, activePageId } = useWorkspaceStore(
+    useShallow((state) => ({
+      projects: state.projects,
+      openPageIds: state.openPageIds,
+      activePageId: state.activePageId,
+    })),
+  );
+  const pages = useMemo(
+    () =>
+      openPageIds.flatMap((pageId) => {
+        const page = projects
+          .flatMap((project) => project.pages)
+          .find((item) => item.id === pageId);
+        return page ? [page] : [];
+      }),
+    [openPageIds, projects],
+  );
   return (
     <nav
       aria-label='已打开页面'

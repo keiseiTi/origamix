@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import type { PageItem } from '../../store/workspace';
-import type { AppTheme } from '../../store/preferences';
+import { useShallow } from 'zustand/react/shallow';
+import { usePreferencesStore } from '../../store/preferences';
+import { useWorkspaceStore, type PageItem } from '../../store/workspace';
 import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
@@ -10,50 +11,42 @@ import { PagePreviewFrame } from './page-preview-frame';
 
 interface WorkspaceProps {
   active?: boolean;
-  page?: PageItem;
-  projectId?: string;
-  projectName?: string;
-  mode: WorkspaceMode;
-  theme: AppTheme;
+  pageId?: string;
   onCreateProject: () => void;
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
-  draft: string;
-  onDraftChange: (draft: string) => void;
-  hasModelApiKey?: boolean;
   onConfigureModel?: () => void;
-  supportsNativeProjectDirectories: boolean;
   schemaRefreshKey: string;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }
 
 export const Workspace = ({
   active = true,
-  page,
-  projectId,
-  projectName,
-  mode,
-  theme,
+  pageId,
   onCreateProject,
   editorRef,
   onModeChange,
   onPreview,
-  draft,
-  onDraftChange,
-  hasModelApiKey,
   onConfigureModel,
-  supportsNativeProjectDirectories,
   schemaRefreshKey,
   onSchemaCommitted,
 }: WorkspaceProps): React.JSX.Element => {
-  if (!page || !projectId)
+  const { page, project } = useWorkspaceStore(
+    useShallow((state) => {
+      const project = state.projects.find((item) =>
+        item.pages.some((candidate) => candidate.id === pageId),
+      );
+      return {
+        project,
+        page: project?.pages.find((candidate) => candidate.id === pageId),
+      };
+    }),
+  );
+  if (!page || !project)
     return (
       <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-        <EmptyWorkspace
-          onCreateProject={onCreateProject}
-          supportsNativeProjectDirectories={supportsNativeProjectDirectories}
-        />
+        <EmptyWorkspace onCreateProject={onCreateProject} />
       </section>
     );
 
@@ -61,16 +54,11 @@ export const Workspace = ({
     <PageWorkspace
       active={active}
       page={page}
-      projectId={projectId}
-      projectName={projectName}
-      mode={mode}
-      theme={theme}
+      projectId={project.id}
+      projectName={project.name}
       editorRef={editorRef}
       onModeChange={onModeChange}
       onPreview={onPreview}
-      draft={draft}
-      onDraftChange={onDraftChange}
-      hasModelApiKey={hasModelApiKey}
       onConfigureModel={onConfigureModel}
       schemaRefreshKey={schemaRefreshKey}
       onSchemaCommitted={onSchemaCommitted}
@@ -83,24 +71,25 @@ const PageWorkspace = ({
   page,
   projectId,
   projectName,
-  mode,
-  theme,
   editorRef,
   onModeChange,
   onPreview,
-  draft,
-  onDraftChange,
-  hasModelApiKey,
   onConfigureModel,
   schemaRefreshKey,
   onSchemaCommitted,
-}: Omit<
-  WorkspaceProps,
-  'page' | 'projectId' | 'onCreateProject' | 'supportsNativeProjectDirectories'
-> & {
+}: Omit<WorkspaceProps, 'pageId' | 'onCreateProject'> & {
   page: PageItem;
   projectId: string;
+  projectName: string;
 }): React.JSX.Element => {
+  const { mode, draft, setPageDraft } = useWorkspaceStore(
+    useShallow((state) => ({
+      mode: state.pageModes[page.id] ?? 'chat',
+      draft: state.pageDrafts[page.id] ?? '',
+      setPageDraft: state.setPageDraft,
+    })),
+  );
+  const theme = usePreferencesStore((state) => state.theme);
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
   useEffect(() => {
     if (mode !== 'preview') previousMode.current = mode;
@@ -117,10 +106,9 @@ const PageWorkspace = ({
     <ChatWorkspace
       pageName={page.name}
       draft={draft}
-      onDraftChange={onDraftChange}
+      onDraftChange={(value) => setPageDraft(page.id, value)}
       session={agent}
       onViewChanges={() => onModeChange('edit')}
-      hasModelApiKey={hasModelApiKey}
       onConfigureModel={onConfigureModel}
     />
   );

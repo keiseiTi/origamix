@@ -9,71 +9,53 @@ import {
   User,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { CreatePageModal } from './mod/create-page-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
 import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import { SidebarActionMenu } from './action-menu';
-import type { UserProfile } from '../../store/preferences';
-import type { PageItem, ProjectItem } from '../../store/workspace';
-import type { PendingProjectInitialization } from '../../hooks/use-project-actions';
+import { usePreferencesStore } from '../../store/preferences';
+import { useWorkspaceStore, type PageItem } from '../../store/workspace';
+import { useProjectActions } from '../../hooks/use-project-actions';
 
 interface SidebarProps {
-  projects: ProjectItem[];
-  selectedPageId: string | null;
-  isTemporary: boolean;
   isMacDesktop: boolean;
-  userProfile: UserProfile;
   onPin: () => void;
   onTemporaryClose: () => void;
   onOpenSettings: () => void;
-  onProjectCreated: (project: ProjectItem) => void;
-  pendingProjectInitialization: PendingProjectInitialization | null;
-  projectInitializing: boolean;
-  onOpenProject: () => Promise<void>;
-  onCancelProjectInitialization: () => void;
-  onInitializeProject: (input: {
-    name: string;
-    code: string;
-    pageDirectory: string;
-  }) => Promise<void>;
+  flushEditor: () => Promise<void>;
   onPageCreated: (projectId: string, page: PageItem) => void;
   onSelectPage: (pageId: string) => void;
-  onRenameProject: (projectId: string, name: string) => Promise<void>;
-  onDeleteProject: (projectId: string) => Promise<void>;
-  onRenamePage: (projectId: string, pageId: string, name: string) => Promise<void>;
-  onDeletePage: (projectId: string, pageId: string) => Promise<void>;
-  supportsNativeProjectDirectories: boolean;
 }
 
 export const Sidebar = ({
-  projects,
-  selectedPageId,
-  isTemporary,
   isMacDesktop,
-  userProfile,
   onPin,
   onTemporaryClose,
   onOpenSettings,
-  onProjectCreated,
-  pendingProjectInitialization,
-  projectInitializing,
-  onOpenProject,
-  onCancelProjectInitialization,
-  onInitializeProject,
+  flushEditor,
   onPageCreated,
   onSelectPage,
-  onRenameProject,
-  onDeleteProject,
-  onRenamePage,
-  onDeletePage,
-  supportsNativeProjectDirectories,
 }: SidebarProps): React.JSX.Element => {
+  const { projects, selectedPageId, isTemporary } = useWorkspaceStore(
+    useShallow((state) => ({
+      projects: state.projects,
+      selectedPageId: state.activePageId,
+      isTemporary: state.sidebarCollapsed ?? false,
+    })),
+  );
+  const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
+  const userProfile = usePreferencesStore((state) => state.userProfile);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const pageProject = projects.find((project) => project.id === pageProjectId) ?? null;
+  const projectActions = useProjectActions({
+    flushEditor,
+    onPageAdded: onPageCreated,
+    onError: setActionError,
+  });
 
   const keepSidebarOpen = (): void => {
     if (isTemporary) onPin();
@@ -136,9 +118,11 @@ export const Sidebar = ({
           onClick={() => {
             keepSidebarOpen();
             setActionError(null);
-            void onOpenProject().catch((reason: unknown) =>
-              setActionError(reason instanceof Error ? reason.message : '项目打开失败'),
-            );
+            void projectActions
+              .openProject()
+              .catch((reason: unknown) =>
+                setActionError(reason instanceof Error ? reason.message : '项目打开失败'),
+              );
           }}
           disabled={!supportsNativeProjectDirectories}
           aria-label={
@@ -240,23 +224,22 @@ export const Sidebar = ({
           <Settings size={14} className='text-zinc-400' />
         </Button>
       </aside>
-      {pendingProjectInitialization && (
+      {projectActions.pendingInitialization && (
         <OpenProjectModal
-          key={pendingProjectInitialization.directoryGrantId}
-          pendingInitialization={pendingProjectInitialization}
-          initializing={projectInitializing}
-          onCancel={onCancelProjectInitialization}
-          onInitialize={onInitializeProject}
+          key={projectActions.pendingInitialization.directoryGrantId}
+          pendingInitialization={projectActions.pendingInitialization}
+          initializing={projectActions.initializing}
+          onCancel={() => projectActions.setPendingInitialization(null)}
+          onInitialize={projectActions.initializePendingProject}
         />
       )}
 
       <CreateProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
-        onCreated={onProjectCreated}
       />
       <CreatePageModal
-        project={pageProject}
+        projectId={pageProjectId}
         onClose={() => setPageProjectId(null)}
         onCreated={onPageCreated}
       />
@@ -265,11 +248,12 @@ export const Sidebar = ({
         target={lifecycleTarget}
         onClose={() => setLifecycleTarget(null)}
         onConfirm={async (target, name) => {
-          if (target.kind === 'rename-project') await onRenameProject(target.id, name!);
-          else if (target.kind === 'delete-project') await onDeleteProject(target.id);
+          if (target.kind === 'rename-project')
+            await projectActions.renameProject(target.id, name!);
+          else if (target.kind === 'delete-project') await projectActions.deleteProject(target.id);
           else if (target.kind === 'rename-page')
-            await onRenamePage(target.projectId, target.id, name!);
-          else await onDeletePage(target.projectId, target.id);
+            await projectActions.renamePage(target.projectId, target.id, name!);
+          else await projectActions.deletePage(target.projectId, target.id);
         }}
       />
       {actionError && (

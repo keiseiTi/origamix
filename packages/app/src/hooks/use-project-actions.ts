@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { projectsService } from '../services/projects';
 import { useWorkspaceStore, type PageItem, type ProjectItem } from '../store/workspace';
 
@@ -14,10 +15,14 @@ export interface PendingProjectInitialization {
 }
 
 export const useProjectActions = (input: ProjectActionsInput) => {
-  const projects = useWorkspaceStore((state) => state.projects);
-  const setProjects = useWorkspaceStore((state) => state.setProjects);
-  const replaceWorkspace = useWorkspaceStore((state) => state.replaceWorkspace);
-  const removePages = useWorkspaceStore((state) => state.removePages);
+  const { projects, setProjects, replaceWorkspace, removePages } = useWorkspaceStore(
+    useShallow((state) => ({
+      projects: state.projects,
+      setProjects: state.setProjects,
+      replaceWorkspace: state.replaceWorkspace,
+      removePages: state.removePages,
+    })),
+  );
   const [pendingInitialization, setPendingInitialization] =
     useState<PendingProjectInitialization | null>(null);
   const [initializing, setInitializing] = useState(false);

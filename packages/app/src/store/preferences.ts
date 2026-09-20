@@ -10,8 +10,10 @@ export interface UserProfile {
 interface PreferencesState {
   theme: AppTheme;
   userProfile: UserProfile;
+  hasModelApiKey: boolean | undefined;
   setTheme: (theme: AppTheme) => void;
   setUserProfile: (profile: UserProfile) => void;
+  setHasModelApiKey: (configured: boolean | undefined) => void;
 }
 
 const readTheme = (): AppTheme => {
@@ -25,6 +27,7 @@ const readTheme = (): AppTheme => {
 export const usePreferencesStore = create<PreferencesState>((set) => ({
   theme: readTheme(),
   userProfile: { name: 'Origamix 用户', iconBackground: '#2563eb' },
+  hasModelApiKey: undefined,
   setTheme: (theme) => {
     try {
       localStorage.setItem('origamix:theme', theme);
@@ -34,4 +37,5 @@ export const usePreferencesStore = create<PreferencesState>((set) => ({
     set({ theme });
   },
   setUserProfile: (userProfile) => set({ userProfile }),
+  setHasModelApiKey: (hasModelApiKey) => set({ hasModelApiKey }),
 }));

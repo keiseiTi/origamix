@@ -12,20 +12,19 @@ import { Input } from '../../ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
-import type { ProjectItem } from '../../../store/workspace';
+import { useWorkspaceStore } from '../../../store/workspace';
 import { projectsService } from '../../../services/projects';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (project: ProjectItem) => void;
 }
 
 export const CreateProjectModal = ({
   isOpen,
   onClose,
-  onCreated,
 }: CreateProjectModalProps): React.JSX.Element => {
+  const setProjects = useWorkspaceStore((state) => state.setProjects);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [directory, setDirectory] = useState('');
@@ -64,7 +63,10 @@ export const CreateProjectModal = ({
         pageDirectory: pageDirectory.trim(),
         directoryGrantId,
       });
-      onCreated({ id: project.id, name: project.name, path: project.path, pages: [] });
+      setProjects((current) => [
+        ...current,
+        { id: project.id, name: project.name, path: project.path, pages: [] },
+      ]);
       close();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '项目创建失败');

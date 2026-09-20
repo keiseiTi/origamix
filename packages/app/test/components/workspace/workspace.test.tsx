@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
+import { useWorkspaceStore } from '../../../src/store/workspace';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -31,17 +32,11 @@ vi.mock('../../../src/components/editor', () => ({
 import { Workspace } from '../../../src/components/workspace';
 
 const props = {
-  projectId: 'project_1',
-  page: { id: 'page_a', name: 'Page', fileName: 'page' },
-  mode: 'chat' as const,
-  theme: 'light' as const,
+  pageId: 'page_a',
   onCreateProject: vi.fn(),
   editorRef: { current: null },
   onModeChange: vi.fn(),
   onPreview: vi.fn(),
-  draft: 'hello',
-  onDraftChange: vi.fn(),
-  supportsNativeProjectDirectories: false,
   schemaRefreshKey: '',
   onSchemaCommitted: vi.fn(),
 };
@@ -49,6 +44,21 @@ describe('workspace recovery controls', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     usePendingOperations.setState({ applies: {}, agents: {} });
+    useWorkspaceStore.setState({
+      projects: [
+        {
+          id: 'project_1',
+          name: 'Project',
+          path: '/project',
+          pages: [
+            { id: 'page_a', name: 'Page', fileName: 'page' },
+            { id: 'page_b', name: 'Second', fileName: 'second' },
+          ],
+        },
+      ],
+      pageModes: { page_a: 'chat', page_b: 'chat' },
+      pageDrafts: { page_a: 'hello', page_b: '' },
+    });
     mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 2 });
     mocks.listConversations.mockRejectedValue(new Error('无法恢复对话'));
@@ -75,7 +85,7 @@ describe('workspace recovery controls', () => {
     const second = {
       ...props,
       active: false,
-      page: { id: 'page_b', name: 'Second', fileName: 'second' },
+      pageId: 'page_b',
       editorRef: { current: null },
     };
     const view = render(

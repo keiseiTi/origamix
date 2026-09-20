@@ -3,6 +3,7 @@ import { Spinner } from './components/ui/spinner';
 import { TooltipProvider } from './components/ui/tooltip';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Sidebar } from './components/sidebar';
 import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
 import { SettingsModal } from './components/settings';
@@ -12,40 +13,47 @@ import type { EditorHandle } from './components/editor';
 import type { WorkspaceMode } from './components/workspace';
 import { projectsService } from './services/projects';
 import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
-import { useProjectActions } from './hooks/use-project-actions';
 import { usePreferencesStore } from './store/preferences';
 import { useWorkspaceStore, type PageItem } from './store/workspace';
 
 const App = (): React.JSX.Element => {
   const isMacDesktop = window.api?.platform === 'darwin';
-  const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
-  const projects = useWorkspaceStore((state) => state.projects);
-  const setProjects = useWorkspaceStore((state) => state.setProjects);
-  const sessionSidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed);
-  const setSidebarCollapsed = useWorkspaceStore((state) => state.setSidebarCollapsed);
-  const selectedPageId = useWorkspaceStore((state) => state.activePageId);
-  const openPageIds = useWorkspaceStore((state) => state.openPageIds);
-  const pageModes = useWorkspaceStore((state) => state.pageModes);
-  const pageDrafts = useWorkspaceStore((state) => state.pageDrafts);
-  const selectWorkspacePage = useWorkspaceStore((state) => state.selectPage);
-  const closeWorkspacePage = useWorkspaceStore((state) => state.closePage);
-  const setPageMode = useWorkspaceStore((state) => state.setPageMode);
-  const setPageDraft = useWorkspaceStore((state) => state.setPageDraft);
-  const restoreWorkspace = useWorkspaceStore((state) => state.restoreWorkspace);
-  const failWorkspaceRestore = useWorkspaceStore((state) => state.failWorkspaceRestore);
-  const workspaceReady = useWorkspaceStore((state) => state.workspaceReady);
-  const workspaceError = useWorkspaceStore((state) => state.workspaceError);
+  const {
+    projects,
+    setProjects,
+    sessionSidebarCollapsed,
+    setSidebarCollapsed,
+    selectedPageId,
+    openPageIds,
+    selectWorkspacePage,
+    closeWorkspacePage,
+    restoreWorkspace,
+    failWorkspaceRestore,
+    workspaceReady,
+    workspaceError,
+  } = useWorkspaceStore(
+    useShallow((state) => ({
+      projects: state.projects,
+      setProjects: state.setProjects,
+      sessionSidebarCollapsed: state.sidebarCollapsed,
+      setSidebarCollapsed: state.setSidebarCollapsed,
+      selectedPageId: state.activePageId,
+      openPageIds: state.openPageIds,
+      selectWorkspacePage: state.selectPage,
+      closeWorkspacePage: state.closePage,
+      restoreWorkspace: state.restoreWorkspace,
+      failWorkspaceRestore: state.failWorkspaceRestore,
+      workspaceReady: state.workspaceReady,
+      workspaceError: state.workspaceError,
+    })),
+  );
   const sidebarCollapsed = sessionSidebarCollapsed ?? false;
   const [sidebarPeek, setSidebarPeek] = useState(false);
   const [sidebarPeekEnabled, setSidebarPeekEnabled] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'general' | 'model'>('general');
-  const [hasModelApiKey, setHasModelApiKey] = useState<boolean | undefined>(undefined);
   const theme = usePreferencesStore((state) => state.theme);
-  const setTheme = usePreferencesStore((state) => state.setTheme);
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
-  const userProfile = usePreferencesStore((state) => state.userProfile);
-  const setUserProfile = usePreferencesStore((state) => state.setUserProfile);
   const [editorRefs] = useState(() => {
     const refs = new Map<string, { current: EditorHandle | null }>();
     const initialPageId = useWorkspaceStore.getState().activePageId;
@@ -62,7 +70,7 @@ const App = (): React.JSX.Element => {
   const mountedPages = mountedPageIds.flatMap((pageId) => {
     const project = projects.find((item) => item.pages.some((page) => page.id === pageId));
     const page = project?.pages.find((item) => item.id === pageId);
-    return project && page ? [{ pageId, project, page }] : [];
+    return project && page ? [{ pageId }] : [];
   });
 
   const editorRefForPage = (pageId: string): { current: EditorHandle | null } => {
@@ -71,11 +79,11 @@ const App = (): React.JSX.Element => {
     return existing;
   };
 
-  const openSettings = (): void => {
+  const openSettings = useCallback((): void => {
     setSidebarPeek(false);
     setSettingsSection('general');
     setIsSettingsOpen(true);
-  };
+  }, []);
 
   const openModelSettings = (): void => {
     setSidebarPeek(false);
@@ -91,10 +99,10 @@ const App = (): React.JSX.Element => {
     if (!selectedPageId) return;
     await editorRefs.get(selectedPageId)?.current?.flush();
   }, [editorRefs, selectedPageId]);
-  const { transition, transitionError, setTransitionError } = useWorkspaceTransitions(flushEditor);
+  const { transition, transitionError } = useWorkspaceTransitions(flushEditor);
   const changeMode = async (pageId: string, mode: WorkspaceMode): Promise<void> =>
     transition(() => {
-      const currentMode = pageModes[pageId] ?? 'chat';
+      const currentMode = useWorkspaceStore.getState().pageModes[pageId] ?? 'chat';
       if (mode === 'edit' && currentMode !== 'edit') {
         collapseSidebar();
         // Entering edit mode does not leave the pointer over the collapse button.
@@ -103,12 +111,12 @@ const App = (): React.JSX.Element => {
       if (mode === 'chat') {
         pinSidebarOpen();
       }
-      setPageMode(pageId, mode);
+      useWorkspaceStore.getState().setPageMode(pageId, mode);
     });
 
   const openPreview = async (pageId: string): Promise<void> => {
     await editorRefs.get(pageId)?.current?.flush();
-    setPageMode(pageId, 'preview');
+    useWorkspaceStore.getState().setPageMode(pageId, 'preview');
   };
 
   const selectPage = (pageId: string): void => {
@@ -129,6 +137,19 @@ const App = (): React.JSX.Element => {
     root.dataset.theme = theme;
     root.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  useEffect(() => {
+    const handleSettingsShortcut = (event: KeyboardEvent): void => {
+      const primaryModifierPressed = isMacDesktop ? event.metaKey : event.ctrlKey;
+      if (!primaryModifierPressed || event.altKey || event.shiftKey || event.code !== 'Comma')
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      openSettings();
+    };
+    window.addEventListener('keydown', handleSettingsShortcut, { capture: true });
+    return () => window.removeEventListener('keydown', handleSettingsShortcut, { capture: true });
+  }, [isMacDesktop, openSettings]);
 
   useEffect(() => {
     let active = true;
@@ -162,15 +183,15 @@ const App = (): React.JSX.Element => {
   useEffect(() => {
     window.api?.settings
       ?.getProfile?.()
-      .then(setUserProfile)
+      .then(usePreferencesStore.getState().setUserProfile)
       .catch(() => undefined);
-  }, [setUserProfile]);
+  }, []);
 
   useEffect(() => {
     window.api?.settings
       ?.getModel?.()
-      .then((settings) => setHasModelApiKey(settings.hasApiKey))
-      .catch(() => setHasModelApiKey(undefined));
+      .then((settings) => usePreferencesStore.getState().setHasModelApiKey(settings.hasApiKey))
+      .catch(() => usePreferencesStore.getState().setHasModelApiKey(undefined));
   }, []);
 
   const collapseSidebar = (): void => {
@@ -193,35 +214,15 @@ const App = (): React.JSX.Element => {
     );
     void transition(() => selectPage(page.id));
   };
-  const projectActions = useProjectActions({
-    flushEditor,
-    onPageAdded: addPage,
-    onError: setTransitionError,
-  });
-
   const sidebar = (
     <Sidebar
-      projects={projects}
-      selectedPageId={selectedPageId}
-      isTemporary={sidebarCollapsed}
       isMacDesktop={isMacDesktop}
-      userProfile={userProfile}
       onPin={pinSidebarOpen}
       onTemporaryClose={() => setSidebarPeek(false)}
       onOpenSettings={openSettings}
-      onProjectCreated={(project) => setProjects((current) => [...current, project])}
-      pendingProjectInitialization={projectActions.pendingInitialization}
-      projectInitializing={projectActions.initializing}
-      onOpenProject={projectActions.openProject}
-      onCancelProjectInitialization={() => projectActions.setPendingInitialization(null)}
-      onInitializeProject={projectActions.initializePendingProject}
+      flushEditor={flushEditor}
       onPageCreated={addPage}
-      onRenameProject={projectActions.renameProject}
-      onDeleteProject={projectActions.deleteProject}
-      onRenamePage={projectActions.renamePage}
-      onDeletePage={projectActions.deletePage}
       onSelectPage={(pageId) => void transition(() => selectPage(pageId))}
-      supportsNativeProjectDirectories={supportsNativeProjectDirectories}
     />
   );
   return (
@@ -280,13 +281,6 @@ const App = (): React.JSX.Element => {
           <section className='flex min-w-0 flex-1 flex-col'>
             {openPageIds.length > 0 && (
               <PageTabs
-                pages={openPageIds.flatMap((pageId) => {
-                  const page = projects
-                    .flatMap((project) => project.pages)
-                    .find((item) => item.id === pageId);
-                  return page ? [page] : [];
-                })}
-                activePageId={selectedPageId}
                 sidebarCollapsed={sidebarCollapsed}
                 isMacDesktop={isMacDesktop}
                 onSelect={(pageId) => void transition(() => selectPage(pageId))}
@@ -305,7 +299,7 @@ const App = (): React.JSX.Element => {
               </div>
             )}
             <div className='relative flex min-h-0 flex-1'>
-              {mountedPages.map(({ pageId, project, page }) => {
+              {mountedPages.map(({ pageId }) => {
                 const active = pageId === selectedPageId;
                 return (
                   <div
@@ -316,19 +310,11 @@ const App = (): React.JSX.Element => {
                   >
                     <Workspace
                       active={active}
-                      page={page}
-                      projectId={project.id}
-                      projectName={project.name}
-                      mode={pageModes[pageId] ?? 'chat'}
-                      theme={theme}
+                      pageId={pageId}
                       editorRef={editorRefForPage(pageId)}
                       onModeChange={(mode) => changeMode(pageId, mode)}
                       onPreview={() => openPreview(pageId)}
-                      draft={pageDrafts[pageId] ?? ''}
-                      onDraftChange={(draft) => setPageDraft(pageId, draft)}
-                      hasModelApiKey={hasModelApiKey}
                       onConfigureModel={openModelSettings}
-                      supportsNativeProjectDirectories={supportsNativeProjectDirectories}
                       schemaRefreshKey={schemaRefreshKeys[pageId] ?? ''}
                       onSchemaCommitted={(committedPageId, revisionId) => {
                         setSchemaRefreshKeys((current) => ({
@@ -343,14 +329,9 @@ const App = (): React.JSX.Element => {
               })}
               {mountedPages.length === 0 && (
                 <Workspace
-                  mode='chat'
-                  theme={theme}
                   editorRef={emptyEditorRef}
                   onModeChange={async () => undefined}
                   onPreview={async () => undefined}
-                  draft=''
-                  onDraftChange={() => undefined}
-                  supportsNativeProjectDirectories={supportsNativeProjectDirectories}
                   schemaRefreshKey=''
                   onSchemaCommitted={() => undefined}
                   onCreateProject={() => setIsHomeProjectModalOpen(true)}
@@ -363,18 +344,12 @@ const App = (): React.JSX.Element => {
         <SettingsModal
           isOpen={isSettingsOpen}
           initialSection={settingsSection}
-          theme={theme}
-          userProfile={userProfile}
-          onThemeChange={setTheme}
-          onProfileChange={setUserProfile}
-          onModelConfiguredChange={setHasModelApiKey}
           onClose={closeSettings}
         />
 
         <CreateProjectModal
           isOpen={isHomeProjectModalOpen}
           onClose={() => setIsHomeProjectModalOpen(false)}
-          onCreated={(project) => setProjects((current) => [...current, project])}
         />
       </main>
     </TooltipProvider>

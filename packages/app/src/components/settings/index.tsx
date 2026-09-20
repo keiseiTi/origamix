@@ -6,14 +6,10 @@ import { Input } from '../ui/input';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { AppTheme, UserProfile } from '../../store/preferences';
+import { useShallow } from 'zustand/react/shallow';
+import { usePreferencesStore, type AppTheme } from '../../store/preferences';
 
 interface SettingsPageProps {
-  theme: AppTheme;
-  userProfile: UserProfile;
-  onThemeChange: (theme: AppTheme) => void;
-  onProfileChange: (profile: UserProfile) => void;
-  onModelConfiguredChange: (configured: boolean) => void;
   onClose: () => void;
 }
 
@@ -40,14 +36,18 @@ export const SettingsModal = ({
 );
 
 export const SettingsPage = ({
-  theme,
-  userProfile,
-  onThemeChange,
-  onProfileChange,
-  onModelConfiguredChange,
   initialSection = 'general',
   onClose,
 }: SettingsPageProps & { initialSection?: 'general' | 'model' }): React.JSX.Element => {
+  const { theme, userProfile, setTheme, setUserProfile, setHasModelApiKey } = usePreferencesStore(
+    useShallow((state) => ({
+      theme: state.theme,
+      userProfile: state.userProfile,
+      setTheme: state.setTheme,
+      setUserProfile: state.setUserProfile,
+      setHasModelApiKey: state.setHasModelApiKey,
+    })),
+  );
   const [apiKey, setApiKey] = useState('');
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
@@ -79,14 +79,14 @@ export const SettingsPage = ({
         if (!active) return;
         const configured = settings?.hasApiKey ?? false;
         setHasSavedKey(configured);
-        if (settings) onModelConfiguredChange(configured);
+        if (settings) setHasModelApiKey(configured);
       })
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
       .finally(() => active && setIsLoading(false));
     return () => {
       active = false;
     };
-  }, [onModelConfiguredChange]);
+  }, [setHasModelApiKey]);
 
   const save = async (): Promise<void> => {
     setIsSaving(true);
@@ -99,7 +99,7 @@ export const SettingsPage = ({
       });
       if (!result) throw new Error('当前环境不支持保存模型设置，请在桌面应用中操作。');
       setHasSavedKey(result.hasApiKey);
-      onModelConfiguredChange(result.hasApiKey);
+      setHasModelApiKey(result.hasApiKey);
       setApiKey('');
       setStatus({ kind: 'success', message: '模型设置已安全保存。' });
     } catch (reason) {
@@ -121,7 +121,7 @@ export const SettingsPage = ({
         iconBackground,
       });
       if (!profile) throw new Error('当前环境不支持保存用户资料，请在桌面应用中操作。');
-      onProfileChange(profile);
+      setUserProfile(profile);
       setUserName(profile.name);
       setProfileStatus({ kind: 'success', message: '用户资料已保存。' });
     } catch (reason) {
@@ -250,7 +250,7 @@ export const SettingsPage = ({
             <RadioGroup
               aria-label='主题设置'
               value={theme}
-              onValueChange={(value) => onThemeChange(value as AppTheme)}
+              onValueChange={(value) => setTheme(value as AppTheme)}
               className='grid grid-cols-2 gap-3'
             >
               <label className='flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 text-sm hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900'>

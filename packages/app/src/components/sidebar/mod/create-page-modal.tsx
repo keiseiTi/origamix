@@ -10,20 +10,23 @@ import {
 import { Field, FieldLabel } from '../../ui/field';
 import { Input } from '../../ui/input';
 import { useState } from 'react';
-import type { PageItem, ProjectItem } from '../../../store/workspace';
+import { useWorkspaceStore, type PageItem } from '../../../store/workspace';
 import { projectsService } from '../../../services/projects';
 
 interface CreatePageModalProps {
-  project: ProjectItem | null;
+  projectId: string | null;
   onClose: () => void;
   onCreated: (projectId: string, page: PageItem) => void;
 }
 
 export const CreatePageModal = ({
-  project,
+  projectId,
   onClose,
   onCreated,
 }: CreatePageModalProps): React.JSX.Element => {
+  const project = useWorkspaceStore((state) =>
+    state.projects.find((item) => item.id === projectId),
+  );
   const [name, setName] = useState('');
   const [fileName, setFileName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +60,7 @@ export const CreatePageModal = ({
   };
 
   return (
-    <Dialog open={project !== null} onOpenChange={(open) => !open && close()}>
+    <Dialog open={projectId !== null} onOpenChange={(open) => !open && close()}>
       <DialogContent>
         <form
           onSubmit={(event) => {

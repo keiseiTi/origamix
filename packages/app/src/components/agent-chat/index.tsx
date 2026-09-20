@@ -11,6 +11,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { usePreferencesStore } from '../../store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
 import type { AgentChatSession } from './use-agent-chat';
 
@@ -35,7 +36,6 @@ export const ChatWorkspace = ({
   onDraftChange,
   session,
   onViewChanges,
-  hasModelApiKey,
   onConfigureModel,
 }: {
   pageName: string;
@@ -43,9 +43,9 @@ export const ChatWorkspace = ({
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
   onViewChanges: () => Promise<void>;
-  hasModelApiKey?: boolean;
   onConfigureModel?: () => void;
 }): React.JSX.Element => {
+  const hasModelApiKey = usePreferencesStore((state) => state.hasModelApiKey);
   const { state, activity, pendingSubmission, send, cancel, retry } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = isRunActive(state.stage);
