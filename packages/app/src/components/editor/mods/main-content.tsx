@@ -16,7 +16,7 @@ export const MainContent = ({
     <main className='min-w-0 flex-1 overflow-hidden p-3' aria-label='页面画布'>
       <div
         className='mx-auto h-full min-h-full overflow-hidden border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-950'
-        style={{ width: viewportWidth < 1440 && viewportWidth > 568 ? 'auto' : viewportWidth }}
+        style={{ width: `min(100%, ${viewportWidth}px)` }}
       >
         <CanvasEditor
           className='relative size-full overflow-auto'

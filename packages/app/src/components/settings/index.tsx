@@ -395,9 +395,6 @@ export const SettingsPage = ({
                   {isSaving ? '保存中…' : '保存'}
                 </Button>
               </div>
-              <p className='mt-2 mb-0 text-[11px] text-zinc-500 dark:text-zinc-400'>
-                API Key 由 Electron 系统加密能力保存，不会写入项目文件或回显明文。
-              </p>
               {status && (
                 <p
                   role='status'
