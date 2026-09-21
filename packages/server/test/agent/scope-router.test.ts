@@ -6,6 +6,12 @@ describe('ScopeRouter', () => {
   it.each([
     ['今天天气怎么样', 'out_of_scope'],
     ['创建一个天气展示页面', 'page_modify'],
+    ['开发个表格页面', 'page_modify'],
+    ['添加表格', 'page_modify'],
+    ['添加表格，默认表格就行', 'page_modify'],
+    ['重置页面', 'page_modify'],
+    ['清空页面内容', 'page_modify'],
+    ['重置页面，然后添加表格', 'page_modify'],
     ['加一个天气', 'clarification_required'],
   ] as const)('routes %s to %s', async (message, mode) => {
     expect((await new ScopeRouter().route(message, pageId)).mode).toBe(mode);

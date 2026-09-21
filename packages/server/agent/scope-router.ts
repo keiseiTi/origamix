@@ -21,12 +21,15 @@ export interface ScopeRouterOptions {
 const pageNouns =
   /(页面|表单|表格|按钮|输入框|选择器|下拉|开关|容器|文本|标题|字段|组件|物料|搭建器|schema)/i;
 const modifyVerbs =
-  /(创建|新建|搭建|生成|添加|增加|加上|修改|调整|删除|移除|配置|设置|改成|做一个)/i;
+  /(创建|新建|开发|搭建|生成|添加|增加|加上|修改|调整|重置|清空|删除|移除|配置|设置|改成|做一个)/i;
 const questionWords =
   /(怎么|如何|哪些|什么|为何|为什么|是否|能否|说明|介绍|查看|多少|有没有|吗[？?]?)/i;
 const weather = /(天气|气温|下雨|晴天|空气质量)/i;
-const explicitPageCreation = /(创建|新建|搭建|生成|做一个).{0,12}(页面|表单|表格|看板|展示页)/i;
-const ambiguousAdd = /^(请)?(加|添加|增加)(一个|个)?[^，。！？!?]{1,16}$/i;
+const explicitPageCreation =
+  /(创建|新建|开发|搭建|生成|做一个).{0,12}(页面|表单|表格|看板|展示页)/i;
+// Short additions are ambiguous only when they do not name a known page object.
+// “添加表格” is already a complete default-material request and must reach the Agent.
+const ambiguousAdd = /^(请)?(加|添加|增加)(一个|个)?(?!.*(?:页面|表单|表格|按钮|输入框|选择器|下拉|开关|容器|文本|标题|字段|组件|物料))[^，。！？!?]{1,16}$/i;
 const obviousGeneral = /(写诗|讲笑话|翻译|新闻|股票|汇率|星座|百科|菜谱|电影推荐)/i;
 const promptInjection =
   /(忽略|无视|覆盖|绕过).{0,12}(系统|之前|以上|指令|规则|策略)|system\s*prompt|developer\s*message|把.{0,8}模式设为/i;

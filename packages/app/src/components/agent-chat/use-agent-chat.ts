@@ -192,7 +192,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         if (!current()) return;
         setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
-        dispatch({ type: 'run.queued', run });
+        // A fast provider may finish before the POST response has been reconciled.
+        // Keep the durable resultWorkingVersion from history in that case; treating
+        // a terminal Run as newly queued would clear the editor refresh signal and
+        // there will be no active SSE subscription to restore it.
+        if (isRunActive(run.status)) dispatch({ type: 'run.queued', run });
       } catch (error) {
         if (input && !accepted)
           operations.finishAgent(

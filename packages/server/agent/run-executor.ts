@@ -191,7 +191,12 @@ export class RunExecutor {
         await execute(true);
       }
       if (intent.mode === 'page_modify' && !resultWorkingVersion) {
-        throw new AgentEngineError('TOOL_ERROR', '页面修改未产生有效提交');
+        throw new AgentEngineError(
+          'TOOL_ERROR',
+          lastWriteFailure
+            ? `页面修改未提交：${lastWriteFailure}`
+            : '页面修改未提交：模型没有成功调用页面写入工具',
+        );
       }
       this.dependencies.conversations.finishAssistant(
         runId,
@@ -238,9 +243,11 @@ export class RunExecutor {
           errorMessage: error instanceof Error ? error.message : 'Agent 运行失败',
         });
       }
+      const safeFailure =
+        error instanceof AgentEngineError ? error.message : 'Agent 运行失败，请重试。';
       this.dependencies.conversations.failAssistant(
         runId,
-        textContent('本次请求未完成，请重试。'),
+        textContent(`本次请求未完成：${safeFailure}`),
         'AGENT_FAILED',
       );
       this.persistMetrics(runId, tracker, inputTokens);

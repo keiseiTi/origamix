@@ -51,6 +51,29 @@ describe('Agent recovery', () => {
     expect(hook.result.current.activity).toBe('idle');
   });
 
+  it('keeps the Working refresh signal when a Run finishes before submission reconciliation', async () => {
+    mocks.createAgentRun.mockResolvedValue({
+      conversationId: 'conversation_1',
+      runId: 'run_fast',
+    });
+    mocks.getAgentRun.mockResolvedValue({
+      run: {
+        runId: 'run_fast',
+        status: 'completed',
+        resultWorkingVersion: 2,
+      },
+    });
+    mocks.listAllMessages.mockResolvedValue({ messages: [] });
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+
+    await act(async () => hook.result.current.send('添加表单'));
+
+    expect(hook.result.current.state.workingRefreshKey).toBe('working_run_fast_2');
+    expect(hook.result.current.state.stage).toBe('completed');
+    expect(mocks.subscribeAgentEvents).not.toHaveBeenCalled();
+  });
+
   it('retries the exact uncertain request after unmount without automatically resending', async () => {
     mocks.createAgentRun
       .mockRejectedValueOnce(new Error('connection lost'))

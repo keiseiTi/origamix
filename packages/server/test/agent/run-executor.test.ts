@@ -231,6 +231,36 @@ describe('Agent execution through AgentService', () => {
     expect(repaired.calls()).toBe(2);
     repaired.database.close();
 
+    const rejected = setup(async (request) => {
+      await request.onEvent?.({
+        type: 'tool_end',
+        toolCallId: 'call_invalid',
+        toolName: 'apply_page_operations',
+        result: {
+          content: [{ type: 'text', text: 'INVALID_MATERIAL_PROPS: table 缺少 columns' }],
+        },
+        isError: true,
+      });
+      return { text: '', usage };
+    });
+    const rejectedResult = await rejected.run(rejected.input('添加默认表格'));
+    expect(rejectedResult).toMatchObject({ status: 'failed' });
+    const rejectedRun = rejected.runs.get(rejectedResult.runId)!;
+    expect(rejectedRun.errorMessage).toBe(
+      '页面修改未提交：INVALID_MATERIAL_PROPS: table 缺少 columns',
+    );
+    expect(
+      rejected.conversations
+        .history(rejectedRun.projectId, rejectedRun.pageId, rejectedRun.conversationId)
+        .find(({ role }) => role === 'assistant')?.content.blocks,
+    ).toEqual([
+      {
+        type: 'text',
+        text: '本次请求未完成：页面修改未提交：INVALID_MATERIAL_PROPS: table 缺少 columns',
+      },
+    ]);
+    rejected.database.close();
+
     const failed = setup(async () => {
       throw new AgentEngineError('PROVIDER_ERROR', '模型服务调用失败');
     });
