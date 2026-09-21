@@ -18,6 +18,25 @@ const textContent = (text: string): MessageContent => ({
   blocks: [{ type: 'text', text }],
 });
 
+const toolErrorText = (result: unknown): string | undefined => {
+  if (!result || typeof result !== 'object') return undefined;
+  const content = (result as { content?: unknown }).content;
+  if (!Array.isArray(content)) return undefined;
+  const text = content
+    .filter((item): item is { type: 'text'; text: string } =>
+      Boolean(
+        item &&
+        typeof item === 'object' &&
+        (item as { type?: unknown }).type === 'text' &&
+        typeof (item as { text?: unknown }).text === 'string',
+      ),
+    )
+    .map((item) => item.text)
+    .join('\n')
+    .trim();
+  return text ? text.slice(0, 500) : undefined;
+};
+
 export interface RunResult {
   runId: string;
   mode: PageIntent['mode'];
@@ -92,6 +111,7 @@ export class RunExecutor {
     const tracker = new RunBudgetController(started.run.budget);
     let assistantText = '';
     let resultWorkingVersion: number | undefined;
+    let lastWriteFailure: string | undefined;
     let inputTokens = 0;
     const registry = new AgentToolRegistry();
     try {
@@ -137,7 +157,12 @@ export class RunExecutor {
           modelId: started.run.modelRef,
           systemPrompt: `${assembled.systemPolicy}\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(assembled)}</ORIGAMIX_CONTEXT>`,
           prompt: repair
-            ? '上一次没有成功修改页面。请修正 Operation List，并调用 apply_page_operations；不要声称未发生的修改。'
+            ? [
+                '上一次没有成功修改页面。请修正 Operation List，并调用 apply_page_operations；不要声称未发生的修改。',
+                lastWriteFailure ? `上一次写入失败原因：${lastWriteFailure}` : undefined,
+              ]
+                .filter(Boolean)
+                .join('\n')
             : message,
           tools,
           signal: controller.signal,
@@ -145,11 +170,11 @@ export class RunExecutor {
           onEvent: async (event) => {
             await this.handleEngineEvent(runId, event);
             if (event.type === 'text_delta') assistantText += event.delta;
-            if (
-              event.type === 'tool_end' &&
-              !event.isError &&
-              event.toolName === 'apply_page_operations'
-            ) {
+            if (event.type === 'tool_end' && event.toolName === 'apply_page_operations') {
+              if (event.isError) {
+                lastWriteFailure = toolErrorText(event.result) ?? '写入工具未通过校验';
+                return;
+              }
               const result = event.result as { workingVersion?: unknown };
               if (typeof result?.workingVersion === 'number') {
                 resultWorkingVersion = result.workingVersion;

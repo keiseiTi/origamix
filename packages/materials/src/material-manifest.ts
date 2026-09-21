@@ -55,6 +55,11 @@ export type AgentMaterialSummary = Readonly<{
   description: string;
   role: MaterialRole;
   keywords: readonly string[];
+  defaultProps: Readonly<Record<string, unknown>>;
+  acceptsChildren: boolean;
+  allowedParentTypes?: readonly string[];
+  usage: string;
+  constraints: readonly string[];
 }>;
 
 export const toAgentMaterialSummary = (manifest: MaterialManifest): AgentMaterialSummary => {
@@ -64,6 +69,11 @@ export const toAgentMaterialSummary = (manifest: MaterialManifest): AgentMateria
     description: manifest.description,
     role: manifest.role,
     keywords: manifest.keywords,
+    defaultProps: manifest.defaultProps,
+    acceptsChildren: manifest.acceptsChildren,
+    allowedParentTypes: manifest.allowedParentTypes,
+    usage: manifest.usage,
+    constraints: manifest.constraints,
   };
 };
 

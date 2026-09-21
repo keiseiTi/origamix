@@ -37,7 +37,7 @@ export const createApplyPageOperationsTool = (
   return {
     name: 'apply_page_operations',
     description:
-      'Atomically apply a typed list of operations to the current page Working Schema after server validation.',
+      '将 operations 原子写入当前页面 Working Schema。修改页面时必须调用本工具；element.type 和 props 必须符合 Material Manifest，新增多个关联元素优先使用 insertSubtree，parentId 必须是当前 Schema 中已有元素。失败信息会说明需要修正的 Operation 或物料字段。',
     parameters,
     execute: async (input, signal) => {
       if (!Value.Check(parameters, input)) throw invalid('apply_page_operations 参数无效');

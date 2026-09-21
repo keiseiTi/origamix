@@ -3,6 +3,7 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/inter';
 
+/* Custom Scrollbar for Agent Chat */
 .agent-chat-scrollbar {
   scrollbar-color: rgb(161 161 170 / 45%) transparent;
   scrollbar-width: thin;
@@ -41,6 +42,7 @@
   background: rgb(161 161 170 / 70%);
   background-clip: padding-box;
 }
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -56,44 +58,111 @@
   color: var(--foreground);
   background: var(--background);
   font-synthesis: none;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
+
+  /* Origamix Light Mode - 干净、理性的工坊纸感风格 */
+  --background: oklch(0.98 0.005 260);
+  --foreground: oklch(0.18 0.02 265);
+
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.18 0.02 265);
+
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.785 0.115 274.713);
-  --chart-2: oklch(0.585 0.233 277.117);
-  --chart-3: oklch(0.511 0.262 276.966);
-  --chart-4: oklch(0.457 0.24 277.023);
-  --chart-5: oklch(0.398 0.195 277.366);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --popover-foreground: oklch(0.18 0.02 265);
+
+  /* Primary: Origami Violet (折纸紫) */
+  --primary: oklch(0.55 0.22 272);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.93 0.01 260);
+  --secondary-foreground: oklch(0.25 0.04 268);
+
+  --muted: oklch(0.94 0.008 260);
+  --muted-foreground: oklch(0.52 0.02 265);
+
+  --accent: oklch(0.92 0.025 270);
+  --accent-foreground: oklch(0.48 0.22 272);
+
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.89 0.01 260);
+  --input: oklch(0.89 0.01 260);
+  --ring: oklch(0.55 0.22 272);
+
+  --radius: 0.5rem;
+
+  /* Sidebar Tokens */
+  --sidebar: oklch(0.96 0.008 260);
+  --sidebar-foreground: oklch(0.22 0.02 265);
+  --sidebar-primary: oklch(0.55 0.22 272);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.92 0.015 260);
+  --sidebar-accent-foreground: oklch(0.22 0.02 265);
+  --sidebar-border: oklch(0.89 0.01 260);
+  --sidebar-ring: oklch(0.55 0.22 272);
+
+  /* Charts */
+  --chart-1: oklch(0.6 0.2 270);
+  --chart-2: oklch(0.65 0.18 160);
+  --chart-3: oklch(0.7 0.18 60);
+  --chart-4: oklch(0.65 0.2 310);
+  --chart-5: oklch(0.55 0.18 200);
+
+  /* PRD 专属状态语义色 (Light) */
+  --status-insync: oklch(0.62 0.17 150); /* in_sync: 翡翠绿 */
+  --status-unsaved: oklch(0.72 0.16 65); /* draft_unsaved: 暖琥珀 */
+  --status-pending: oklch(0.62 0.16 230); /* saved_pending_apply: 科技蓝 */
+  --status-external: oklch(0.58 0.22 25); /* external_change: 警告红 */
 }
 
-:root.dark {
+.dark {
   color-scheme: dark;
-  color: var(--foreground);
-  background: var(--background);
+
+  /* Origamix Dark Mode - Obsidian 专业黑胶工坊风格 */
+  --background: oklch(0.14 0.015 265);
+  --foreground: oklch(0.96 0.008 260);
+
+  --card: oklch(0.18 0.018 265);
+  --card-foreground: oklch(0.96 0.008 260);
+
+  --popover: oklch(0.18 0.018 265);
+  --popover-foreground: oklch(0.96 0.008 260);
+
+  /* Primary: 高亮折纸紫 */
+  --primary: oklch(0.62 0.23 272);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.23 0.02 265);
+  --secondary-foreground: oklch(0.92 0.01 260);
+
+  --muted: oklch(0.22 0.018 265);
+  --muted-foreground: oklch(0.62 0.02 265);
+
+  --accent: oklch(0.26 0.04 270);
+  --accent-foreground: oklch(0.92 0.01 260);
+
+  --destructive: oklch(0.62 0.22 22);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.62 0.23 272);
+
+  /* Sidebar Tokens (Dark) */
+  --sidebar: oklch(0.16 0.016 265);
+  --sidebar-foreground: oklch(0.92 0.008 260);
+  --sidebar-primary: oklch(0.62 0.23 272);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.22 0.02 265);
+  --sidebar-accent-foreground: oklch(0.96 0.008 260);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.62 0.23 272);
+
+  /* PRD 专属状态语义色 (Dark) */
+  --status-insync: oklch(0.72 0.17 150); /* in_sync */
+  --status-unsaved: oklch(0.8 0.16 75); /* draft_unsaved */
+  --status-pending: oklch(0.72 0.16 230); /* saved_pending_apply */
+  --status-external: oklch(0.68 0.22 25); /* external_change */
 }
 
 * {
@@ -123,12 +192,14 @@ textarea {
 }
 
 ::selection {
-  background: rgb(37 99 235 / 24%);
+  background: oklch(0.62 0.23 272 / 28%);
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Inter Variable', sans-serif;
+
+  /* Tailwind Colors 映射 */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -137,11 +208,13 @@ textarea {
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -160,47 +233,19 @@ textarea {
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+
+  /* 扩展 PRD 语义状态色 */
+  --color-status-insync: var(--status-insync);
+  --color-status-unsaved: var(--status-unsaved);
+  --color-status-pending: var(--status-pending);
+  --color-status-external: var(--status-external);
+
+  /* 圆角设置 (稍作收敛，呈现严谨工作台线条) */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-.dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.785 0.115 274.713);
-  --chart-2: oklch(0.585 0.233 277.117);
-  --chart-3: oklch(0.511 0.262 276.966);
-  --chart-4: oklch(0.457 0.24 277.023);
-  --chart-5: oklch(0.398 0.195 277.366);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
 @layer base {

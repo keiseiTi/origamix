@@ -192,7 +192,20 @@ describe('Agent execution through AgentService', () => {
 
   it('allows one repair and fails safely when the model or repair fails', async () => {
     const repaired = setup(async (request, call) => {
-      if (call === 2) {
+      if (call === 1) {
+        await request.onEvent?.({
+          type: 'tool_end',
+          toolCallId: 'call_1',
+          toolName: 'apply_page_operations',
+          result: {
+            content: [{ type: 'text', text: 'INVALID_MATERIAL_PROPS: table 缺少 columns' }],
+          },
+          isError: true,
+        });
+      } else {
+        expect(request.prompt).toContain(
+          '上一次写入失败原因：INVALID_MATERIAL_PROPS: table 缺少 columns',
+        );
         const tool = request.tools![0]!;
         await request.onEvent?.({
           type: 'tool_start',

@@ -157,6 +157,14 @@ describe('antd material registry', () => {
   it('derives compact agent summaries and supports targeted manifest reads', () => {
     expect(antdAgentMaterialCatalog).toHaveLength(antdMaterialManifest.materials.length);
     expect(antdAgentMaterialCatalog[0]).not.toHaveProperty('propsSchema');
+    expect(antdAgentMaterialCatalog.find(({ type }) => type === 'table')).toMatchObject({
+      defaultProps: {
+        rowKey: 'id',
+        columns: expect.any(Array),
+      },
+      acceptsChildren: false,
+      constraints: expect.arrayContaining(['rowKey 必须对应每行数据的唯一字段。']),
+    });
     expect(getAntdMaterialManifests(['table', 'form']).map(({ type }) => type)).toEqual([
       'form',
       'table',
