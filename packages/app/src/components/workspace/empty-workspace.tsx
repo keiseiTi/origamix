@@ -1,4 +1,4 @@
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import { Plus, Sparkles } from 'lucide-react';
 
 export const EmptyWorkspace = ({

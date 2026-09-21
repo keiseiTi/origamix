@@ -1,4 +1,4 @@
-import { Button } from '../../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -6,12 +6,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../ui/dialog';
-import { Field, FieldLabel } from '../../ui/field';
-import { Input } from '../../ui/input';
+} from '@/components/ui/dialog';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { useState } from 'react';
-import { useWorkspaceStore, type PageItem } from '../../../store/workspace';
-import { projectsService } from '../../../services/projects';
+import { useWorkspaceStore, type PageItem } from '@/store/workspace';
+import { projectsService } from '@/services/projects';
 
 interface CreatePageModalProps {
   projectId: string | null;

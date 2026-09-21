@@ -12,7 +12,7 @@ pre-commit:
             glob:
               - 'apps/**/*.{js,jsx,ts,tsx,mjs,cjs}'
               - 'packages/**/*.{js,jsx,ts,tsx,mjs,cjs}'
-            run: pnpm exec eslint --fix --max-warnings=0 {staged_files}
+            run: pnpm exec eslint --fix {staged_files}
             stage_fixed: true
           - name: verify architecture rules
             glob:

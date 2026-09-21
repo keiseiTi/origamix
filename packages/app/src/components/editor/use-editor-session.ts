@@ -1,7 +1,7 @@
 import type { Schema } from '@tangramino/engine';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { schemaService } from '../../services/schema';
+import { schemaService } from '@/services/schema';
 import { deriveSchemaOperations } from './derive-schema-operations';
 
 export const useEditorSession = (projectId: string, pageId: string, readOnly: boolean) => {

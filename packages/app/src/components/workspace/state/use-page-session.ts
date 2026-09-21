@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { useAgentChat } from '../../agent-chat/use-agent-chat';
-import type { EditorHandle } from '../../editor';
+import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
+import type { EditorHandle } from '@/components/editor';
 import { usePageApplicationState } from './use-page-application-state';
 
 export const derivePageCapabilities = ({

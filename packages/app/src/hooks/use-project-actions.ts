@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { projectsService } from '../services/projects';
-import { useWorkspaceStore, type PageItem, type ProjectItem } from '../store/workspace';
+import { projectsService } from '@/services/projects';
+import { useWorkspaceStore, type PageItem, type ProjectItem } from '@/store/workspace';
 
 interface ProjectActionsInput {
   flushEditor: () => Promise<void>;

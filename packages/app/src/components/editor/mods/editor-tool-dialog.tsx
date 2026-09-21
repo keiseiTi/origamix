@@ -1,7 +1,13 @@
-import { Button } from '../../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { Textarea } from '../../ui/textarea';
-import { SchemaUtils, type Schema } from '@tangramino/engine';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { SchemaUtils, type Flows, type Schema } from '@tangramino/engine';
 import { useEditorCore } from '@tangramino/base-editor';
 import { useEffect, useState } from 'react';
 import type { EditorTool } from '..';
@@ -29,10 +35,11 @@ export const EditorToolDialog = ({
     if (!tool) return;
     const value =
       tool === 'globals'
-        ? schema.context.globalVariables
+        ? schema.context?.globalVariables
         : tool === 'logic'
           ? schema.flows
           : schema;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCode(JSON.stringify(value, null, 2));
     setError(null);
   }, [schema, tool]);
@@ -48,7 +55,7 @@ export const EditorToolDialog = ({
       } else if (tool === 'logic') {
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
           throw new Error('逻辑配置必须是 JSON 对象');
-        setSchema({ ...schema, flows: parsed as Record<string, unknown> });
+        setSchema({ ...schema, flows: parsed as Flows });
       } else if (tool === 'schema') {
         setSchema(SchemaUtils.normalizeSchema(parsed as Schema));
       }
@@ -71,9 +78,20 @@ export const EditorToolDialog = ({
           <SchemaEditor onSaved={onClose} />
         ) : (
           <>
-            <Textarea value={code} onChange={(event) => setCode(event.target.value)} className='min-h-0 flex-1 resize-none font-mono text-xs' spellCheck={false} aria-label={`${titles[tool]} JSON`} />
+            <Textarea
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              className='min-h-0 flex-1 resize-none font-mono text-xs'
+              spellCheck={false}
+              aria-label={`${titles[tool]} JSON`}
+            />
             {error && <p className='text-sm text-danger'>{error}</p>}
-            <DialogFooter><Button variant='outline' onClick={onClose}>取消</Button><Button onClick={save}>保存</Button></DialogFooter>
+            <DialogFooter>
+              <Button variant='outline' onClick={onClose}>
+                取消
+              </Button>
+              <Button onClick={save}>保存</Button>
+            </DialogFooter>
           </>
         )}
       </DialogContent>

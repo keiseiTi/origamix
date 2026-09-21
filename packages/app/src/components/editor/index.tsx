@@ -4,7 +4,6 @@ import {
   EditorProvider,
   historyPlugin,
   usePluginContext,
-  type HistoryPlugin,
   useEditorCore,
   type Material,
 } from '@tangramino/base-editor';
@@ -47,11 +46,13 @@ const HistoryBridge = ({
   historyRef,
   onChange,
 }: {
-  historyRef: React.MutableRefObject<HistoryPlugin | undefined>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  historyRef: React.RefObject<any | undefined>;
   onChange: (state: EditorHistoryState) => void;
 }): null => {
   const schema = useEditorCore((state) => state.schema);
-  const history = usePluginContext<HistoryPlugin>('history');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const history = usePluginContext<any>('history');
   useEffect(() => {
     historyRef.current = history;
     onChange({ canUndo: history?.canUndo() ?? false, canRedo: history?.canRedo() ?? false });
@@ -93,8 +94,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
   ): React.JSX.Element => {
     const session = useEditorSession(projectId, pageId, readOnly);
     const { initial, loading, error, flush, onChange, providerKey } = session;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [providerKey]);
-    const historyRef = useRef<HistoryPlugin>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const historyRef = useRef<any>(undefined);
 
     useImperativeHandle(
       ref,

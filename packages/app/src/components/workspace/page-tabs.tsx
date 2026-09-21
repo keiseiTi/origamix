@@ -1,8 +1,8 @@
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useWorkspaceStore } from '../../store/workspace';
+import { useWorkspaceStore } from '@/store/workspace';
 
 interface PageTabsProps {
   sidebarCollapsed: boolean;

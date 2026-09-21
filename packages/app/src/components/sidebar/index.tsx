@@ -1,4 +1,4 @@
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Folder,
   FolderOpen,
@@ -15,9 +15,9 @@ import { CreateProjectModal } from './mod/create-project-modal';
 import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import { SidebarActionMenu } from './action-menu';
-import { usePreferencesStore } from '../../store/preferences';
-import { useWorkspaceStore, type PageItem } from '../../store/workspace';
-import { useProjectActions } from '../../hooks/use-project-actions';
+import { usePreferencesStore } from '@/store/preferences';
+import { useWorkspaceStore, type PageItem } from '@/store/workspace';
+import { useProjectActions } from '@/hooks/use-project-actions';
 
 interface SidebarProps {
   isMacDesktop: boolean;

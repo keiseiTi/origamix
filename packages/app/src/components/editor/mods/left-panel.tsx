@@ -1,4 +1,4 @@
-import { Button } from '../../ui/button';
+import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import { useEditorCore, type ActiveElement } from '@tangramino/base-editor';
@@ -125,10 +125,12 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
     <aside className='flex h-full w-60 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'>
       <div className='flex h-10 items-end justify-between border-b border-zinc-200 px-2 dark:border-zinc-800'>
         <div className='flex h-full items-end gap-1' role='tablist' aria-label='左侧面板'>
-          {([
-            ['materials', '物料'],
-            ['outline', '大纲树'],
-          ] as const).map(([key, label]) => (
+          {(
+            [
+              ['materials', '物料'],
+              ['outline', '大纲树'],
+            ] as const
+          ).map(([key, label]) => (
             <button
               key={key}
               type='button'

@@ -1,4 +1,4 @@
-import { Button } from '../../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -6,14 +6,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../ui/dialog';
-import { Field, FieldLabel } from '../../ui/field';
-import { Input } from '../../ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
+} from '@/components/ui/dialog';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
-import { useWorkspaceStore } from '../../../store/workspace';
-import { projectsService } from '../../../services/projects';
+import { useWorkspaceStore } from '@/store/workspace';
+import { projectsService } from '@/services/projects';
 
 interface CreateProjectModalProps {
   isOpen: boolean;

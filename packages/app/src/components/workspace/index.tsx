@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { usePreferencesStore } from '../../store/preferences';
-import { useWorkspaceStore, type PageItem } from '../../store/workspace';
+import { usePreferencesStore } from '@/store/preferences';
+import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '../agent-chat';
-import {
-  Editor,
-  type EditorHandle,
-  type EditorHistoryState,
-  type EditorTool,
-} from '../editor';
+import { Editor, type EditorHandle, type EditorHistoryState, type EditorTool } from '../editor';
 import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 import { usePageSession } from './state/use-page-session';

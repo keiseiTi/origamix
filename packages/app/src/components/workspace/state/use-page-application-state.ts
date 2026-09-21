@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { schemaService } from '../../../services/schema';
-import { pageOperationKey, usePendingOperations } from '../../../store/pending-operations';
-import { ApiRequestError } from '../../../services/request';
+import { schemaService } from '@/services/schema';
+import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
+import { ApiRequestError } from '@/services/request';
 import type { EditorHandle } from '../../editor';
 
 export type PageApplyStatus =

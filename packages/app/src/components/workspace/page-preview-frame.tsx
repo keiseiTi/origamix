@@ -1,13 +1,13 @@
-import { Button } from '../ui/button';
-import { Spinner } from '../ui/spinner';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
-import { RuntimePreview } from '../../runtime/runtime-preview';
-import { runtimeService } from '../../services/runtime';
-import { schemaService } from '../../services/schema';
-import type { AppTheme } from '../../store/preferences';
+import { RuntimePreview } from '@/runtime/runtime-preview';
+import { runtimeService } from '@/services/runtime';
+import { schemaService } from '@/services/schema';
+import type { AppTheme } from '@/store/preferences';
 
 interface PagePreviewFrameProps {
   active: boolean;

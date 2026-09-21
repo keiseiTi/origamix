@@ -1,4 +1,4 @@
-import { Button } from '../components/ui/button';
+import { Button } from '@/components/ui/button';
 import materialComponents from '@origamix/materials/antd';
 import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime/react';
 import type { Schema } from '@tangramino/engine';

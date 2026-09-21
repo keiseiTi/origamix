@@ -1,5 +1,5 @@
-import { Button } from '../../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Movable,
   useEditorCore,
@@ -7,7 +7,7 @@ import {
   type DropPlaceholderProps,
   type EnhancedComponentProps,
 } from '@tangramino/base-editor';
-import { GripVertical, Move, Trash2 } from 'lucide-react';
+import { Move, Trash2 } from 'lucide-react';
 import { removeEditorElement } from './editor-schema';
 
 export const DropIndicator = ({

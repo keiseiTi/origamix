@@ -1,9 +1,15 @@
-import { Checkbox } from '../../ui/checkbox';
-import { FieldLabel } from '../../ui/field';
-import { Input } from '../../ui/input';
-import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
-import { Switch } from '../../ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { ChevronRight } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import {
@@ -50,7 +56,10 @@ export const AttributePanel = (): React.JSX.Element => {
   const values = element?.props ?? {};
   const panels = material?.editorConfig?.panels ?? [];
 
-  useEffect(() => setActivePanel('0'), [activeElement?.id]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActivePanel('0');
+  }, [activeElement?.id]);
 
   const parents = useMemo<ActiveElement[]>(() => {
     if (!activeElement) return [];
@@ -194,7 +203,10 @@ export const AttributePanel = (): React.JSX.Element => {
   };
 
   return (
-    <aside className='flex h-full w-70 shrink-0 flex-col border-l border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950' aria-label='属性面板'>
+    <aside
+      className='flex h-full w-70 shrink-0 flex-col border-l border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950'
+      aria-label='属性面板'
+    >
       {!activeElement ? (
         <div className='grid size-full place-items-center p-5 text-center text-sm text-zinc-600 dark:text-zinc-400'>
           请从左侧画布选中元素

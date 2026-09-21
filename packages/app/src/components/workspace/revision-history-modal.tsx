@@ -1,4 +1,4 @@
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -6,13 +6,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../ui/dialog';
-import { Spinner } from '../ui/spinner';
+} from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { Check, GitCommitHorizontal, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { schemaService } from '../../services/schema';
+import { schemaService } from '@/services/schema';
 
 const sourceLabel = (revision: RevisionHistoryItem): string => {
   if (revision.source.kind === 'agent') return 'Agent 修改';
@@ -148,7 +148,10 @@ export const RevisionHistoryModal = ({
             </ol>
           )}
           {selected ? (
-            <section aria-label='版本内容' className='flex min-h-0 flex-col gap-2 rounded-lg border border-border p-3'>
+            <section
+              aria-label='版本内容'
+              className='flex min-h-0 flex-col gap-2 rounded-lg border border-border p-3'
+            >
               <h3 className='text-sm font-medium'>版本内容</h3>
               <pre className='min-h-0 flex-1 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
                 {JSON.stringify(selected.schema, null, 2)}

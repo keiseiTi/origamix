@@ -1,11 +1,17 @@
-import { Button } from '../../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { Field, FieldLabel } from '../../ui/field';
-import { Input } from '../../ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
-import type { PendingProjectInitialization } from '../../../hooks/use-project-actions';
+import type { PendingProjectInitialization } from '@/hooks/use-project-actions';
 
 interface OpenProjectModalProps {
   pendingInitialization: PendingProjectInitialization;

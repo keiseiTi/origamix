@@ -1,20 +1,20 @@
-import { Button } from './components/ui/button';
-import { Spinner } from './components/ui/spinner';
-import { TooltipProvider } from './components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Sidebar } from './components/sidebar';
-import { CreateProjectModal } from './components/sidebar/mod/create-project-modal';
-import { SettingsModal } from './components/settings';
-import { Workspace } from './components/workspace';
-import { PageTabs } from './components/workspace/page-tabs';
-import type { EditorHandle } from './components/editor';
-import type { WorkspaceMode } from './components/workspace';
-import { projectsService } from './services/projects';
-import { useWorkspaceTransitions } from './hooks/use-workspace-transitions';
-import { usePreferencesStore } from './store/preferences';
-import { useWorkspaceStore, type PageItem } from './store/workspace';
+import { Sidebar } from '@/components/sidebar';
+import { CreateProjectModal } from '@/components/sidebar/mod/create-project-modal';
+import { SettingsModal } from '@/components/settings';
+import { Workspace } from '@/components/workspace';
+import { PageTabs } from '@/components/workspace/page-tabs';
+import type { EditorHandle } from '@/components/editor';
+import type { WorkspaceMode } from '@/components/workspace';
+import { projectsService } from '@/services/projects';
+import { useWorkspaceTransitions } from '@/hooks/use-workspace-transitions';
+import { usePreferencesStore } from '@/store/preferences';
+import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 
 const App = (): React.JSX.Element => {
   const isMacDesktop = window.api?.platform === 'darwin';

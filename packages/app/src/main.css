@@ -2,6 +2,45 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/inter';
+
+.agent-chat-scrollbar {
+  scrollbar-color: rgb(161 161 170 / 45%) transparent;
+  scrollbar-width: thin;
+}
+
+.agent-chat-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.agent-chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(161 161 170 / 45%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+.agent-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(113 113 122 / 65%);
+  background-clip: padding-box;
+}
+
+.dark .agent-chat-scrollbar {
+  scrollbar-color: rgb(113 113 122 / 55%) transparent;
+}
+
+.dark .agent-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(113 113 122 / 55%);
+  background-clip: padding-box;
+}
+
+.dark .agent-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(161 161 170 / 70%);
+  background-clip: padding-box;
+}
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
