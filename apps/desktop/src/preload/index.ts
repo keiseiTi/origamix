@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopApi } from '@origamix/shared/desktop-api';
+import type { DesktopApi, ModelSettings } from '@origamix/shared/desktop-api';
 
 // Custom APIs for renderer
 const api: DesktopApi = {
@@ -15,16 +15,10 @@ const api: DesktopApi = {
       ipcRenderer.invoke('dialog:choose-existing-project'),
   },
   settings: {
-    getModel: (): Promise<{
-      provider: 'deepseek';
-      model: 'deepseek-v4-flash';
-      hasApiKey: boolean;
-    }> => ipcRenderer.invoke('settings:model:get'),
-    saveModel: (input: {
-      provider: 'deepseek';
-      model: 'deepseek-v4-flash';
-      apiKey?: string;
-    }): Promise<{ hasApiKey: boolean }> => ipcRenderer.invoke('settings:model:save', input),
+    getModel: (): Promise<ModelSettings> => ipcRenderer.invoke('settings:model:get'),
+    saveModel: (
+      input: Omit<ModelSettings, 'hasApiKey'> & { apiKey?: string },
+    ): Promise<{ hasApiKey: boolean }> => ipcRenderer.invoke('settings:model:save', input),
     getProfile: (): Promise<{ name: string; iconBackground: string }> =>
       ipcRenderer.invoke('settings:profile:get'),
     saveProfile: (input: {

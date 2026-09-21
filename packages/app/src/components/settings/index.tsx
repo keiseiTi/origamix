@@ -8,6 +8,24 @@ import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'luc
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore, type AppTheme } from '@/store/preferences';
+import type { ModelSettings } from '@origamix/shared/desktop-api';
+
+const modelOptions: Array<{
+  value: ModelSettings['model'];
+  name: string;
+  description: string;
+}> = [
+  {
+    value: 'deepseek-flash',
+    name: 'DeepSeek Flash',
+    description: '响应更快，适合日常页面生成与调整',
+  },
+  {
+    value: 'deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro',
+    description: '能力更强，适合复杂页面和多步骤任务',
+  },
+];
 
 interface SettingsPageProps {
   onClose: () => void;
@@ -49,6 +67,7 @@ export const SettingsPage = ({
     })),
   );
   const [apiKey, setApiKey] = useState('');
+  const [selectedModel, setSelectedModel] = useState<ModelSettings['model']>('deepseek-flash');
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -79,7 +98,10 @@ export const SettingsPage = ({
         if (!active) return;
         const configured = settings?.hasApiKey ?? false;
         setHasSavedKey(configured);
-        if (settings) setHasModelApiKey(configured);
+        if (settings) {
+          setSelectedModel(settings.model);
+          setHasModelApiKey(configured);
+        }
       })
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
       .finally(() => active && setIsLoading(false));
@@ -94,7 +116,7 @@ export const SettingsPage = ({
     try {
       const result = await window.api?.settings?.saveModel?.({
         provider: 'deepseek',
-        model: 'deepseek-v4-flash',
+        model: selectedModel,
         apiKey: apiKey || undefined,
       });
       if (!result) throw new Error('当前环境不支持保存模型设置，请在桌面应用中操作。');
@@ -294,25 +316,40 @@ export const SettingsPage = ({
               </span>
               选择模型
             </div>
-            <Card className='mb-6 border-blue-500 bg-blue-50/60 p-4 dark:border-blue-700 dark:bg-blue-950/20'>
-              <div className='flex items-center gap-3'>
-                <span className='grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-white'>
-                  <Bot size={18} />
-                </span>
-                <div className='min-w-0 flex-1'>
-                  <div className='flex items-center gap-2'>
-                    <strong>DeepSeek V4 Flash</strong>
-                    <Badge variant='secondary'>当前唯一支持</Badge>
-                  </div>
-                  <p className='mt-1 mb-0 text-xs text-zinc-500 dark:text-zinc-400'>
-                    deepseek-v4-flash · 支持工具调用与结构化输出
-                  </p>
-                </div>
-                <span className='grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-white'>
-                  <Check size={12} />
-                </span>
-              </div>
-            </Card>
+            <RadioGroup
+              value={selectedModel}
+              onValueChange={(value) => setSelectedModel(value as ModelSettings['model'])}
+              className='mb-6 grid gap-3 sm:grid-cols-2'
+              aria-label='DeepSeek 模型'
+            >
+              {modelOptions.map((option) => {
+                const selected = selectedModel === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
+                      selected
+                        ? 'border-blue-500 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-950/20'
+                        : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600'
+                    }`}
+                  >
+                    <RadioGroupItem value={option.value} className='mt-1' />
+                    <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-white'>
+                      <Bot size={18} />
+                    </span>
+                    <span className='min-w-0'>
+                      <strong className='block'>{option.name}</strong>
+                      <span className='mt-1 block text-xs text-zinc-500 dark:text-zinc-400'>
+                        {option.description}
+                      </span>
+                      <code className='mt-2 block text-[11px] text-zinc-400 dark:text-zinc-500'>
+                        {option.value}
+                      </code>
+                    </span>
+                  </label>
+                );
+              })}
+            </RadioGroup>
 
             <div className='mb-3 flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400'>
               <span className='grid h-5 w-5 place-items-center rounded-full bg-zinc-900 text-[10px] text-white dark:bg-zinc-100 dark:text-zinc-900'>

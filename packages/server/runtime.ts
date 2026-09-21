@@ -33,6 +33,7 @@ export const startServer = async (input: {
   projectPath?: string;
   allowedOrigins?: readonly string[];
   getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
+  getModelReference?: () => Promise<string | undefined>;
 }) => {
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
@@ -107,7 +108,7 @@ export const startServer = async (input: {
     events: agentEvents,
     executor,
     router: new ScopeRouter(),
-    modelRef: MVP_MODEL_ID,
+    getModelRef: async () => (await input.getModelReference?.()) ?? MVP_MODEL_ID,
     getCurrentState: async (projectId, pageId) => {
       const project = projects.getProject(projectId);
       const page = projects.getPage(projectId, pageId);

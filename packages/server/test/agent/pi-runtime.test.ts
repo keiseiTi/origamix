@@ -6,10 +6,11 @@ import { createMvpPiModels, mvpModelReference } from '../../agent/pi-runtime';
 
 describe('Pi runtime compatibility', () => {
   it('resolves the pinned MVP model from Pi without reading credentials', () => {
-    const { model } = createMvpPiModels();
+    const { model, models } = createMvpPiModels();
 
     expect(model.provider).toBe(mvpModelReference.provider);
     expect(model.id).toBe(mvpModelReference.model);
+    expect(models.getModel('deepseek', 'deepseek-v4-pro')?.id).toBe('deepseek-v4-pro');
   });
 
   it('runs the public Agent API and streams lifecycle events with a fake provider', async () => {

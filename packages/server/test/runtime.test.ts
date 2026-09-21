@@ -45,7 +45,7 @@ describe('server startup Agent recovery', () => {
       clientRequestId: 'startup-recovery',
       baseWorkingVersion: 1,
       content: { version: '1', blocks: [{ type: 'text', text: 'test' }] },
-      modelRef: 'deepseek/deepseek-v4-flash',
+      modelRef: 'deepseek/deepseek-flash',
       mode: 'page_modify',
       budget: {
         maxModelCalls: 1,

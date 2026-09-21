@@ -80,6 +80,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       executor,
       router: new ScopeRouter(),
       getCurrentState: async () => getWorkingSchemaState(pageRef),
+      getModelRef: async () => 'deepseek/deepseek-v4-pro',
     });
     const start = vi.spyOn(service, 'start');
     server = createHttpServer({
@@ -112,6 +113,9 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     expect(response.statusCode).toBe(202);
     const started = await start.mock.results[0]!.value;
     const result = await started.completion;
+    expect(modelCall).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'deepseek/deepseek-v4-pro' }),
+    );
     expect(result, runs.get(started.run.id)?.errorMessage).toMatchObject({
       status: 'completed',
       resultWorkingVersion: expect.any(Number),

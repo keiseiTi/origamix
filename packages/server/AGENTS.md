@@ -31,6 +31,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - HTTP JSON uses `{ success, code, data, message? }`: successful bodies use `code: 200`; failures use `data: null` and an HTTP/business code. Keep the HTTP status RESTful and expose request IDs through response headers.
 - Use shared TypeBox contracts and runtime validators. Return actionable, redacted errors with request IDs; never log tokens, keys or full private project content.
 - Agent HTTP/SSE streaming is implemented in `http/agent-routes.ts`. HTTP/SSE preview capabilities remain target work; do not bypass authentication for a new client.
+- The desktop host owns model selection and credentials. Resolve its current supported model reference before starting a new Agent Run, validate it against the Server registry and persist it on the Run; retries and execution use that persisted reference rather than re-reading settings.
 
 ## Persistence invariants
 

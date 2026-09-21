@@ -14,6 +14,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 - Expose only named domain methods through `contextBridge`. Validate payloads and sending window/frame before privileged operations; types alone do not authorize callers.
 - Keep `nodeIntegration: false`, `contextIsolation: true` and preview sandboxing. Restrict navigation, new windows and permissions; load trusted application routes, not Renderer-provided URLs or paths.
 - Directory pickers return grants for Backend use. Keep credentials under Main's safeStorage ownership; previews and logs receive neither secrets nor desktop tokens.
+- Main owns the selected Agent model and its credential. The Server Utility Process requests the current model reference when starting each Run, so settings changes apply to the next Run without restarting the backend; persist the chosen reference on that Run.
 - Page tabs and their retained iframe previews belong to the Renderer. Main must not own page-tab state or create a second preview-window lifecycle. Preview data access stays in the trusted workbench; the iframe document receives rendered output through a React portal and has no Desktop bridge or backend credentials.
 - Use exported Server build/runtime entry points. Server compiles its own artifacts; Desktop assembles them. Do not import Server business implementation into Main or create another Server compiler configuration.
 - Clean up owned handlers, windows, timers, watchers and child processes on shutdown/restart. Never kill unrelated processes to free a port.

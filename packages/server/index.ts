@@ -18,6 +18,10 @@ const credentialRequests = new Map<
   string,
   { resolve: (credential: string | undefined) => void; timeout: NodeJS.Timeout }
 >();
+const modelReferenceRequests = new Map<
+  string,
+  { resolve: (modelRef: string | undefined) => void; timeout: NodeJS.Timeout }
+>();
 
 const requestCredential = (provider: 'deepseek'): Promise<string | undefined> => {
   const requestId = `credential_${nanoid()}`;
@@ -31,6 +35,18 @@ const requestCredential = (provider: 'deepseek'): Promise<string | undefined> =>
   });
 };
 
+const requestModelReference = (): Promise<string | undefined> => {
+  const requestId = `model_${nanoid()}`;
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      modelReferenceRequests.delete(requestId);
+      resolve(undefined);
+    }, 10_000);
+    modelReferenceRequests.set(requestId, { resolve, timeout });
+    controlPort!.postMessage({ kind: 'model-reference-request', requestId });
+  });
+};
+
 controlPort.on('message', async ({ data }) => {
   if (!data || typeof data !== 'object') return;
   const input = data as Record<string, unknown>;
@@ -40,6 +56,18 @@ controlPort.on('message', async ({ data }) => {
     credentialRequests.delete(input.requestId);
     clearTimeout(pending.timeout);
     pending.resolve(typeof input.credential === 'string' ? input.credential : undefined);
+    return;
+  }
+  if (input.kind === 'model-reference-response' && typeof input.requestId === 'string') {
+    const pending = modelReferenceRequests.get(input.requestId);
+    if (!pending) return;
+    modelReferenceRequests.delete(input.requestId);
+    clearTimeout(pending.timeout);
+    const modelRef =
+      input.modelRef === 'deepseek/deepseek-flash' || input.modelRef === 'deepseek/deepseek-v4-pro'
+        ? input.modelRef
+        : undefined;
+    pending.resolve(modelRef);
     return;
   }
   if (input.kind === 'shutdown') {
@@ -73,6 +101,7 @@ controlPort.on('message', async ({ data }) => {
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,
       getModelCredential: requestCredential,
+      getModelReference: requestModelReference,
     });
     controlPort.postMessage({
       kind: 'ready',

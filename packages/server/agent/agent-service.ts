@@ -9,7 +9,7 @@ import type {
   StartConversationRunInput,
 } from '../conversations/conversation-service';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
-import { MVP_MODEL_ID } from './engine';
+import { getAgentModel, MVP_MODEL_ID } from './engine';
 import { conflict } from '../errors';
 
 export const DEFAULT_AGENT_RUN_BUDGET: RunBudget = {
@@ -46,6 +46,7 @@ export class AgentService {
         pageId: string,
       ) => { workingVersion: number } | Promise<{ workingVersion: number }>;
       modelRef?: string;
+      getModelRef?: () => string | Promise<string>;
       budget?: RunBudget;
     },
   ) {}
@@ -75,9 +76,13 @@ export class AgentService {
         .join('\n')
         .trim();
       const intent = await this.dependencies.router.route(message, request.pageId);
+      const modelRef = this.dependencies.getModelRef
+        ? await this.dependencies.getModelRef()
+        : (this.dependencies.modelRef ?? MVP_MODEL_ID);
+      if (this.dependencies.getModelRef) getAgentModel(modelRef);
       const started = this.dependencies.conversations.startRun({
         ...request,
-        modelRef: this.dependencies.modelRef ?? MVP_MODEL_ID,
+        modelRef,
         mode: intent.mode,
         budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
         promptVersion: '1',

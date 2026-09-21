@@ -13,7 +13,7 @@ export interface UserProfile {
 }
 export interface ModelSettings {
   provider: 'deepseek';
-  model: 'deepseek-v4-flash';
+  model: 'deepseek-flash' | 'deepseek-v4-pro';
   hasApiKey: boolean;
 }
 export interface DesktopApi {

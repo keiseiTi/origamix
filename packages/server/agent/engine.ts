@@ -1,6 +1,8 @@
 import type { TSchema } from '@sinclair/typebox';
 
-export const MVP_MODEL_ID = 'deepseek/deepseek-v4-flash' as const;
+export const DEEPSEEK_FLASH_MODEL_ID = 'deepseek/deepseek-flash' as const;
+export const DEEPSEEK_V4_PRO_MODEL_ID = 'deepseek/deepseek-v4-pro' as const;
+export const MVP_MODEL_ID = DEEPSEEK_FLASH_MODEL_ID;
 export const FAKE_MODEL_ID = 'fake/deterministic-mvp' as const;
 
 export type AgentEngineErrorCode =
@@ -51,7 +53,16 @@ const models = new Map<string, AgentModelDefinition>([
     {
       id: MVP_MODEL_ID,
       provider: 'deepseek',
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-flash',
+      capabilities: { streaming: true, tools: true, abort: true },
+    },
+  ],
+  [
+    DEEPSEEK_V4_PRO_MODEL_ID,
+    {
+      id: DEEPSEEK_V4_PRO_MODEL_ID,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
       capabilities: { streaming: true, tools: true, abort: true },
     },
   ],

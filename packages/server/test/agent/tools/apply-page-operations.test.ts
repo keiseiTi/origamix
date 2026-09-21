@@ -68,7 +68,7 @@ const setup = async () => {
     userMessageId: 'message_test',
     clientRequestId: 'request_test',
     baseWorkingVersion: 1,
-    modelRef: 'deepseek/deepseek-v4-flash',
+    modelRef: 'deepseek/deepseek-flash',
     mode: 'page_modify',
     status: 'tool_calling',
     budget: {

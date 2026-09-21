@@ -12,7 +12,7 @@ import {
 import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
-import type { BackendConnection } from '@origamix/shared/desktop-api';
+import type { BackendConnection, ModelSettings } from '@origamix/shared/desktop-api';
 
 const isDevelopment = !app.isPackaged;
 const rendererIndexPath = (): string =>
@@ -101,6 +101,7 @@ const spawnBackend = async (): Promise<BackendConnection> => {
         message?: string;
         requestId?: string;
         provider?: string;
+        modelRef?: string;
       }) => {
         if (message.kind === 'credential-request' && message.requestId) {
           void readModelApiKey(message.provider).then((credential) => {
@@ -109,6 +110,17 @@ const spawnBackend = async (): Promise<BackendConnection> => {
               kind: 'credential-response',
               requestId: message.requestId,
               ...(credential ? { credential } : {}),
+            });
+          });
+          return;
+        }
+        if (message.kind === 'model-reference-request' && message.requestId) {
+          void readModelSettings().then((settings) => {
+            if (backendProcess !== backend) return;
+            backend.postMessage({
+              kind: 'model-reference-response',
+              requestId: message.requestId,
+              modelRef: `${settings.provider}/${settings.model}`,
             });
           });
           return;
@@ -185,9 +197,12 @@ const grantDirectory = (path: string): { directoryGrantId: string; displayPath: 
 
 interface StoredModelSettings {
   provider: 'deepseek';
-  model: 'deepseek-v4-flash';
+  model: ModelSettings['model'];
   encryptedApiKey?: string;
 }
+
+const defaultModel: ModelSettings['model'] = 'deepseek-flash';
+const supportedModels = new Set<ModelSettings['model']>(['deepseek-flash', 'deepseek-v4-pro']);
 
 interface UserProfileSettings {
   name: string;
@@ -247,11 +262,11 @@ const readModelSettings = async (): Promise<StoredModelSettings> => {
     const value = JSON.parse(await readFile(modelSettingsPath(), 'utf8')) as StoredModelSettings;
     return {
       provider: 'deepseek',
-      model: 'deepseek-v4-flash',
+      model: supportedModels.has(value.model) ? value.model : defaultModel,
       encryptedApiKey: value.encryptedApiKey,
     };
   } catch {
-    return { provider: 'deepseek', model: 'deepseek-v4-flash' };
+    return { provider: 'deepseek', model: defaultModel };
   }
 };
 
@@ -271,7 +286,10 @@ const saveModelSettings = async (input: {
   model: string;
   apiKey?: string;
 }): Promise<{ hasApiKey: boolean }> => {
-  if (input.provider !== 'deepseek' || input.model !== 'deepseek-v4-flash') {
+  if (
+    input.provider !== 'deepseek' ||
+    !supportedModels.has(input.model as ModelSettings['model'])
+  ) {
     throw new Error('暂不支持该模型配置');
   }
   const current = await readModelSettings();
@@ -286,7 +304,7 @@ const saveModelSettings = async (input: {
     : current.encryptedApiKey;
   await writeFile(
     modelSettingsPath(),
-    `${JSON.stringify({ provider: 'deepseek', model: 'deepseek-v4-flash', encryptedApiKey }, null, 2)}\n`,
+    `${JSON.stringify({ provider: 'deepseek', model: input.model, encryptedApiKey }, null, 2)}\n`,
     { mode: 0o600 },
   );
   return { hasApiKey: Boolean(encryptedApiKey) };
