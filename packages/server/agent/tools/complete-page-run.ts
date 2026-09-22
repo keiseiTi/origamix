@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Value } from '@sinclair/typebox/value';
 import {
   CompletePageRunInputSchema,
+  CompletePageRunToolParametersSchema,
   type CompletePageRunInput,
   type PageAgentOutcome,
 } from '@origamix/shared/protocol/agent';
@@ -64,7 +65,7 @@ export const createCompletePageRunTool = (
   name: 'complete_page_run',
   description:
     '结束当前页面请求。每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；只回答、无需修改、需要澄清或拒绝时提交对应 outcome。',
-  parameters: CompletePageRunInputSchema,
+  parameters: CompletePageRunToolParametersSchema,
   execute: async (raw, signal) => {
     if (!Value.Check(CompletePageRunInputSchema, raw)) {
       throw invalid('complete_page_run 参数无效');

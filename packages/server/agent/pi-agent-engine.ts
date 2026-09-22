@@ -47,6 +47,17 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
   ) {
     return new AgentEngineError('PROVIDER_ERROR', '无法连接 DeepSeek，请检查网络后重试', true);
   }
+  if (
+    message.includes('400') ||
+    message.includes('bad request') ||
+    message.includes('invalid_request_error') ||
+    (message.includes('invalid') && message.includes('schema'))
+  ) {
+    return new AgentEngineError(
+      'PROVIDER_ERROR',
+      'DeepSeek 拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
+    );
+  }
   return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek 服务暂时不可用，请稍后重试', true);
 };
 

@@ -101,6 +101,20 @@ describe('PiAgentEngine', () => {
       code: 'PROVIDER_ERROR',
       message: 'DeepSeek 服务暂时不可用，请稍后重试',
     });
+
+    const invalidRequest = setup([
+      fauxAssistantMessage('', {
+        stopReason: 'error',
+        errorMessage: '400 invalid_request_error: private schema detail',
+      }),
+    ]);
+    await expect(
+      invalidRequest.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+    ).rejects.toMatchObject({
+      code: 'PROVIDER_ERROR',
+      message: 'DeepSeek 拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
+      retryable: false,
+    });
   });
 
   it('maps rate limits and keeps tool failures inside normalized tool events', async () => {

@@ -15,12 +15,14 @@ import {
   validateCompletePageRunInput,
   validateClarificationResult,
 } from '../../src/protocol/agent-validation';
+import { CompletePageRunToolParametersSchema } from '../../src/protocol/agent';
 
 const timestamp = '2026-09-04T00:00:00.000Z';
 const content = { version: '1', blocks: [{ type: 'text', text: '创建客户表单' }] };
 
 describe('agent domain protocol', () => {
   it('validates the unified page-agent terminal decisions that protect the core flow', () => {
+    expect(CompletePageRunToolParametersSchema.type).toBe('object');
     const apply = {
       outcome: 'apply_changes',
       operations: [

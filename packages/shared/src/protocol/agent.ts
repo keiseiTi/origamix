@@ -47,6 +47,28 @@ export const CompletePageRunInputSchema = Type.Union([
   }),
 ]);
 
+/**
+ * Provider-facing function parameters must have an object at the JSON Schema root.
+ * The Server still validates tool input with CompletePageRunInputSchema so the
+ * conditional requirements for each outcome remain authoritative.
+ */
+export const CompletePageRunToolParametersSchema = strictObject({
+  outcome: Type.Union([
+    Type.Literal('apply_changes'),
+    Type.Literal('answer_only'),
+    Type.Literal('no_change_needed'),
+    Type.Literal('needs_clarification'),
+    Type.Literal('refused'),
+  ]),
+  operations: Type.Optional(Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 100 })),
+  response: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
+  answeredQuestion: Type.Optional(Type.Boolean()),
+  reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
+  question: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
+  candidates: Type.Optional(Type.Array(ClarificationCandidateSchema, { maxItems: 8 })),
+  reasonCode: Type.Optional(Type.String({ pattern: '^[A-Z][A-Z0-9_]{0,127}$' })),
+});
+
 export const PageAgentOutcomeSchema = Type.Union([
   Type.Literal('changed'),
   Type.Literal('changed_and_answered'),
