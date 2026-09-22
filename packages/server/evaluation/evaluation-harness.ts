@@ -2,23 +2,22 @@ import type {
   AgentEvaluationCaseResult,
   AgentEvaluationReport,
   AgentRunStatus,
-  RunMode,
+  PageAgentOutcome,
 } from '@origamix/shared/protocol/agent';
 
 export interface AgentEvaluationCase {
   id: `eval_${string}`;
   input: string;
-  expectedMode: RunMode;
   expectedStatus: AgentRunStatus;
+  expectedOutcome?: PageAgentOutcome;
   expectWorkingUpdate: boolean;
-  expectedTool?: string;
   expectRepair?: boolean;
   expectedErrorCode?: string;
 }
 
 export interface AgentEvaluationObservation {
-  mode: RunMode;
   status: AgentRunStatus;
+  outcome?: PageAgentOutcome;
   firstEventMs: number;
   durationMs: number;
   inputTokens: number;
@@ -27,9 +26,14 @@ export interface AgentEvaluationObservation {
   toolCalls: number;
   schemaBytes: number;
   repairAttempts: number;
+  terminalDecisionAttempts: number;
+  successfulWorkingCommits: number;
+  successResponsePublished: boolean;
   toolTrace: string[];
   resultWorkingVersion?: number;
   errorCode?: string;
+  errorStage?: string;
+  recoveredCommit?: boolean;
 }
 
 export interface AgentEvaluationAdapter {
@@ -38,127 +42,124 @@ export interface AgentEvaluationAdapter {
 }
 
 const observation = (
-  mode: RunMode,
   status: AgentRunStatus,
-  revision = false,
-  toolTrace: string[] = [],
+  outcome: PageAgentOutcome | undefined,
+  working = false,
   errorCode?: string,
-): AgentEvaluationObservation => {
-  return {
-    mode,
-    status,
-    firstEventMs: 20,
-    durationMs: 120,
-    inputTokens: 0,
-    outputTokens: 0,
-    modelCalls: 0,
-    toolCalls: toolTrace.length,
-    schemaBytes: revision ? 4_096 : 0,
-    repairAttempts: 0,
-    toolTrace,
-    ...(revision ? { resultWorkingVersion: 2 } : {}),
-    ...(errorCode ? { errorCode } : {}),
-  };
-};
+  errorStage?: string,
+): AgentEvaluationObservation => ({
+  status,
+  ...(outcome ? { outcome } : {}),
+  firstEventMs: 20,
+  durationMs: 120,
+  inputTokens: 0,
+  outputTokens: 0,
+  modelCalls: 1,
+  toolCalls: status === 'cancelled' ? 0 : 1,
+  schemaBytes: working ? 4_096 : 0,
+  repairAttempts: 0,
+  terminalDecisionAttempts: status === 'cancelled' ? 0 : 1,
+  successfulWorkingCommits: working ? 1 : 0,
+  successResponsePublished: status === 'completed',
+  toolTrace: status === 'cancelled' ? [] : ['complete_page_run'],
+  ...(working ? { resultWorkingVersion: 2 } : {}),
+  ...(errorCode ? { errorCode } : {}),
+  ...(errorStage ? { errorStage } : {}),
+});
 
 const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservation>> = {
-  eval_login_form: observation('page_modify', 'completed', true, ['apply_page_operations']),
-  eval_customer_form_table: observation('page_modify', 'completed', true, [
-    'apply_page_operations',
-  ]),
-  eval_add_table_column: observation('page_modify', 'completed', true, ['apply_page_operations']),
-  eval_modify_button: observation('page_modify', 'completed', true, ['apply_page_operations']),
-  eval_page_question: observation('page_question', 'completed'),
-  eval_weather_rejected: observation('out_of_scope', 'completed'),
-  eval_weather_page: observation('page_modify', 'completed', true, ['apply_page_operations']),
-  eval_ambiguous: observation('clarification_required', 'completed'),
-  eval_unknown_material: observation('page_modify', 'failed', false, [], 'TOOL_ERROR'),
+  eval_login_form: observation('completed', 'changed', true),
+  eval_mixed_modify_question: observation('completed', 'changed_and_answered', true),
+  eval_page_question: observation('completed', 'answered_only'),
+  eval_no_change: observation('completed', 'no_change_needed'),
+  eval_clarification: observation('completed', 'needs_clarification'),
+  eval_refused: observation('completed', 'refused'),
+  eval_partial_executable: observation('completed', 'changed', true),
+  eval_unknown_material: observation('failed', undefined, false, 'TOOL_ERROR', 'validating'),
   eval_single_repair: {
-    ...observation('page_modify', 'completed', true, ['apply_page_operations']),
+    ...observation('completed', 'changed', true),
     repairAttempts: 1,
+    terminalDecisionAttempts: 2,
   },
-  eval_revision_conflict: observation('page_modify', 'failed', false, [], 'REVISION_CONFLICT'),
-  eval_cancelled: { ...observation('page_modify', 'cancelled'), durationMs: 80 },
+  eval_missing_terminal: observation(
+    'failed',
+    undefined,
+    false,
+    'MISSING_TERMINAL_DECISION',
+    'reasoning',
+  ),
+  eval_working_conflict: observation(
+    'failed',
+    undefined,
+    false,
+    'WORKING_VERSION_CONFLICT',
+    'validating',
+  ),
+  eval_cancelled: { ...observation('cancelled', undefined), durationMs: 80 },
 };
 
-/** Recorded CI adapter. It contains no provider credentials or captured user content. */
-export const createRecordedMvpAdapter = (): AgentEvaluationAdapter => {
-  return {
-    kind: 'recorded',
-    run: async (testCase) => {
-      const recorded = RECORDED_MVP_OBSERVATIONS[testCase.id];
-      if (!recorded) throw new Error(`缺少固定记录：${testCase.id}`);
-      return { ...recorded, toolTrace: [...recorded.toolTrace] };
-    },
-  };
-};
+export const createRecordedMvpAdapter = (): AgentEvaluationAdapter => ({
+  kind: 'recorded',
+  run: async (testCase) => {
+    const recorded = RECORDED_MVP_OBSERVATIONS[testCase.id];
+    if (!recorded) throw new Error(`缺少固定记录：${testCase.id}`);
+    return { ...recorded, toolTrace: [...recorded.toolTrace] };
+  },
+});
 
 export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
   {
     id: 'eval_login_form',
     input: '创建登录表单',
-    expectedMode: 'page_modify',
     expectedStatus: 'completed',
+    expectedOutcome: 'changed',
     expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
   },
   {
-    id: 'eval_customer_form_table',
-    input: '创建客户表单和表格',
-    expectedMode: 'page_modify',
+    id: 'eval_mixed_modify_question',
+    input: '把按钮改成红色，并说明这个区域的用途',
     expectedStatus: 'completed',
+    expectedOutcome: 'changed_and_answered',
     expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
-  },
-  {
-    id: 'eval_add_table_column',
-    input: '给已有表格增加状态列',
-    expectedMode: 'page_modify',
-    expectedStatus: 'completed',
-    expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
-  },
-  {
-    id: 'eval_modify_button',
-    input: '把提交按钮改成主要按钮',
-    expectedMode: 'page_modify',
-    expectedStatus: 'completed',
-    expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
   },
   {
     id: 'eval_page_question',
-    input: '表格在搭建器里如何配置',
-    expectedMode: 'page_question',
+    input: '说明当前表格有哪些列',
     expectedStatus: 'completed',
+    expectedOutcome: 'answered_only',
     expectWorkingUpdate: false,
   },
   {
-    id: 'eval_weather_rejected',
-    input: '今天天气怎么样',
-    expectedMode: 'out_of_scope',
+    id: 'eval_no_change',
+    input: '清空已经为空的页面',
     expectedStatus: 'completed',
+    expectedOutcome: 'no_change_needed',
     expectWorkingUpdate: false,
   },
   {
-    id: 'eval_weather_page',
-    input: '创建一个天气展示页面',
-    expectedMode: 'page_modify',
+    id: 'eval_clarification',
+    input: '修改两个同名按钮中的一个',
     expectedStatus: 'completed',
+    expectedOutcome: 'needs_clarification',
+    expectWorkingUpdate: false,
+  },
+  {
+    id: 'eval_refused',
+    input: '查询现实天气',
+    expectedStatus: 'completed',
+    expectedOutcome: 'refused',
+    expectWorkingUpdate: false,
+  },
+  {
+    id: 'eval_partial_executable',
+    input: '把按钮改红，并连接不支持的 API',
+    expectedStatus: 'completed',
+    expectedOutcome: 'changed',
     expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
-  },
-  {
-    id: 'eval_ambiguous',
-    input: '加一个天气',
-    expectedMode: 'clarification_required',
-    expectedStatus: 'completed',
-    expectWorkingUpdate: false,
   },
   {
     id: 'eval_unknown_material',
     input: '使用不存在的物料生成页面',
-    expectedMode: 'page_modify',
     expectedStatus: 'failed',
     expectWorkingUpdate: false,
     expectedErrorCode: 'TOOL_ERROR',
@@ -166,51 +167,60 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
   {
     id: 'eval_single_repair',
     input: '创建需要一次修复的表单',
-    expectedMode: 'page_modify',
     expectedStatus: 'completed',
+    expectedOutcome: 'changed',
     expectWorkingUpdate: true,
-    expectedTool: 'apply_page_operations',
     expectRepair: true,
   },
   {
-    id: 'eval_revision_conflict',
-    input: '在过期版本上修改表格',
-    expectedMode: 'page_modify',
+    id: 'eval_missing_terminal',
+    input: '模型未提交结构化终态',
     expectedStatus: 'failed',
     expectWorkingUpdate: false,
-    expectedErrorCode: 'REVISION_CONFLICT',
+    expectedErrorCode: 'MISSING_TERMINAL_DECISION',
+  },
+  {
+    id: 'eval_working_conflict',
+    input: '在过期 Working 上修改表格',
+    expectedStatus: 'failed',
+    expectWorkingUpdate: false,
+    expectedErrorCode: 'WORKING_VERSION_CONFLICT',
   },
   {
     id: 'eval_cancelled',
-    input: '创建一个大型客户页面后取消',
-    expectedMode: 'page_modify',
+    input: '创建大型页面后取消',
     expectedStatus: 'cancelled',
     expectWorkingUpdate: false,
   },
-] as const;
+];
 
-const percentile95 = (values: readonly number[]): number => {
+const percentile = (values: readonly number[], ratio: number): number => {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)]!;
+  return sorted[Math.max(0, Math.ceil(sorted.length * ratio) - 1)]!;
 };
 
 const failuresFor = (
   testCase: AgentEvaluationCase,
-  observation: AgentEvaluationObservation,
+  value: AgentEvaluationObservation,
 ): string[] => {
   const failures: string[] = [];
-  if (observation.mode !== testCase.expectedMode)
-    failures.push(`意图应为 ${testCase.expectedMode}`);
-  if (observation.status !== testCase.expectedStatus)
+  if (value.status !== testCase.expectedStatus)
     failures.push(`状态应为 ${testCase.expectedStatus}`);
-  if (Boolean(observation.resultWorkingVersion) !== testCase.expectWorkingUpdate)
+  if (value.outcome !== testCase.expectedOutcome)
+    failures.push(`Outcome 应为 ${testCase.expectedOutcome ?? '空'}`);
+  if (Boolean(value.resultWorkingVersion) !== testCase.expectWorkingUpdate)
     failures.push('Working 更新结果不符合预期');
-  if (testCase.expectedTool && !observation.toolTrace.includes(testCase.expectedTool))
-    failures.push(`缺少工具轨迹 ${testCase.expectedTool}`);
-  if (testCase.expectRepair && observation.repairAttempts !== 1) failures.push('应且只能修复一次');
-  if (testCase.expectedErrorCode && observation.errorCode !== testCase.expectedErrorCode)
+  if (value.successfulWorkingCommits !== (testCase.expectWorkingUpdate ? 1 : 0))
+    failures.push('成功 Working 提交次数必须符合预期且最多一次');
+  if (testCase.expectRepair && value.repairAttempts !== 1) failures.push('应且只能修复一次');
+  if (testCase.expectedErrorCode && value.errorCode !== testCase.expectedErrorCode)
     failures.push(`错误码应为 ${testCase.expectedErrorCode}`);
+  if (value.status === 'failed' && !value.errorStage) failures.push('失败必须包含安全阶段分类');
+  if (value.status !== 'completed' && value.successResponsePublished)
+    failures.push('失败或取消后不得发布成功回复');
+  if (value.resultWorkingVersion && value.status !== 'completed')
+    failures.push('Working 已提交但 Run 未成功收敛');
   return failures;
 };
 
@@ -221,32 +231,45 @@ export const runAgentEvaluation = async (
 ): Promise<AgentEvaluationReport> => {
   const startedAt = now().toISOString();
   const results: AgentEvaluationCaseResult[] = [];
+  const observations: AgentEvaluationObservation[] = [];
   for (const testCase of cases) {
-    const observation = await adapter.run(testCase);
-    const failures = failuresFor(testCase, observation);
+    const value = await adapter.run(testCase);
+    observations.push(value);
+    const failures = failuresFor(testCase, value);
     results.push({
       caseId: testCase.id,
       passed: failures.length === 0,
-      expectedMode: testCase.expectedMode,
-      actualMode: observation.mode,
-      status: observation.status,
-      firstEventMs: Math.max(0, Math.round(observation.firstEventMs)),
-      durationMs: Math.max(0, Math.round(observation.durationMs)),
-      inputTokens: Math.max(0, observation.inputTokens),
-      outputTokens: Math.max(0, observation.outputTokens),
-      modelCalls: Math.max(0, observation.modelCalls),
-      toolCalls: Math.max(0, observation.toolCalls),
-      schemaBytes: Math.max(0, observation.schemaBytes),
-      repairAttempts: Math.max(0, observation.repairAttempts),
-      toolTrace: [...observation.toolTrace],
+      ...(testCase.expectedOutcome ? { expectedOutcome: testCase.expectedOutcome } : {}),
+      ...(value.outcome ? { actualOutcome: value.outcome } : {}),
+      status: value.status,
+      firstEventMs: Math.max(0, Math.round(value.firstEventMs)),
+      durationMs: Math.max(0, Math.round(value.durationMs)),
+      inputTokens: Math.max(0, value.inputTokens),
+      outputTokens: Math.max(0, value.outputTokens),
+      modelCalls: Math.max(0, value.modelCalls),
+      toolCalls: Math.max(0, value.toolCalls),
+      schemaBytes: Math.max(0, value.schemaBytes),
+      repairAttempts: Math.max(0, value.repairAttempts),
+      terminalDecisionAttempts: Math.max(0, value.terminalDecisionAttempts),
+      successfulWorkingCommits: Math.max(0, value.successfulWorkingCommits),
+      successResponsePublished: value.successResponsePublished,
+      ...(value.errorStage ? { errorStage: value.errorStage } : {}),
+      toolTrace: [...value.toolTrace],
       failures,
     });
   }
   const passed = results.filter((item) => item.passed).length;
+  const repairs = observations.filter((item) => item.repairAttempts > 0);
+  const outcomeCounts = observations.reduce<Record<string, number>>((counts, item) => {
+    if (item.outcome) counts[item.outcome] = (counts[item.outcome] ?? 0) + 1;
+    return counts;
+  }, {});
+  const rate = (count: number): number =>
+    observations.length === 0 ? 0 : count / observations.length;
   return {
     version: '1',
     adapter: adapter.kind,
-    suiteVersion: 'mvp-1',
+    suiteVersion: 'unified-page-agent-1',
     startedAt,
     finishedAt: now().toISOString(),
     passed: passed === results.length,
@@ -254,8 +277,59 @@ export const runAgentEvaluation = async (
       total: results.length,
       passed,
       successRate: results.length === 0 ? 1 : passed / results.length,
-      p95FirstEventMs: percentile95(results.map((item) => item.firstEventMs)),
-      p95DurationMs: percentile95(results.map((item) => item.durationMs)),
+      firstTerminalSuccessRate:
+        observations.length === 0
+          ? 1
+          : rate(observations.filter((item) => item.terminalDecisionAttempts <= 1).length),
+      repairRate: rate(repairs.length),
+      repairSuccessRate:
+        repairs.length === 0
+          ? 1
+          : repairs.filter((item) => item.status === 'completed').length / repairs.length,
+      missingTerminalDecisionRate: rate(
+        observations.filter((item) => item.errorCode === 'MISSING_TERMINAL_DECISION').length,
+      ),
+      workingConflictRate: rate(
+        observations.filter((item) => item.errorCode === 'WORKING_VERSION_CONFLICT').length,
+      ),
+      recoveredCommitCount: observations.filter((item) => item.recoveredCommit).length,
+      outcomeCounts,
+      p50DurationMs: percentile(
+        results.map((item) => item.durationMs),
+        0.5,
+      ),
+      p95FirstEventMs: percentile(
+        results.map((item) => item.firstEventMs),
+        0.95,
+      ),
+      p95DurationMs: percentile(
+        results.map((item) => item.durationMs),
+        0.95,
+      ),
+      p50ModelCalls: percentile(
+        results.map((item) => item.modelCalls),
+        0.5,
+      ),
+      p95ModelCalls: percentile(
+        results.map((item) => item.modelCalls),
+        0.95,
+      ),
+      p50ToolCalls: percentile(
+        results.map((item) => item.toolCalls),
+        0.5,
+      ),
+      p95ToolCalls: percentile(
+        results.map((item) => item.toolCalls),
+        0.95,
+      ),
+      p50Tokens: percentile(
+        results.map((item) => item.inputTokens + item.outputTokens),
+        0.5,
+      ),
+      p95Tokens: percentile(
+        results.map((item) => item.inputTokens + item.outputTokens),
+        0.95,
+      ),
       totalInputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),
       totalOutputTokens: results.reduce((sum, item) => sum + item.outputTokens, 0),
       totalToolCalls: results.reduce((sum, item) => sum + item.toolCalls, 0),

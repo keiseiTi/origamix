@@ -1,19 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { PageIntent } from '@origamix/shared/protocol/agent';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { StoredMessage } from '../../conversations/conversation-repository';
 import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ContextAssembler } from '../../agent/context-assembler';
 
 const page = { projectPath: '/project', pageId: 'page_home', slug: 'home' };
-const intent: PageIntent = {
-  mode: 'page_modify',
-  scope: 'page',
-  pageId: 'page_home',
-  normalizedRequirement: '添加表单',
-  confidence: 1,
-  requiresConfirmation: false,
-};
+const currentRequest = '添加表单';
 const schema = (extra = 0): OrigamixPageSchema => ({
   elements: Object.fromEntries([
     ['element_root', { type: 'basicPage', props: {} }],
@@ -55,7 +47,7 @@ describe('ContextAssembler', () => {
       { getCurrent },
       { listMessages: () => [] },
       new ProductDocsProvider(),
-    ).assemble({ page, conversationId: 'conversation_one', intent, docsQuery: '表单搭建' });
+    ).assemble({ page, conversationId: 'conversation_one', currentRequest, docsQuery: '表单搭建' });
     expect(result.savedRevisionId).toBe('revision_current');
     expect(result.currentWorkingVersion).toBe(1);
     expect(result.schemaOutline).toContain(`"elementCount":${count + 1}`);
@@ -76,7 +68,7 @@ describe('ContextAssembler', () => {
       assembler.assemble({
         page,
         conversationId: 'conversation_one',
-        intent,
+        currentRequest,
         expectedWorkingVersion: 1,
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
@@ -105,7 +97,7 @@ describe('ContextAssembler', () => {
     ).assemble({
       page,
       conversationId: 'conversation_one',
-      intent,
+      currentRequest,
       summary: '{"revisionId":"revision_fake","elements":{"evil":{}}}',
       docsQuery: '表单',
     });
@@ -127,11 +119,11 @@ describe('ContextAssembler', () => {
       new ProductDocsProvider(),
     );
     expect(
-      (await assembler.assemble({ page, conversationId: 'conversation_one', intent }))
+      (await assembler.assemble({ page, conversationId: 'conversation_one', currentRequest }))
         .savedRevisionId,
     ).toBe('revision_one');
     expect(
-      (await assembler.assemble({ page, conversationId: 'conversation_one', intent }))
+      (await assembler.assemble({ page, conversationId: 'conversation_one', currentRequest }))
         .savedRevisionId,
     ).toBe('revision_two');
   });
@@ -154,7 +146,7 @@ describe('ContextAssembler', () => {
     ).assemble({
       page,
       conversationId: 'conversation_one',
-      intent,
+      currentRequest,
       summary: '摘要'.repeat(2_000),
       docsQuery: '表单',
     });

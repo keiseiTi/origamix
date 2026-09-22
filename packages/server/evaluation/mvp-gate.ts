@@ -52,6 +52,27 @@ export const evaluateMvpGate = (
       failures.push(`${item.caseId} 模型调用超额`);
     if (item.toolCalls > thresholds.maximumToolCallsPerCase)
       failures.push(`${item.caseId} 工具调用超额`);
+    if (item.successfulWorkingCommits > 1)
+      failures.push(`${item.caseId} 在单次 Run 中提交了多次 Working`);
+    if (item.status !== 'completed' && item.successfulWorkingCommits > 0)
+      failures.push(`${item.caseId} 已写入 Working 但 Run 未成功完成`);
+    if (item.status !== 'completed' && item.successResponsePublished)
+      failures.push(`${item.caseId} 失败后发布了成功回复`);
+    if (item.status === 'failed' && !item.errorStage)
+      failures.push(`${item.caseId} 缺少安全失败阶段分类`);
+  }
+  const defaultRequest = report.cases.find((item) => item.caseId === 'eval_login_form');
+  if (!defaultRequest || defaultRequest.actualOutcome === 'needs_clarification')
+    failures.push('默认明确页面请求不得退化为澄清');
+  for (const outcome of [
+    'changed',
+    'changed_and_answered',
+    'answered_only',
+    'no_change_needed',
+    'needs_clarification',
+    'refused',
+  ]) {
+    if (!report.summary.outcomeCounts[outcome]) failures.push(`评测缺少 ${outcome} 终态覆盖`);
   }
   if (resources.activeRuns !== 0) failures.push(`仍有 ${resources.activeRuns} 个活动 Run`);
   if (resources.eventSubscribers !== 0)

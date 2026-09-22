@@ -15,6 +15,7 @@ import { MainContent } from './mods/main-content';
 import type { MaterialGroup } from './mods/material-panel';
 import { EditorToolDialog } from './mods/editor-tool-dialog';
 import { useEditorSession } from './use-editor-session';
+import { ClarificationHighlightContext } from './clarification-highlight';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
@@ -37,6 +38,10 @@ interface EditorProps {
   tool: Exclude<EditorTool, 'history'> | null;
   onCloseTool: () => void;
   onHistoryStateChange: (state: EditorHistoryState) => void;
+  clarificationCandidates?: readonly { elementId: string; label: string }[];
+  clarificationHighlightedElementId?: string | null;
+  clarificationExpired?: boolean;
+  onClarificationSelect?: (elementId: string) => void;
 }
 
 const groups = materialGroups as MaterialGroup[];
@@ -89,6 +94,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       tool,
       onCloseTool,
       onHistoryStateChange,
+      clarificationCandidates = [],
+      clarificationHighlightedElementId = null,
+      clarificationExpired = false,
+      onClarificationSelect,
     },
     ref,
   ): React.JSX.Element => {
@@ -129,17 +138,26 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
 
     return (
       <div className='relative border-t flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-        <EditorProvider
-          key={providerKey}
-          materials={materials}
-          plugins={plugins}
-          schema={initial.schema as Schema}
-          onChange={onChange}
+        <ClarificationHighlightContext.Provider
+          value={{
+            candidates: clarificationCandidates,
+            highlightedElementId: clarificationHighlightedElementId,
+            expired: clarificationExpired,
+            onSelect: onClarificationSelect,
+          }}
         >
-          <HistoryBridge historyRef={historyRef} onChange={onHistoryStateChange} />
-          <EditorCanvas viewportWidth={viewportWidth} />
-          <EditorToolDialog tool={tool} onClose={onCloseTool} />
-        </EditorProvider>
+          <EditorProvider
+            key={providerKey}
+            materials={materials}
+            plugins={plugins}
+            schema={initial.schema as Schema}
+            onChange={onChange}
+          >
+            <HistoryBridge historyRef={historyRef} onChange={onHistoryStateChange} />
+            <EditorCanvas viewportWidth={viewportWidth} />
+            <EditorToolDialog tool={tool} onClose={onCloseTool} />
+          </EditorProvider>
+        </ClarificationHighlightContext.Provider>
         {readOnly && (
           <div
             className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'

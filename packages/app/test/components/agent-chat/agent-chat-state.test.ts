@@ -14,7 +14,7 @@ const run = (status: AgentRun['status'] = 'queued'): AgentRun => ({
   userMessageId: 'message_one',
   requestId: 'request-one',
   baseWorkingVersion: 1,
-  mode: 'page_modify',
+  runKind: 'page_assistant',
   status,
   budget: {
     maxModelCalls: 2,
@@ -49,12 +49,39 @@ describe('agent chat reducer', () => {
     let state = agentChatReducer(initialAgentChatState, { type: 'run.queued', run: run() });
     state = agentChatReducer(state, {
       type: 'event.received',
-      event: event(3, 'run.completed', { status: 'completed', workingVersion: 2 }),
+      event: event(3, 'run.completed', { status: 'completed', resultWorkingVersion: 2 }),
     });
     expect(state.workingRefreshKey).toBe('working_run_one_2');
 
     state = agentChatReducer(state, { type: 'run.queued', run: run() });
     expect(state.lastEventId).toBe(-1);
     expect(state.workingRefreshKey).toBeNull();
+  });
+
+  it('uses typed commit events and ignores non-writing or stale Run events', () => {
+    let state = agentChatReducer(initialAgentChatState, { type: 'run.queued', run: run() });
+    state = agentChatReducer(state, {
+      type: 'event.received',
+      event: event(1, 'run.progress', {
+        status: 'reasoning',
+        phase: 'reasoning',
+        message: '正在处理请求',
+      }),
+    });
+    expect(state.progressMessage).toBe('正在处理请求');
+    state = agentChatReducer(state, {
+      type: 'event.received',
+      event: event(2, 'run.completed', { status: 'completed', outcome: 'answered_only' }),
+    });
+    expect(state.workingRefreshKey).toBeNull();
+    expect(state.progressMessage).toBeNull();
+
+    const stale = {
+      ...event(3, 'working.committed', { resultWorkingVersion: 9 }),
+      runId: 'run_old',
+    };
+    expect(
+      agentChatReducer(state, { type: 'event.received', event: stale }).workingRefreshKey,
+    ).toBeNull();
   });
 });

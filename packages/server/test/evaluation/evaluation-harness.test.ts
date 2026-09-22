@@ -10,19 +10,23 @@ const recordedObservation = (
   testCase: (typeof FIXED_AGENT_EVALUATION_CASES)[number],
 ): AgentEvaluationObservation => {
   return {
-    mode: testCase.expectedMode,
     status: testCase.expectedStatus,
+    ...(testCase.expectedOutcome ? { outcome: testCase.expectedOutcome } : {}),
     firstEventMs: 12,
     durationMs: 40,
-    inputTokens: testCase.expectedMode === 'page_modify' ? 20 : 0,
+    inputTokens: 20,
     outputTokens: 8,
-    modelCalls: testCase.expectedMode === 'page_modify' ? 1 : 0,
-    toolCalls: testCase.expectedTool ? 1 : 0,
+    modelCalls: 1,
+    toolCalls: testCase.expectedStatus === 'cancelled' ? 0 : 1,
     schemaBytes: testCase.expectWorkingUpdate ? 1_024 : 0,
     repairAttempts: testCase.expectRepair ? 1 : 0,
-    toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
+    terminalDecisionAttempts: testCase.expectRepair ? 2 : 1,
+    successfulWorkingCommits: testCase.expectWorkingUpdate ? 1 : 0,
+    successResponsePublished: testCase.expectedStatus === 'completed',
+    toolTrace: testCase.expectedStatus === 'cancelled' ? [] : ['complete_page_run'],
     ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
     ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
+    ...(testCase.expectedStatus === 'failed' ? { errorStage: 'validating' } : {}),
   };
 };
 
@@ -38,29 +42,30 @@ describe('fixed Agent evaluation harness', () => {
     expect(report.cases.map((item) => item.caseId)).toEqual(
       expect.arrayContaining([
         'eval_login_form',
-        'eval_customer_form_table',
-        'eval_add_table_column',
-        'eval_modify_button',
+        'eval_mixed_modify_question',
         'eval_page_question',
-        'eval_weather_rejected',
-        'eval_weather_page',
-        'eval_ambiguous',
+        'eval_no_change',
+        'eval_clarification',
+        'eval_refused',
+        'eval_partial_executable',
         'eval_unknown_material',
         'eval_single_repair',
-        'eval_revision_conflict',
+        'eval_missing_terminal',
+        'eval_working_conflict',
         'eval_cancelled',
       ]),
     );
   });
 
-  it('fails closed and names mismatched intent, revision and tool evidence', async () => {
+  it('fails closed when outcome, Working and commit evidence disagree', async () => {
     const report = await runAgentEvaluation(
       {
         kind: 'fake',
         run: async () => ({
           ...recordedObservation(FIXED_AGENT_EVALUATION_CASES[0]!),
-          mode: 'page_question',
+          outcome: 'answered_only',
           resultWorkingVersion: undefined,
+          successfulWorkingCommits: 0,
           toolTrace: [],
         }),
       },

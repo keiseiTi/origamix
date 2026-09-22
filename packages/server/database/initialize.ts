@@ -5,7 +5,8 @@ CREATE TABLE projects (id TEXT PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NU
 CREATE TABLE pages (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, slug TEXT NOT NULL, name TEXT NOT NULL, relative_path TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE conversations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, title TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
 CREATE TABLE messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, run_id TEXT, role TEXT NOT NULL, content_json TEXT NOT NULL, content_version TEXT NOT NULL DEFAULT '1', status INTEGER NOT NULL, sequence INTEGER NOT NULL, error_code TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, conversation_id TEXT NOT NULL, user_message_id TEXT NOT NULL, client_request_id TEXT NOT NULL, base_working_version INTEGER NOT NULL, result_working_version INTEGER, model_ref TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'page_modify', status INTEGER NOT NULL, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT);
+CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, page_id TEXT NOT NULL, conversation_id TEXT NOT NULL, user_message_id TEXT NOT NULL, client_request_id TEXT NOT NULL, base_working_version INTEGER NOT NULL, result_working_version INTEGER, result_working_hash TEXT, model_ref TEXT NOT NULL, run_kind TEXT NOT NULL DEFAULT 'page_assistant', status INTEGER NOT NULL, outcome TEXT, outcome_json TEXT, repair_attempts INTEGER NOT NULL DEFAULT 0, operation_count INTEGER, operation_digest TEXT, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id TEXT, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, failure_stage TEXT, recovered_commit INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT);
+CREATE TABLE agent_tool_audits (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, sequence INTEGER NOT NULL, tool_name TEXT NOT NULL, phase TEXT NOT NULL, safe_error_code TEXT, duration_ms INTEGER NOT NULL, operation_count INTEGER, operation_type_counts_json TEXT, operation_digest TEXT, occurred_at TEXT NOT NULL);
 CREATE UNIQUE INDEX idx_pages_project_slug ON pages(project_id, slug);
 CREATE UNIQUE INDEX projects_path_unique ON projects(path);
 CREATE INDEX idx_pages_project_id ON pages(project_id);
@@ -16,6 +17,8 @@ CREATE INDEX idx_messages_run_id ON messages(run_id);
 CREATE UNIQUE INDEX idx_agent_runs_client_request ON agent_runs(project_id, page_id, client_request_id);
 CREATE INDEX idx_agent_runs_conversation_created ON agent_runs(conversation_id, created_at);
 CREATE INDEX idx_agent_runs_recovery ON agent_runs(status, updated_at);
+CREATE UNIQUE INDEX idx_agent_tool_audits_run_sequence ON agent_tool_audits(run_id, sequence);
+CREATE INDEX idx_agent_tool_audits_run ON agent_tool_audits(run_id, occurred_at);
 `;
 
 const expectedColumns: Record<string, readonly string[]> = {
@@ -62,9 +65,15 @@ const expectedColumns: Record<string, readonly string[]> = {
     'client_request_id',
     'base_working_version',
     'result_working_version',
+    'result_working_hash',
     'model_ref',
-    'mode',
+    'run_kind',
     'status',
+    'outcome',
+    'outcome_json',
+    'repair_attempts',
+    'operation_count',
+    'operation_digest',
     'budget_json',
     'prompt_version',
     'policy_version',
@@ -78,9 +87,24 @@ const expectedColumns: Record<string, readonly string[]> = {
     'duration_ms',
     'error_code',
     'error_message',
+    'failure_stage',
+    'recovered_commit',
     'created_at',
     'updated_at',
     'finished_at',
+  ],
+  agent_tool_audits: [
+    'id',
+    'run_id',
+    'sequence',
+    'tool_name',
+    'phase',
+    'safe_error_code',
+    'duration_ms',
+    'operation_count',
+    'operation_type_counts_json',
+    'operation_digest',
+    'occurred_at',
   ],
 };
 

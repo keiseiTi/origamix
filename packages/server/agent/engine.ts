@@ -14,6 +14,9 @@ export type AgentEngineErrorCode =
   | 'CANCELLED'
   | 'BUDGET_EXCEEDED'
   | 'POLICY_DENIED'
+  | 'MISSING_TERMINAL_DECISION'
+  | 'SCHEMA_VALIDATION_EXCEEDED'
+  | 'WORKING_VERSION_CONFLICT'
   | 'TOOL_ERROR';
 
 export class AgentEngineError extends Error {

@@ -3,6 +3,7 @@ import type {
   AgentMessage,
   AgentRun,
   AgentRunStatus,
+  ClarificationResult,
 } from '@origamix/shared/protocol/agent';
 
 export interface ToolActivity {
@@ -17,6 +18,7 @@ export interface AgentChatState {
   streamedText: string;
   stage: AgentRunStatus | null;
   tools: ToolActivity[];
+  progressMessage: string | null;
   workingRefreshKey: string | null;
   lastEventId: number;
   error: string | null;
@@ -37,6 +39,7 @@ export const initialAgentChatState: AgentChatState = {
   streamedText: '',
   stage: null,
   tools: [],
+  progressMessage: null,
   workingRefreshKey: null,
   lastEventId: -1,
   error: null,
@@ -67,38 +70,39 @@ const payloadString = (payload: unknown, keys: string[]): string | undefined => 
 };
 
 const statusFromEvent = (event: AgentEvent): AgentRunStatus | undefined => {
-  const value = payloadString(event.payload, ['status']);
-  const statuses: AgentRunStatus[] = [
-    'queued',
-    'classifying',
-    'generating',
-    'tool_calling',
-    'validating',
-    'committing',
-    'awaiting_confirmation',
-    'cancelling',
-    'completed',
-    'failed',
-    'cancelled',
-    'interrupted',
-  ];
-  if (value && statuses.includes(value as AgentRunStatus)) return value as AgentRunStatus;
+  if (event.type === 'run.progress') {
+    const value = payloadRecord(event.payload).status;
+    const progressStatuses: AgentRunStatus[] = [
+      'preparing',
+      'reasoning',
+      'reading',
+      'deciding',
+      'validating',
+      'repairing',
+      'committing',
+    ];
+    if (typeof value === 'string' && progressStatuses.includes(value as AgentRunStatus)) {
+      return value as AgentRunStatus;
+    }
+  }
+  if (event.type === 'run.queued') return 'queued';
   if (event.type === 'run.completed') return 'completed';
   if (event.type === 'run.failed') return 'failed';
   if (event.type === 'run.cancelled') return 'cancelled';
+  if (event.type === 'run.interrupted') return 'interrupted';
   return undefined;
 };
 
 const updateTool = (tools: ToolActivity[], event: AgentEvent): ToolActivity[] => {
   const record = payloadRecord(event.payload);
-  const id = payloadString(record, ['toolCallId', 'id']);
+  const id = payloadString(record, ['toolCallId', 'id', 'toolName']);
   if (!id) return tools;
   const current = tools.find((tool) => tool.id === id);
   const name = payloadString(record, ['toolName', 'name']) ?? current?.name ?? '页面工具';
   const status =
-    event.type === 'tool.started'
+    record.phase === 'started'
       ? 'running'
-      : event.type === 'tool.failed' || record.status === 'failed'
+      : record.phase === 'failed' || record.phase === 'denied'
         ? 'failed'
         : 'completed';
   return [...tools.filter((tool) => tool.id !== id), { id, name, status }];
@@ -122,6 +126,7 @@ export const agentChatReducer = (
       stage: action.run?.status ?? null,
       streamedText: '',
       tools: [],
+      progressMessage: isRunActive(action.run?.status) ? state.progressMessage : null,
       lastEventId: changedRun ? -1 : state.lastEventId,
       workingRefreshKey: action.run?.resultWorkingVersion
         ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
@@ -142,6 +147,7 @@ export const agentChatReducer = (
       stage: action.run.status,
       streamedText: '',
       tools: [],
+      progressMessage: null,
       workingRefreshKey: null,
       lastEventId: -1,
       error: null,
@@ -150,29 +156,53 @@ export const agentChatReducer = (
   }
 
   const event = action.event;
+  if (state.run && (event.runId !== state.run.runId || event.pageId !== state.run.pageId)) {
+    return state;
+  }
   if (event.eventId <= state.lastEventId) return state;
   const status = statusFromEvent(event);
-  const text =
-    event.type === 'assistant.delta'
-      ? (payloadString(event.payload, ['delta', 'text', 'content']) ?? '')
-      : '';
+  const text = '';
   const isToolEvent = event.type.startsWith('tool.');
+  const eventPayload = payloadRecord(event.payload);
+  const progressMessage =
+    event.type === 'run.progress' && typeof eventPayload.message === 'string'
+      ? eventPayload.message
+      : status && terminalStatuses.has(status)
+        ? null
+        : state.progressMessage;
   const error =
     event.type === 'run.failed'
-      ? (payloadString(event.payload, ['safeMessage', 'message']) ?? '生成失败，请重试。')
+      ? (payloadString(event.payload, ['safeMessage']) ?? '生成失败，请重试。')
       : event.type === 'run.cancelled'
         ? null
         : state.error;
+  const run = state.run
+    ? {
+        ...state.run,
+        ...(status ? { status } : {}),
+        ...(event.type === 'run.completed' && typeof eventPayload.outcome === 'string'
+          ? { outcome: eventPayload.outcome as AgentRun['outcome'] }
+          : {}),
+        ...(event.type === 'run.completed' && typeof eventPayload.resultWorkingVersion === 'number'
+          ? { resultWorkingVersion: eventPayload.resultWorkingVersion }
+          : {}),
+        ...(event.type === 'clarification.available' && eventPayload.clarification
+          ? { clarification: eventPayload.clarification as ClarificationResult }
+          : {}),
+      }
+    : null;
   return {
     ...state,
+    run,
     lastEventId: event.eventId,
     streamedText: state.streamedText + text,
     stage: status ?? state.stage,
     tools: isToolEvent ? updateTool(state.tools, event) : state.tools,
+    progressMessage,
     workingRefreshKey:
-      event.type === 'run.completed' &&
-      typeof payloadRecord(event.payload).workingVersion === 'number'
-        ? `working_${event.runId}_${String(payloadRecord(event.payload).workingVersion)}`
+      (event.type === 'working.committed' || event.type === 'run.completed') &&
+      typeof eventPayload.resultWorkingVersion === 'number'
+        ? `working_${event.runId}_${String(eventPayload.resultWorkingVersion)}`
         : state.workingRefreshKey,
     error,
     connection: status && terminalStatuses.has(status) ? 'idle' : 'connected',

@@ -1,9 +1,11 @@
 import {
   CancelAgentRunRequestSchema,
+  ClarificationResultSchema,
   CreateAgentRunRequestSchema,
   type AgentRun,
   type CreateAgentRunRequest,
 } from '@origamix/shared/protocol/agent';
+import { Value } from '@sinclair/typebox/value';
 import type { AgentRunRecord } from '../agent/run-repository';
 import { invalid, notFound } from '../errors';
 import type { RouteInput, RouteRegistrationContext } from './types';
@@ -17,7 +19,7 @@ const publicRun = (run: AgentRunRecord): AgentRun => ({
   userMessageId: run.userMessageId,
   requestId: run.clientRequestId,
   baseWorkingVersion: run.baseWorkingVersion,
-  mode: run.mode,
+  runKind: run.runKind,
   status: run.status,
   budget: run.budget,
   modelRef: run.modelRef,
@@ -25,7 +27,15 @@ const publicRun = (run: AgentRunRecord): AgentRun => ({
   policyVersion: run.policyVersion,
   toolsetVersion: run.toolsetVersion,
   materialManifestVersion: run.materialManifestVersion,
+  ...(run.outcome ? { outcome: run.outcome } : {}),
+  ...(run.outcome === 'needs_clarification' &&
+  run.outcomeJson &&
+  Value.Check(ClarificationResultSchema, run.outcomeJson)
+    ? { clarification: run.outcomeJson as AgentRun['clarification'] }
+    : {}),
+  repairAttempts: run.repairAttempts,
   ...(run.resultWorkingVersion ? { resultWorkingVersion: run.resultWorkingVersion } : {}),
+  ...(run.resultWorkingHash ? { resultWorkingHash: run.resultWorkingHash } : {}),
   ...(run.retryOfRunId ? { retryOfRunId: run.retryOfRunId } : {}),
   createdAt: run.createdAt,
   updatedAt: run.updatedAt,
@@ -105,6 +115,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
         runId: started.run.id,
         conversationId: started.conversationId,
         userMessageId: started.userMessageId,
+        runKind: 'page_assistant',
         status: started.run.status,
       };
     }, 202),
@@ -126,7 +137,10 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       return {
         version: '1',
         runId: run.id,
-        status: cancelled.status === 'cancelled' ? ('cancelled' as const) : ('cancelling' as const),
+        status:
+          cancelled.status === 'cancelled' || cancelled.status === 'committing'
+            ? cancelled.status
+            : ('cancelling' as const),
       };
     }),
   );

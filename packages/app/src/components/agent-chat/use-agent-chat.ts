@@ -21,7 +21,9 @@ export type AgentChatSession = {
   state: ReturnType<typeof agentChatReducer>;
   activity: 'unknown' | 'idle' | 'running';
   pendingSubmission: boolean;
+  clarificationExpired: boolean;
   send: (text: string) => Promise<void>;
+  selectClarification: (elementId: string) => Promise<void>;
   cancel: () => Promise<void>;
   retry: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -39,6 +41,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   const [authority, setAuthority] = useState<string | null>(null);
   const conversationId = useRef<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [latestWorkingVersion, setLatestWorkingVersion] = useState<number | null>(null);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
     const currentGeneration = generation.current;
@@ -103,6 +106,25 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   );
 
   const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
+  const clarification = state.run?.clarification;
+  useEffect(() => {
+    if (!clarification) return;
+    let disposed = false;
+    const refresh = () => {
+      void schemaService
+        .workingState(projectId, pageId)
+        .then((working) => {
+          if (!disposed) setLatestWorkingVersion(working.workingVersion);
+        })
+        .catch(() => undefined);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 1_500);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [clarification, pageId, projectId]);
   useEffect(() => {
     if (!activeRunId) return;
     dispatch({ type: 'connection.changed', connection: 'connecting' });
@@ -143,7 +165,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
 
   const submit = useCallback(
     async (
-      submission: { text: string; retryOfRunId?: string },
+      submission: {
+        text: string;
+        retryOfRunId?: string;
+        clarification?: CreateAgentRunRequest['clarification'];
+      },
       retryInput?: CreateAgentRunRequest,
     ): Promise<void> => {
       const content = submission.text.trim();
@@ -179,6 +205,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           clientRequestId: requestId(),
           baseWorkingVersion,
           content: { version: '1', blocks: [{ type: 'text', text: content }] },
+          ...(submission.clarification ? { clarification: submission.clarification } : {}),
           ...(submission.retryOfRunId ? { retryOfRunId: submission.retryOfRunId } : {}),
         };
         operations.setAgent(pageKey, { input, inFlight: true });
@@ -224,6 +251,27 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
 
+  const selectClarification = useCallback(
+    async (elementId: string): Promise<void> => {
+      const clarification = state.run?.clarification;
+      const candidate = clarification?.candidates?.find((item) => item.elementId === elementId);
+      if (!state.run || !clarification || !candidate) throw new Error('澄清选项不存在');
+      const working = await schemaService.workingState(projectId, pageId);
+      if (working.workingVersion !== clarification.baseWorkingVersion) {
+        throw new Error('选项已过期，请重新描述你的需求');
+      }
+      await submit({
+        text: `选择澄清项：${candidate.label}（元素 ${candidate.elementId}）`,
+        clarification: {
+          runId: state.run.runId,
+          clarificationId: clarification.clarificationId,
+          selectedElementId: candidate.elementId,
+        },
+      });
+    },
+    [pageId, projectId, state.run, submit],
+  );
+
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
     await cancelAgentRun(projectId, state.run.runId, requestId());
@@ -254,7 +302,13 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     state,
     activity,
     pendingSubmission: Boolean(pending && !pending.inFlight),
+    clarificationExpired: Boolean(
+      clarification &&
+      latestWorkingVersion !== null &&
+      latestWorkingVersion !== clarification.baseWorkingVersion,
+    ),
     send,
+    selectClarification,
     cancel,
     retry,
     refresh: async () => {

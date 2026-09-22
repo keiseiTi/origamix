@@ -1,4 +1,5 @@
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
+import { SchemaOperationSchema } from './schema';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
@@ -10,75 +11,91 @@ export const MessageIdSchema = Type.String({ pattern: '^message_[A-Za-z0-9_-]+$'
 export const PageIdSchema = Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' });
 export const RequestIdSchema = Type.String({ minLength: 1, maxLength: 128 });
 export const IsoDateTimeSchema = Type.String({ format: 'date-time' });
+export const AgentRunKindSchema = Type.Literal('page_assistant');
 
-export const RunModeSchema = Type.Union([
-  Type.Literal('page_modify'),
-  Type.Literal('page_question'),
-  Type.Literal('clarification_required'),
-  Type.Literal('out_of_scope'),
-]);
-
-const PageIntentBase = {
-  scope: Type.Union([Type.Literal('page'), Type.Literal('selection')]),
-  confidence: Type.Number({ minimum: 0, maximum: 1 }),
-  requiresConfirmation: Type.Boolean(),
-} as const;
-
-const TargetElementIdsSchema = Type.Array(Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }), {
-  minItems: 1,
-  uniqueItems: true,
+export const ClarificationCandidateSchema = strictObject({
+  elementId: Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }),
+  label: Type.String({ minLength: 1, maxLength: 120 }),
+  description: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
 });
 
-export const PageIntentSchema = Type.Union([
+export const CompletePageRunInputSchema = Type.Union([
   strictObject({
-    ...PageIntentBase,
-    mode: Type.Literal('page_modify'),
-    pageId: PageIdSchema,
-    targetElementIds: Type.Optional(TargetElementIdsSchema),
-    normalizedRequirement: Type.String({ minLength: 1, maxLength: 20_000 }),
-    reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
+    outcome: Type.Literal('apply_changes'),
+    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 100 }),
+    response: Type.String({ minLength: 1, maxLength: 20_000 }),
+    answeredQuestion: Type.Optional(Type.Boolean()),
   }),
   strictObject({
-    ...PageIntentBase,
-    mode: Type.Literal('page_question'),
-    pageId: PageIdSchema,
-    targetElementIds: Type.Optional(TargetElementIdsSchema),
-    normalizedRequirement: Type.String({ minLength: 1, maxLength: 20_000 }),
-    reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
+    outcome: Type.Literal('answer_only'),
+    response: Type.String({ minLength: 1, maxLength: 20_000 }),
   }),
   strictObject({
-    ...PageIntentBase,
-    mode: Type.Literal('clarification_required'),
-    pageId: PageIdSchema,
-    targetElementIds: Type.Optional(TargetElementIdsSchema),
-    normalizedRequirement: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
+    outcome: Type.Literal('no_change_needed'),
     reason: Type.String({ minLength: 1, maxLength: 2_000 }),
-    suggestedQuestion: Type.String({ minLength: 1, maxLength: 2_000 }),
+    response: Type.String({ minLength: 1, maxLength: 20_000 }),
   }),
   strictObject({
-    ...PageIntentBase,
-    mode: Type.Literal('out_of_scope'),
-    reason: Type.String({ minLength: 1, maxLength: 2_000 }),
+    outcome: Type.Literal('needs_clarification'),
+    question: Type.String({ minLength: 1, maxLength: 2_000 }),
+    candidates: Type.Optional(Type.Array(ClarificationCandidateSchema, { maxItems: 8 })),
+  }),
+  strictObject({
+    outcome: Type.Literal('refused'),
+    reasonCode: Type.String({ pattern: '^[A-Z][A-Z0-9_]{0,127}$' }),
+    response: Type.String({ minLength: 1, maxLength: 20_000 }),
   }),
 ]);
 
-/** Narrow model output accepted by Scope Router. Tool access is deliberately absent. */
-export const ScopeClassifierResultSchema = strictObject({
-  mode: RunModeSchema,
-  confidence: Type.Number({ minimum: 0, maximum: 1 }),
-  normalizedRequirement: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
-  reason: Type.String({ minLength: 1, maxLength: 2_000 }),
-  suggestedQuestion: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
+export const PageAgentOutcomeSchema = Type.Union([
+  Type.Literal('changed'),
+  Type.Literal('changed_and_answered'),
+  Type.Literal('answered_only'),
+  Type.Literal('no_change_needed'),
+  Type.Literal('needs_clarification'),
+  Type.Literal('refused'),
+]);
+
+export const ClarificationResultSchema = strictObject({
+  clarificationId: Type.String({ pattern: '^clarification_[A-Za-z0-9_-]+$' }),
+  baseWorkingVersion: Type.Integer({ minimum: 1 }),
+  question: Type.String({ minLength: 1, maxLength: 2_000 }),
+  candidates: Type.Optional(Type.Array(ClarificationCandidateSchema, { maxItems: 8 })),
+});
+
+export const ClarificationSelectionSchema = strictObject({
+  runId: AgentRunIdSchema,
+  clarificationId: Type.String({ pattern: '^clarification_[A-Za-z0-9_-]+$' }),
+  selectedElementId: Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }),
+});
+
+export const OperationValidationFailureSchema = strictObject({
+  code: Type.Union([
+    Type.Literal('INVALID_OPERATION'),
+    Type.Literal('ELEMENT_NOT_FOUND'),
+    Type.Literal('INVALID_PARENT'),
+    Type.Literal('INVALID_MATERIAL'),
+    Type.Literal('INVALID_PROPS'),
+    Type.Literal('SCHEMA_INVALID'),
+    Type.Literal('WORKING_VERSION_CONFLICT'),
+  ]),
+  operationIndex: Type.Optional(Type.Integer({ minimum: 0, maximum: 99 })),
+  elementId: Type.Optional(Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' })),
+  materialType: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
+  field: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+  message: Type.String({ minLength: 1, maxLength: 2_000 }),
+  retryable: Type.Boolean(),
 });
 
 export const AgentRunStatusSchema = Type.Union([
   Type.Literal('queued'),
-  Type.Literal('classifying'),
-  Type.Literal('generating'),
-  Type.Literal('tool_calling'),
+  Type.Literal('preparing'),
+  Type.Literal('reasoning'),
+  Type.Literal('reading'),
   Type.Literal('validating'),
+  Type.Literal('repairing'),
   Type.Literal('committing'),
-  Type.Literal('awaiting_confirmation'),
+  Type.Literal('deciding'),
   Type.Literal('cancelling'),
   Type.Literal('completed'),
   Type.Literal('failed'),
@@ -155,7 +172,7 @@ export const AgentRunSchema = strictObject({
   userMessageId: MessageIdSchema,
   requestId: RequestIdSchema,
   baseWorkingVersion: Type.Integer({ minimum: 1 }),
-  mode: RunModeSchema,
+  runKind: AgentRunKindSchema,
   status: AgentRunStatusSchema,
   budget: RunBudgetSchema,
   modelRef: Type.String({ minLength: 1 }),
@@ -163,7 +180,11 @@ export const AgentRunSchema = strictObject({
   policyVersion: Type.String({ minLength: 1 }),
   toolsetVersion: Type.String({ minLength: 1 }),
   materialManifestVersion: Type.String({ minLength: 1 }),
+  outcome: Type.Optional(PageAgentOutcomeSchema),
+  clarification: Type.Optional(ClarificationResultSchema),
+  repairAttempts: Type.Optional(Type.Integer({ minimum: 0 })),
   resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+  resultWorkingHash: Type.Optional(Type.String({ pattern: '^[a-f0-9]{64}$' })),
   retryOfRunId: Type.Optional(AgentRunIdSchema),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
@@ -236,6 +257,55 @@ export const AgentEventSchema = strictObject({
   payload: Type.Unknown(),
 });
 
+export const AgentProgressEventPayloadSchema = strictObject({
+  status: AgentRunStatusSchema,
+  phase: Type.Union([
+    Type.Literal('preparing'),
+    Type.Literal('reasoning'),
+    Type.Literal('reading'),
+    Type.Literal('deciding'),
+    Type.Literal('validating'),
+    Type.Literal('repairing'),
+    Type.Literal('committing'),
+  ]),
+  message: Type.String({ minLength: 1, maxLength: 200 }),
+});
+
+export const AgentRunCompletedEventPayloadSchema = strictObject({
+  status: Type.Literal('completed'),
+  outcome: PageAgentOutcomeSchema,
+  resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+});
+
+export const AgentRunFailedEventPayloadSchema = strictObject({
+  status: Type.Literal('failed'),
+  errorCode: Type.String({ minLength: 1, maxLength: 128 }),
+  safeMessage: Type.String({ minLength: 1, maxLength: 2_000 }),
+});
+
+export const ClarificationAvailableEventPayloadSchema = strictObject({
+  status: Type.Literal('completed'),
+  outcome: Type.Literal('needs_clarification'),
+  clarification: ClarificationResultSchema,
+});
+
+export const WorkingCommittedEventPayloadSchema = strictObject({
+  baseWorkingVersion: Type.Integer({ minimum: 1 }),
+  resultWorkingVersion: Type.Integer({ minimum: 1 }),
+  operationCount: Type.Integer({ minimum: 1, maximum: 100 }),
+});
+
+export const AgentToolActivityEventPayloadSchema = strictObject({
+  toolName: Type.String({ pattern: '^[a-z][a-z0-9_]*$' }),
+  phase: Type.Union([
+    Type.Literal('started'),
+    Type.Literal('completed'),
+    Type.Literal('failed'),
+    Type.Literal('denied'),
+  ]),
+  safeErrorCode: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+});
+
 export const CreateAgentRunRequestSchema = strictObject({
   version: AgentProtocolVersionSchema,
   projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
@@ -244,6 +314,7 @@ export const CreateAgentRunRequestSchema = strictObject({
   clientRequestId: RequestIdSchema,
   baseWorkingVersion: Type.Integer({ minimum: 1 }),
   content: MessageContentSchema,
+  clarification: Type.Optional(ClarificationSelectionSchema),
   retryOfRunId: Type.Optional(AgentRunIdSchema),
 });
 
@@ -252,6 +323,7 @@ export const CreateAgentRunResponseSchema = strictObject({
   runId: AgentRunIdSchema,
   conversationId: ConversationIdSchema,
   userMessageId: MessageIdSchema,
+  runKind: AgentRunKindSchema,
   status: AgentRunStatusSchema,
 });
 
@@ -300,7 +372,11 @@ export const CancelAgentRunRequestSchema = strictObject({
 export const CancelAgentRunResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,
   runId: AgentRunIdSchema,
-  status: Type.Union([Type.Literal('cancelling'), Type.Literal('cancelled')]),
+  status: Type.Union([
+    Type.Literal('committing'),
+    Type.Literal('cancelling'),
+    Type.Literal('cancelled'),
+  ]),
 });
 
 export const AgentErrorPayloadSchema = strictObject({
@@ -321,8 +397,8 @@ export const AgentErrorPayloadSchema = strictObject({
 export const AgentEvaluationCaseResultSchema = strictObject({
   caseId: Type.String({ pattern: '^eval_[a-z0-9_]+$' }),
   passed: Type.Boolean(),
-  expectedMode: RunModeSchema,
-  actualMode: RunModeSchema,
+  expectedOutcome: Type.Optional(PageAgentOutcomeSchema),
+  actualOutcome: Type.Optional(PageAgentOutcomeSchema),
   status: AgentRunStatusSchema,
   firstEventMs: Type.Integer({ minimum: 0 }),
   durationMs: Type.Integer({ minimum: 0 }),
@@ -332,6 +408,10 @@ export const AgentEvaluationCaseResultSchema = strictObject({
   toolCalls: Type.Integer({ minimum: 0 }),
   schemaBytes: Type.Integer({ minimum: 0 }),
   repairAttempts: Type.Integer({ minimum: 0 }),
+  terminalDecisionAttempts: Type.Integer({ minimum: 0 }),
+  successfulWorkingCommits: Type.Integer({ minimum: 0 }),
+  successResponsePublished: Type.Boolean(),
+  errorStage: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
   toolTrace: Type.Array(Type.String({ minLength: 1, maxLength: 128 })),
   failures: Type.Array(Type.String({ minLength: 1, maxLength: 2_000 })),
 });
@@ -347,8 +427,22 @@ export const AgentEvaluationReportSchema = strictObject({
     total: Type.Integer({ minimum: 0 }),
     passed: Type.Integer({ minimum: 0 }),
     successRate: Type.Number({ minimum: 0, maximum: 1 }),
+    firstTerminalSuccessRate: Type.Number({ minimum: 0, maximum: 1 }),
+    repairRate: Type.Number({ minimum: 0, maximum: 1 }),
+    repairSuccessRate: Type.Number({ minimum: 0, maximum: 1 }),
+    missingTerminalDecisionRate: Type.Number({ minimum: 0, maximum: 1 }),
+    workingConflictRate: Type.Number({ minimum: 0, maximum: 1 }),
+    recoveredCommitCount: Type.Integer({ minimum: 0 }),
+    outcomeCounts: Type.Record(Type.String(), Type.Integer({ minimum: 0 })),
+    p50DurationMs: Type.Integer({ minimum: 0 }),
     p95FirstEventMs: Type.Integer({ minimum: 0 }),
     p95DurationMs: Type.Integer({ minimum: 0 }),
+    p50ModelCalls: Type.Integer({ minimum: 0 }),
+    p95ModelCalls: Type.Integer({ minimum: 0 }),
+    p50ToolCalls: Type.Integer({ minimum: 0 }),
+    p95ToolCalls: Type.Integer({ minimum: 0 }),
+    p50Tokens: Type.Integer({ minimum: 0 }),
+    p95Tokens: Type.Integer({ minimum: 0 }),
     totalInputTokens: Type.Integer({ minimum: 0 }),
     totalOutputTokens: Type.Integer({ minimum: 0 }),
     totalToolCalls: Type.Integer({ minimum: 0 }),
@@ -357,9 +451,13 @@ export const AgentEvaluationReportSchema = strictObject({
   cases: Type.Array(AgentEvaluationCaseResultSchema),
 });
 
-export type RunMode = Static<typeof RunModeSchema>;
-export type PageIntent = Static<typeof PageIntentSchema>;
-export type ScopeClassifierResult = Static<typeof ScopeClassifierResultSchema>;
+export type AgentRunKind = Static<typeof AgentRunKindSchema>;
+export type ClarificationCandidate = Static<typeof ClarificationCandidateSchema>;
+export type CompletePageRunInput = Static<typeof CompletePageRunInputSchema>;
+export type PageAgentOutcome = Static<typeof PageAgentOutcomeSchema>;
+export type ClarificationResult = Static<typeof ClarificationResultSchema>;
+export type ClarificationSelection = Static<typeof ClarificationSelectionSchema>;
+export type OperationValidationFailure = Static<typeof OperationValidationFailureSchema>;
 export type AgentRunStatus = Static<typeof AgentRunStatusSchema>;
 export type RunBudget = Static<typeof RunBudgetSchema>;
 export type ToolPolicy = Static<typeof ToolPolicySchema>;
@@ -372,6 +470,14 @@ export type MessageContentBlock = Static<typeof MessageContentBlockSchema>;
 export type MessageContent = Static<typeof MessageContentSchema>;
 export type AgentMessage = Static<typeof AgentMessageSchema>;
 export type AgentEvent = Static<typeof AgentEventSchema>;
+export type AgentProgressEventPayload = Static<typeof AgentProgressEventPayloadSchema>;
+export type AgentRunCompletedEventPayload = Static<typeof AgentRunCompletedEventPayloadSchema>;
+export type AgentRunFailedEventPayload = Static<typeof AgentRunFailedEventPayloadSchema>;
+export type ClarificationAvailableEventPayload = Static<
+  typeof ClarificationAvailableEventPayloadSchema
+>;
+export type WorkingCommittedEventPayload = Static<typeof WorkingCommittedEventPayloadSchema>;
+export type AgentToolActivityEventPayload = Static<typeof AgentToolActivityEventPayloadSchema>;
 export type CreateAgentRunRequest = Static<typeof CreateAgentRunRequestSchema>;
 export type CreateAgentRunResponse = Static<typeof CreateAgentRunResponseSchema>;
 export type Conversation = Static<typeof ConversationSchema>;

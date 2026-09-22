@@ -50,7 +50,7 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
   return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek 服务暂时不可用，请稍后重试', true);
 };
 
-const adaptTool = (tool: AgentEngineTool): AgentTool => {
+const adaptTool = (tool: AgentEngineTool, onTerminalDecision: () => void): AgentTool => {
   return {
     name: tool.name,
     label: tool.name,
@@ -58,6 +58,7 @@ const adaptTool = (tool: AgentEngineTool): AgentTool => {
     parameters: tool.parameters,
     execute: async (_toolCallId, input, signal) => {
       const result = await tool.execute(input, signal ?? new AbortController().signal);
+      if (tool.name === 'complete_page_run') onTerminalDecision();
       return {
         content: [{ type: 'text', text: JSON.stringify(result) }],
         details: result,
@@ -94,17 +95,35 @@ export class PiAgentEngine implements AgentEngine {
     const emit = async (event: AgentEngineEvent) => request.onEvent?.(event);
     let text = '';
     let usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    let terminalDecisionCompleted = false;
 
     const agent = new Agent({
       initialState: {
         systemPrompt: request.systemPrompt,
         model,
-        tools: request.tools?.map(adaptTool),
+        tools: request.tools?.map((tool) =>
+          adaptTool(tool, () => {
+            terminalDecisionCompleted = true;
+          }),
+        ),
       },
       streamFn: this.options.stream,
       getApiKey: async (provider) =>
         provider === definition.provider ? credential : this.options.getCredential(provider),
       toolExecution: 'sequential',
+      beforeToolCall: async ({ assistantMessage }) => {
+        const writeCalls = assistantMessage.content.filter(
+          (entry) => entry.type === 'toolCall' && entry.name === 'complete_page_run',
+        );
+        if (writeCalls.length > 1) {
+          return {
+            block: true,
+            reason: '一次页面请求只能提交一个终态，请合并完整结果后重试。',
+          };
+        }
+        return undefined;
+      },
+      shouldStopAfterTurn: () => terminalDecisionCompleted,
     });
     const unsubscribe = agent.subscribe(async (event) => {
       if (controller.signal.aborted) agent.abort();

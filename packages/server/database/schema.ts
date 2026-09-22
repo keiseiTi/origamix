@@ -77,9 +77,15 @@ export const agentRuns = sqliteTable(
     clientRequestId: text('client_request_id').notNull(),
     baseWorkingVersion: integer('base_working_version').notNull(),
     resultWorkingVersion: integer('result_working_version'),
+    resultWorkingHash: text('result_working_hash'),
     modelRef: text('model_ref').notNull(),
-    mode: text().notNull().default('page_modify'),
+    runKind: text('run_kind').notNull().default('page_assistant'),
     status: integer().notNull(),
+    outcome: text(),
+    outcomeJson: text('outcome_json'),
+    repairAttempts: integer('repair_attempts').notNull().default(0),
+    operationCount: integer('operation_count'),
+    operationDigest: text('operation_digest'),
     budgetJson: text('budget_json').notNull(),
     promptVersion: text('prompt_version').notNull(),
     policyVersion: text('policy_version').notNull(),
@@ -93,6 +99,8 @@ export const agentRuns = sqliteTable(
     durationMs: integer('duration_ms'),
     errorCode: text('error_code'),
     errorMessage: text('error_message'),
+    failureStage: text('failure_stage'),
+    recoveredCommit: integer('recovered_commit').notNull().default(0),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
     finishedAt: text('finished_at'),
@@ -108,10 +116,32 @@ export const agentRuns = sqliteTable(
   ],
 );
 
+export const agentToolAudits = sqliteTable(
+  'agent_tool_audits',
+  {
+    id: text().primaryKey(),
+    runId: text('run_id').notNull(),
+    sequence: integer().notNull(),
+    toolName: text('tool_name').notNull(),
+    phase: text().notNull(),
+    safeErrorCode: text('safe_error_code'),
+    durationMs: integer('duration_ms').notNull(),
+    operationCount: integer('operation_count'),
+    operationTypeCountsJson: text('operation_type_counts_json'),
+    operationDigest: text('operation_digest'),
+    occurredAt: text('occurred_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_agent_tool_audits_run_sequence').on(table.runId, table.sequence),
+    index('idx_agent_tool_audits_run').on(table.runId, table.occurredAt),
+  ],
+);
+
 export const databaseSchema = {
   projects,
   pages,
   conversations,
   messages,
   agentRuns,
+  agentToolAudits,
 };

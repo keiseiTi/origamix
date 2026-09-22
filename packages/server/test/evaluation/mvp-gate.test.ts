@@ -7,19 +7,23 @@ describe('MVP performance and release gate', () => {
     const report = await runAgentEvaluation({
       kind: 'fake',
       run: async (testCase) => ({
-        mode: testCase.expectedMode,
         status: testCase.expectedStatus,
+        ...(testCase.expectedOutcome ? { outcome: testCase.expectedOutcome } : {}),
         firstEventMs: 20,
         durationMs: testCase.id === 'eval_cancelled' ? 80 : 120,
         inputTokens: 0,
         outputTokens: 0,
         modelCalls: 0,
-        toolCalls: testCase.expectedTool ? 1 : 0,
+        toolCalls: testCase.expectedStatus === 'cancelled' ? 0 : 1,
         schemaBytes: testCase.expectWorkingUpdate ? 4_096 : 0,
         repairAttempts: testCase.expectRepair ? 1 : 0,
-        toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
+        terminalDecisionAttempts: testCase.expectRepair ? 2 : 1,
+        successfulWorkingCommits: testCase.expectWorkingUpdate ? 1 : 0,
+        successResponsePublished: testCase.expectedStatus === 'completed',
+        toolTrace: testCase.expectedStatus === 'cancelled' ? [] : ['complete_page_run'],
         ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
         ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
+        ...(testCase.expectedStatus === 'failed' ? { errorStage: 'validating' } : {}),
       }),
     });
     expect(
@@ -35,8 +39,8 @@ describe('MVP performance and release gate', () => {
     const report = await runAgentEvaluation({
       kind: 'recorded',
       run: async (testCase) => ({
-        mode: testCase.expectedMode,
         status: testCase.expectedStatus,
+        ...(testCase.expectedOutcome ? { outcome: testCase.expectedOutcome } : {}),
         firstEventMs: 2_000,
         durationMs: 8_000,
         inputTokens: 1,
@@ -45,9 +49,13 @@ describe('MVP performance and release gate', () => {
         toolCalls: 13,
         schemaBytes: 300_000,
         repairAttempts: testCase.expectRepair ? 1 : 0,
-        toolTrace: testCase.expectedTool ? [testCase.expectedTool] : [],
+        terminalDecisionAttempts: testCase.expectRepair ? 2 : 1,
+        successfulWorkingCommits: testCase.expectWorkingUpdate ? 1 : 0,
+        successResponsePublished: testCase.expectedStatus === 'completed',
+        toolTrace: testCase.expectedStatus === 'cancelled' ? [] : ['complete_page_run'],
         ...(testCase.expectWorkingUpdate ? { resultWorkingVersion: 2 } : {}),
         ...(testCase.expectedErrorCode ? { errorCode: testCase.expectedErrorCode } : {}),
+        ...(testCase.expectedStatus === 'failed' ? { errorStage: 'validating' } : {}),
       }),
     });
     const result = evaluateMvpGate(report, {

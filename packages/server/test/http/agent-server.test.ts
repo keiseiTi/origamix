@@ -63,7 +63,7 @@ const setup = () => {
       const started = conversationService.startRun({
         ...request,
         modelRef: 'fake/test',
-        mode: 'page_modify',
+        runKind: 'page_assistant',
         budget: {
           maxModelCalls: 1,
           maxToolCalls: 1,

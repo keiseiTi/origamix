@@ -1,9 +1,13 @@
-import type { CreateAgentRunRequest, PageIntent, RunBudget } from '@origamix/shared/protocol/agent';
+import type {
+  ClarificationResult,
+  CreateAgentRunRequest,
+  RunBudget,
+} from '@origamix/shared/protocol/agent';
+import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { AgentEventBroker } from './event-broker';
 import type { RunExecutor, RunResult } from './run-executor';
 import type { AgentRunRepository, AgentRunRecord } from './run-repository';
 import type { AgentRunService } from './run-service';
-import type { ScopeRouter } from './scope-router';
 import type {
   ConversationService,
   StartConversationRunInput,
@@ -11,6 +15,7 @@ import type {
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { getAgentModel, MVP_MODEL_ID } from './engine';
 import { conflict } from '../errors';
+import { progressPayload } from './progress';
 
 export const DEFAULT_AGENT_RUN_BUDGET: RunBudget = {
   maxModelCalls: 6,
@@ -40,11 +45,12 @@ export class AgentService {
       runService: AgentRunService;
       events: AgentEventBroker;
       executor: RunExecutor;
-      router: ScopeRouter;
       getCurrentState: (
         projectId: string,
         pageId: string,
-      ) => { workingVersion: number } | Promise<{ workingVersion: number }>;
+      ) =>
+        | { workingVersion: number; schema?: OrigamixPageSchema }
+        | Promise<{ workingVersion: number; schema?: OrigamixPageSchema }>;
       modelRef?: string;
       getModelRef?: () => string | Promise<string>;
       budget?: RunBudget;
@@ -70,12 +76,32 @@ export class AgentService {
       if (current.workingVersion !== request.baseWorkingVersion) {
         throw conflict('页面版本已变化，请刷新后重试');
       }
+      if (request.clarification) {
+        const source = this.dependencies.runs.get(request.clarification.runId);
+        const clarification = source?.outcomeJson as ClarificationResult | undefined;
+        const candidate = clarification?.candidates?.find(
+          (item) => item.elementId === request.clarification?.selectedElementId,
+        );
+        if (
+          !source ||
+          source.status !== 'completed' ||
+          source.outcome !== 'needs_clarification' ||
+          source.projectId !== request.projectId ||
+          source.pageId !== request.pageId ||
+          source.conversationId !== request.conversationId ||
+          clarification?.clarificationId !== request.clarification.clarificationId ||
+          clarification.baseWorkingVersion !== request.baseWorkingVersion ||
+          !candidate ||
+          (current.schema && !current.schema.elements[candidate.elementId])
+        ) {
+          throw conflict('澄清选项已过期或不属于当前页面');
+        }
+      }
       const message = request.content.blocks
         .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
         .map((block) => block.text)
         .join('\n')
         .trim();
-      const intent = await this.dependencies.router.route(message, request.pageId);
       const modelRef = this.dependencies.getModelRef
         ? await this.dependencies.getModelRef()
         : (this.dependencies.modelRef ?? MVP_MODEL_ID);
@@ -83,7 +109,7 @@ export class AgentService {
       const started = this.dependencies.conversations.startRun({
         ...request,
         modelRef,
-        mode: intent.mode,
+        runKind: 'page_assistant',
         budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
         promptVersion: '1',
         policyVersion: '1',
@@ -100,7 +126,7 @@ export class AgentService {
         });
         // HTTP and synchronous callers share this single dispatch and completion.
         const completion = Promise.resolve()
-          .then(() => this.executeAndPublish(started, intent, message))
+          .then(() => this.executeAndPublish(started, message))
           .finally(() => {
             this.executing.delete(started.run.id);
           });
@@ -117,25 +143,39 @@ export class AgentService {
   cancel(runId: string, requestId: string): AgentRunRecord {
     const run = this.dependencies.runService.cancel(runId);
     this.dependencies.executor.cancel(runId);
-    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status);
-    this.dependencies.events.publish({
-      type: terminal ? `run.${run.status}` : 'run.cancelling',
-      runId,
-      pageId: run.pageId,
-      requestId,
-      payload: { status: run.status },
-    });
+    const progress = progressPayload(run.status);
+    if (progress)
+      this.dependencies.events.publish({
+        type: 'run.progress',
+        runId,
+        pageId: run.pageId,
+        requestId,
+        payload: progress,
+      });
     return run;
   }
 
   private async executeAndPublish(
     started: ReturnType<ConversationService['startRun']>,
-    intent: PageIntent,
     message: string,
   ): Promise<RunResult> {
+    const heartbeat = setInterval(() => {
+      const run = this.dependencies.runs.get(started.run.id);
+      if (!run) return;
+      const payload = progressPayload(run.status);
+      if (!payload) return;
+      this.dependencies.events.publish({
+        type: 'run.progress',
+        runId: run.id,
+        pageId: run.pageId,
+        requestId: run.clientRequestId,
+        payload,
+      });
+    }, 4_000);
+    heartbeat.unref();
     let result: RunResult;
     try {
-      result = await this.dependencies.executor.execute(started, intent, message);
+      result = await this.dependencies.executor.execute(started, message);
     } catch {
       // A rejected setup must settle durable state as well as notify subscribers.
       const current = this.dependencies.runService.get(started.run.id);
@@ -156,23 +196,64 @@ export class AgentService {
       const settled = this.dependencies.runService.get(current.id);
       result = {
         runId: settled.id,
-        mode: settled.mode,
         status: settled.status as RunResult['status'],
         text: '',
         ...(settled.resultWorkingVersion
           ? { resultWorkingVersion: settled.resultWorkingVersion }
           : {}),
       };
+    } finally {
+      clearInterval(heartbeat);
     }
+    const settled = this.dependencies.runService.get(result.runId);
+    if (settled.resultWorkingVersion) {
+      this.dependencies.events.publish({
+        type: 'working.committed',
+        runId: settled.id,
+        pageId: settled.pageId,
+        requestId: settled.clientRequestId,
+        payload: {
+          baseWorkingVersion: settled.baseWorkingVersion,
+          resultWorkingVersion: settled.resultWorkingVersion,
+          operationCount: settled.operationCount ?? 1,
+        },
+      });
+    }
+    if (settled.outcome === 'needs_clarification' && settled.outcomeJson) {
+      this.dependencies.events.publish({
+        type: 'clarification.available',
+        runId: settled.id,
+        pageId: settled.pageId,
+        requestId: settled.clientRequestId,
+        payload: {
+          status: 'completed',
+          outcome: 'needs_clarification',
+          clarification: settled.outcomeJson,
+        },
+      });
+    }
+    const payload =
+      settled.status === 'completed'
+        ? {
+            status: 'completed' as const,
+            outcome: settled.outcome ?? result.outcome ?? ('answered_only' as const),
+            ...(settled.resultWorkingVersion
+              ? { resultWorkingVersion: settled.resultWorkingVersion }
+              : {}),
+          }
+        : settled.status === 'failed'
+          ? {
+              status: 'failed' as const,
+              errorCode: settled.errorCode ?? 'INTERNAL_ERROR',
+              safeMessage: settled.errorMessage ?? 'Agent 运行失败，请重试。',
+            }
+          : { status: settled.status };
     this.dependencies.events.publish({
-      type: `run.${result.status}`,
+      type: `run.${settled.status}`,
       runId: result.runId,
       pageId: started.run.pageId,
       requestId: started.run.clientRequestId,
-      payload: {
-        status: result.status,
-        ...(result.resultWorkingVersion ? { workingVersion: result.resultWorkingVersion } : {}),
-      },
+      payload,
     });
     return result;
   }
@@ -190,7 +271,7 @@ export class AgentService {
     run: AgentRunRecord,
   ): Pick<
     StartConversationRunInput,
-    | 'mode'
+    | 'runKind'
     | 'modelRef'
     | 'budget'
     | 'promptVersion'
@@ -199,7 +280,7 @@ export class AgentService {
     | 'materialManifestVersion'
   > {
     return {
-      mode: run.mode,
+      runKind: run.runKind,
       modelRef: run.modelRef,
       budget: run.budget,
       promptVersion: run.promptVersion,

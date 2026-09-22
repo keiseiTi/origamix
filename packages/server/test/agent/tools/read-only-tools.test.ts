@@ -70,7 +70,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVers
   return { execute, projects, readSchema, tools };
 };
 
-const scope = { projectId: 'project_one', pageId: 'page_one', workingVersion: 1 };
+const scope = {};
 
 describe('read-only Agent tools', () => {
   it('loads one revision once per Run and returns compact page context and outline', async () => {
@@ -100,11 +100,8 @@ describe('read-only Agent tools', () => {
     });
   });
 
-  it('rejects scope changes, extra input and stale revisions before exposing content', async () => {
+  it('rejects extra input and stale revisions before exposing content', async () => {
     const current = setup();
-    await expect(
-      current.execute('get_page_context', { ...scope, projectId: 'project_other' }),
-    ).rejects.toMatchObject({ statusCode: 404 });
     await expect(
       current.execute('get_page_context', { ...scope, unexpected: true }),
     ).rejects.toMatchObject({ statusCode: 422 });
@@ -121,26 +118,26 @@ describe('read-only Agent tools', () => {
   it('returns only the requested page fragment and rejects unknown element ownership', async () => {
     const { execute } = setup();
     await expect(
-      execute('get_schema_fragment', { ...scope, elementId: 'form-main', depth: 0 }),
+      execute('get_schema_fragment', { elementId: 'form-main', depth: 0 }),
     ).resolves.toMatchObject({
       requestedElementId: 'form-main',
       elements: [{ id: 'form-main', type: 'form', childIds: ['input-name'] }],
     });
     await expect(
-      execute('get_schema_fragment', { ...scope, elementId: 'element_foreign' }),
+      execute('get_schema_fragment', { elementId: 'element_foreign' }),
     ).rejects.toBeInstanceOf(ApiError);
   });
 
   it('searches compact material summaries and reads manifests only by an exact known type', async () => {
     const { execute } = setup();
-    await expect(execute('search_materials', { ...scope, query: '表单' })).resolves.toMatchObject({
+    await expect(execute('search_materials', { query: '表单' })).resolves.toMatchObject({
       matches: expect.arrayContaining([expect.objectContaining({ type: 'form' })]),
     });
-    await expect(
-      execute('get_material_manifest', { ...scope, type: 'input' }),
-    ).resolves.toMatchObject({ manifest: { type: 'input', version: '1.0.0' } });
-    await expect(
-      execute('get_material_manifest', { ...scope, type: 'unknown' }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(execute('get_material_manifest', { type: 'input' })).resolves.toMatchObject({
+      manifest: { type: 'input', version: '1.0.0' },
+    });
+    await expect(execute('get_material_manifest', { type: 'unknown' })).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 });

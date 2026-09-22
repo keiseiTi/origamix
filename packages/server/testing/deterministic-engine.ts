@@ -108,8 +108,8 @@ export const createDeterministicFakeAgentEngine = (): AgentEngine => {
     const schema = context?.schemaFragment
       ? (JSON.parse(context.schemaFragment) as OrigamixPageSchema)
       : undefined;
-    const applyOperations = request.tools?.find((tool) => tool.name === 'apply_page_operations');
-    if (applyOperations && schema) {
+    const completeRun = request.tools?.find((tool) => tool.name === 'complete_page_run');
+    if (completeRun && schema) {
       const runId = `run_${Date.now()}`;
       const operations = [
         {
@@ -121,26 +121,45 @@ export const createDeterministicFakeAgentEngine = (): AgentEngine => {
       await request.onEvent?.({
         type: 'tool_start',
         toolCallId: `tool_${runId}`,
-        toolName: applyOperations.name,
-        input: { operations },
+        toolName: completeRun.name,
+        input: { outcome: 'apply_changes', operations },
       });
-      const result = await applyOperations.execute(
-        { operations },
+      const text = 'Fake Engine 已生成并提交候选页面，请在编辑器中检查结果。';
+      const result = await completeRun.execute(
+        { outcome: 'apply_changes', operations, response: text },
         request.signal ?? new AbortController().signal,
       );
       await request.onEvent?.({
         type: 'tool_end',
         toolCallId: `tool_${runId}`,
-        toolName: applyOperations.name,
+        toolName: completeRun.name,
         result,
         isError: false,
       });
-      const text = 'Fake Engine 已生成并提交候选页面，请在编辑器中检查结果。';
       await request.onEvent?.({ type: 'text_delta', delta: text });
       return { text, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
     }
     const text =
       '请描述目标字段、校验规则、表格列和交互行为；Agent 会基于可用物料生成并校验页面 Schema。当前使用确定性测试模型。';
+    if (completeRun) {
+      await request.onEvent?.({
+        type: 'tool_start',
+        toolCallId: 'tool_answer',
+        toolName: completeRun.name,
+        input: { outcome: 'answer_only', response: text },
+      });
+      const result = await completeRun.execute(
+        { outcome: 'answer_only', response: text },
+        request.signal ?? new AbortController().signal,
+      );
+      await request.onEvent?.({
+        type: 'tool_end',
+        toolCallId: 'tool_answer',
+        toolName: completeRun.name,
+        result,
+        isError: false,
+      });
+    }
     await request.onEvent?.({ type: 'text_delta', delta: text });
     return { text, usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
   });

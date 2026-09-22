@@ -2,6 +2,7 @@
 export * from './evaluation/evaluation-harness';
 export * from './evaluation/mvp-gate';
 export * from './evaluation/security-audit';
+export * from './evaluation/run-observability';
 export { probeDeepSeekCapabilities } from './evaluation/model-capability-probe';
 export type {
   DeepSeekCapabilityReport,

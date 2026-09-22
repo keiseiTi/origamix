@@ -18,25 +18,17 @@ import type { AgentEngineTool } from '../engine';
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
 
-const ScopeSchema = {
-  projectId: Type.String({ minLength: 1, maxLength: 160 }),
-  pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
-  workingVersion: Type.Integer({ minimum: 1 }),
-};
-const PageScopeInputSchema = strictObject(ScopeSchema);
+const PageScopeInputSchema = strictObject({});
 const SchemaFragmentInputSchema = strictObject({
-  ...ScopeSchema,
   elementId: Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }),
   depth: Type.Optional(Type.Integer({ minimum: 0, maximum: 4 })),
   maxElements: Type.Optional(Type.Integer({ minimum: 1, maximum: 40 })),
 });
 const SearchMaterialsInputSchema = strictObject({
-  ...ScopeSchema,
   query: Type.String({ minLength: 1, maxLength: 80 }),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 8 })),
 });
 const MaterialManifestInputSchema = strictObject({
-  ...ScopeSchema,
   type: Type.String({ pattern: '^[a-z][a-z0-9-]*$', maxLength: 80 }),
 });
 
@@ -126,17 +118,10 @@ export const createReadOnlyAgentTools = (
   };
 
   const load = async (
-    input: PageScopeInput,
+    _input: PageScopeInput,
     signal: AbortSignal,
   ): Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> => {
     assertNotAborted(signal);
-    if (
-      input.projectId !== scope.projectId ||
-      input.pageId !== scope.pageId ||
-      input.workingVersion !== scope.workingVersion
-    ) {
-      throw notFound('页面 Working 状态不属于当前 Agent Run');
-    }
     const project = dependencies.projects.getProject(scope.projectId);
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const page = dependencies.projects.getPage(scope.projectId, scope.pageId);

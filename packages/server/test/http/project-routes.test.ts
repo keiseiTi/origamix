@@ -323,7 +323,7 @@ describe('Project and Schema HTTP flows', () => {
       .prepare(
         `INSERT INTO agent_runs (
           id, project_id, page_id, conversation_id, user_message_id, client_request_id,
-          base_working_version, model_ref, mode, status, budget_json, prompt_version,
+          base_working_version, model_ref, run_kind, status, budget_json, prompt_version,
           policy_version, toolset_version, material_manifest_version, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
@@ -336,8 +336,8 @@ describe('Project and Schema HTTP flows', () => {
         'request_lifecycle',
         1,
         'fake/model',
-        'page_modify',
-        8,
+        'page_assistant',
+        9,
         '{"maxModelCalls":1,"maxToolCalls":1,"maxOutputTokens":1,"maxDurationMs":1,"maxSchemaBytes":1,"maxRepairAttempts":0}',
         '1',
         '1',

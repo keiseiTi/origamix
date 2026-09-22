@@ -13,6 +13,7 @@ import { conflict, invalid } from '../errors';
 import { validateProjectPageAgainstMaterials } from './material-validation';
 import {
   WorkingSchemaStore,
+  type AgentWorkingCommitReceipt,
   type WorkingSchemaFile,
   type WorkingSchemaPageRef,
 } from './working-schema-store';
@@ -21,6 +22,17 @@ import { applySchemaOperationBatch } from './schema-operation-engine';
 export interface SchemaWriteOptions extends SchemaCommitOptions {
   /** Re-check cancellation or authority after queueing, before the first durable write. */
   beforeWrite?: () => void | Promise<void>;
+}
+export type WorkingDraftWriteStage = 'receipt_prepared' | 'working' | 'receipt_committed';
+export interface AgentWorkingCommitInput {
+  runId: string;
+  projectId: string;
+  operationDigest: string;
+}
+export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'beforeWrite'> {
+  agentCommit?: AgentWorkingCommitInput;
+  /** Test hook for deterministic interruption at a durable Agent write boundary. */
+  afterWorkingStage?: (stage: WorkingDraftWriteStage) => void | Promise<void>;
 }
 export type SchemaPageRef = WorkingSchemaPageRef;
 export interface SchemaReadResult {
@@ -247,20 +259,55 @@ const writeWorkingDraft = async (
   page: SchemaPageRef,
   current: WorkingSchemaFile,
   schema: OrigamixPageSchema,
+  options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
   const durableSchema = structuredClone(schema);
   const workingHash = hashSchema(durableSchema);
-  if (workingHash === current.workingHash) return workingResult(current);
-  const updated: WorkingSchemaFile = {
-    ...current,
-    workingVersion: current.workingVersion + 1,
-    workingHash,
-    updatedAt: new Date().toISOString(),
-    schema: durableSchema,
-  };
-  await store.writeWorking(page, updated);
+  const updated: WorkingSchemaFile =
+    workingHash === current.workingHash
+      ? current
+      : {
+          ...current,
+          workingVersion: current.workingVersion + 1,
+          workingHash,
+          updatedAt: new Date().toISOString(),
+          schema: durableSchema,
+        };
+  let receipt: AgentWorkingCommitReceipt | undefined;
+  if (options.agentCommit) {
+    receipt = {
+      version: 1,
+      state: 'prepared',
+      runId: options.agentCommit.runId,
+      projectId: options.agentCommit.projectId,
+      pageId: page.pageId,
+      baseWorkingVersion: current.workingVersion,
+      resultWorkingVersion: updated.workingVersion,
+      resultWorkingHash: updated.workingHash,
+      operationDigest: options.agentCommit.operationDigest,
+      preparedAt: new Date().toISOString(),
+    };
+    await store.writeAgentCommit(page, receipt);
+    await options.afterWorkingStage?.('receipt_prepared');
+  }
+  if (updated !== current) await store.writeWorking(page, updated);
+  await options.afterWorkingStage?.('working');
+  if (receipt) {
+    await store.writeAgentCommit(page, {
+      ...receipt,
+      state: 'committed',
+      committedAt: new Date().toISOString(),
+    });
+    await options.afterWorkingStage?.('receipt_committed');
+  }
   return workingResult(updated);
 };
+
+export const getAgentWorkingCommitReceipt = async (
+  page: SchemaPageRef,
+  runId: string,
+): Promise<AgentWorkingCommitReceipt | undefined> =>
+  withSchemaPageQueue(page, () => store.readAgentCommit(page, runId));
 
 export const updateWorkingSchema = async (
   page: SchemaPageRef,
@@ -268,7 +315,7 @@ export const updateWorkingSchema = async (
     baseWorkingVersion: number;
     schema: OrigamixPageSchema;
   },
-  options: Pick<SchemaWriteOptions, 'beforeWrite'> = {},
+  options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
@@ -276,7 +323,7 @@ export const updateWorkingSchema = async (
       throw conflict('页面草稿已更新，请重新加载后再提交');
     await validateWritableSchema(page, input.schema);
     await options.beforeWrite?.();
-    return writeWorkingDraft(page, current, input.schema);
+    return writeWorkingDraft(page, current, input.schema, options);
   });
 };
 
@@ -286,7 +333,7 @@ export const applyWorkingSchemaOperations = async (
     baseWorkingVersion: number;
     operations: readonly SchemaOperation[];
   },
-  options: Pick<SchemaWriteOptions, 'beforeWrite'> = {},
+  options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     const current = await getSchemaUnlocked(page);
@@ -295,7 +342,7 @@ export const applyWorkingSchemaOperations = async (
     const candidate = applySchemaOperationBatch(current.schema, input.operations).schema;
     await validateWritableSchema(page, candidate);
     await options.beforeWrite?.();
-    return writeWorkingDraft(page, current, candidate);
+    return writeWorkingDraft(page, current, candidate, options);
   });
 };
 

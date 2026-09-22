@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { MessageContent, RunBudget, RunMode } from '@origamix/shared/protocol/agent';
+import type { AgentRunKind, MessageContent, RunBudget } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase } from '../database/database';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from '../agent/run-repository';
@@ -18,7 +18,7 @@ export interface StartConversationRunInput {
   baseWorkingVersion: number;
   content: MessageContent;
   modelRef: string;
-  mode: RunMode;
+  runKind: AgentRunKind;
   budget: RunBudget;
   promptVersion: string;
   policyVersion: string;
@@ -139,7 +139,7 @@ export class ConversationService {
       clientRequestId: input.clientRequestId,
       baseWorkingVersion: input.baseWorkingVersion,
       modelRef: input.modelRef,
-      mode: input.mode,
+      runKind: input.runKind,
       status: 'queued',
       budget: input.budget,
       promptVersion: input.promptVersion,
@@ -151,6 +151,8 @@ export class ConversationService {
       outputTokens: 0,
       modelCalls: 0,
       toolCalls: 0,
+      repairAttempts: 0,
+      recoveredCommit: false,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -245,7 +247,7 @@ export class ConversationService {
       run.baseWorkingVersion !== input.baseWorkingVersion ||
       run.conversationId !== (input.conversationId ?? run.conversationId) ||
       run.modelRef !== input.modelRef ||
-      run.mode !== input.mode ||
+      run.runKind !== input.runKind ||
       run.retryOfRunId !== input.retryOfRunId ||
       !storedMessage ||
       JSON.stringify(storedMessage.content) !== JSON.stringify(input.content)

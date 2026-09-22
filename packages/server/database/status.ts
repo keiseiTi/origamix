@@ -18,12 +18,13 @@ export const conversationStatus = createCodec(['active', 'archived', 'deleted'])
 export const messageStatus = createCodec(['pending', 'streaming', 'completed', 'failed']);
 export const agentRunStatus = createCodec<AgentRunStatus>([
   'queued',
-  'classifying',
-  'generating',
-  'tool_calling',
+  'preparing',
+  'reasoning',
+  'reading',
   'validating',
+  'repairing',
   'committing',
-  'awaiting_confirmation',
+  'deciding',
   'cancelling',
   'completed',
   'failed',

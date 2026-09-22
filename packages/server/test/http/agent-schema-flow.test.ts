@@ -13,13 +13,12 @@ import { AgentRunService } from '../../agent/run-service';
 import { AgentService } from '../../agent/agent-service';
 import { AgentEventBroker } from '../../agent/event-broker';
 import { RunExecutor } from '../../agent/run-executor';
-import { ScopeRouter } from '../../agent/scope-router';
 import { ContextAssembler } from '../../agent/context-assembler';
 import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ConversationRepository } from '../../conversations/conversation-repository';
 import { ConversationService } from '../../conversations/conversation-service';
 import { createDefaultAgentToolEntries } from '../../agent/tools/registry';
-import { createApplyPageOperationsTool } from '../../agent/tools/apply-page-operations';
+import { createCompletePageRunTool } from '../../agent/tools/complete-page-run';
 import { createDeterministicFakeAgentEngine } from '../../testing/deterministic-engine';
 import { createHttpServer } from '../../http/server';
 
@@ -66,8 +65,8 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       ),
       createTools: (scope) =>
         createDefaultAgentToolEntries([
-          createApplyPageOperationsTool(
-            { projects, runs },
+          createCompletePageRunTool(
+            { projects, runs, runService },
             { ...scope, maxSchemaBytes: 256 * 1024 },
           ),
         ]),
@@ -78,7 +77,6 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       conversations,
       events,
       executor,
-      router: new ScopeRouter(),
       getCurrentState: async () => getWorkingSchemaState(pageRef),
       getModelRef: async () => 'deepseek/deepseek-v4-pro',
     });

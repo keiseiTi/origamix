@@ -12,17 +12,12 @@ import type { AgentEngineTool } from '../engine';
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
 
-const scopeFields = {
-  projectId: Type.String({ minLength: 1, maxLength: 160 }),
-  pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
-};
 const SearchDocsSchema = strictObject({
-  ...scopeFields,
   query: Type.String({ minLength: 1, maxLength: 200 }),
   version: Type.Optional(Type.String({ minLength: 1, maxLength: 40 })),
 });
-const ValidateSchema = strictObject({ ...scopeFields, schema: Type.Unknown() });
-const DiagnosticsSchema = strictObject(scopeFields);
+const ValidateSchema = strictObject({ schema: Type.Unknown() });
+const DiagnosticsSchema = strictObject({});
 
 export interface DomainToolScope {
   projectId: string;
@@ -35,15 +30,6 @@ export interface DomainToolDependencies {
   diagnostics: Pick<RuntimeDiagnosticService, 'getState'>;
   maxResultBytes?: number;
 }
-
-const assertScope = (
-  scope: DomainToolScope,
-  input: { projectId: string; pageId: string },
-): void => {
-  if (scope.projectId !== input.projectId || scope.pageId !== input.pageId) {
-    throw notFound('页面不属于当前 Agent Run');
-  }
-};
 
 const parse = <T>(schema: TSchema, value: unknown): T => {
   if (!Value.Check(schema, value)) throw invalid('领域工具参数无效');
@@ -77,11 +63,7 @@ export const createDomainAgentTools = (
       parameters: SearchDocsSchema,
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
-        const input = parse<{ projectId: string; pageId: string; query: string; version?: string }>(
-          SearchDocsSchema,
-          raw,
-        );
-        assertScope(scope, input);
+        const input = parse<{ query: string; version?: string }>(SearchDocsSchema, raw);
         assertPage();
         return bounded(
           dependencies.docs.search({ query: input.query, version: input.version }),
@@ -95,11 +77,7 @@ export const createDomainAgentTools = (
       parameters: ValidateSchema,
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
-        const input = parse<{ projectId: string; pageId: string; schema: unknown }>(
-          ValidateSchema,
-          raw,
-        );
-        assertScope(scope, input);
+        const input = parse<{ schema: unknown }>(ValidateSchema, raw);
         assertPage();
         const structural = validatePage(input.schema);
         const result = structural.valid
@@ -135,10 +113,9 @@ export const createDomainAgentTools = (
       parameters: DiagnosticsSchema,
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
-        const input = parse<{ projectId: string; pageId: string }>(DiagnosticsSchema, raw);
-        assertScope(scope, input);
+        parse<Record<string, never>>(DiagnosticsSchema, raw);
         return bounded(
-          await dependencies.diagnostics.getState(input.projectId, input.pageId),
+          await dependencies.diagnostics.getState(scope.projectId, scope.pageId),
           maxBytes,
         );
       },

@@ -93,6 +93,7 @@ const PageWorkspace = ({
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
   const [viewportWidth, setViewportWidth] = useState(1440);
   const [editorTool, setEditorTool] = useState<EditorTool | null>(null);
+  const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
   const [historyState, setHistoryState] = useState<EditorHistoryState>({
     canUndo: false,
     canRedo: false,
@@ -119,6 +120,7 @@ const PageWorkspace = ({
       session={agent}
       onViewChanges={() => onModeChange('edit')}
       onConfigureModel={onConfigureModel}
+      onClarificationHover={setClarificationHighlight}
     />
   );
   return (
@@ -165,6 +167,12 @@ const PageWorkspace = ({
             readOnly={!capabilities.canEdit}
             readOnlyMessage={
               capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined
+            }
+            clarificationCandidates={agent.state.run?.clarification?.candidates}
+            clarificationHighlightedElementId={clarificationHighlight}
+            clarificationExpired={agent.clarificationExpired}
+            onClarificationSelect={(elementId) =>
+              void agent.selectClarification(elementId).catch(() => undefined)
             }
           />
         </div>

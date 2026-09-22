@@ -1,11 +1,10 @@
-import type { MessageContent, PageIntent } from '@origamix/shared/protocol/agent';
+import type { MessageContent, PageAgentOutcome } from '@origamix/shared/protocol/agent';
 import type { AgentRunRepository } from './run-repository';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { AgentRunService } from './run-service';
 import type { ConversationService } from '../conversations/conversation-service';
 import { AgentEngineError, type AgentEngine, type AgentEngineEvent } from './engine';
 import type { ContextAssembler } from './context-assembler';
-import { OUT_OF_SCOPE_REPLY } from './scope-router';
 import {
   AgentToolRegistry,
   RunBudgetController,
@@ -18,30 +17,22 @@ const textContent = (text: string): MessageContent => ({
   blocks: [{ type: 'text', text }],
 });
 
-const toolErrorText = (result: unknown): string | undefined => {
-  if (!result || typeof result !== 'object') return undefined;
-  const content = (result as { content?: unknown }).content;
-  if (!Array.isArray(content)) return undefined;
-  const text = content
-    .filter((item): item is { type: 'text'; text: string } =>
-      Boolean(
-        item &&
-        typeof item === 'object' &&
-        (item as { type?: unknown }).type === 'text' &&
-        typeof (item as { text?: unknown }).text === 'string',
-      ),
-    )
-    .map((item) => item.text)
-    .join('\n')
-    .trim();
-  return text ? text.slice(0, 500) : undefined;
+const safeToolError = (result: unknown): string => {
+  const serialized = (() => {
+    try {
+      return JSON.stringify(result);
+    } catch {
+      return '';
+    }
+  })();
+  return serialized.slice(0, 1_500) || 'Operation 校验失败';
 };
 
 export interface RunResult {
   runId: string;
-  mode: PageIntent['mode'];
   status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
   text: string;
+  outcome?: PageAgentOutcome;
   resultWorkingVersion?: number;
 }
 
@@ -58,6 +49,8 @@ export interface RunExecutorDependencies {
     projectId: string;
     pageId: string;
     baseWorkingVersion: number;
+    maxSchemaBytes: number;
+    maxRepairAttempts: number;
   }) => RegisteredAgentTool[];
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
 }
@@ -69,7 +62,6 @@ export class RunExecutor {
 
   async execute(
     started: ReturnType<ConversationService['startRun']>,
-    intent: PageIntent,
     message: string,
   ): Promise<RunResult> {
     const input = started.run;
@@ -85,12 +77,11 @@ export class RunExecutor {
         textContent('本次请求已取消。'),
         'CANCELLED',
       );
-      return { runId, mode: intent.mode, status: 'cancelled', text: '' };
+      return { runId, status: 'cancelled', text: '' };
     }
     if (['completed', 'failed', 'cancelled', 'interrupted'].includes(started.run.status)) {
       return {
         runId,
-        mode: intent.mode,
         status: started.run.status as RunResult['status'],
         text: '',
         ...(started.run.resultWorkingVersion
@@ -98,20 +89,14 @@ export class RunExecutor {
           : {}),
       };
     }
-    this.dependencies.runService.transition(runId, 'classifying');
-    if (intent.mode === 'out_of_scope' || intent.mode === 'clarification_required') {
-      const text = intent.mode === 'out_of_scope' ? OUT_OF_SCOPE_REPLY : intent.suggestedQuestion;
-      this.dependencies.conversations.finishAssistant(runId, textContent(text));
-      this.dependencies.runService.transition(runId, 'completed');
-      return { runId, mode: intent.mode, status: 'completed', text };
-    }
-
+    this.dependencies.runService.transition(runId, 'preparing');
     const controller = new AbortController();
     this.active.set(runId, controller);
     const tracker = new RunBudgetController(started.run.budget);
     let assistantText = '';
     let resultWorkingVersion: number | undefined;
-    let lastWriteFailure: string | undefined;
+    let terminalOutcome: PageAgentOutcome | undefined;
+    let terminalFailure: string | undefined;
     let inputTokens = 0;
     const registry = new AgentToolRegistry();
     try {
@@ -121,20 +106,16 @@ export class RunExecutor {
         projectId: input.projectId,
         pageId: input.pageId,
         baseWorkingVersion: input.baseWorkingVersion,
+        maxSchemaBytes: input.budget.maxSchemaBytes,
+        maxRepairAttempts: input.budget.maxRepairAttempts,
       }))
         registry.register(entry);
       const audit = async (event: ToolAuditEvent): Promise<void> => {
-        // The tool checks authority while the Run is tool_calling. Advance only
-        // after its validation and Schema commit have actually succeeded.
-        if (event.phase === 'completed' && event.toolName === 'apply_page_operations') {
-          this.transitionIf(runId, 'tool_calling', 'validating');
-          this.transitionIf(runId, 'validating', 'committing');
-        }
         await this.dependencies.audit?.(event);
       };
-      const tools = registry.toolsForRun({ runId, mode: intent.mode, budget: tracker, audit });
+      const tools = registry.toolsForRun({ runId, budget: tracker, audit });
 
-      this.dependencies.runService.transition(runId, 'generating');
+      this.dependencies.runService.transition(runId, 'reasoning');
       const assembled = await this.dependencies.context.assemble({
         page: {
           projectPath: project.path,
@@ -143,92 +124,138 @@ export class RunExecutor {
           relativePath: page.relativePath,
         },
         conversationId: started.conversation.id,
-        intent,
+        currentRequest: message,
         expectedWorkingVersion: input.baseWorkingVersion,
-        docsQuery: intent.mode === 'page_question' ? message : undefined,
       });
-      const execute = async (repair: boolean): Promise<void> => {
+      let prompt = message;
+      let missingTerminalRepairUsed = false;
+      while (!terminalOutcome) {
         tracker.consumeModelCall();
         const remainingDurationMs = Math.max(
           1,
           started.run.budget.maxDurationMs - tracker.snapshot().durationMs,
         );
+        terminalFailure = undefined;
         const result = await this.dependencies.engine.run({
           modelId: started.run.modelRef,
           systemPrompt: `${assembled.systemPolicy}\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(assembled)}</ORIGAMIX_CONTEXT>`,
-          prompt: repair
-            ? [
-                '上一次没有成功修改页面。请修正 Operation List，并调用 apply_page_operations；不要声称未发生的修改。',
-                lastWriteFailure ? `上一次写入失败原因：${lastWriteFailure}` : undefined,
-              ]
-                .filter(Boolean)
-                .join('\n')
-            : message,
+          prompt,
           tools,
           signal: controller.signal,
           timeoutMs: remainingDurationMs,
           onEvent: async (event) => {
             await this.handleEngineEvent(runId, event);
-            if (event.type === 'text_delta') assistantText += event.delta;
-            if (event.type === 'tool_end' && event.toolName === 'apply_page_operations') {
+            if (event.type === 'tool_end' && event.toolName === 'complete_page_run') {
               if (event.isError) {
-                lastWriteFailure = toolErrorText(event.result) ?? '写入工具未通过校验';
+                terminalFailure = safeToolError(event.result);
                 return;
               }
-              const result = event.result as { workingVersion?: unknown };
-              if (typeof result?.workingVersion === 'number') {
-                resultWorkingVersion = result.workingVersion;
+              const terminal = event.result as {
+                accepted?: unknown;
+                outcome?: unknown;
+                response?: unknown;
+                resultWorkingVersion?: unknown;
+              };
+              if (terminal.accepted === true && typeof terminal.outcome === 'string') {
+                terminalOutcome = terminal.outcome as PageAgentOutcome;
+                if (typeof terminal.response === 'string') assistantText = terminal.response;
+                if (typeof terminal.resultWorkingVersion === 'number') {
+                  resultWorkingVersion = terminal.resultWorkingVersion;
+                }
               }
             }
           },
         });
         inputTokens += result.usage.inputTokens;
         tracker.recordOutputTokens(result.usage.outputTokens);
-      };
-      await execute(false);
-      if (intent.mode === 'page_modify' && !resultWorkingVersion) {
-        tracker.consumeRepair();
-        await execute(true);
+        if (terminalOutcome) break;
+
+        const current = this.dependencies.runs.get(runId);
+        if (current?.status === 'repairing') {
+          if (current.repairAttempts > started.run.budget.maxRepairAttempts) {
+            throw new AgentEngineError(
+              'SCHEMA_VALIDATION_EXCEEDED',
+              '页面修改校验失败，已超过允许的修复次数',
+            );
+          }
+          tracker.consumeRepair();
+          prompt = [
+            '上一次完整 Operation List 未通过服务端校验。',
+            `结构化错误：${JSON.stringify({ code: 'OPERATION_VALIDATION_FAILED', message: terminalFailure ?? 'Operation 校验失败' })}`,
+            '只修正错误指出的参数，但仍须通过 complete_page_run 针对原始 base Working Version 提交完整 operations 数组。',
+          ].join('\n');
+          continue;
+        }
+        if (current?.status === 'validating') {
+          throw new AgentEngineError(
+            'WORKING_VERSION_CONFLICT',
+            '页面草稿已变化，本次修改不能自动重试',
+          );
+        }
+        if (missingTerminalRepairUsed) {
+          throw new AgentEngineError(
+            'MISSING_TERMINAL_DECISION',
+            '模型在协议修复后仍未提交 complete_page_run',
+          );
+        }
+        missingTerminalRepairUsed = true;
+        prompt =
+          '协议修复：你必须调用 complete_page_run 提交一个结构化终态。不要输出自由文本作为最终答案，也不要省略终态工具。';
       }
-      if (intent.mode === 'page_modify' && !resultWorkingVersion) {
-        throw new AgentEngineError(
-          'TOOL_ERROR',
-          lastWriteFailure
-            ? `页面修改未提交：${lastWriteFailure}`
-            : '页面修改未提交：模型没有成功调用页面写入工具',
-        );
-      }
-      this.dependencies.conversations.finishAssistant(
-        runId,
-        textContent(
-          assistantText || (resultWorkingVersion ? '页面草稿已完成修改。' : '已完成回答。'),
-        ),
-      );
+      this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
       const current = this.dependencies.runs.get(runId);
       if (resultWorkingVersion) {
         const resultPatch = { resultWorkingVersion };
         if (current?.status === 'cancelling') {
           this.dependencies.runService.transition(runId, 'completed', resultPatch);
         } else {
-          this.transitionIf(runId, 'generating', 'validating');
-          this.transitionIf(runId, 'tool_calling', 'validating');
-          this.transitionIf(runId, 'validating', 'committing');
           this.dependencies.runService.transition(runId, 'completed', resultPatch);
         }
       } else {
-        this.transitionIf(runId, 'tool_calling', 'generating');
         this.dependencies.runService.transition(runId, 'completed');
       }
       this.persistMetrics(runId, tracker, inputTokens);
       return {
         runId,
-        mode: intent.mode,
         status: 'completed',
         text: assistantText,
+        outcome: terminalOutcome,
         ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
       };
     } catch (error) {
       const current = this.dependencies.runs.get(runId);
+      const committedWorkingVersion = current?.resultWorkingVersion ?? resultWorkingVersion;
+      if (current?.status === 'deciding' && current.outcome && assistantText) {
+        this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
+        this.dependencies.runService.transition(runId, 'completed');
+        this.persistMetrics(runId, tracker, inputTokens);
+        return {
+          runId,
+          status: 'completed',
+          text: assistantText,
+          outcome: current.outcome,
+        };
+      }
+      if (
+        committedWorkingVersion &&
+        current &&
+        !['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status)
+      ) {
+        this.dependencies.conversations.finishAssistant(
+          runId,
+          textContent(assistantText || '页面草稿已完成修改。'),
+        );
+        this.dependencies.runService.transition(runId, 'completed', {
+          resultWorkingVersion: committedWorkingVersion,
+        });
+        this.persistMetrics(runId, tracker, inputTokens);
+        return {
+          runId,
+          status: 'completed',
+          text: assistantText,
+          resultWorkingVersion: committedWorkingVersion,
+        };
+      }
       const cancelled =
         controller.signal.aborted ||
         (error instanceof AgentEngineError && error.code === 'CANCELLED');
@@ -253,7 +280,6 @@ export class RunExecutor {
       this.persistMetrics(runId, tracker, inputTokens);
       return {
         runId,
-        mode: intent.mode,
         status: cancelled ? 'cancelled' : 'failed',
         text: assistantText,
       };
@@ -267,9 +293,9 @@ export class RunExecutor {
   }
 
   private async handleEngineEvent(runId: string, event: AgentEngineEvent): Promise<void> {
-    if (event.type === 'tool_start') this.transitionIf(runId, 'generating', 'tool_calling');
-    if (event.type === 'tool_end' && event.toolName !== 'apply_page_operations') {
-      this.transitionIf(runId, 'tool_calling', 'generating');
+    if (event.type === 'tool_start') this.transitionIf(runId, 'reasoning', 'reading');
+    if (event.type === 'tool_end' && event.toolName !== 'complete_page_run') {
+      this.transitionIf(runId, 'reading', 'reasoning');
     }
   }
 

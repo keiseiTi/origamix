@@ -1,4 +1,5 @@
-import type { RunBudget, RunMode, ToolPolicy } from '@origamix/shared/protocol/agent';
+import type { RunBudget, ToolPolicy } from '@origamix/shared/protocol/agent';
+import { createHash } from 'node:crypto';
 import { AgentEngineError, type AgentEngineTool } from '../engine';
 
 export interface ToolAuditEvent {
@@ -6,8 +7,33 @@ export interface ToolAuditEvent {
   toolName: string;
   phase: 'started' | 'completed' | 'failed' | 'denied';
   occurredAt: string;
+  durationMs: number;
   safeErrorCode?: string;
+  operationCount?: number;
+  operationTypeCounts?: Record<string, number>;
+  operationDigest?: string;
 }
+
+const operationEvidence = (toolName: string, args: unknown) => {
+  if (toolName !== 'complete_page_run' || !args || typeof args !== 'object') return {};
+  const operations = (args as { operations?: unknown }).operations;
+  if (!Array.isArray(operations)) return {};
+  const operationTypeCounts = operations.reduce<Record<string, number>>((counts, item) => {
+    const type =
+      item &&
+      typeof item === 'object' &&
+      typeof (item as { operation?: unknown }).operation === 'string'
+        ? String((item as { operation: string }).operation)
+        : 'unknown';
+    counts[type] = (counts[type] ?? 0) + 1;
+    return counts;
+  }, {});
+  return {
+    operationCount: operations.length,
+    operationTypeCounts,
+    operationDigest: createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+  };
+};
 
 export interface RegisteredAgentTool {
   tool: AgentEngineTool;
@@ -40,7 +66,7 @@ export const createDefaultAgentToolEntries = (
         },
       };
     }
-    if (tool.name === 'apply_page_operations') {
+    if (tool.name === 'complete_page_run') {
       return {
         tool,
         policy: {
@@ -54,8 +80,6 @@ export const createDefaultAgentToolEntries = (
     throw new AgentEngineError('POLICY_DENIED', '工具不在领域白名单中');
   });
 };
-
-const writeModes = new Set<RunMode>(['page_modify']);
 
 export class RunBudgetController {
   private modelCalls = 0;
@@ -123,18 +147,14 @@ export class AgentToolRegistry {
 
   toolsForRun(input: {
     runId: string;
-    mode: RunMode;
     budget: RunBudgetController;
     requestedToolNames?: readonly string[];
     confirmedToolNames?: readonly string[];
     audit: (event: ToolAuditEvent) => void | Promise<void>;
   }): AgentEngineTool[] {
-    if (input.mode === 'out_of_scope' || input.mode === 'clarification_required') return [];
+    let terminalAccepted = false;
     const requested =
-      input.requestedToolNames ??
-      [...this.entries.values()]
-        .filter((entry) => entry.policy.scope === 'read' || writeModes.has(input.mode))
-        .map((entry) => entry.tool.name);
+      input.requestedToolNames ?? [...this.entries.values()].map((entry) => entry.tool.name);
     return requested.map((name) => {
       const entry = this.entries.get(name);
       if (!entry) throw new AgentEngineError('POLICY_DENIED', '请求包含未授权工具');
@@ -145,40 +165,39 @@ export class AgentToolRegistry {
             toolName: name,
             phase: 'denied',
             occurredAt: new Date().toISOString(),
+            durationMs: 0,
             safeErrorCode: 'CONFIRMATION_REQUIRED',
           }),
         ).catch(() => undefined);
         throw new AgentEngineError('POLICY_DENIED', '该工具需要用户确认后才能执行');
       }
-      if (entry.policy.scope !== 'read' && !writeModes.has(input.mode)) {
-        void Promise.resolve(
-          input.audit({
-            runId: input.runId,
-            toolName: name,
-            phase: 'denied',
-            occurredAt: new Date().toISOString(),
-            safeErrorCode: 'POLICY_DENIED',
-          }),
-        ).catch(() => undefined);
-        throw new AgentEngineError('POLICY_DENIED', '当前对话模式不允许写入');
-      }
       return {
         ...entry.tool,
         execute: async (args, signal) => {
+          if (terminalAccepted) {
+            throw new AgentEngineError('POLICY_DENIED', 'Agent Run 已提交终态');
+          }
           input.budget.consumeToolCall();
+          const startedAt = Date.now();
+          const evidence = operationEvidence(name, args);
           await input.audit({
             runId: input.runId,
             toolName: name,
             phase: 'started',
             occurredAt: new Date().toISOString(),
+            durationMs: 0,
+            ...evidence,
           });
           try {
             const result = await entry.tool.execute(args, signal);
+            if (name === 'complete_page_run') terminalAccepted = true;
             await input.audit({
               runId: input.runId,
               toolName: name,
               phase: 'completed',
               occurredAt: new Date().toISOString(),
+              durationMs: Date.now() - startedAt,
+              ...evidence,
             });
             return result;
           } catch (error) {
@@ -187,7 +206,9 @@ export class AgentToolRegistry {
               toolName: name,
               phase: 'failed',
               occurredAt: new Date().toISOString(),
+              durationMs: Date.now() - startedAt,
               safeErrorCode: error instanceof AgentEngineError ? error.code : 'TOOL_ERROR',
+              ...evidence,
             });
             throw error;
           }

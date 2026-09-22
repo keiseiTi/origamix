@@ -2,11 +2,13 @@ import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import {
   AgentRunStatusSchema,
-  RunModeSchema,
+  AgentRunKindSchema,
+  PageAgentOutcomeSchema,
   RunBudgetSchema,
   type AgentRunStatus,
   type RunBudget,
-  type RunMode,
+  type AgentRunKind,
+  type PageAgentOutcome,
 } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { agentRuns } from '../database/schema';
@@ -21,8 +23,14 @@ export interface AgentRunRecord {
   clientRequestId: string;
   baseWorkingVersion: number;
   resultWorkingVersion?: number;
+  resultWorkingHash?: string;
   modelRef: string;
-  mode: RunMode;
+  runKind: AgentRunKind;
+  outcome?: PageAgentOutcome;
+  outcomeJson?: unknown;
+  repairAttempts: number;
+  operationCount?: number;
+  operationDigest?: string;
   status: AgentRunStatus;
   budget: RunBudget;
   promptVersion: string;
@@ -37,6 +45,8 @@ export interface AgentRunRecord {
   durationMs?: number;
   errorCode?: string;
   errorMessage?: string;
+  failureStage?: string;
+  recoveredCommit: boolean;
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
@@ -52,8 +62,18 @@ const fromRow = (row: RunRow): AgentRunRecord => {
   }
   if (!Value.Check(RunBudgetSchema, budget)) throw new Error(`Agent Run ${row.id} 的 budget 无效`);
   const status = agentRunStatus.decode(row.status);
-  if (!Value.Check(AgentRunStatusSchema, status) || !Value.Check(RunModeSchema, row.mode))
-    throw new Error(`Agent Run ${row.id} 的状态或模式无效`);
+  if (!Value.Check(AgentRunStatusSchema, status) || !Value.Check(AgentRunKindSchema, row.runKind))
+    throw new Error(`Agent Run ${row.id} 的状态或类型无效`);
+  if (row.outcome !== null && !Value.Check(PageAgentOutcomeSchema, row.outcome))
+    throw new Error(`Agent Run ${row.id} 的 Outcome 无效`);
+  let outcomeJson: unknown;
+  if (row.outcomeJson !== null) {
+    try {
+      outcomeJson = JSON.parse(row.outcomeJson);
+    } catch {
+      throw new Error(`Agent Run ${row.id} 的 outcome_json 不是合法 JSON`);
+    }
+  }
   return {
     id: row.id,
     projectId: row.projectId,
@@ -65,8 +85,14 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     ...(row.resultWorkingVersion === null
       ? {}
       : { resultWorkingVersion: row.resultWorkingVersion }),
+    ...(row.resultWorkingHash === null ? {} : { resultWorkingHash: row.resultWorkingHash }),
     modelRef: row.modelRef,
-    mode: row.mode as RunMode,
+    runKind: row.runKind as AgentRunKind,
+    ...(row.outcome === null ? {} : { outcome: row.outcome as PageAgentOutcome }),
+    ...(row.outcomeJson === null ? {} : { outcomeJson }),
+    repairAttempts: row.repairAttempts,
+    ...(row.operationCount === null ? {} : { operationCount: row.operationCount }),
+    ...(row.operationDigest === null ? {} : { operationDigest: row.operationDigest }),
     status,
     budget: budget as RunBudget,
     promptVersion: row.promptVersion,
@@ -81,6 +107,8 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     ...(row.durationMs === null ? {} : { durationMs: row.durationMs }),
     ...(row.errorCode ? { errorCode: row.errorCode } : {}),
     ...(row.errorMessage ? { errorMessage: row.errorMessage } : {}),
+    ...(row.failureStage ? { failureStage: row.failureStage } : {}),
+    recoveredCommit: row.recoveredCommit === 1,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     ...(row.finishedAt ? { finishedAt: row.finishedAt } : {}),
@@ -92,10 +120,17 @@ const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
   status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
   resultWorkingVersion: run.resultWorkingVersion ?? null,
+  resultWorkingHash: run.resultWorkingHash ?? null,
+  outcome: run.outcome ?? null,
+  outcomeJson: run.outcomeJson === undefined ? null : JSON.stringify(run.outcomeJson),
+  operationCount: run.operationCount ?? null,
+  operationDigest: run.operationDigest ?? null,
   retryOfRunId: run.retryOfRunId ?? null,
   durationMs: run.durationMs ?? null,
   errorCode: run.errorCode ?? null,
   errorMessage: run.errorMessage ?? null,
+  failureStage: run.failureStage ?? null,
+  recoveredCommit: run.recoveredCommit ? 1 : 0,
   finishedAt: run.finishedAt ?? null,
 });
 
@@ -146,6 +181,14 @@ export class AgentRunRepository {
       .all()
       .map(fromRow);
   }
+  listAll(): AgentRunRecord[] {
+    return this.client
+      .select()
+      .from(agentRuns)
+      .orderBy(asc(agentRuns.createdAt))
+      .all()
+      .map(fromRow);
+  }
   updateStatus(
     id: string,
     expected: readonly AgentRunStatus[],
@@ -154,9 +197,17 @@ export class AgentRunRepository {
       updatedAt: string;
       finishedAt?: string;
       resultWorkingVersion?: number;
+      resultWorkingHash?: string;
       errorCode?: string;
       errorMessage?: string;
       durationMs?: number;
+      outcome?: PageAgentOutcome;
+      outcomeJson?: unknown;
+      repairAttempts?: number;
+      operationCount?: number;
+      operationDigest?: string;
+      failureStage?: string;
+      recoveredCommit?: boolean;
     },
   ): boolean {
     if (expected.length === 0) return false;
@@ -167,9 +218,23 @@ export class AgentRunRepository {
       ...(patch.resultWorkingVersion === undefined
         ? {}
         : { resultWorkingVersion: patch.resultWorkingVersion }),
+      ...(patch.resultWorkingHash === undefined
+        ? {}
+        : { resultWorkingHash: patch.resultWorkingHash }),
       errorCode: patch.errorCode ?? null,
       errorMessage: patch.errorMessage ?? null,
       ...(patch.durationMs === undefined ? {} : { durationMs: patch.durationMs }),
+      ...(patch.outcome === undefined ? {} : { outcome: patch.outcome }),
+      ...(patch.outcomeJson === undefined
+        ? {}
+        : { outcomeJson: JSON.stringify(patch.outcomeJson) }),
+      ...(patch.repairAttempts === undefined ? {} : { repairAttempts: patch.repairAttempts }),
+      ...(patch.operationCount === undefined ? {} : { operationCount: patch.operationCount }),
+      ...(patch.operationDigest === undefined ? {} : { operationDigest: patch.operationDigest }),
+      ...(patch.failureStage === undefined ? {} : { failureStage: patch.failureStage }),
+      ...(patch.recoveredCommit === undefined
+        ? {}
+        : { recoveredCommit: patch.recoveredCommit ? 1 : 0 }),
     };
     return (
       this.client

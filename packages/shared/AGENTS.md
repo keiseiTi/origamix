@@ -7,6 +7,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - `src/protocol/api.ts`: HTTP shapes and domain records.
 - `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
 - `src/protocol/schema.ts`: page Schema, IDs and typed operation variants.
+- `src/protocol/agent.ts`: unified Page Agent Run, terminal outcome, structured clarification and typed SSE payload contracts; `agent-validation.ts` validates both event envelopes and their type-specific payloads.
 - `src/protocol/validation.ts`: structural and semantic validators.
 - `src/desktop-api.ts`: workbench bridge contracts; `src/page-window.ts`: iframe preview snapshot and diagnostic contracts.
 

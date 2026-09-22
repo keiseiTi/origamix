@@ -17,12 +17,13 @@ import type { AgentChatSession } from './use-agent-chat';
 
 const stageLabels = {
   queued: '已排队',
-  classifying: '正在理解需求',
-  generating: '正在生成',
-  tool_calling: '正在搭建页面',
+  preparing: '正在准备',
+  reasoning: '正在处理请求',
+  reading: '正在读取页面',
+  deciding: '正在整理结果',
   validating: '正在校验',
+  repairing: '正在修正',
   committing: '正在保存',
-  awaiting_confirmation: '等待确认',
   cancelling: '正在停止',
   completed: '已完成',
   failed: '失败',
@@ -37,6 +38,7 @@ export const ChatWorkspace = ({
   session,
   onViewChanges,
   onConfigureModel,
+  onClarificationHover,
 }: {
   pageName: string;
   draft: string;
@@ -44,9 +46,19 @@ export const ChatWorkspace = ({
   session: AgentChatSession;
   onViewChanges: () => Promise<void>;
   onConfigureModel?: () => void;
+  onClarificationHover?: (elementId: string | null) => void;
 }): React.JSX.Element => {
   const hasModelApiKey = usePreferencesStore((state) => state.hasModelApiKey);
-  const { state, activity, pendingSubmission, send, cancel, retry } = session;
+  const {
+    state,
+    activity,
+    pendingSubmission,
+    clarificationExpired,
+    send,
+    selectClarification,
+    cancel,
+    retry,
+  } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
   const active = isRunActive(state.stage);
   const modelConfigurationRequired = hasModelApiKey === false;
@@ -147,6 +159,41 @@ export const ChatWorkspace = ({
                 查看修改
               </Button>
             </div>
+          )}
+          {state.run?.clarification?.candidates?.length ? (
+            <div className='mt-4 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700'>
+              <p className='mb-2 text-xs text-zinc-500 dark:text-zinc-400'>
+                {clarificationExpired ? '选项已过期，请重新描述需求。' : '请选择页面中的目标：'}
+              </p>
+              <div className='flex flex-wrap gap-2'>
+                {state.run.clarification.candidates.map((candidate, index) => (
+                  <Button
+                    key={candidate.elementId}
+                    size='sm'
+                    variant='outline'
+                    disabled={clarificationExpired || activity !== 'idle'}
+                    onMouseEnter={() => onClarificationHover?.(candidate.elementId)}
+                    onMouseLeave={() => onClarificationHover?.(null)}
+                    onFocus={() => onClarificationHover?.(candidate.elementId)}
+                    onBlur={() => onClarificationHover?.(null)}
+                    onClick={() =>
+                      void selectClarification(candidate.elementId).catch(() => undefined)
+                    }
+                  >
+                    {String.fromCharCode(65 + index)} · {candidate.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {state.progressMessage && active && (
+            <p
+              className='mt-3 text-xs text-zinc-500 dark:text-zinc-400'
+              role='status'
+              aria-live='polite'
+            >
+              {state.progressMessage}
+            </p>
           )}
           {(state.error || pendingSubmission) && (
             <div

@@ -39,6 +39,20 @@ export interface CommitJournal {
   createdAt: string;
 }
 
+export interface AgentWorkingCommitReceipt {
+  version: 1;
+  state: 'prepared' | 'committed';
+  runId: string;
+  projectId: string;
+  pageId: string;
+  baseWorkingVersion: number;
+  resultWorkingVersion: number;
+  resultWorkingHash: string;
+  operationDigest: string;
+  preparedAt: string;
+  committedAt?: string;
+}
+
 const readJson = async <T>(path: string): Promise<T> => {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 };
@@ -68,6 +82,18 @@ export class WorkingSchemaStore {
 
   private journalFile(page: WorkingSchemaPageRef): string {
     return join(page.projectPath, '.origamix', 'transactions', `${page.pageId}.json`);
+  }
+
+  private agentCommitFile(page: WorkingSchemaPageRef, runId: string): string {
+    if (!/^run_[A-Za-z0-9_-]+$/.test(runId)) throw new Error('Agent Run ID 无效');
+    return join(
+      page.projectPath,
+      '.origamix',
+      'pages',
+      page.pageId,
+      'agent-commits',
+      `${runId}.json`,
+    );
   }
 
   readWorking(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile> {
@@ -122,6 +148,17 @@ export class WorkingSchemaStore {
 
   removeJournal(page: WorkingSchemaPageRef): Promise<void> {
     return rm(this.journalFile(page), { force: true });
+  }
+
+  readAgentCommit(
+    page: WorkingSchemaPageRef,
+    runId: string,
+  ): Promise<AgentWorkingCommitReceipt | undefined> {
+    return readJsonIfPresent(this.agentCommitFile(page, runId));
+  }
+
+  writeAgentCommit(page: WorkingSchemaPageRef, receipt: AgentWorkingCommitReceipt): Promise<void> {
+    return this.writeJson(this.agentCommitFile(page, receipt.runId), receipt);
   }
 
   async removePage(page: WorkingSchemaPageRef): Promise<void> {

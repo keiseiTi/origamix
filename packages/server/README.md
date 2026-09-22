@@ -51,11 +51,19 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 `http/agent-routes.ts` → `agent/agent-service.ts#start` → 路由意图并由 ConversationService 创建消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
 
-Schema 写工具 `agent/tools/apply-page-operations.ts` 暴露 `apply_page_operations`，通过版本化 Operation Batch 原子更新 Working Schema，不自动创建 Revision。`agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
+Agent 仅通过终态工具 `agent/tools/complete-page-run.ts` 提交完整的版本化 Operation Batch，并原子更新 Working Schema，不自动创建 Revision。`agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
+
+Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origamix/pages/<pageId>/agent-commits/` 目录。回执在 Working 替换前准备、替换后确认；启动恢复仅核对 Run、页面、Operation 摘要、Working Version 与 Hash，不会重新执行 Operation。回执作为审计与恢复证据随页面长期保留，并在页面删除时随页面目录一并删除。
+
+工具调用审计持久化在 `agent_tool_audits`，只包含工具名、阶段、耗时、安全错误码及 Operation 数量/类型/摘要，不保存工具参数、完整 Schema、凭据或模型上下文。Run 记录同时保留失败阶段和提交恢复标记；`tooling.ts` 提供聚合指标与结构化 Outcome 评测，`gate:agent` 执行单 Run 单提交、事实回复和错误分类等发布门禁。
 
 ### 同步调用与重复请求
 
 `AgentService.start(request)` 是唯一运行启动入口。HTTP 立即返回 Run 标识；进程内测试可等待返回对象的 `completion`。同一请求的并发调用共享一次执行；已完成 Run 的重放返回持久化记录，不会重新路由或执行模型。
+
+Agent SSE 只发布共享协议定义的阶段进度、脱敏工具活动、Working 提交、结构化澄清与 Run 终态事件。阶段变化立即发布安全固定文案，活动 Run 每 4 秒可重复发布当前中性状态；这些心跳不写入消息、不调用模型，也不参与恢复或成功判定。断线后的权威状态来自持久化 Run、Message 与 Working，而不是进程内事件重放。
+
+`needs_clarification` 的候选必须存在于该 Run 基线 Working Schema。后续选择请求携带来源 Run、`clarificationId` 和 Element ID；Server 会再次核对项目、页面、会话、Working Version 与候选集合，过期或跨页面选择不会启动新 Run。
 
 ### 提交与恢复的内部边界
 

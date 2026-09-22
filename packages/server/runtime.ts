@@ -14,16 +14,17 @@ import { RuntimeDiagnosticCache } from './diagnostics/diagnostic-cache';
 import { RuntimeDiagnosticService } from './diagnostics/diagnostic-service';
 import { AgentService } from './agent/agent-service';
 import { RunExecutor } from './agent/run-executor';
-import { ScopeRouter } from './agent/scope-router';
 import { ContextAssembler } from './agent/context-assembler';
 import { ProductDocsProvider } from './agent/product-docs-provider';
 import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
 import { createDomainAgentTools } from './agent/tools/domain-tools';
-import { createApplyPageOperationsTool } from './agent/tools/apply-page-operations';
+import { createCompletePageRunTool } from './agent/tools/complete-page-run';
 import { createDefaultAgentToolEntries } from './agent/tools/registry';
 import { MVP_MODEL_ID } from './agent/engine';
 import { PiAgentEngine } from './agent/pi-agent-engine';
 import { createMvpPiModels } from './agent/pi-runtime';
+import { progressPayload } from './agent/progress';
+import { AgentToolAuditRepository } from './agent/tool-audit-repository';
 
 export const startServer = async (input: {
   databasePath: string;
@@ -39,9 +40,21 @@ export const startServer = async (input: {
   const projects = new ProjectRepository(database);
   const conversations = new ConversationRepository(database);
   const runs = new AgentRunRepository(database);
+  const toolAudits = new AgentToolAuditRepository(database);
   const conversationService = new ConversationService(database, projects, conversations, runs);
   const runService = new AgentRunService(runs);
   const agentEvents = new AgentEventBroker();
+  runService.setTransitionListener((run) => {
+    const payload = progressPayload(run.status);
+    if (!payload) return;
+    agentEvents.publish({
+      type: 'run.progress',
+      runId: run.id,
+      pageId: run.pageId,
+      requestId: run.clientRequestId,
+      payload,
+    });
+  });
   const getCurrentRevision = async (projectId: string, pageId: string): Promise<string> => {
     const project = projects.getProject(projectId);
     const page = projects.getPage(projectId, pageId);
@@ -98,8 +111,24 @@ export const startServer = async (input: {
           { projectId: scope.projectId, pageId: scope.pageId },
           { projects, docs: productDocs, diagnostics: runtimeDiagnostics },
         ),
-        createApplyPageOperationsTool({ projects, runs }, { ...scope, maxSchemaBytes: 256 * 1024 }),
+        createCompletePageRunTool({ projects, runs, runService }, scope),
       ]),
+    audit: (event) => {
+      toolAudits.append(event);
+      const run = runs.get(event.runId);
+      if (!run) return;
+      agentEvents.publish({
+        type: 'tool.activity',
+        runId: run.id,
+        pageId: run.pageId,
+        requestId: run.clientRequestId,
+        payload: {
+          toolName: event.toolName,
+          phase: event.phase,
+          ...(event.safeErrorCode ? { safeErrorCode: event.safeErrorCode } : {}),
+        },
+      });
+    },
   });
   const agentService = new AgentService({
     conversations: conversationService,
@@ -107,7 +136,6 @@ export const startServer = async (input: {
     runService,
     events: agentEvents,
     executor,
-    router: new ScopeRouter(),
     getModelRef: async () => (await input.getModelReference?.()) ?? MVP_MODEL_ID,
     getCurrentState: async (projectId, pageId) => {
       const project = projects.getProject(projectId);
@@ -140,7 +168,7 @@ export const startServer = async (input: {
       projectService.registerGrant('startup-project', input.projectPath);
       await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
-    await recoverAgentRunsOnStartup(runs, projects);
+    await recoverAgentRunsOnStartup(runs, projects, conversationService);
     await server.listen({ host: '127.0.0.1', port: 0 });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');

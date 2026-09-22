@@ -62,7 +62,7 @@ for (const [file, code] of [
   ['http/types.ts', "import type { ProjectRepository } from '../projects/project-repository';"],
   ['http/schema-routes.ts', "import { commitSchema } from '../schema/schema-service';"],
   [
-    'agent/tools/apply-page-operations.ts',
+    'agent/tools/complete-page-run.ts',
     "import { applyWorkingSchemaOperations } from '../../schema/schema-service';",
   ],
   [

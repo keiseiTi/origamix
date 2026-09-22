@@ -5,7 +5,6 @@ import {
   validateAgentRun,
   validateCancelAgentRunRequest,
   validateCreateAgentRunRequest,
-  validatePageIntent,
   validateRuntimeDiagnostic,
   validateRuntimeRenderReport,
   validateRuntimeReportResult,
@@ -13,69 +12,57 @@ import {
   validateAgentErrorPayload,
   validateGetAgentRunRequest,
   validateSubscribeAgentEventsRequest,
+  validateCompletePageRunInput,
+  validateClarificationResult,
 } from '../../src/protocol/agent-validation';
 
 const timestamp = '2026-09-04T00:00:00.000Z';
 const content = { version: '1', blocks: [{ type: 'text', text: '创建客户表单' }] };
 
 describe('agent domain protocol', () => {
-  it('validates page modifications and rejects invalid confidence or missing page IDs', () => {
-    const intent = {
-      scope: 'page',
-      mode: 'page_modify',
-      pageId: 'page_customer',
-      normalizedRequirement: '创建客户表单',
-      confidence: 0.98,
-      requiresConfirmation: false,
+  it('validates the unified page-agent terminal decisions that protect the core flow', () => {
+    const apply = {
+      outcome: 'apply_changes',
+      operations: [
+        {
+          operation: 'updateElementProps',
+          elementId: 'submit_button',
+          set: { color: 'danger' },
+        },
+      ],
+      response: '按钮已改为红色。',
     };
-    expect(validatePageIntent(intent).valid).toBe(true);
-    expect(validatePageIntent({ ...intent, confidence: 2 }).valid).toBe(false);
-    expect(validatePageIntent({ ...intent, pageId: '' }).valid).toBe(false);
-    expect(validatePageIntent({ ...intent, extra: true }).valid).toBe(false);
-  });
-
-  it('represents questions, clarification and out-of-scope results without write ambiguity', () => {
+    expect(validateCompletePageRunInput(apply).valid).toBe(true);
+    expect(validateCompletePageRunInput({ ...apply, answeredQuestion: true }).valid).toBe(true);
+    expect(validateCompletePageRunInput({ ...apply, operations: [] }).valid).toBe(false);
     expect(
-      validatePageIntent({
-        scope: 'page',
-        mode: 'page_question',
-        pageId: 'page_customer',
-        normalizedRequirement: '说明表格有哪些列',
-        confidence: 0.96,
-        requiresConfirmation: false,
+      validateCompletePageRunInput({
+        outcome: 'no_change_needed',
+        reason: 'root_has_no_children',
+        response: '页面当前已经为空。',
       }).valid,
     ).toBe(true);
     expect(
-      validatePageIntent({
-        scope: 'page',
-        mode: 'clarification_required',
-        pageId: 'page_customer',
-        confidence: 0.55,
-        reason: '请求可能是页面需求，也可能是现实信息查询',
-        suggestedQuestion: '你希望创建一个天气展示页面吗？',
-        requiresConfirmation: true,
+      validateCompletePageRunInput({
+        outcome: 'needs_clarification',
+        question: '请选择要修改的按钮。',
+        candidates: [{ elementId: 'submit_top', label: '顶部按钮' }],
       }).valid,
     ).toBe(true);
     expect(
-      validatePageIntent({
-        scope: 'page',
-        mode: 'out_of_scope',
-        confidence: 0.99,
-        reason: '请求是现实天气查询',
-        requiresConfirmation: false,
-      }).valid,
-    ).toBe(true);
-    expect(
-      validatePageIntent({
-        scope: 'page',
-        mode: 'out_of_scope',
-        pageId: 'page_customer',
-        normalizedRequirement: '修改页面',
-        confidence: 0.99,
-        reason: '不应携带页面写入需求',
-        requiresConfirmation: false,
+      validateCompletePageRunInput({
+        outcome: 'partially_supported',
+        response: '只完成了一部分。',
       }).valid,
     ).toBe(false);
+    expect(
+      validateClarificationResult({
+        clarificationId: 'clarification_one',
+        baseWorkingVersion: 3,
+        question: '请选择要修改的按钮。',
+        candidates: [{ elementId: 'submit_top', label: '顶部按钮' }],
+      }).valid,
+    ).toBe(true);
   });
 
   it('validates run associations, budgets and terminal states', () => {
@@ -88,7 +75,7 @@ describe('agent domain protocol', () => {
       userMessageId: 'message_one',
       requestId: 'request-one',
       baseWorkingVersion: 1,
-      mode: 'page_modify',
+      runKind: 'page_assistant',
       status: 'completed',
       budget: {
         maxModelCalls: 2,
@@ -110,12 +97,12 @@ describe('agent domain protocol', () => {
     expect(validateAgentRun(run).valid).toBe(true);
     expect(validateAgentRun({ ...run, status: 'done' }).valid).toBe(false);
     for (const status of [
-      'classifying',
-      'generating',
-      'tool_calling',
+      'preparing',
+      'reasoning',
+      'reading',
       'validating',
       'committing',
-      'awaiting_confirmation',
+      'deciding',
     ]) {
       expect(validateAgentRun({ ...run, status }).valid).toBe(true);
     }
@@ -162,7 +149,18 @@ describe('agent domain protocol', () => {
       occurredAt: timestamp,
       payload: { future: true },
     };
-    expect(validateAgentEvent(event).valid).toBe(true);
+    expect(validateAgentEvent(event).valid).toBe(false);
+    expect(
+      validateAgentEvent({
+        ...event,
+        type: 'run.progress',
+        payload: {
+          status: 'reasoning',
+          phase: 'reasoning',
+          message: '正在处理请求',
+        },
+      }).valid,
+    ).toBe(true);
     expect(validateAgentEvent({ ...event, version: '2' }).valid).toBe(false);
     expect(validateAgentEvent({ ...event, sequence: -1 }).valid).toBe(false);
   });
@@ -189,6 +187,22 @@ describe('agent domain protocol', () => {
         clientRequestId: 'request-one',
         baseWorkingVersion: 1,
         content,
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateCreateAgentRunRequest({
+        version: '1',
+        projectId: 'project_one',
+        pageId: 'page_one',
+        conversationId: 'conversation_one',
+        clientRequestId: 'request-two',
+        baseWorkingVersion: 1,
+        content,
+        clarification: {
+          runId: 'run_one',
+          clarificationId: 'clarification_one',
+          selectedElementId: 'submit_top',
+        },
       }).valid,
     ).toBe(true);
     expect(validateCancelAgentRunRequest({ version: '1' }).valid).toBe(false);

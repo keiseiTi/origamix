@@ -12,7 +12,7 @@ import { getApiConnection, refreshBackendConnection, request } from './request';
 const isAgentEvent = (value: unknown): value is AgentEvent => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const event = value as Record<string, unknown>;
-  return (
+  const validEnvelope =
     event['version'] === '1' &&
     Number.isSafeInteger(event['eventId']) &&
     Number(event['eventId']) >= 0 &&
@@ -27,8 +27,50 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
     typeof event['requestId'] === 'string' &&
     event['requestId'].length > 0 &&
     typeof event['occurredAt'] === 'string' &&
-    !Number.isNaN(Date.parse(event['occurredAt']))
-  );
+    !Number.isNaN(Date.parse(event['occurredAt']));
+  if (!validEnvelope) return false;
+  const payload = event['payload'];
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+  const record = payload as Record<string, unknown>;
+  if (event['type'] === 'run.queued') return record['status'] === 'queued';
+  if (event['type'] === 'run.progress') {
+    return (
+      typeof record['status'] === 'string' &&
+      record['phase'] === record['status'] &&
+      typeof record['message'] === 'string'
+    );
+  }
+  if (event['type'] === 'working.committed') {
+    return (
+      Number.isSafeInteger(record['baseWorkingVersion']) &&
+      Number.isSafeInteger(record['resultWorkingVersion']) &&
+      Number.isSafeInteger(record['operationCount'])
+    );
+  }
+  if (event['type'] === 'clarification.available') {
+    return (
+      record['status'] === 'completed' &&
+      record['outcome'] === 'needs_clarification' &&
+      Boolean(record['clarification'])
+    );
+  }
+  if (event['type'] === 'tool.activity') {
+    return typeof record['toolName'] === 'string' && typeof record['phase'] === 'string';
+  }
+  if (event['type'] === 'run.completed') {
+    return record['status'] === 'completed' && typeof record['outcome'] === 'string';
+  }
+  if (event['type'] === 'run.failed') {
+    return (
+      record['status'] === 'failed' &&
+      typeof record['errorCode'] === 'string' &&
+      typeof record['safeMessage'] === 'string'
+    );
+  }
+  if (event['type'] === 'run.cancelled' || event['type'] === 'run.interrupted') {
+    return record['status'] === event['type'].slice(4);
+  }
+  return false;
 };
 
 export const listConversations = (projectId: string, pageId: string) =>

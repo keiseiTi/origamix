@@ -21,13 +21,13 @@ const registry = () => {
   const value = new AgentToolRegistry();
   value.register({
     tool: {
-      name: 'apply_page_operations',
+      name: 'complete_page_run',
       description: 'write',
       parameters: Type.Object({}),
       execute: async () => ({ revisionId: 'revision_test' }),
     },
     policy: {
-      toolName: 'apply_page_operations',
+      toolName: 'complete_page_run',
       scope: 'page_write',
       risk: 'low',
       requiresConfirmation: false,
@@ -37,22 +37,14 @@ const registry = () => {
 };
 
 describe('Agent tool policy and budget', () => {
-  it('does not expose tools for non-Agent modes or writes for question mode', () => {
+  it('exposes the same terminal capability for every page-assistant run', () => {
     const value = registry();
     const input = {
       runId: 'run_test',
       budget: new RunBudgetController(budget),
       audit: () => undefined,
     };
-    expect(value.toolsForRun({ ...input, mode: 'out_of_scope' })).toEqual([]);
-    expect(value.toolsForRun({ ...input, mode: 'page_question' })).toEqual([]);
-    expect(() =>
-      value.toolsForRun({
-        ...input,
-        mode: 'page_question',
-        requestedToolNames: ['apply_page_operations'],
-      }),
-    ).toThrowError(expect.objectContaining({ code: 'POLICY_DENIED' }));
+    expect(value.toolsForRun(input).map(({ name }) => name)).toEqual(['complete_page_run']);
   });
 
   it('rejects forged names and audits an allowed call', async () => {
@@ -61,7 +53,6 @@ describe('Agent tool policy and budget', () => {
     expect(() =>
       value.toolsForRun({
         runId: 'run_test',
-        mode: 'page_modify',
         budget: tracker,
         requestedToolNames: ['shell'],
         audit: () => undefined,
@@ -70,16 +61,27 @@ describe('Agent tool policy and budget', () => {
     const audit: ToolAuditEvent[] = [];
     const [tool] = value.toolsForRun({
       runId: 'run_test',
-      mode: 'page_modify',
       budget: tracker,
       audit: (event) => {
         audit.push(event);
       },
     });
-    await tool!.execute({}, new AbortController().signal);
+    await tool!.execute(
+      {
+        operations: [
+          { operation: 'updateElementProps', elementId: 'secret', set: { text: '私密' } },
+        ],
+      },
+      new AbortController().signal,
+    );
     expect(audit.map((event) => event.phase)).toEqual(['started', 'completed']);
+    expect(audit[1]).toMatchObject({
+      operationCount: 1,
+      operationTypeCounts: { updateElementProps: 1 },
+    });
+    expect(JSON.stringify(audit)).not.toContain('私密');
     await expect(tool!.execute({}, new AbortController().signal)).rejects.toMatchObject({
-      code: 'BUDGET_EXCEEDED',
+      code: 'POLICY_DENIED',
     });
   });
 
@@ -111,6 +113,16 @@ describe('Agent tool policy and budget', () => {
       },
     ]);
     expect(read[0]?.policy.scope).toBe('read');
+    expect(() =>
+      createDefaultAgentToolEntries([
+        {
+          name: 'legacy_write_tool',
+          description: 'unregistered model-visible write',
+          parameters: Type.Object({}),
+          execute: async () => ({}),
+        },
+      ]),
+    ).toThrowError(expect.objectContaining({ code: 'POLICY_DENIED' }));
     expect(() =>
       createDefaultAgentToolEntries([
         {

@@ -46,7 +46,7 @@ describe('server startup Agent recovery', () => {
       baseWorkingVersion: 1,
       content: { version: '1', blocks: [{ type: 'text', text: 'test' }] },
       modelRef: 'deepseek/deepseek-flash',
-      mode: 'page_modify',
+      runKind: 'page_assistant',
       budget: {
         maxModelCalls: 1,
         maxToolCalls: 1,
@@ -60,7 +60,7 @@ describe('server startup Agent recovery', () => {
       toolsetVersion: '1',
       materialManifestVersion: 'official-antd@1.0.0',
     });
-    await recoverAgentRunsOnStartup(runs, new ProjectRepository(database));
+    await recoverAgentRunsOnStartup(runs, new ProjectRepository(database), service);
     expect(runs.get(started.run.id)).toMatchObject({
       status: 'interrupted',
       errorCode: 'PROCESS_INTERRUPTED',

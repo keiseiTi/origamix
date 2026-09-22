@@ -69,7 +69,7 @@ const input = (overrides: Partial<StartConversationRunInput> = {}): StartConvers
     baseWorkingVersion: 1,
     content: content('创建表单'),
     modelRef: 'deepseek/deepseek-flash',
-    mode: 'page_modify',
+    runKind: 'page_assistant',
     budget,
     promptVersion: '1',
     policyVersion: '1',
@@ -224,12 +224,13 @@ describe('Agent Run state and recovery', () => {
   it('defines the complete legal and illegal transition matrix', () => {
     const statuses = [
       'queued',
-      'classifying',
-      'generating',
-      'tool_calling',
+      'preparing',
+      'reasoning',
+      'reading',
       'validating',
+      'repairing',
       'committing',
-      'awaiting_confirmation',
+      'deciding',
       'cancelling',
       'completed',
       'failed',
@@ -237,36 +238,14 @@ describe('Agent Run state and recovery', () => {
       'interrupted',
     ] as const;
     const legal: Record<(typeof statuses)[number], readonly (typeof statuses)[number][]> = {
-      queued: ['classifying', 'cancelling', 'failed', 'interrupted'],
-      classifying: ['generating', 'completed', 'cancelling', 'failed', 'interrupted'],
-      generating: [
-        'tool_calling',
-        'validating',
-        'completed',
-        'awaiting_confirmation',
-        'cancelling',
-        'failed',
-        'interrupted',
-      ],
-      tool_calling: [
-        'generating',
-        'validating',
-        'awaiting_confirmation',
-        'cancelling',
-        'failed',
-        'interrupted',
-      ],
-      validating: ['generating', 'committing', 'cancelling', 'failed', 'interrupted'],
-      committing: ['completed', 'cancelling', 'failed', 'interrupted'],
-      awaiting_confirmation: [
-        'generating',
-        'tool_calling',
-        'validating',
-        'cancelling',
-        'cancelled',
-        'failed',
-        'interrupted',
-      ],
+      queued: ['preparing', 'cancelling', 'failed', 'interrupted'],
+      preparing: ['reasoning', 'cancelling', 'failed', 'interrupted'],
+      reasoning: ['reading', 'deciding', 'cancelling', 'failed', 'interrupted'],
+      reading: ['reasoning', 'deciding', 'cancelling', 'failed', 'interrupted'],
+      deciding: ['validating', 'completed', 'cancelling', 'failed', 'interrupted'],
+      validating: ['repairing', 'committing', 'cancelling', 'failed', 'interrupted'],
+      repairing: ['deciding', 'cancelling', 'failed', 'interrupted'],
+      committing: ['completed', 'failed', 'interrupted'],
       cancelling: ['cancelled', 'completed', 'failed', 'interrupted'],
       completed: [],
       failed: [],
@@ -282,10 +261,10 @@ describe('Agent Run state and recovery', () => {
   it('accepts legal transitions and rejects rollback or page completion without revision', () => {
     const { database, service, runService } = setup();
     const { run } = service.startRun(input());
-    expect(runService.transition(run.id, 'classifying').status).toBe('classifying');
-    expect(runService.transition(run.id, 'generating').status).toBe('generating');
+    expect(runService.transition(run.id, 'preparing').status).toBe('preparing');
+    expect(runService.transition(run.id, 'reasoning').status).toBe('reasoning');
     expect(() => runService.transition(run.id, 'queued')).toThrow('不能');
-    expect(() => runService.transition(run.id, 'completed')).toThrow('Working 版本');
+    expect(runService.transition(run.id, 'deciding').status).toBe('deciding');
     expect(runService.transition(run.id, 'validating').status).toBe('validating');
     expect(runService.transition(run.id, 'committing').status).toBe('committing');
     expect(
@@ -314,20 +293,26 @@ describe('Agent Run state and recovery', () => {
   it('recovers committed active runs and interrupts uncommitted runs without retrying work', async () => {
     const { database, service, runs, runService } = setup();
     const committed = service.startRun(input()).run;
-    runService.transition(committed.id, 'classifying');
-    runs.updateStatus(committed.id, ['classifying'], {
+    runService.transition(committed.id, 'preparing');
+    runs.updateStatus(committed.id, ['preparing'], {
       status: 'committing',
       updatedAt: new Date().toISOString(),
       resultWorkingVersion: 2,
     });
     const pending = service.startRun(input({ clientRequestId: 'request-2' })).run;
-    runService.transition(pending.id, 'classifying');
+    runService.transition(pending.id, 'preparing');
     let checks = 0;
     const recovered = await runService.recover((run) => {
       checks += 1;
-      return run.resultWorkingVersion === 2;
+      return run.resultWorkingVersion === 2
+        ? {
+            disposition: 'committed' as const,
+            resultWorkingVersion: 2,
+            resultWorkingHash: 'a'.repeat(64),
+          }
+        : { disposition: 'not_committed' as const };
     });
-    expect(checks).toBe(1);
+    expect(checks).toBe(2);
     expect(recovered.map((run) => [run.id, run.status])).toEqual([
       [committed.id, 'completed'],
       [pending.id, 'interrupted'],
@@ -342,7 +327,7 @@ describe('Agent Run state and recovery', () => {
     const path = join(directory, 'app.db');
     const first = setup(path);
     const run = first.service.startRun(input()).run;
-    first.runService.transition(run.id, 'classifying');
+    first.runService.transition(run.id, 'preparing');
     first.runService.transition(run.id, 'failed', {
       errorCode: 'PROVIDER_ERROR',
       errorMessage: '模型不可用 token=private-value',
