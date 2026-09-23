@@ -237,6 +237,7 @@ export class AgentService {
         ? {
             status: 'completed' as const,
             outcome: settled.outcome ?? result.outcome ?? ('answered_only' as const),
+            ...(result.text ? { response: result.text } : {}),
             ...(settled.resultWorkingVersion
               ? { resultWorkingVersion: settled.resultWorkingVersion }
               : {}),

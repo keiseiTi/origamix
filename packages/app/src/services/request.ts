@@ -49,7 +49,11 @@ const fetchWithConnection = async (
   path: string,
   init?: RequestInit & { projectId?: string },
 ): Promise<Response> => {
-  return fetch(`${current.baseUrl}${path}`, { ...init, headers: headersFor(current, init) });
+  return fetch(`${current.baseUrl}${path}`, {
+    cache: 'no-store',
+    ...init,
+    headers: headersFor(current, init),
+  });
 };
 
 export const request = async <T>(

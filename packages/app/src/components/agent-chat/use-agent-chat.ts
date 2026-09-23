@@ -148,7 +148,16 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
       afterEventId,
       onEvent: (event: AgentEvent) => {
-        if (current()) dispatch({ type: 'event.received', event });
+        if (!current()) return;
+        dispatch({ type: 'event.received', event });
+        if (
+          event.type === 'run.completed' ||
+          event.type === 'run.failed' ||
+          event.type === 'run.cancelled' ||
+          event.type === 'run.interrupted'
+        ) {
+          void loadAuthority();
+        }
       },
       onError: reconnect,
       onClose: reconnect,
@@ -181,7 +190,9 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       if (!retryInput && operations.agents[pageKey])
         throw new Error('上次发送结果待确认，请先重试');
       sending.current = true;
+      dispatch({ type: 'submission.started' });
       authorityRequest.current += 1;
+      const submissionAuthorityRequest = authorityRequest.current;
       setAuthority(null);
       lastSubmittedText.current = content;
       const currentGeneration = generation.current;
@@ -216,7 +227,10 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         conversationId.current = created.conversationId;
         const run = (await getAgentRun(projectId, created.runId)).run;
         const history = await listAllMessages(projectId, pageId, created.conversationId);
-        if (!current()) return;
+        // A terminal SSE event may have started a newer authority reload while
+        // this initial reconciliation was in flight. Never let this older
+        // snapshot overwrite the persisted final assistant message.
+        if (!current() || authorityRequest.current !== submissionAuthorityRequest) return;
         setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
         // A fast provider may finish before the POST response has been reconciled.

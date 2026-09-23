@@ -296,6 +296,7 @@ export const AgentProgressEventPayloadSchema = strictObject({
 export const AgentRunCompletedEventPayloadSchema = strictObject({
   status: Type.Literal('completed'),
   outcome: PageAgentOutcomeSchema,
+  response: Type.Optional(Type.String({ minLength: 1, maxLength: 64_000 })),
   resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
 });
 

@@ -1,6 +1,7 @@
 import type { RunBudget, ToolPolicy } from '@origamix/shared/protocol/agent';
 import { createHash } from 'node:crypto';
 import { AgentEngineError, type AgentEngineTool } from '../engine';
+import { ApiError } from '../../errors';
 
 export interface ToolAuditEvent {
   runId: string;
@@ -33,6 +34,16 @@ const operationEvidence = (toolName: string, args: unknown) => {
     operationTypeCounts,
     operationDigest: createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
   };
+};
+
+const safeToolErrorCode = (error: unknown): string => {
+  if (error instanceof AgentEngineError) return error.code;
+  if (error instanceof ApiError) {
+    if (error.statusCode === 409) return 'WORKING_VERSION_CONFLICT';
+    if (error.statusCode === 422) return 'INVALID_TOOL_INPUT';
+    if (error.statusCode === 404) return 'PAGE_NOT_FOUND';
+  }
+  return 'TOOL_ERROR';
 };
 
 export interface RegisteredAgentTool {
@@ -207,7 +218,7 @@ export class AgentToolRegistry {
               phase: 'failed',
               occurredAt: new Date().toISOString(),
               durationMs: Date.now() - startedAt,
-              safeErrorCode: error instanceof AgentEngineError ? error.code : 'TOOL_ERROR',
+              safeErrorCode: safeToolErrorCode(error),
               ...evidence,
             });
             throw error;

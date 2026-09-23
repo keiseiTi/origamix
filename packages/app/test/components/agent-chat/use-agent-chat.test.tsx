@@ -74,6 +74,73 @@ describe('Agent recovery', () => {
     expect(mocks.subscribeAgentEvents).not.toHaveBeenCalled();
   });
 
+  it('loads the persisted final message as soon as the terminal event arrives', async () => {
+    const userMessage = {
+      messageId: 'message_user',
+      runId: 'run_1',
+      sequence: 1,
+      role: 'user',
+      content: { version: '1', blocks: [{ type: 'text', text: '重置页面' }] },
+    };
+    const assistantMessage = {
+      messageId: 'message_assistant',
+      runId: 'run_1',
+      sequence: 2,
+      role: 'assistant',
+      content: { version: '1', blocks: [{ type: 'text', text: '页面已重置。' }] },
+    };
+    mocks.listConversations.mockResolvedValue({
+      conversations: [{ conversationId: 'conversation_1' }],
+    });
+    mocks.listAllMessages
+      .mockResolvedValueOnce({ messages: [userMessage] })
+      .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] });
+    mocks.getAgentRun
+      .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'reasoning' } })
+      .mockResolvedValueOnce({
+        run: {
+          runId: 'run_1',
+          pageId: 'page_a',
+          status: 'completed',
+          resultWorkingVersion: 2,
+        },
+      });
+    let onEvent: ((event: unknown) => void) | undefined;
+    mocks.subscribeAgentEvents.mockImplementation(
+      (_projectId: string, _runId: string, listener: { onEvent: (event: unknown) => void }) => {
+        onEvent = listener.onEvent;
+        return () => undefined;
+      },
+    );
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(onEvent).toBeDefined());
+
+    act(() =>
+      onEvent!({
+        version: '1',
+        eventId: 1,
+        sequence: 1,
+        type: 'run.completed',
+        runId: 'run_1',
+        pageId: 'page_a',
+        requestId: 'request_1',
+        occurredAt: '2026-09-23T00:00:00.000Z',
+        payload: {
+          status: 'completed',
+          outcome: 'changed',
+          response: '页面已重置。',
+          resultWorkingVersion: 2,
+        },
+      }),
+    );
+
+    expect(hook.result.current.state.streamedText).toBe('页面已重置。');
+
+    await waitFor(() =>
+      expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
+    );
+  });
+
   it('retries the exact uncertain request after unmount without automatically resending', async () => {
     mocks.createAgentRun
       .mockRejectedValueOnce(new Error('connection lost'))

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
 import type { EditorHandle } from '@/components/editor';
+import { schemaService } from '@/services/schema';
 import { usePageApplicationState } from './use-page-application-state';
 
 export const derivePageCapabilities = ({
@@ -46,6 +47,8 @@ export const usePageSession = ({
   });
   const agent = useAgentChat(projectId, pageId);
   const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
+  const reconciliationRef = useRef<{ pageId: string; workingVersion: number } | null>(null);
+  const reconcilingRunRef = useRef<string | null>(null);
 
   useEffect(() => {
     const refreshKey = agent.state.workingRefreshKey;
@@ -58,6 +61,34 @@ export const usePageSession = ({
     notifiedWorkingRef.current = { pageId, refreshKey };
     onSchemaCommitted(pageId, refreshKey);
   }, [agent.state.workingRefreshKey, onSchemaCommitted, pageId]);
+
+  useEffect(() => {
+    if (agent.activity !== 'idle' || !agent.state.run) return;
+    const runId = agent.state.run.runId;
+    if (reconcilingRunRef.current === runId) return;
+    reconcilingRunRef.current = runId;
+    let disposed = false;
+    void schemaService
+      .workingState(projectId, pageId)
+      .then((working) => {
+        if (disposed) return;
+        if (
+          reconciliationRef.current?.pageId === pageId &&
+          reconciliationRef.current.workingVersion === working.workingVersion
+        )
+          return;
+        reconciliationRef.current = { pageId, workingVersion: working.workingVersion };
+        const refreshKey = `working_authority_${runId}_${working.workingVersion}`;
+        notifiedWorkingRef.current = { pageId, refreshKey };
+        onSchemaCommitted(pageId, refreshKey);
+      })
+      .catch(() => {
+        if (!disposed && reconcilingRunRef.current === runId) reconcilingRunRef.current = null;
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [agent.activity, agent.state.run, onSchemaCommitted, pageId, projectId]);
 
   return {
     application,

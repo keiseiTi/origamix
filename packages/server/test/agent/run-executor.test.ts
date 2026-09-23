@@ -248,6 +248,24 @@ describe('Agent execution through AgentService', () => {
     ]);
     rejected.database.close();
 
+    const invalidTerminal = setup(async (request) => {
+      await request.onEvent?.({
+        type: 'tool_end',
+        toolCallId: 'invalid-terminal',
+        toolName: 'complete_page_run',
+        result: new Error('operations[0].parentId 必须是有效元素 ID'),
+        isError: true,
+      });
+      return { text: '', usage };
+    });
+    const invalidResult = await invalidTerminal.run(invalidTerminal.input('新建表单和输入框'));
+    expect(invalidTerminal.runs.get(invalidResult.runId)).toMatchObject({
+      status: 'failed',
+      errorCode: 'TOOL_ERROR',
+      errorMessage: '操作链未能通过服务端校验：operations[0].parentId 必须是有效元素 ID',
+    });
+    invalidTerminal.database.close();
+
     const failed = setup(async () => {
       throw new AgentEngineError('PROVIDER_ERROR', '模型服务调用失败');
     });
@@ -306,6 +324,36 @@ describe('Agent execution through AgentService', () => {
     expect(result).toMatchObject({
       status: 'completed',
       text: '页面已修改。',
+      resultWorkingVersion: 2,
+    });
+    expect(fixture.runs.get(result.runId)).toMatchObject({
+      status: 'completed',
+      outcome: 'changed',
+      resultWorkingVersion: 2,
+    });
+    expect(
+      fixture.events
+        .subscribe(result.runId, -1, () => undefined)
+        .replay.find((event) => event.type === 'run.completed'),
+    ).toMatchObject({ payload: { response: '页面已修改。' } });
+    fixture.database.close();
+  });
+
+  it('uses the persisted terminal decision when the provider omits its tool-end event', async () => {
+    const fixture = setup(async (request) => {
+      const terminal = request.tools?.find(({ name }) => name === 'complete_page_run');
+      if (!terminal) throw new Error('complete_page_run tool missing');
+      await terminal.execute(
+        { outcome: 'apply_changes', response: '页面已按请求重建。' },
+        request.signal!,
+      );
+      return { text: '', usage };
+    });
+    const result = await fixture.run(fixture.input('重置页面并新建表单'));
+    expect(result).toMatchObject({
+      status: 'completed',
+      outcome: 'changed',
+      text: '页面已按请求重建。',
       resultWorkingVersion: 2,
     });
     expect(fixture.runs.get(result.runId)).toMatchObject({

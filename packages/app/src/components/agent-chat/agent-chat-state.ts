@@ -19,6 +19,7 @@ export interface AgentChatState {
   stage: AgentRunStatus | null;
   tools: ToolActivity[];
   progressMessage: string | null;
+  progressHistory: string[];
   workingRefreshKey: string | null;
   lastEventId: number;
   error: string | null;
@@ -28,6 +29,7 @@ export interface AgentChatState {
 export type AgentChatAction =
   | { type: 'history.loaded'; messages: AgentMessage[]; run?: AgentRun | null }
   | { type: 'history.failed'; message: string }
+  | { type: 'submission.started' }
   | { type: 'run.queued'; run: AgentRun }
   | { type: 'event.received'; event: AgentEvent }
   | { type: 'connection.changed'; connection: AgentChatState['connection'] }
@@ -40,6 +42,7 @@ export const initialAgentChatState: AgentChatState = {
   stage: null,
   tools: [],
   progressMessage: null,
+  progressHistory: [],
   workingRefreshKey: null,
   lastEventId: -1,
   error: null,
@@ -117,8 +120,31 @@ export const agentChatReducer = (
   if (action.type === 'connection.changed') return { ...state, connection: action.connection };
   if (action.type === 'history.failed')
     return { ...state, error: action.message, connection: 'idle' };
+  if (action.type === 'submission.started')
+    return {
+      ...state,
+      run: null,
+      stage: 'queued',
+      streamedText: '',
+      tools: [],
+      progressMessage: '正在提交请求',
+      progressHistory: ['正在提交请求'],
+      workingRefreshKey: null,
+      error: null,
+      connection: 'connecting',
+    };
   if (action.type === 'history.loaded') {
     const changedRun = action.run?.runId !== state.run?.runId;
+    const terminalProgress =
+      action.run?.status === 'completed'
+        ? '处理完成'
+        : action.run?.status === 'failed'
+          ? '处理失败'
+          : null;
+    const progressHistory =
+      terminalProgress && state.progressHistory.at(-1) !== terminalProgress
+        ? [...state.progressHistory, terminalProgress]
+        : state.progressHistory;
     return {
       ...state,
       messages: [...action.messages].sort((a, b) => a.sequence - b.sequence),
@@ -127,6 +153,7 @@ export const agentChatReducer = (
       streamedText: '',
       tools: [],
       progressMessage: isRunActive(action.run?.status) ? state.progressMessage : null,
+      progressHistory,
       lastEventId: changedRun ? -1 : state.lastEventId,
       workingRefreshKey: action.run?.resultWorkingVersion
         ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
@@ -148,6 +175,7 @@ export const agentChatReducer = (
       streamedText: '',
       tools: [],
       progressMessage: null,
+      progressHistory: ['请求已进入处理队列'],
       workingRefreshKey: null,
       lastEventId: -1,
       error: null,
@@ -161,9 +189,12 @@ export const agentChatReducer = (
   }
   if (event.eventId <= state.lastEventId) return state;
   const status = statusFromEvent(event);
-  const text = '';
   const isToolEvent = event.type.startsWith('tool.');
   const eventPayload = payloadRecord(event.payload);
+  const text =
+    event.type === 'run.completed' && typeof eventPayload.response === 'string'
+      ? eventPayload.response
+      : '';
   const progressMessage =
     event.type === 'run.progress' && typeof eventPayload.message === 'string'
       ? eventPayload.message
@@ -176,6 +207,20 @@ export const agentChatReducer = (
       : event.type === 'run.cancelled'
         ? null
         : state.error;
+  const progressEntry =
+    event.type === 'run.progress' && typeof eventPayload.message === 'string'
+      ? eventPayload.message
+      : event.type === 'working.committed'
+        ? '页面操作链已执行，草稿已更新'
+        : event.type === 'run.completed'
+          ? '处理完成'
+          : event.type === 'run.failed'
+            ? '处理失败'
+            : null;
+  const progressHistory =
+    progressEntry && state.progressHistory.at(-1) !== progressEntry
+      ? [...state.progressHistory, progressEntry]
+      : state.progressHistory;
   const run = state.run
     ? {
         ...state.run,
@@ -195,10 +240,11 @@ export const agentChatReducer = (
     ...state,
     run,
     lastEventId: event.eventId,
-    streamedText: state.streamedText + text,
+    streamedText: text || state.streamedText,
     stage: status ?? state.stage,
     tools: isToolEvent ? updateTool(state.tools, event) : state.tools,
     progressMessage,
+    progressHistory,
     workingRefreshKey:
       (event.type === 'working.committed' || event.type === 'run.completed') &&
       typeof eventPayload.resultWorkingVersion === 'number'

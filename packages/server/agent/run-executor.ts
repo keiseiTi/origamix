@@ -18,6 +18,33 @@ const textContent = (text: string): MessageContent => ({
 });
 
 const safeToolError = (result: unknown): string => {
+  if (result instanceof Error && result.message) return result.message.slice(0, 1_500);
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    const record = result as Record<string, unknown>;
+    for (const key of ['safeMessage', 'message', 'error']) {
+      if (typeof record[key] === 'string' && record[key]) return record[key].slice(0, 1_500);
+    }
+    if (Array.isArray(record.content)) {
+      const text = record.content.find(
+        (item): item is { text: string } =>
+          Boolean(item) &&
+          typeof item === 'object' &&
+          typeof (item as { text?: unknown }).text === 'string',
+      )?.text;
+      if (text) return text.slice(0, 1_500);
+    }
+    if (record.details instanceof Error && record.details.message) {
+      return record.details.message.slice(0, 1_500);
+    }
+    if (record.details && typeof record.details === 'object') {
+      const details = record.details as Record<string, unknown>;
+      for (const key of ['safeMessage', 'message', 'error']) {
+        if (typeof details[key] === 'string' && details[key]) {
+          return details[key].slice(0, 1_500);
+        }
+      }
+    }
+  }
   const serialized = (() => {
     try {
       return JSON.stringify(result);
@@ -26,6 +53,14 @@ const safeToolError = (result: unknown): string => {
     }
   })();
   return serialized.slice(0, 1_500) || 'Operation 校验失败';
+};
+
+const persistedTerminalResponse = (outcomeJson: unknown): string | undefined => {
+  if (!outcomeJson || typeof outcomeJson !== 'object' || Array.isArray(outcomeJson))
+    return undefined;
+  const record = outcomeJson as Record<string, unknown>;
+  if (typeof record.response === 'string') return record.response;
+  return typeof record.question === 'string' ? record.question : undefined;
 };
 
 export interface RunResult {
@@ -97,6 +132,7 @@ export class RunExecutor {
     let resultWorkingVersion: number | undefined;
     let terminalOutcome: PageAgentOutcome | undefined;
     let terminalFailure: string | undefined;
+    let lastTerminalFailure: string | undefined;
     let inputTokens = 0;
     const registry = new AgentToolRegistry();
     try {
@@ -148,6 +184,7 @@ export class RunExecutor {
             if (event.type === 'tool_end' && event.toolName === 'complete_page_run') {
               if (event.isError) {
                 terminalFailure = safeToolError(event.result);
+                lastTerminalFailure = terminalFailure;
                 return;
               }
               const terminal = event.result as {
@@ -168,6 +205,18 @@ export class RunExecutor {
         });
         inputTokens += result.usage.inputTokens;
         tracker.recordOutputTokens(result.usage.outputTokens);
+        // Tool callbacks are transport evidence; the persisted terminal decision is
+        // authoritative if a provider adapter delivers its completion event late.
+        const persisted = this.dependencies.runs.get(runId);
+        const persistedTerminalAccepted =
+          persisted?.status === 'deciding' ||
+          persisted?.status === 'committing' ||
+          persisted?.status === 'completed';
+        if (!terminalOutcome && persisted?.outcome && persistedTerminalAccepted) {
+          terminalOutcome = persisted.outcome;
+          assistantText = persistedTerminalResponse(persisted.outcomeJson) ?? assistantText;
+          resultWorkingVersion = persisted.resultWorkingVersion ?? resultWorkingVersion;
+        }
         if (terminalOutcome) break;
 
         const current = this.dependencies.runs.get(runId);
@@ -191,6 +240,21 @@ export class RunExecutor {
             'WORKING_VERSION_CONFLICT',
             '页面草稿已变化，本次修改不能自动重试',
           );
+        }
+        if (lastTerminalFailure) {
+          if (missingTerminalRepairUsed) {
+            throw new AgentEngineError(
+              'TOOL_ERROR',
+              `操作链未能通过服务端校验：${lastTerminalFailure}`,
+            );
+          }
+          missingTerminalRepairUsed = true;
+          prompt = [
+            '协议修复：你已经调用 complete_page_run，但提交内容未通过服务端校验。',
+            `最后一次安全错误：${lastTerminalFailure}`,
+            '请严格遵守工具参数 Schema，修正后重新调用 complete_page_run。不要只输出自由文本。',
+          ].join('\n');
+          continue;
         }
         if (missingTerminalRepairUsed) {
           throw new AgentEngineError(
@@ -225,6 +289,7 @@ export class RunExecutor {
     } catch (error) {
       const current = this.dependencies.runs.get(runId);
       const committedWorkingVersion = current?.resultWorkingVersion ?? resultWorkingVersion;
+      const persistedResponse = persistedTerminalResponse(current?.outcomeJson);
       if (current?.status === 'deciding' && current.outcome && assistantText) {
         this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
         this.dependencies.runService.transition(runId, 'completed');
@@ -243,7 +308,7 @@ export class RunExecutor {
       ) {
         this.dependencies.conversations.finishAssistant(
           runId,
-          textContent(assistantText || '页面草稿已完成修改。'),
+          textContent(assistantText || persistedResponse || '页面草稿已完成修改。'),
         );
         this.dependencies.runService.transition(runId, 'completed', {
           resultWorkingVersion: committedWorkingVersion,
@@ -252,7 +317,8 @@ export class RunExecutor {
         return {
           runId,
           status: 'completed',
-          text: assistantText,
+          text: assistantText || persistedResponse || '页面草稿已完成修改。',
+          ...(current.outcome ? { outcome: current.outcome } : {}),
           resultWorkingVersion: committedWorkingVersion,
         };
       }

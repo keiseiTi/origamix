@@ -80,7 +80,8 @@ describe('PiAgentEngine', () => {
           execute: async (input) => ({ received: input }),
         },
       ],
-      onEvent: (event) => {
+      onEvent: async (event) => {
+        if (event.type === 'tool_end') await new Promise((resolve) => setTimeout(resolve, 5));
         events.push(event);
       },
     });
@@ -88,6 +89,9 @@ describe('PiAgentEngine', () => {
     expect(result.text).toBe('done');
     expect(events.map((event) => event.type)).toEqual(
       expect.arrayContaining(['tool_start', 'tool_end', 'completed']),
+    );
+    expect(events.findIndex((event) => event.type === 'tool_end')).toBeLessThan(
+      events.findIndex((event) => event.type === 'completed'),
     );
   });
 

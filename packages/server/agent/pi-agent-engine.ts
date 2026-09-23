@@ -136,41 +136,58 @@ export class PiAgentEngine implements AgentEngine {
       },
       shouldStopAfterTurn: () => terminalDecisionCompleted,
     });
-    const unsubscribe = agent.subscribe(async (event) => {
-      if (controller.signal.aborted) agent.abort();
-      if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
-        text += event.assistantMessageEvent.delta;
-        await emit({ type: 'text_delta', delta: event.assistantMessageEvent.delta });
-      } else if (event.type === 'tool_execution_start') {
-        await emit({
-          type: 'tool_start',
-          toolCallId: event.toolCallId,
-          toolName: event.toolName,
-          input: event.args,
-        });
-      } else if (event.type === 'tool_execution_end') {
-        await emit({
-          type: 'tool_end',
-          toolCallId: event.toolCallId,
-          toolName: event.toolName,
-          result: event.result?.details ?? event.result,
-          isError: event.isError,
-        });
-      } else if (event.type === 'message_end' && event.message.role === 'assistant') {
-        const piUsage = event.message.usage;
-        usage = {
-          inputTokens: piUsage.input,
-          outputTokens: piUsage.output,
-          totalTokens: piUsage.totalTokens,
-        };
-        if (event.message.stopReason === 'error') throw new Error(event.message.errorMessage);
-      }
+    let eventProcessingError: unknown;
+    let eventQueue = Promise.resolve();
+    const unsubscribe = agent.subscribe((event) => {
+      eventQueue = eventQueue.then(async () => {
+        try {
+          if (controller.signal.aborted) agent.abort();
+          if (
+            event.type === 'message_update' &&
+            event.assistantMessageEvent.type === 'text_delta'
+          ) {
+            text += event.assistantMessageEvent.delta;
+            await emit({ type: 'text_delta', delta: event.assistantMessageEvent.delta });
+          } else if (event.type === 'tool_execution_start') {
+            await emit({
+              type: 'tool_start',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              input: event.args,
+            });
+          } else if (event.type === 'tool_execution_end') {
+            await emit({
+              type: 'tool_end',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              result: event.result?.details ?? event.result,
+              isError: event.isError,
+            });
+          } else if (event.type === 'message_end' && event.message.role === 'assistant') {
+            const piUsage = event.message.usage;
+            usage = {
+              inputTokens: piUsage.input,
+              outputTokens: piUsage.output,
+              totalTokens: piUsage.totalTokens,
+            };
+            if (event.message.stopReason === 'error') throw new Error(event.message.errorMessage);
+          }
+        } catch (error) {
+          eventProcessingError ??= error;
+        }
+      });
     });
 
     const abortListener = () => agent.abort();
     controller.signal.addEventListener('abort', abortListener, { once: true });
     try {
       await agent.prompt(request.prompt);
+      let drainedQueue: Promise<void>;
+      do {
+        drainedQueue = eventQueue;
+        await drainedQueue;
+      } while (drainedQueue !== eventQueue);
+      if (eventProcessingError) throw eventProcessingError;
       if (controller.signal.aborted) throw controller.signal.reason;
       const result = { text, usage };
       await emit({ type: 'completed', ...result });

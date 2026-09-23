@@ -31,6 +31,18 @@ const stageLabels = {
   interrupted: '已中断',
 } as const;
 
+const toolLabels: Record<string, string> = {
+  get_page_context: '读取页面上下文',
+  get_schema_outline: '读取页面结构',
+  get_schema_fragment: '读取元素详情',
+  search_materials: '查找可用物料',
+  get_material_manifest: '读取物料定义',
+  search_product_docs: '查询产品规则',
+  validate_page_schema: '校验页面结构',
+  get_page_diagnostics: '检查页面诊断',
+  complete_page_run: '生成并执行页面操作链',
+};
+
 export const ChatWorkspace = ({
   pageName,
   draft,
@@ -136,7 +148,7 @@ export const ChatWorkspace = ({
               {state.tools.map((tool) => (
                 <li key={tool.id} className='flex items-center gap-1.5'>
                   <Wrench size={12} />
-                  {tool.name} ·{' '}
+                  {toolLabels[tool.name] ?? tool.name} ·{' '}
                   {tool.status === 'running'
                     ? '执行中'
                     : tool.status === 'completed'
@@ -145,6 +157,17 @@ export const ChatWorkspace = ({
                 </li>
               ))}
             </ul>
+          )}
+          {state.progressHistory.length > 0 && (
+            <ol
+              className='mt-4 space-y-1 text-xs text-zinc-500 dark:text-zinc-400'
+              aria-label='处理进度'
+              aria-live='polite'
+            >
+              {state.progressHistory.map((message, index) => (
+                <li key={`${index}:${message}`}>{message}</li>
+              ))}
+            </ol>
           )}
           {state.stage && (
             <p className='mt-3 text-xs text-zinc-500 dark:text-zinc-400' role='status'>

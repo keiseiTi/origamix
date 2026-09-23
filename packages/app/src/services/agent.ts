@@ -58,7 +58,11 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
     return typeof record['toolName'] === 'string' && typeof record['phase'] === 'string';
   }
   if (event['type'] === 'run.completed') {
-    return record['status'] === 'completed' && typeof record['outcome'] === 'string';
+    return (
+      record['status'] === 'completed' &&
+      typeof record['outcome'] === 'string' &&
+      (record['response'] === undefined || typeof record['response'] === 'string')
+    );
   }
   if (event['type'] === 'run.failed') {
     return (
