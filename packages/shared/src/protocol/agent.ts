@@ -344,6 +344,7 @@ export const CreateAgentRunRequestSchema = strictObject({
 export const CreateAgentRunResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,
   runId: AgentRunIdSchema,
+  run: AgentRunSchema,
   conversationId: ConversationIdSchema,
   userMessageId: MessageIdSchema,
   runKind: AgentRunKindSchema,

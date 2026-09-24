@@ -22,12 +22,18 @@ export interface AgentChatState {
   progressHistory: string[];
   workingRefreshKey: string | null;
   lastEventId: number;
+  terminalEventSeen: boolean;
   error: string | null;
   connection: 'idle' | 'connecting' | 'connected' | 'recovering';
 }
 
 export type AgentChatAction =
-  | { type: 'history.loaded'; messages: AgentMessage[]; run?: AgentRun | null }
+  | {
+      type: 'history.loaded';
+      messages: AgentMessage[];
+      run?: AgentRun | null;
+      preserveStream?: boolean;
+    }
   | { type: 'history.failed'; message: string }
   | { type: 'submission.started' }
   | { type: 'run.queued'; run: AgentRun }
@@ -45,6 +51,7 @@ export const initialAgentChatState: AgentChatState = {
   progressHistory: [],
   workingRefreshKey: null,
   lastEventId: -1,
+  terminalEventSeen: false,
   error: null,
   connection: 'idle',
 };
@@ -111,6 +118,32 @@ const updateTool = (tools: ToolActivity[], event: AgentEvent): ToolActivity[] =>
   return [...tools.filter((tool) => tool.id !== id), { id, name, status }];
 };
 
+const toolLabels: Record<string, string> = {
+  get_page_context: '读取页面上下文',
+  get_schema_outline: '读取页面结构',
+  get_schema_fragment: '读取元素详情',
+  search_materials: '查找可用物料',
+  get_material_manifest: '读取物料定义',
+  search_product_docs: '查询产品规则',
+  validate_page_schema: '校验页面结构',
+  get_page_diagnostics: '检查页面诊断',
+  complete_page_run: '生成并执行页面操作链',
+};
+
+const toolProgress = (payload: Record<string, unknown>): string | null => {
+  if (typeof payload.toolName !== 'string') return null;
+  const label = toolLabels[payload.toolName] ?? payload.toolName;
+  const phase =
+    payload.phase === 'started'
+      ? '开始'
+      : payload.phase === 'completed'
+        ? '完成'
+        : payload.phase === 'failed' || payload.phase === 'denied'
+          ? '失败'
+          : null;
+  return phase ? `${label} · ${phase}` : null;
+};
+
 /** Applies replayable SSE events. Duplicate and out-of-order events are intentionally ignored. */
 export const agentChatReducer = (
   state: AgentChatState,
@@ -130,11 +163,24 @@ export const agentChatReducer = (
       progressMessage: '正在提交请求',
       progressHistory: ['正在提交请求'],
       workingRefreshKey: null,
+      terminalEventSeen: false,
       error: null,
       connection: 'connecting',
     };
   if (action.type === 'history.loaded') {
+    if (action.preserveStream && action.run?.runId === state.run?.runId) {
+      return {
+        ...state,
+        messages: [...action.messages].sort((a, b) => a.sequence - b.sequence),
+      };
+    }
     const changedRun = action.run?.runId !== state.run?.runId;
+    const hasDurableAnswer = action.messages.some(
+      (message) =>
+        message.runId === action.run?.runId &&
+        message.role === 'assistant' &&
+        messageText(message).trim().length > 0,
+    );
     const terminalProgress =
       action.run?.status === 'completed'
         ? '处理完成'
@@ -150,11 +196,12 @@ export const agentChatReducer = (
       messages: [...action.messages].sort((a, b) => a.sequence - b.sequence),
       run: action.run ?? null,
       stage: action.run?.status ?? null,
-      streamedText: '',
-      tools: [],
+      streamedText: changedRun || hasDurableAnswer ? '' : state.streamedText,
+      tools: changedRun ? [] : state.tools,
       progressMessage: isRunActive(action.run?.status) ? state.progressMessage : null,
-      progressHistory,
+      progressHistory: changedRun ? (terminalProgress ? [terminalProgress] : []) : progressHistory,
       lastEventId: changedRun ? -1 : state.lastEventId,
+      terminalEventSeen: changedRun ? false : state.terminalEventSeen,
       workingRefreshKey: action.run?.resultWorkingVersion
         ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
         : changedRun
@@ -164,20 +211,23 @@ export const agentChatReducer = (
         action.run?.status === 'interrupted'
           ? '上次生成因服务重启而中断，请重新描述并发送。'
           : null,
-      connection: 'idle',
+      connection: !changedRun && isRunActive(action.run?.status) ? state.connection : 'idle',
     };
   }
   if (action.type === 'run.queued') {
     return {
       ...state,
       run: action.run,
-      stage: action.run.status,
+      // The Run snapshot can already be terminal for a fast model. Replay SSE
+      // before presenting that terminal result so the execution path remains visible.
+      stage: 'queued',
       streamedText: '',
       tools: [],
       progressMessage: null,
       progressHistory: ['请求已进入处理队列'],
       workingRefreshKey: null,
       lastEventId: -1,
+      terminalEventSeen: false,
       error: null,
       connection: 'connecting',
     };
@@ -210,13 +260,15 @@ export const agentChatReducer = (
   const progressEntry =
     event.type === 'run.progress' && typeof eventPayload.message === 'string'
       ? eventPayload.message
-      : event.type === 'working.committed'
-        ? '页面操作链已执行，草稿已更新'
-        : event.type === 'run.completed'
-          ? '处理完成'
-          : event.type === 'run.failed'
-            ? '处理失败'
-            : null;
+      : event.type === 'tool.activity'
+        ? toolProgress(eventPayload)
+        : event.type === 'working.committed'
+          ? '页面操作链已执行，草稿已更新'
+          : event.type === 'run.completed'
+            ? '处理完成'
+            : event.type === 'run.failed'
+              ? '处理失败'
+              : null;
   const progressHistory =
     progressEntry && state.progressHistory.at(-1) !== progressEntry
       ? [...state.progressHistory, progressEntry]
@@ -240,11 +292,21 @@ export const agentChatReducer = (
     ...state,
     run,
     lastEventId: event.eventId,
-    streamedText: text || state.streamedText,
+    streamedText:
+      text &&
+      !state.messages.some(
+        (message) =>
+          message.runId === event.runId &&
+          message.role === 'assistant' &&
+          messageText(message).trim().length > 0,
+      )
+        ? text
+        : state.streamedText,
     stage: status ?? state.stage,
     tools: isToolEvent ? updateTool(state.tools, event) : state.tools,
     progressMessage,
     progressHistory,
+    terminalEventSeen: Boolean(status && terminalStatuses.has(status)) || state.terminalEventSeen,
     workingRefreshKey:
       (event.type === 'working.committed' || event.type === 'run.completed') &&
       typeof eventPayload.resultWorkingVersion === 'number'

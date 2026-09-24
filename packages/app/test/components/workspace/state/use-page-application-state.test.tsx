@@ -79,7 +79,7 @@ describe('usePageApplicationState', () => {
     expect(schemaMocks.saveRevision).not.toHaveBeenCalled();
   });
 
-  it('ignores an old poll after the same page advances to a new Revision', async () => {
+  it('ignores an old apply-state response after the same page advances to a new Revision', async () => {
     const previous = deferred<{ status: 'external_change' }>();
     schemaMocks.applyState
       .mockReturnValueOnce(previous.promise)
@@ -156,7 +156,7 @@ describe('usePageApplicationState', () => {
     expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
     expect(onSchemaCommitted).toHaveBeenCalledWith('page_a', 'revision_saved');
   });
-  it('keeps an ambiguous Apply across unmount and polling, then clears it on explicit retry', async () => {
+  it('keeps an ambiguous Apply across unmount, then clears it on explicit retry', async () => {
     schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
     schemaMocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
     schemaMocks.apply.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({});

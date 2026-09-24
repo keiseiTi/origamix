@@ -2,15 +2,16 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  ChevronDown,
+  ChevronUp,
   CircleStop,
   KeyRound,
   LayoutPanelLeft,
   RotateCcw,
   Send,
   Sparkles,
-  Wrench,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
 import type { AgentChatSession } from './use-agent-chat';
@@ -31,16 +32,37 @@ const stageLabels = {
   interrupted: '已中断',
 } as const;
 
-const toolLabels: Record<string, string> = {
-  get_page_context: '读取页面上下文',
-  get_schema_outline: '读取页面结构',
-  get_schema_fragment: '读取元素详情',
-  search_materials: '查找可用物料',
-  get_material_manifest: '读取物料定义',
-  search_product_docs: '查询产品规则',
-  validate_page_schema: '校验页面结构',
-  get_page_diagnostics: '检查页面诊断',
-  complete_page_run: '生成并执行页面操作链',
+const ProgressSteps = ({ messages }: { messages: string[] }): React.JSX.Element => {
+  const [expanded, setExpanded] = useState(false);
+  const latest = messages.at(-1);
+
+  return (
+    <div className='max-w-[88%] text-xs text-zinc-500 dark:text-zinc-400' aria-label='处理进度'>
+      {expanded && messages.length > 1 && (
+        <ol className='mb-1 space-y-1 border-l border-zinc-200 pl-3 dark:border-zinc-700'>
+          {messages.slice(0, -1).map((message, index) => (
+            <li key={`${index}:${message}`}>{message}</li>
+          ))}
+        </ol>
+      )}
+      <button
+        type='button'
+        className='flex min-h-7 max-w-full items-center gap-1.5 rounded-md px-1 text-left transition-colors hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+        aria-label={expanded ? '收起处理步骤' : '展开全部处理步骤'}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <span className='min-w-0' aria-live='polite'>
+          {latest}
+        </span>
+        {expanded ? (
+          <ChevronUp size={14} className='shrink-0' />
+        ) : (
+          <ChevronDown size={14} className='shrink-0' />
+        )}
+      </button>
+    </div>
+  );
 };
 
 export const ChatWorkspace = ({
@@ -76,7 +98,14 @@ export const ChatWorkspace = ({
   const modelConfigurationRequired = hasModelApiKey === false;
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [state.messages, state.streamedText]);
+  }, [state.messages, state.streamedText, state.progressHistory, state.stage]);
+
+  const currentUserMessageId = [...state.messages]
+    .reverse()
+    .find((message) => message.runId === state.run?.runId && message.role === 'user')?.messageId;
+  const progress = state.progressHistory.length > 0 && (
+    <ProgressSteps key={state.run?.runId ?? 'pending'} messages={state.progressHistory} />
+  );
 
   const submit = async (): Promise<void> => {
     if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
@@ -115,23 +144,28 @@ export const ChatWorkspace = ({
           ) : (
             <ol className='space-y-4' aria-label='对话记录'>
               {state.messages.map((message) => (
-                <li
-                  key={message.messageId}
-                  className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
-                >
-                  <div
-                    className={
-                      message.role === 'user'
-                        ? 'max-w-[82%] rounded-2xl bg-zinc-100 px-4 py-2.5 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                        : 'max-w-[88%] whitespace-pre-wrap text-zinc-700 dark:text-zinc-200'
-                    }
+                <Fragment key={message.messageId}>
+                  <li
+                    className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
                   >
-                    {messageText(message)}
-                  </div>
-                </li>
+                    <div
+                      className={
+                        message.role === 'user'
+                          ? 'max-w-[82%] rounded-2xl bg-zinc-100 px-4 py-2.5 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                          : 'max-w-[88%] whitespace-pre-wrap text-zinc-700 dark:text-zinc-200'
+                      }
+                    >
+                      {messageText(message)}
+                    </div>
+                  </li>
+                  {message.messageId === currentUserMessageId && progress && (
+                    <li className='pt-2'>{progress}</li>
+                  )}
+                </Fragment>
               ))}
             </ol>
           )}
+          {!currentUserMessageId && progress && <div className='mt-4'>{progress}</div>}
           {state.streamedText && (
             <div
               className='mt-4 max-w-[88%] whitespace-pre-wrap text-zinc-700 dark:text-zinc-200'
@@ -140,39 +174,12 @@ export const ChatWorkspace = ({
               {state.streamedText}
             </div>
           )}
-          {state.tools.length > 0 && (
-            <ul
-              className='mt-4 space-y-1 text-xs text-zinc-500 dark:text-zinc-400'
-              aria-label='工具执行摘要'
-            >
-              {state.tools.map((tool) => (
-                <li key={tool.id} className='flex items-center gap-1.5'>
-                  <Wrench size={12} />
-                  {toolLabels[tool.name] ?? tool.name} ·{' '}
-                  {tool.status === 'running'
-                    ? '执行中'
-                    : tool.status === 'completed'
-                      ? '已完成'
-                      : '失败'}
-                </li>
-              ))}
-            </ul>
-          )}
-          {state.progressHistory.length > 0 && (
-            <ol
-              className='mt-4 space-y-1 text-xs text-zinc-500 dark:text-zinc-400'
-              aria-label='处理进度'
-              aria-live='polite'
-            >
-              {state.progressHistory.map((message, index) => (
-                <li key={`${index}:${message}`}>{message}</li>
-              ))}
-            </ol>
-          )}
           {state.stage && (
             <p className='mt-3 text-xs text-zinc-500 dark:text-zinc-400' role='status'>
               {stageLabels[state.stage]}
-              {state.connection === 'recovering' ? ' · 正在重新连接' : ''}
+              {active && state.connection === 'connecting' ? ' · 正在连接实时进度' : ''}
+              {active && state.connection === 'connected' ? ' · 实时进度已连接' : ''}
+              {active && state.connection === 'recovering' ? ' · 正在恢复实时进度' : ''}
             </p>
           )}
           {state.workingRefreshKey && (

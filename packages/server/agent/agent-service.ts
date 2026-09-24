@@ -159,20 +159,6 @@ export class AgentService {
     started: ReturnType<ConversationService['startRun']>,
     message: string,
   ): Promise<RunResult> {
-    const heartbeat = setInterval(() => {
-      const run = this.dependencies.runs.get(started.run.id);
-      if (!run) return;
-      const payload = progressPayload(run.status);
-      if (!payload) return;
-      this.dependencies.events.publish({
-        type: 'run.progress',
-        runId: run.id,
-        pageId: run.pageId,
-        requestId: run.clientRequestId,
-        payload,
-      });
-    }, 4_000);
-    heartbeat.unref();
     let result: RunResult;
     try {
       result = await this.dependencies.executor.execute(started, message);
@@ -202,8 +188,6 @@ export class AgentService {
           ? { resultWorkingVersion: settled.resultWorkingVersion }
           : {}),
       };
-    } finally {
-      clearInterval(heartbeat);
     }
     const settled = this.dependencies.runService.get(result.runId);
     if (settled.resultWorkingVersion) {

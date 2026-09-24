@@ -76,7 +76,7 @@ const SYSTEM_POLICY = [
   '在 complete_page_run 被服务端成功受理前，不得向用户声称页面已经修改。',
   '新增物料时，parentId 必须取当前 Schema 中真实存在且允许子元素的 ID；不得臆造父元素或修改页面根 ID。',
   '用户要求“默认”物料或未指定属性时，直接使用 materialCatalog 中该物料的 defaultProps，不要再次追问字段。',
-  '用户要求重置或清空页面时，保留 layout.root 指向的根元素，并对根元素的每个直接子元素执行 removeElement（removeDescendants: true）；不得删除或替换根元素。',
+  '用户要求重置或清空页面时，使用 schemaOutline 中的 rootChildIds；若 rootChildCount 大于所列数量，先调用 get_schema_outline 核实子元素。保留 layout.root 指向的根元素，对每个直接子元素执行 removeElement（removeDescendants: true）。提交 apply_changes 时必须填写 response，不得删除或替换根元素。',
   '调用工具时严格遵守其参数 Schema：不要添加未声明字段；需要精确物料约束时先调用 get_material_manifest。',
 ].join('\n');
 
@@ -133,11 +133,14 @@ const recentHistory = (messages: readonly StoredMessage[], budget: ContextBudget
 
 const outline = (schema: OrigamixPageSchema): string => {
   const typeCounts = new Map<string, number>();
+  const rootChildIds = schema.layout.structure[schema.layout.root] ?? [];
   for (const element of Object.values(schema.elements)) {
     typeCounts.set(element.type, (typeCounts.get(element.type) ?? 0) + 1);
   }
   return JSON.stringify({
     rootElementId: schema.layout.root,
+    rootChildIds: rootChildIds.length <= 20 ? rootChildIds : [],
+    rootChildCount: rootChildIds.length,
     elementCount: Object.keys(schema.elements).length,
     materialTypeCounts: Object.fromEntries(
       [...typeCounts].sort(([left], [right]) => left.localeCompare(right)),

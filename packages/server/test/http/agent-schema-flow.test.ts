@@ -22,6 +22,38 @@ import { createCompletePageRunTool } from '../../agent/tools/complete-page-run';
 import { createDeterministicFakeAgentEngine } from '../../testing/deterministic-engine';
 import { createHttpServer } from '../../http/server';
 
+it('reports the invalid terminal field so a rejected reset can be repaired', async () => {
+  const tool = createCompletePageRunTool(
+    { projects: {} as never, runs: {} as never, runService: {} as never },
+    {
+      runId: 'run_test',
+      messageId: 'message_test',
+      projectId: 'project_test',
+      pageId: 'page_test',
+      baseWorkingVersion: 1,
+      maxSchemaBytes: 1024,
+      maxRepairAttempts: 1,
+    },
+  );
+  await expect(
+    tool.execute(
+      {
+        outcome: 'apply_changes',
+        operations: [
+          { operation: 'removeElement', elementId: 'form_main', removeDescendants: true },
+        ],
+      },
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('/response');
+  await expect(
+    tool.execute(
+      { outcome: 'no_change_needed', reason: '无法重置', response: '页面无需修改' },
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('不能报告无需修改');
+});
+
 it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and applies only explicitly', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-agent-flow-'));
   const database = new ApplicationDatabase(':memory:');

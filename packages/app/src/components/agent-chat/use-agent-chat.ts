@@ -36,6 +36,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   const sending = useRef(false);
   const authorityRequest = useRef(0);
   const lastSubmittedText = useRef('');
+  const [liveRunId, setLiveRunId] = useState<string | null>(null);
   const pageKey = pageOperationKey(projectId, pageId);
   const pending = usePendingOperations((value) => value.agents[pageKey]);
   const [authority, setAuthority] = useState<string | null>(null);
@@ -66,6 +67,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
       if (current()) {
+        if (run && !isRunActive(run.status)) setLiveRunId(null);
         setAuthority(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
       }
@@ -105,7 +107,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     [pageKey, loadAuthority],
   );
 
-  const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
+  const activeRunId =
+    state.run &&
+    (isRunActive(state.stage) || (liveRunId === state.run.runId && !state.terminalEventSeen))
+      ? state.run.runId
+      : null;
   const clarification = state.run?.clarification;
   useEffect(() => {
     if (!clarification) return;
@@ -119,10 +125,8 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         .catch(() => undefined);
     };
     refresh();
-    const timer = window.setInterval(refresh, 1_500);
     return () => {
       disposed = true;
-      window.clearInterval(timer);
     };
   }, [clarification, pageId, projectId]);
   useEffect(() => {
@@ -131,11 +135,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     const afterEventId = state.lastEventId >= 0 ? state.lastEventId : undefined;
     const currentGeneration = generation.current;
     let disposed = false;
+    let terminalReceived = false;
     let timer: number | undefined;
     const current = () => !disposed && mounted.current && generation.current === currentGeneration;
     const reconnect = () => {
       if (!current()) return;
-      setAuthority(null);
       dispatch({ type: 'connection.changed', connection: 'recovering' });
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
@@ -147,6 +151,9 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     };
     const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
       afterEventId,
+      onOpen: () => {
+        if (current()) dispatch({ type: 'connection.changed', connection: 'connected' });
+      },
       onEvent: (event: AgentEvent) => {
         if (!current()) return;
         dispatch({ type: 'event.received', event });
@@ -156,11 +163,16 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           event.type === 'run.cancelled' ||
           event.type === 'run.interrupted'
         ) {
+          terminalReceived = true;
           void loadAuthority();
         }
       },
-      onError: reconnect,
-      onClose: reconnect,
+      onError: () => {
+        if (!terminalReceived) reconnect();
+      },
+      onClose: () => {
+        if (!terminalReceived) reconnect();
+      },
     });
     return () => {
       disposed = true;
@@ -225,19 +237,31 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         operations.finishAgent(pageKey, input.clientRequestId, true);
         if (!current()) return;
         conversationId.current = created.conversationId;
-        const run = (await getAgentRun(projectId, created.runId)).run;
+        const replayEvents = isRunActive(created.status);
+        if (replayEvents) setLiveRunId(created.runId);
+        // A renderer can briefly outlive an older desktop Server during a dev
+        // rebuild. Recover the Run snapshot instead of silently skipping SSE.
+        const run = created.run ?? (await getAgentRun(projectId, created.runId)).run;
+        if (!current()) return;
+        // The create response includes the Run snapshot, so subscribe before
+        // loading message history or making another authority request.
+        if (replayEvents) dispatch({ type: 'run.queued', run });
         const history = await listAllMessages(projectId, pageId, created.conversationId);
         // A terminal SSE event may have started a newer authority reload while
         // this initial reconciliation was in flight. Never let this older
         // snapshot overwrite the persisted final assistant message.
         if (!current() || authorityRequest.current !== submissionAuthorityRequest) return;
         setAuthority(pageKey);
-        dispatch({ type: 'history.loaded', messages: history.messages, run });
-        // A fast provider may finish before the POST response has been reconciled.
-        // Keep the durable resultWorkingVersion from history in that case; treating
-        // a terminal Run as newly queued would clear the editor refresh signal and
-        // there will be no active SSE subscription to restore it.
-        if (isRunActive(run.status)) dispatch({ type: 'run.queued', run });
+        dispatch({
+          type: 'history.loaded',
+          messages: replayEvents
+            ? history.messages.filter(
+                (message) => message.runId !== created.runId || message.role !== 'assistant',
+              )
+            : history.messages,
+          run,
+          preserveStream: replayEvents,
+        });
       } catch (error) {
         if (input && !accepted)
           operations.finishAgent(

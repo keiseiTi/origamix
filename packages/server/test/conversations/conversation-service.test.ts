@@ -89,6 +89,9 @@ describe('Conversation persistence', () => {
     const first = service.startRun(input());
     const duplicate = service.startRun(input());
     expect(duplicate.run.id).toBe(first.run.id);
+    expect(service.history('project_a', 'page_a', first.conversation.id)[0]?.runId).toBe(
+      first.run.id,
+    );
     expect(service.history('project_a', 'page_a', first.conversation.id)).toHaveLength(1);
     expect(() => service.startRun(input({ baseWorkingVersion: 2 }))).toThrow('不同请求');
     database.close();

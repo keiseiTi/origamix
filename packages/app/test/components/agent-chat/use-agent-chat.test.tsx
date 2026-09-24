@@ -36,7 +36,10 @@ describe('Agent recovery', () => {
     mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'completed' } });
     mocks.subscribeAgentEvents.mockReturnValue(() => undefined);
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it('blocks submissions until recovery succeeds, including after a failed recovery', async () => {
     mocks.listConversations.mockRejectedValueOnce(new Error('offline'));
@@ -51,30 +54,119 @@ describe('Agent recovery', () => {
     expect(hook.result.current.activity).toBe('idle');
   });
 
-  it('keeps the Working refresh signal when a Run finishes before submission reconciliation', async () => {
+  it('shows SSE progress before a fast Run final answer already present in history', async () => {
+    let onEvent: ((event: unknown) => void) | undefined;
+    mocks.subscribeAgentEvents.mockImplementation(
+      (_projectId: string, _runId: string, listener: { onEvent: (event: unknown) => void }) => {
+        onEvent = listener.onEvent;
+        return () => undefined;
+      },
+    );
+    const userMessage = {
+      messageId: 'message_user',
+      runId: 'run_fast',
+      sequence: 1,
+      role: 'user',
+      content: { version: '1', blocks: [{ type: 'text', text: '添加表单' }] },
+    };
+    const assistantMessage = {
+      messageId: 'message_assistant',
+      runId: 'run_fast',
+      sequence: 2,
+      role: 'assistant',
+      content: { version: '1', blocks: [{ type: 'text', text: '已添加表单。' }] },
+    };
+    mocks.listConversations
+      .mockResolvedValueOnce({ conversations: [] })
+      .mockResolvedValue({ conversations: [{ conversationId: 'conversation_1' }] });
     mocks.createAgentRun.mockResolvedValue({
       conversationId: 'conversation_1',
       runId: 'run_fast',
+      status: 'queued',
+      run: {
+        runId: 'run_fast',
+        pageId: 'page_a',
+        status: 'queued',
+      },
     });
     mocks.getAgentRun.mockResolvedValue({
       run: {
         runId: 'run_fast',
+        pageId: 'page_a',
         status: 'completed',
         resultWorkingVersion: 2,
       },
     });
-    mocks.listAllMessages.mockResolvedValue({ messages: [] });
+    mocks.listAllMessages
+      .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] })
+      .mockResolvedValue({ messages: [userMessage, assistantMessage] });
     const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
     await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
 
-    await act(async () => hook.result.current.send('添加表单'));
-
+    let submission: Promise<void> | undefined;
+    act(() => {
+      submission = hook.result.current.send('添加表单');
+    });
+    await waitFor(() => expect(onEvent).toBeDefined());
+    await act(async () => submission);
+    expect(hook.result.current.state.messages).toEqual([userMessage]);
+    expect(hook.result.current.state.stage).toBe('queued');
+    act(() => {
+      onEvent!({
+        version: '1',
+        eventId: 1,
+        sequence: 1,
+        type: 'run.progress',
+        runId: 'run_fast',
+        pageId: 'page_a',
+        requestId: 'request_1',
+        occurredAt: '2026-09-24T00:00:00.000Z',
+        payload: { status: 'reasoning', phase: 'reasoning', message: '正在思考并规划页面修改' },
+      });
+      onEvent!({
+        version: '1',
+        eventId: 2,
+        sequence: 2,
+        type: 'tool.activity',
+        runId: 'run_fast',
+        pageId: 'page_a',
+        requestId: 'request_1',
+        occurredAt: '2026-09-24T00:00:00.000Z',
+        payload: { toolName: 'complete_page_run', phase: 'completed' },
+      });
+      onEvent!({
+        version: '1',
+        eventId: 3,
+        sequence: 3,
+        type: 'run.completed',
+        runId: 'run_fast',
+        pageId: 'page_a',
+        requestId: 'request_1',
+        occurredAt: '2026-09-24T00:00:00.000Z',
+        payload: {
+          status: 'completed',
+          outcome: 'changed',
+          response: '已添加表单。',
+          resultWorkingVersion: 2,
+        },
+      });
+    });
+    expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
+    expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
+    expect(hook.result.current.state.tools).toEqual([
+      { id: 'complete_page_run', name: 'complete_page_run', status: 'completed' },
+    ]);
     expect(hook.result.current.state.workingRefreshKey).toBe('working_run_fast_2');
     expect(hook.result.current.state.stage).toBe('completed');
-    expect(mocks.subscribeAgentEvents).not.toHaveBeenCalled();
+    await waitFor(
+      () => expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
+      { timeout: 3_000 },
+    );
+    expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
+    expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
   });
 
-  it('loads the persisted final message as soon as the terminal event arrives', async () => {
+  it('keeps the terminal answer visible until the persisted message is available', async () => {
     const userMessage = {
       messageId: 'message_user',
       runId: 'run_1',
@@ -94,9 +186,11 @@ describe('Agent recovery', () => {
     });
     mocks.listAllMessages
       .mockResolvedValueOnce({ messages: [userMessage] })
+      .mockResolvedValueOnce({ messages: [userMessage] })
       .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] });
     mocks.getAgentRun
       .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'reasoning' } })
+      .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'completed' } })
       .mockResolvedValueOnce({
         run: {
           runId: 'run_1',
@@ -136,15 +230,67 @@ describe('Agent recovery', () => {
 
     expect(hook.result.current.state.streamedText).toBe('页面已重置。');
 
-    await waitFor(() =>
-      expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
+    await waitFor(() => expect(hook.result.current.state.stage).toBe('completed'));
+    expect(hook.result.current.state.messages).toEqual([userMessage]);
+    expect(hook.result.current.state.streamedText).toBe('页面已重置。');
+
+    await act(async () => hook.result.current.refresh());
+    expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]);
+    expect(hook.result.current.state.streamedText).toBe('');
+  });
+
+  it('settles a completed Run after SSE closes without starting another subscription', async () => {
+    let onClose: (() => void) | undefined;
+    mocks.subscribeAgentEvents.mockImplementation(
+      (_projectId: string, _runId: string, listener: { onClose: () => void }) => {
+        onClose = listener.onClose;
+        return () => undefined;
+      },
     );
+    const userMessage = {
+      messageId: 'message_user',
+      runId: 'run_1',
+      sequence: 1,
+      role: 'user',
+      content: { version: '1', blocks: [{ type: 'text', text: '重置页面' }] },
+    };
+    const assistantMessage = {
+      messageId: 'message_assistant',
+      runId: 'run_1',
+      sequence: 2,
+      role: 'assistant',
+      content: { version: '1', blocks: [{ type: 'text', text: '页面已重置。' }] },
+    };
+    mocks.listConversations.mockResolvedValue({
+      conversations: [{ conversationId: 'conversation_1' }],
+    });
+    mocks.listAllMessages
+      .mockResolvedValueOnce({ messages: [userMessage] })
+      .mockResolvedValue({ messages: [userMessage, assistantMessage] });
+    mocks.getAgentRun
+      .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'reasoning' } })
+      .mockResolvedValue({
+        run: { runId: 'run_1', pageId: 'page_a', status: 'completed', resultWorkingVersion: 2 },
+      });
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(onClose).toBeDefined());
+    vi.useFakeTimers();
+    await act(async () => {
+      onClose!();
+      await vi.advanceTimersByTimeAsync(750);
+    });
+    expect(hook.result.current.activity).toBe('idle');
+    expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]);
+    expect(mocks.subscribeAgentEvents).toHaveBeenCalledTimes(1);
   });
 
   it('retries the exact uncertain request after unmount without automatically resending', async () => {
-    mocks.createAgentRun
-      .mockRejectedValueOnce(new Error('connection lost'))
-      .mockResolvedValueOnce({ conversationId: 'conversation_1', runId: 'run_1' });
+    mocks.createAgentRun.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({
+      conversationId: 'conversation_1',
+      runId: 'run_1',
+      status: 'completed',
+      run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
+    });
     const first = renderHook(() => useAgentChat('project_1', 'page_a'));
     await waitFor(() => expect(first.result.current.activity).toBe('idle'));
     await act(async () => {

@@ -129,7 +129,7 @@ const PageWorkspace = ({
   // Agent commits already carry the authoritative Working version. Feed that
   // signal directly into the editor lifecycle instead of waiting for the
   // workspace-level projection callback to make a round trip through App.
-  const editorSchemaRefreshKey = agent.state.workingRefreshKey ?? schemaRefreshKey;
+  const editorSchemaRefreshKey = `${schemaRefreshKey}:${agent.state.workingRefreshKey ?? ''}`;
   const chat = (
     <ChatWorkspace
       pageName={page.name}
@@ -174,7 +174,7 @@ const PageWorkspace = ({
         <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
         <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
           <Editor
-            key={`${projectId}:${page.id}:${editorSchemaRefreshKey}`}
+            key={`${projectId}:${page.id}:${mode}:${editorSchemaRefreshKey}`}
             ref={editorRef}
             projectId={projectId}
             pageId={page.id}
@@ -200,6 +200,7 @@ const PageWorkspace = ({
             projectId={projectId}
             pageId={page.id}
             pageName={page.name}
+            schemaRefreshKey={editorSchemaRefreshKey}
             theme={theme}
             onExit={() => void onModeChange(previousMode.current)}
           />

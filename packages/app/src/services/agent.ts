@@ -133,6 +133,7 @@ export const cancelAgentRun = (projectId: string, runId: string, requestId: stri
 
 export interface AgentEventSubscriptionOptions {
   afterEventId?: number;
+  onOpen?(): void;
   onEvent(event: AgentEvent): void;
   onError?(error: Error): void;
   onClose?(): void;
@@ -165,6 +166,7 @@ export const subscribeAgentEvents = (
     );
     if (response.status === 401 && !refresh) return connect(true);
     if (!response.ok || !response.body) throw new Error(`事件流连接失败（${response.status}）`);
+    options.onOpen?.();
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';

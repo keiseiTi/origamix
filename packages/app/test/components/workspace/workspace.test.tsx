@@ -184,5 +184,7 @@ describe('workspace recovery controls', () => {
     });
 
     await waitFor(() => expect(mocks.editorMounted).toHaveBeenCalledTimes(2));
+    useWorkspaceStore.getState().setPageMode('page_a', 'edit');
+    await waitFor(() => expect(mocks.editorMounted).toHaveBeenCalledTimes(3));
   });
 });

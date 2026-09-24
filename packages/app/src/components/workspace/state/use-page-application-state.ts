@@ -35,7 +35,7 @@ export const usePageApplicationState = ({
     value: 'loading',
   });
   const pageKeyRef = useRef(pageKey);
-  const polling = useRef({ issued: 0, accepted: 0 });
+  const requests = useRef({ issued: 0, accepted: 0 });
 
   useEffect(() => {
     pageKeyRef.current = pageKey;
@@ -56,12 +56,11 @@ export const usePageApplicationState = ({
   const refreshApplyState = useCallback(async (): Promise<void> => {
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    const pollingState = polling.current;
-    const sequence = ++pollingState.issued;
+    const requestState = requests.current;
+    const sequence = ++requestState.issued;
     const publish = (value: PageApplyStatus) => {
-      if (pageKeyRef.current !== requestPageKey || sequence <= pollingState.accepted) return;
-      // Accept responses in request order without starving slower-than-interval polling.
-      pollingState.accepted = sequence;
+      if (pageKeyRef.current !== requestPageKey || sequence <= requestState.accepted) return;
+      requestState.accepted = sequence;
       setApplyStatus(value);
     };
     try {
@@ -74,14 +73,12 @@ export const usePageApplicationState = ({
 
   useEffect(() => {
     if (!active) return;
-    const pollingState = polling.current;
+    const requestState = requests.current;
     const initial = window.setTimeout(() => void refreshApplyState(), 0);
-    const timer = window.setInterval(() => void refreshApplyState(), 1500);
     return () => {
-      // Invalidate responses immediately, before a new page/revision starts polling.
-      pollingState.accepted = ++pollingState.issued;
+      // Invalidate responses immediately when the page or Revision changes.
+      requestState.accepted = ++requestState.issued;
       window.clearTimeout(initial);
-      window.clearInterval(timer);
     };
   }, [active, refreshApplyState, schemaRefreshKey]);
 

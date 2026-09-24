@@ -119,10 +119,12 @@ export class ConversationService {
     if (input.retryOfRunId) this.requireRetryParent(input.retryOfRunId, conversation, runs);
 
     const timestamp = now();
+    const runId = id('run');
     const message: StoredMessage = {
       version: '1',
       messageId: id('message'),
       conversationId: conversation.id,
+      runId,
       role: 'user',
       content: input.content,
       sequence: conversations.nextSequence(conversation.id),
@@ -131,7 +133,7 @@ export class ConversationService {
       status: 'completed',
     };
     const run: AgentRunRecord = {
-      id: id('run'),
+      id: runId,
       projectId: input.projectId,
       pageId: input.pageId,
       conversationId: conversation.id,

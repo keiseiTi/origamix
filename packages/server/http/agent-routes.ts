@@ -113,6 +113,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       return {
         version: '1',
         runId: started.run.id,
+        run: publicRun(started.run),
         conversationId: started.conversationId,
         userMessageId: started.userMessageId,
         runKind: 'page_assistant',
@@ -154,6 +155,11 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
         -1,
     );
     reply.hijack();
+    // Hijacked responses bypass Fastify's normal header serialization. Copy the
+    // authenticated Origin/CORS headers installed by the request boundary.
+    for (const [name, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) reply.raw.setHeader(name, value);
+    }
     reply.raw.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-cache, no-transform',
@@ -177,13 +183,13 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       Number.isSafeInteger(cursor) ? cursor : -1,
       write,
     );
-    for (const event of subscription.replay) write(event);
-    if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
     const heartbeat = setInterval(() => reply.raw.write(': heartbeat\n\n'), 15_000);
     heartbeat.unref();
-    request.raw.on('close', () => {
+    reply.raw.on('close', () => {
       clearInterval(heartbeat);
       subscription.close();
     });
+    for (const event of subscription.replay) write(event);
+    if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
   });
 };

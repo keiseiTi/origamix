@@ -135,6 +135,7 @@ describe('Agent HTTP API', () => {
       expect(first.statusCode).toBe(202);
       expect(duplicate.statusCode).toBe(202);
       expect(duplicate.json().data.runId).toBe(first.json().data.runId);
+      expect(first.json().data.run.runId).toBe(first.json().data.runId);
       expect(fixture.dispatch).toHaveBeenCalledTimes(1);
       const runId = first.json().data.runId as string;
       const denied = await fixture.server.inject({
@@ -156,7 +157,7 @@ describe('Agent HTTP API', () => {
     }
   });
 
-  it('serves authoritative history and bounded SSE replay', async () => {
+  it('serves authoritative history and live SSE events after subscription', async () => {
     const fixture = setup();
     try {
       const headers = { ...auth, 'x-origamix-project-id': 'project_a' };
@@ -176,22 +177,37 @@ describe('Agent HTTP API', () => {
         headers: { ...headers, 'x-origamix-page-id': 'page_a' },
       });
       expect(history.json().data.messages).toHaveLength(1);
+      expect(history.json().data.messages[0].runId).toBe(runId);
+      const streamPromise = fixture.server.inject({
+        method: 'GET',
+        url: `/api/v1/agent/runs/${runId}/events`,
+        headers: { ...headers, origin: 'http://127.0.0.1:5173' },
+      });
+      await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(1));
+      fixture.events.publish({
+        type: 'tool.activity',
+        runId,
+        pageId: 'page_a',
+        requestId: 'request-1',
+        payload: { toolName: 'complete_page_run', phase: 'completed' },
+      });
       fixture.events.publish({
         type: 'run.completed',
         runId,
         pageId: 'page_a',
         requestId: 'request-1',
-        payload: {},
+        payload: { status: 'completed', outcome: 'changed', response: '已加入输入框。' },
       });
-      const stream = await fixture.server.inject({
-        method: 'GET',
-        url: `/api/v1/agent/runs/${runId}/events`,
-        headers,
-      });
+      const stream = await streamPromise;
       expect(stream.statusCode).toBe(200);
       expect(stream.headers['content-type']).toContain('text/event-stream');
+      expect(stream.headers['access-control-allow-origin']).toBe('http://127.0.0.1:5173');
+      expect(stream.headers['vary']).toBe('Origin');
       expect(stream.payload).toContain('event: run.queued');
+      expect(stream.payload).toContain('event: tool.activity');
       expect(stream.payload).toContain('event: run.completed');
+      expect(stream.payload).toContain('已加入输入框。');
+      await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(0));
     } finally {
       await fixture.server.close();
       fixture.database.close();

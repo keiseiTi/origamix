@@ -12,6 +12,7 @@ interface PagePreviewFrameProps {
   projectId: string;
   pageId: string;
   pageName: string;
+  schemaRefreshKey: string;
   theme: AppTheme;
   onExit: () => void;
 }
@@ -21,6 +22,7 @@ export const PagePreviewFrame = ({
   projectId,
   pageId,
   pageName,
+  schemaRefreshKey,
   theme,
   onExit,
 }: PagePreviewFrameProps): React.JSX.Element => {
@@ -129,12 +131,10 @@ export const PagePreviewFrame = ({
   useEffect(() => {
     if (!active) return;
     const initial = window.setTimeout(() => void refresh(true), 0);
-    const timer = window.setInterval(() => void refresh(), 1500);
     return () => {
       window.clearTimeout(initial);
-      window.clearInterval(timer);
     };
-  }, [active, refresh]);
+  }, [active, refresh, schemaRefreshKey]);
 
   useEffect(() => {
     if (!snapshot || snapshot.theme === theme) return;

@@ -51,6 +51,7 @@ describe('ContextAssembler', () => {
     expect(result.savedRevisionId).toBe('revision_current');
     expect(result.currentWorkingVersion).toBe(1);
     expect(result.schemaOutline).toContain(`"elementCount":${count + 1}`);
+    expect(result.schemaOutline).toContain('"rootChildIds":["text-0","text-1"]');
     expect(getCurrent).toHaveBeenCalledOnce();
   });
 
