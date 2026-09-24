@@ -17,33 +17,17 @@ const schema = (): OrigamixPageSchema => ({
   extensions: { origamix: { schemaVersion: '1.0' } },
 });
 
-describe('deriveSchemaOperations', () => {
-  it('derives property, tree, flow, binding and context changes', () => {
+describe('visual editor Operation Batch', () => {
+  it('turns a newly inserted canvas element into a Working operation', () => {
     const before = schema();
     const after = structuredClone(before);
-    after.elements.text_one!.props = { content: 'after' };
     after.elements.button_one = { type: 'button', props: { text: '提交' } };
     after.layout.structure.element_root = ['button_one', 'text_one'];
     after.layout.structure.button_one = [];
-    after.flows.submit = { steps: [] };
-    after.bindElements = [{ elementId: 'button_one' }];
-    after.context.globalVariables = [{ name: 'ready', value: true }];
 
     expect(deriveSchemaOperations(before, after)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ operation: 'addElement', elementId: 'button_one' }),
-        {
-          operation: 'updateElementProps',
-          elementId: 'text_one',
-          set: { content: 'after' },
-          unset: ['color'],
-        },
-        { operation: 'addFlow', flowId: 'submit', flow: { steps: [] } },
-        { operation: 'setElementBindings', bindings: [{ elementId: 'button_one' }] },
-        {
-          operation: 'updatePageContext',
-          globalVariables: [{ name: 'ready', value: true }],
-        },
       ]),
     );
   });

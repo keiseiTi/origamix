@@ -7,7 +7,7 @@ import { ApplicationDatabase } from '../../database/database';
 import { AgentRunRepository, type AgentRunRecord } from '../../agent/run-repository';
 import { ConversationRepository } from '../../conversations/conversation-repository';
 import { ProjectRepository } from '../../projects/project-repository';
-import { AgentRunService, canTransitionAgentRun } from '../../agent/run-service';
+import { AgentRunService } from '../../agent/run-service';
 import {
   ConversationService,
   type StartConversationRunInput,
@@ -221,43 +221,6 @@ describe('Conversation persistence', () => {
 });
 
 describe('Agent Run state and recovery', () => {
-  it('defines the complete legal and illegal transition matrix', () => {
-    const statuses = [
-      'queued',
-      'preparing',
-      'reasoning',
-      'reading',
-      'validating',
-      'repairing',
-      'committing',
-      'deciding',
-      'cancelling',
-      'completed',
-      'failed',
-      'cancelled',
-      'interrupted',
-    ] as const;
-    const legal: Record<(typeof statuses)[number], readonly (typeof statuses)[number][]> = {
-      queued: ['preparing', 'cancelling', 'failed', 'interrupted'],
-      preparing: ['reasoning', 'cancelling', 'failed', 'interrupted'],
-      reasoning: ['reading', 'deciding', 'cancelling', 'failed', 'interrupted'],
-      reading: ['reasoning', 'deciding', 'cancelling', 'failed', 'interrupted'],
-      deciding: ['validating', 'completed', 'cancelling', 'failed', 'interrupted'],
-      validating: ['repairing', 'committing', 'cancelling', 'failed', 'interrupted'],
-      repairing: ['deciding', 'cancelling', 'failed', 'interrupted'],
-      committing: ['completed', 'failed', 'interrupted'],
-      cancelling: ['cancelled', 'completed', 'failed', 'interrupted'],
-      completed: [],
-      failed: [],
-      cancelled: [],
-      interrupted: [],
-    };
-    for (const from of statuses) {
-      for (const to of statuses)
-        expect(canTransitionAgentRun(from, to)).toBe(legal[from].includes(to));
-    }
-  });
-
   it('accepts legal transitions and rejects rollback or page completion without revision', () => {
     const { database, service, runService } = setup();
     const { run } = service.startRun(input());

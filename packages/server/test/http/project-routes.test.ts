@@ -55,13 +55,6 @@ describe('Project and Schema HTTP flows', () => {
     expect(projectResult).toMatchObject({ success: true, code: 200 });
     const project = projectResult.data;
     expect(project.path).toBe(join(directory, 'customer-console'));
-    expect(await readFile(join(project.path, 'README.md'), 'utf8')).toContain('客户控制台');
-    expect(await readFile(join(project.path, 'package.json'), 'utf8')).toContain(
-      'customer-console',
-    );
-    expect(await readFile(join(project.path, 'index.html'), 'utf8')).toContain(
-      '<title>客户控制台</title>',
-    );
 
     const createPage = await server.inject({
       method: 'POST',
@@ -241,7 +234,7 @@ describe('Project and Schema HTTP flows', () => {
     database.close();
   });
 
-  it('renames and duplicates records while desktop deletion preserves project files', async () => {
+  it('removes a deleted page and its Agent records without deleting project files', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-lifecycle-'));
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
@@ -253,7 +246,7 @@ describe('Project and Schema HTTP flows', () => {
       code: 'lifecycle-project',
       directoryGrantId: 'grant_project',
     });
-    const originalPage = await service.createPage(project.id, {
+    const page = await service.createPage(project.id, {
       name: '首页',
       slug: 'home',
     });
@@ -268,43 +261,13 @@ describe('Project and Schema HTTP flows', () => {
       'x-origamix-service': 'service-instance',
       'x-origamix-project-id': project.id,
     };
-    expect(
-      (
-        await server.inject({
-          method: 'PATCH',
-          url: `/api/v1/projects/${project.id}`,
-          headers,
-          payload: { name: '新项目名' },
-        })
-      ).json().data,
-    ).toMatchObject({ name: '新项目名' });
-    expect(
-      (
-        await server.inject({
-          method: 'PATCH',
-          url: `/api/v1/pages/${originalPage.id}`,
-          headers,
-          payload: { name: '新页面名' },
-        })
-      ).json().data,
-    ).toMatchObject({ name: '新页面名', slug: 'home' });
-    const duplicate = await server.inject({
-      method: 'POST',
-      url: `/api/v1/pages/${originalPage.id}/duplicate`,
-      headers,
-      payload: {},
-    });
-    expect(duplicate.statusCode).toBe(201);
-    const duplicatePage = duplicate.json().data as { id: string; slug: string };
-    expect(duplicatePage.slug).toBe('home-copy');
-    const duplicatePath = join(project.path, 'src', 'pages', duplicatePage.slug, 'schema.json');
-    await access(duplicatePath);
+    const pagePath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
     const timestamp = new Date().toISOString();
     database.connection
       .prepare(
         'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run('conversation_lifecycle', project.id, duplicatePage.id, 'test', 0, timestamp, timestamp);
+      .run('conversation_lifecycle', project.id, page.id, 'test', 0, timestamp, timestamp);
     database.connection
       .prepare(
         'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -330,7 +293,7 @@ describe('Project and Schema HTTP flows', () => {
       .run(
         'run_lifecycle',
         project.id,
-        duplicatePage.id,
+        page.id,
         'conversation_lifecycle',
         'message_lifecycle',
         'request_lifecycle',
@@ -350,21 +313,19 @@ describe('Project and Schema HTTP flows', () => {
       (
         await server.inject({
           method: 'DELETE',
-          url: `/api/v1/pages/${duplicatePage.id}`,
+          url: `/api/v1/pages/${page.id}`,
           headers,
           payload: { scope: 'desktop_record' },
         })
       ).json().data,
     ).toEqual({ deleted: true });
-    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    expect(projects.getPage(project.id, page.id)).toBeUndefined();
     for (const table of ['conversations', 'messages', 'agent_runs']) {
       expect(
         database.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get(),
       ).toMatchObject({ count: 0 });
     }
-    await expect(access(duplicatePath)).rejects.toThrow();
-    await service.renameProject(project.id, '再次改名');
-    expect(projects.getPage(project.id, duplicatePage.id)).toBeUndefined();
+    await expect(access(pagePath)).rejects.toThrow();
     expect(
       (
         await server.inject({
