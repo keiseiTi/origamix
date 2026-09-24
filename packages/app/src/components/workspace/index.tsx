@@ -84,7 +84,7 @@ const PageWorkspace = ({
 }): React.JSX.Element => {
   const { mode, draft, setPageDraft } = useWorkspaceStore(
     useShallow((state) => ({
-      mode: state.pageModes[page.id] ?? 'chat',
+      mode: state.openPages.find((tab) => tab.id === page.id)?.mode ?? 'chat',
       draft: state.pageDrafts[page.id] ?? '',
       setPageDraft: state.setPageDraft,
     })),
@@ -112,6 +112,20 @@ const PageWorkspace = ({
     editorRef,
     onSchemaCommitted,
   });
+  const setPageStatus = useWorkspaceStore((state) => state.setPageStatus);
+  useEffect(() => {
+    const status = application.applyStatus;
+    if (
+      status === 'in_sync' ||
+      status === 'draft_unsaved' ||
+      status === 'saved_pending_apply' ||
+      status === 'external_change'
+    ) {
+      setPageStatus(page.id, status);
+    } else {
+      setPageStatus(page.id, null);
+    }
+  }, [application.applyStatus, page.id, setPageStatus]);
   // Agent commits already carry the authoritative Working version. Feed that
   // signal directly into the editor lifecycle instead of waiting for the
   // workspace-level projection callback to make a round trip through App.

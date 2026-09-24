@@ -61,7 +61,24 @@ describe('workspace recovery controls', () => {
           ],
         },
       ],
-      pageModes: { page_a: 'chat', page_b: 'chat' },
+      openPages: [
+        {
+          id: 'page_a',
+          projectId: 'project_1',
+          name: 'Page',
+          fileName: 'page',
+          mode: 'chat',
+          status: null,
+        },
+        {
+          id: 'page_b',
+          projectId: 'project_1',
+          name: 'Second',
+          fileName: 'second',
+          mode: 'chat',
+          status: null,
+        },
+      ],
       pageDrafts: { page_a: 'hello', page_b: '' },
     });
     mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });

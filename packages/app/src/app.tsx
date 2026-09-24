@@ -12,19 +12,22 @@ import { PageTabs } from '@/components/workspace/page-tabs';
 import type { EditorHandle } from '@/components/editor';
 import type { WorkspaceMode } from '@/components/workspace';
 import { projectsService } from '@/services/projects';
+import { useAppPreferences } from '@/hooks/use-app-preferences';
+import { useGlobalShortcuts } from '@/hooks/use-global-shortcuts';
 import { useWorkspaceTransitions } from '@/hooks/use-workspace-transitions';
 import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
+import { isMacDesktop } from '@/utils';
 
 const App = (): React.JSX.Element => {
-  const isMacDesktop = window.api?.platform === 'darwin';
+  const macDesktop = isMacDesktop();
   const {
     projects,
     setProjects,
     sessionSidebarCollapsed,
     setSidebarCollapsed,
     selectedPageId,
-    openPageIds,
+    openPages,
     selectWorkspacePage,
     closeWorkspacePage,
     restoreWorkspace,
@@ -37,8 +40,8 @@ const App = (): React.JSX.Element => {
       setProjects: state.setProjects,
       sessionSidebarCollapsed: state.sidebarCollapsed,
       setSidebarCollapsed: state.setSidebarCollapsed,
-      selectedPageId: state.activePageId,
-      openPageIds: state.openPageIds,
+      selectedPageId: state.activeTabId,
+      openPages: state.openPages,
       selectWorkspacePage: state.selectPage,
       closeWorkspacePage: state.closePage,
       restoreWorkspace: state.restoreWorkspace,
@@ -53,17 +56,18 @@ const App = (): React.JSX.Element => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'general' | 'model'>('general');
   const theme = usePreferencesStore((state) => state.theme);
+  useAppPreferences();
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
   const [editorRefs] = useState(() => {
     const refs = new Map<string, { current: EditorHandle | null }>();
-    const initialPageId = useWorkspaceStore.getState().activePageId;
+    const initialPageId = useWorkspaceStore.getState().activeTabId;
     if (initialPageId) refs.set(initialPageId, { current: null });
     return refs;
   });
   const emptyEditorRef = useRef<EditorHandle>(null);
   const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const [mountedPageIds, setMountedPageIds] = useState<string[]>(() => {
-    const initialPageId = useWorkspaceStore.getState().activePageId;
+    const initialPageId = useWorkspaceStore.getState().activeTabId;
     return initialPageId ? [initialPageId] : [];
   });
   const sidebarVisible = !sidebarCollapsed || sidebarPeek;
@@ -95,6 +99,8 @@ const App = (): React.JSX.Element => {
     setIsSettingsOpen(false);
   };
 
+  useGlobalShortcuts(macDesktop, openSettings);
+
   const flushEditor = useCallback(async (): Promise<void> => {
     if (!selectedPageId) return;
     await editorRefs.get(selectedPageId)?.current?.flush();
@@ -102,7 +108,8 @@ const App = (): React.JSX.Element => {
   const { transition, transitionError } = useWorkspaceTransitions(flushEditor);
   const changeMode = async (pageId: string, mode: WorkspaceMode): Promise<void> =>
     transition(() => {
-      const currentMode = useWorkspaceStore.getState().pageModes[pageId] ?? 'chat';
+      const currentMode =
+        useWorkspaceStore.getState().openPages.find((tab) => tab.id === pageId)?.mode ?? 'chat';
       if (mode === 'edit' && currentMode !== 'edit') {
         collapseSidebar();
         // Entering edit mode does not leave the pointer over the collapse button.
@@ -133,25 +140,6 @@ const App = (): React.JSX.Element => {
   };
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = theme;
-    root.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
-
-  useEffect(() => {
-    const handleSettingsShortcut = (event: KeyboardEvent): void => {
-      const primaryModifierPressed = isMacDesktop ? event.metaKey : event.ctrlKey;
-      if (!primaryModifierPressed || event.altKey || event.shiftKey || event.code !== 'Comma')
-        return;
-      event.preventDefault();
-      event.stopPropagation();
-      openSettings();
-    };
-    window.addEventListener('keydown', handleSettingsShortcut, { capture: true });
-    return () => window.removeEventListener('keydown', handleSettingsShortcut, { capture: true });
-  }, [isMacDesktop, openSettings]);
-
-  useEffect(() => {
     let active = true;
     projectsService
       .list()
@@ -180,20 +168,6 @@ const App = (): React.JSX.Element => {
     };
   }, [failWorkspaceRestore, restoreWorkspace]);
 
-  useEffect(() => {
-    window.api?.settings
-      ?.getProfile?.()
-      .then(usePreferencesStore.getState().setUserProfile)
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    window.api?.settings
-      ?.getModel?.()
-      .then((settings) => usePreferencesStore.getState().setHasModelApiKey(settings.hasApiKey))
-      .catch(() => usePreferencesStore.getState().setHasModelApiKey(undefined));
-  }, []);
-
   const collapseSidebar = (): void => {
     setSidebarCollapsed(true);
     setSidebarPeek(false);
@@ -216,7 +190,7 @@ const App = (): React.JSX.Element => {
   };
   const sidebar = (
     <Sidebar
-      isMacDesktop={isMacDesktop}
+      isMacDesktop={macDesktop}
       onPin={pinSidebarOpen}
       onTemporaryClose={() => setSidebarPeek(false)}
       onOpenSettings={openSettings}
@@ -243,7 +217,7 @@ const App = (): React.JSX.Element => {
         <button
           type='button'
           className={`window-no-drag-region fixed top-1.5 z-30 h-7 min-h-7 w-7 min-w-7 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
-            isMacDesktop ? 'left-21' : 'left-1.5'
+            macDesktop ? 'left-21' : 'left-1.5'
           } grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary`}
           onMouseEnter={() => sidebarCollapsed && sidebarPeekEnabled && setSidebarPeek(true)}
           onMouseLeave={() => sidebarCollapsed && setSidebarPeekEnabled(true)}
@@ -279,20 +253,20 @@ const App = (): React.JSX.Element => {
           </section>
         ) : (
           <section className='flex min-w-0 flex-1 flex-col'>
-            {openPageIds.length > 0 && (
+            {openPages.length > 0 && (
               <PageTabs
                 sidebarCollapsed={sidebarCollapsed}
-                isMacDesktop={isMacDesktop}
+                isMacDesktop={macDesktop}
                 onSelect={(pageId) => void transition(() => selectPage(pageId))}
                 onClose={(pageId) => void transition(() => closePage(pageId))}
               />
             )}
-            {openPageIds.length === 0 && (
+            {openPages.length === 0 && (
               <div
                 aria-hidden='true'
                 className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
               >
-                {sidebarCollapsed && isMacDesktop && (
+                {sidebarCollapsed && macDesktop && (
                   <span className='window-no-drag-region w-32 shrink-0' />
                 )}
                 <span className='window-drag-region min-w-0 flex-1' />

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
+export type PageLifecycleStatus =
+  'in_sync' | 'draft_unsaved' | 'saved_pending_apply' | 'external_change';
 
 export interface PageItem {
   id: string;
@@ -15,13 +17,17 @@ export interface ProjectItem {
   pages: PageItem[];
 }
 
+export interface OpenPageTab extends PageItem {
+  projectId: string;
+  mode: WorkspaceMode;
+  // Null means the Server has not established the current lifecycle status yet.
+  status: PageLifecycleStatus | null;
+}
+
 export interface WorkspaceSession {
-  activeTab: WorkspaceMode;
   sidebarCollapsed?: boolean;
-  activeProjectId: string | null;
-  activePageId: string | null;
-  openPageIds: string[];
-  pageModes: Record<string, WorkspaceMode>;
+  activeTabId: string | null;
+  openPages: OpenPageTab[];
   pageDrafts: Record<string, string>;
 }
 
@@ -38,20 +44,15 @@ interface WorkspaceState extends WorkspaceSession {
   closePage: (pageId: string) => void;
   removePages: (pageIds: Iterable<string>) => void;
   setPageMode: (pageId: string, mode: WorkspaceMode) => void;
+  setPageStatus: (pageId: string, status: PageLifecycleStatus | null) => void;
   setPageDraft: (pageId: string, draft: string) => void;
   replaceWorkspace: (session: Partial<WorkspaceSession>) => void;
 }
 
 const storageKey = 'origamix:view-session';
-
-const emptySession: WorkspaceSession = {
-  activeTab: 'chat',
-  activeProjectId: null,
-  activePageId: null,
-  openPageIds: [],
-  pageModes: {},
-  pageDrafts: {},
-};
+const emptySession: WorkspaceSession = { activeTabId: null, openPages: [], pageDrafts: {} };
+const isMode = (value: unknown): value is WorkspaceMode =>
+  value === 'chat' || value === 'edit' || value === 'preview';
 
 const stringRecord = (value: unknown): Record<string, string> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -72,17 +73,56 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
     const value: unknown = JSON.parse(raw ?? 'null');
     if (!value || typeof value !== 'object' || Array.isArray(value)) return emptySession;
     const record = value as Record<string, unknown>;
-    const modes = stringRecord(record.pageModes);
+    const openPages: OpenPageTab[] = [];
+    const seen = new Set<string>();
+    if (Array.isArray(record.openPages)) {
+      for (const value of record.openPages) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+        const tab = value as Record<string, unknown>;
+        if (
+          typeof tab.id !== 'string' ||
+          !tab.id ||
+          seen.has(tab.id) ||
+          typeof tab.projectId !== 'string' ||
+          typeof tab.name !== 'string' ||
+          typeof tab.fileName !== 'string'
+        )
+          continue;
+        seen.add(tab.id);
+        openPages.push({
+          id: tab.id,
+          projectId: tab.projectId,
+          name: tab.name,
+          fileName: tab.fileName,
+          mode: isMode(tab.mode) && tab.mode !== 'preview' ? tab.mode : 'chat',
+          status: null,
+        });
+      }
+    } else {
+      // Migrate existing window sessions without retaining stale project metadata.
+      const modes = stringRecord(record.pageModes);
+      for (const id of stringArray(record.openPageIds)) {
+        openPages.push({
+          id,
+          projectId: '',
+          name: '',
+          fileName: '',
+          mode: modes[id] === 'edit' ? 'edit' : 'chat',
+          status: null,
+        });
+      }
+    }
+    const activeTabId =
+      typeof record.activeTabId === 'string'
+        ? record.activeTabId
+        : typeof record.activePageId === 'string'
+          ? record.activePageId
+          : null;
     return {
-      activeTab: record.activeTab === 'edit' ? 'edit' : 'chat',
       sidebarCollapsed:
         typeof record.sidebarCollapsed === 'boolean' ? record.sidebarCollapsed : undefined,
-      activeProjectId: typeof record.activeProjectId === 'string' ? record.activeProjectId : null,
-      activePageId: typeof record.activePageId === 'string' ? record.activePageId : null,
-      openPageIds: stringArray(record.openPageIds),
-      pageModes: Object.fromEntries(
-        Object.entries(modes).map(([id, mode]) => [id, mode === 'edit' ? 'edit' : 'chat']),
-      ),
+      activeTabId,
+      openPages,
       pageDrafts: stringRecord(record.pageDrafts),
     };
   } catch {
@@ -98,46 +138,64 @@ const readSession = (): WorkspaceSession => {
   }
 };
 
-const initialSession = readSession();
+const pageLocation = (projects: ProjectItem[], pageId: string) => {
+  for (const project of projects) {
+    const page = project.pages.find((item) => item.id === pageId);
+    if (page) return { project, page };
+  }
+  return null;
+};
 
-const projectIdForPage = (projects: ProjectItem[], pageId: string | null): string | null =>
-  projects.find((project) => project.pages.some((page) => page.id === pageId))?.id ?? null;
+const reconcileTabs = (projects: ProjectItem[], tabs: OpenPageTab[]): OpenPageTab[] =>
+  tabs.flatMap((tab) => {
+    const location = pageLocation(projects, tab.id);
+    return location
+      ? [
+          {
+            ...tab,
+            projectId: location.project.id,
+            name: location.page.name,
+            fileName: location.page.fileName,
+          },
+        ]
+      : [];
+  });
+
+const withoutDrafts = (drafts: Record<string, string>, keptIds: Set<string>) =>
+  Object.fromEntries(Object.entries(drafts).filter(([id]) => keptIds.has(id)));
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
-  ...initialSession,
+  ...readSession(),
   projects: [],
   workspaceReady: false,
   workspaceError: null,
   setProjects: (update) =>
-    set((state) => ({ projects: typeof update === 'function' ? update(state.projects) : update })),
+    set((state) => {
+      const projects = typeof update === 'function' ? update(state.projects) : update;
+      return { projects, openPages: reconcileTabs(projects, state.openPages) };
+    }),
   restoreWorkspace: (projects) =>
     set((state) => {
-      const pageIds = new Set(projects.flatMap((project) => project.pages.map((page) => page.id)));
-      const projectIds = new Set(projects.map((project) => project.id));
-      const openPageIds = state.openPageIds.filter((id) => pageIds.has(id));
-      const activePageId =
-        state.activePageId && pageIds.has(state.activePageId) ? state.activePageId : null;
-      if (activePageId && !openPageIds.includes(activePageId)) openPageIds.push(activePageId);
-      const pageModes = Object.fromEntries(
-        Object.entries(state.pageModes).filter(([id]) => pageIds.has(id)),
-      );
-      const pageDrafts = Object.fromEntries(
-        Object.entries(state.pageDrafts).filter(([id]) => pageIds.has(id)),
-      );
+      const openPages = reconcileTabs(projects, state.openPages);
+      const activeLocation = state.activeTabId ? pageLocation(projects, state.activeTabId) : null;
+      if (activeLocation && !openPages.some((tab) => tab.id === state.activeTabId)) {
+        openPages.push({
+          ...activeLocation.page,
+          projectId: activeLocation.project.id,
+          mode: 'chat',
+          status: null,
+        });
+      }
       return {
         projects,
         workspaceReady: true,
         workspaceError: null,
-        activePageId,
-        activeProjectId:
-          projectIdForPage(projects, activePageId) ??
-          (state.activeProjectId && projectIds.has(state.activeProjectId)
-            ? state.activeProjectId
-            : null),
-        openPageIds,
-        pageModes,
-        pageDrafts,
-        activeTab: activePageId ? (pageModes[activePageId] ?? 'chat') : 'chat',
+        activeTabId: activeLocation ? state.activeTabId : null,
+        openPages,
+        pageDrafts: withoutDrafts(
+          state.pageDrafts,
+          new Set(projects.flatMap((project) => project.pages.map((page) => page.id))),
+        ),
       };
     }),
   failWorkspaceRestore: (workspaceError) => set({ workspaceError }),
@@ -146,74 +204,64 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     set((state) => (state.sidebarCollapsed === undefined ? { sidebarCollapsed } : state)),
   selectPage: (pageId) =>
     set((state) => {
-      const pageModes =
-        state.activePageId && state.activeTab !== 'preview'
-          ? { ...state.pageModes, [state.activePageId]: state.activeTab }
-          : state.pageModes;
-      return {
-        activeProjectId: projectIdForPage(state.projects, pageId) ?? state.activeProjectId,
-        activePageId: pageId,
-        openPageIds: state.openPageIds.includes(pageId)
-          ? state.openPageIds
-          : [...state.openPageIds, pageId],
-        pageModes,
-        activeTab: pageModes[pageId] ?? 'chat',
-      };
+      const location = pageLocation(state.projects, pageId);
+      if (!location) return state;
+      const openPages = state.openPages.some((tab) => tab.id === pageId)
+        ? state.openPages
+        : [
+            ...state.openPages,
+            {
+              ...location.page,
+              projectId: location.project.id,
+              mode: 'chat' as const,
+              status: null,
+            },
+          ];
+      return { activeTabId: pageId, openPages };
     }),
   closePage: (pageId) =>
     set((state) => {
-      const index = state.openPageIds.indexOf(pageId);
-      const openPageIds = state.openPageIds.filter((id) => id !== pageId);
-      const pageModes = { ...state.pageModes };
-      const pageDrafts = { ...state.pageDrafts };
-      delete pageModes[pageId];
-      delete pageDrafts[pageId];
-      const activePageId =
-        state.activePageId === pageId
-          ? (openPageIds[Math.min(index, openPageIds.length - 1)] ?? null)
-          : state.activePageId;
+      const index = state.openPages.findIndex((tab) => tab.id === pageId);
+      if (index < 0) return state;
+      const openPages = state.openPages.filter((tab) => tab.id !== pageId);
+      const { [pageId]: _removed, ...pageDrafts } = state.pageDrafts;
+      void _removed;
       return {
-        activePageId,
-        activeProjectId: projectIdForPage(state.projects, activePageId) ?? state.activeProjectId,
-        openPageIds,
-        pageModes,
+        openPages,
         pageDrafts,
-        activeTab:
-          state.activePageId === pageId
-            ? activePageId
-              ? (pageModes[activePageId] ?? 'chat')
-              : 'chat'
-            : state.activeTab,
+        activeTabId:
+          state.activeTabId === pageId
+            ? (openPages[Math.min(index, openPages.length - 1)]?.id ?? null)
+            : state.activeTabId,
       };
     }),
   removePages: (pageIds) =>
     set((state) => {
       const removed = new Set(pageIds);
-      const openPageIds = state.openPageIds.filter((id) => !removed.has(id));
-      const pageModes = Object.fromEntries(
-        Object.entries(state.pageModes).filter(([id]) => !removed.has(id)),
-      );
-      const pageDrafts = Object.fromEntries(
-        Object.entries(state.pageDrafts).filter(([id]) => !removed.has(id)),
-      );
-      const activePageId =
-        state.activePageId && !removed.has(state.activePageId)
-          ? state.activePageId
-          : (openPageIds[0] ?? null);
+      const openPages = state.openPages.filter((tab) => !removed.has(tab.id));
       return {
-        activePageId,
-        activeProjectId: projectIdForPage(state.projects, activePageId),
-        openPageIds,
-        pageModes,
-        pageDrafts,
-        activeTab: activePageId ? (pageModes[activePageId] ?? 'chat') : 'chat',
+        openPages,
+        pageDrafts: Object.fromEntries(
+          Object.entries(state.pageDrafts).filter(([id]) => !removed.has(id)),
+        ),
+        activeTabId:
+          state.activeTabId && !removed.has(state.activeTabId)
+            ? state.activeTabId
+            : (openPages[0]?.id ?? null),
       };
     }),
   setPageMode: (pageId, mode) =>
     set((state) => ({
-      pageModes: { ...state.pageModes, [pageId]: mode },
-      ...(state.activePageId === pageId ? { activeTab: mode } : {}),
+      openPages: state.openPages.map((tab) => (tab.id === pageId ? { ...tab, mode } : tab)),
     })),
+  setPageStatus: (pageId, status) =>
+    set((state) => {
+      const tab = state.openPages.find((item) => item.id === pageId);
+      if (!tab || tab.status === status) return state;
+      return {
+        openPages: state.openPages.map((item) => (item.id === pageId ? { ...item, status } : item)),
+      };
+    }),
   setPageDraft: (pageId, draft) =>
     set((state) => ({ pageDrafts: { ...state.pageDrafts, [pageId]: draft } })),
   replaceWorkspace: (session) => set(session),
@@ -222,12 +270,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
 useWorkspaceStore.subscribe((state) => {
   try {
     const session: WorkspaceSession = {
-      activeTab: state.activeTab,
+      activeTabId: state.activeTabId,
       sidebarCollapsed: state.sidebarCollapsed,
-      activeProjectId: state.activeProjectId,
-      activePageId: state.activePageId,
-      openPageIds: state.openPageIds,
-      pageModes: state.pageModes,
+      openPages: state.openPages.map((tab) => ({ ...tab, status: null })),
       pageDrafts: state.pageDrafts,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(session));

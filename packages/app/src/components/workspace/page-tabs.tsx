@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceStore } from '@/store/workspace';
 
@@ -17,22 +16,11 @@ export const PageTabs = ({
   onSelect,
   onClose,
 }: PageTabsProps): React.JSX.Element => {
-  const { projects, openPageIds, activePageId } = useWorkspaceStore(
+  const { openPages, activeTabId } = useWorkspaceStore(
     useShallow((state) => ({
-      projects: state.projects,
-      openPageIds: state.openPageIds,
-      activePageId: state.activePageId,
+      openPages: state.openPages,
+      activeTabId: state.activeTabId,
     })),
-  );
-  const pages = useMemo(
-    () =>
-      openPageIds.flatMap((pageId) => {
-        const page = projects
-          .flatMap((project) => project.pages)
-          .find((item) => item.id === pageId);
-        return page ? [page] : [];
-      }),
-    [openPageIds, projects],
   );
   return (
     <nav
@@ -51,8 +39,8 @@ export const PageTabs = ({
           className='window-no-drag-region w-12 shrink-0 border-b border-zinc-200 dark:border-zinc-800'
         />
       )}
-      {pages.map((page, index) => {
-        const active = page.id === activePageId;
+      {openPages.map((page, index) => {
+        const active = page.id === activeTabId;
         return (
           <div
             key={page.id}

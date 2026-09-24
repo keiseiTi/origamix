@@ -41,7 +41,7 @@ export const Sidebar = ({
   const { projects, selectedPageId, isTemporary } = useWorkspaceStore(
     useShallow((state) => ({
       projects: state.projects,
-      selectedPageId: state.activePageId,
+      selectedPageId: state.activeTabId,
       isTemporary: state.sidebarCollapsed ?? false,
     })),
   );

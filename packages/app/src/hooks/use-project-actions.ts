@@ -42,12 +42,11 @@ export const useProjectActions = (input: ProjectActionsInput) => {
       opened,
     ]);
     replaceWorkspace({
-      activeProjectId: opened.id,
-      activePageId: opened.pages[0]?.id ?? null,
-      openPageIds: opened.pages[0] ? [opened.pages[0].id] : [],
-      pageModes: {},
+      activeTabId: opened.pages[0]?.id ?? null,
+      openPages: opened.pages[0]
+        ? [{ ...opened.pages[0], projectId: opened.id, mode: 'chat', status: null }]
+        : [],
       pageDrafts: {},
-      activeTab: 'chat',
     });
   };
 
