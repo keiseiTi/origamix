@@ -7,7 +7,7 @@ export const options = {
   tsconfig: `${desktopRoot}tsconfig.json`,
   entry: {
     'main/index': `${desktopRoot}src/main/index.ts`,
-    'preload/index': `${desktopRoot}src/preload/index.ts`
+    'preload/index': `${desktopRoot}src/preload/index.ts`,
   },
   outDir: `${desktopRoot}dist`,
   format: ['cjs'],
@@ -22,5 +22,5 @@ export const options = {
   dts: false,
   // Keep sandboxed preloads self-contained; Electron is provided by the host.
   external: ['electron'],
-  noExternal: [/^(?!electron$).*/]
+  noExternal: [/^(?!electron$).*/],
 };
