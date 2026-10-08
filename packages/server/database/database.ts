@@ -1,9 +1,8 @@
-import { rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { BetterSQLiteTransaction } from 'drizzle-orm/better-sqlite3/session';
 import type { TablesRelationalConfig } from 'drizzle-orm/relations';
-import { IncompatibleDatabaseError, initializeDatabase } from './initialize';
+import { initializeDatabase } from './initialize';
 import { createNodeSQLiteDrizzle } from './node-sqlite-adapter';
 
 type EmptySchema = Record<string, never>;
@@ -19,21 +18,12 @@ export class ApplicationDatabase {
   readonly orm: BetterSQLite3Database;
 
   constructor(path: string) {
-    let connection = new DatabaseSync(path);
+    const connection = new DatabaseSync(path);
     try {
       this.configure(connection);
     } catch (error) {
       connection.close();
-      if (!(error instanceof IncompatibleDatabaseError) || path === ':memory:') throw error;
-      for (const databaseFile of [path, `${path}-wal`, `${path}-shm`])
-        rmSync(databaseFile, { force: true });
-      connection = new DatabaseSync(path);
-      try {
-        this.configure(connection);
-      } catch (retryError) {
-        connection.close();
-        throw retryError;
-      }
+      throw error;
     }
     this.connection = connection;
     this.orm = createNodeSQLiteDrizzle(connection);

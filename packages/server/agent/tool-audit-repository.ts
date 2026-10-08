@@ -1,11 +1,11 @@
-import { randomUUID } from 'node:crypto';
 import { asc, eq, sql } from 'drizzle-orm';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { agentToolAudits } from '../database/schema';
+import { runKey, runPublicId } from '../database/identity';
 import type { ToolAuditEvent } from './tools/registry';
 
 export interface AgentToolAuditRecord extends ToolAuditEvent {
-  id: string;
+  id: number;
   sequence: number;
 }
 
@@ -21,45 +21,39 @@ export class AgentToolAuditRepository {
       this.client
         .select({ value: sql<number>`coalesce(max(${agentToolAudits.sequence}), -1) + 1` })
         .from(agentToolAudits)
-        .where(eq(agentToolAudits.runId, event.runId))
+        .where(eq(agentToolAudits.runId, runKey(this.client, event.runId)))
         .get()?.value ?? 0,
     );
-    const record: AgentToolAuditRecord = {
-      ...event,
-      id: `audit_${randomUUID()}`,
-      sequence,
-    };
-    this.client
+    const result = this.client
       .insert(agentToolAudits)
       .values({
-        id: record.id,
-        runId: record.runId,
+        runId: runKey(this.client, event.runId),
         sequence,
-        toolName: record.toolName,
-        phase: record.phase,
-        safeErrorCode: record.safeErrorCode ?? null,
-        durationMs: record.durationMs,
-        operationCount: record.operationCount ?? null,
-        operationTypeCountsJson: record.operationTypeCounts
-          ? JSON.stringify(record.operationTypeCounts)
+        toolName: event.toolName,
+        phase: event.phase,
+        safeErrorCode: event.safeErrorCode ?? null,
+        durationMs: event.durationMs,
+        operationCount: event.operationCount ?? null,
+        operationTypeCountsJson: event.operationTypeCounts
+          ? JSON.stringify(event.operationTypeCounts)
           : null,
-        operationDigest: record.operationDigest ?? null,
-        occurredAt: record.occurredAt,
+        operationDigest: event.operationDigest ?? null,
+        occurredAt: event.occurredAt,
       })
       .run();
-    return record;
+    return { ...event, id: Number(result.lastInsertRowid), sequence };
   }
 
   list(runId: string): AgentToolAuditRecord[] {
     return this.client
       .select()
       .from(agentToolAudits)
-      .where(eq(agentToolAudits.runId, runId))
+      .where(eq(agentToolAudits.runId, runKey(this.client, runId)))
       .orderBy(asc(agentToolAudits.sequence))
       .all()
       .map((row) => ({
         id: row.id,
-        runId: row.runId,
+        runId: runPublicId(this.client, row.runId),
         sequence: row.sequence,
         toolName: row.toolName,
         phase: row.phase as ToolAuditEvent['phase'],

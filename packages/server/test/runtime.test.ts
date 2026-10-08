@@ -24,14 +24,14 @@ describe('server startup Agent recovery', () => {
     const timestamp = new Date().toISOString();
     database.connection
       .prepare(
-        'INSERT INTO projects (id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO projects (project_id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
       .run('project_a', join(directory, 'missing-project'), 'A', 0, timestamp, timestamp);
     database.connection
       .prepare(
-        'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO pages (page_id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       )
-      .run('page_a', 'project_a', 'home', 'Home', 'pages/home', 0, timestamp, timestamp);
+      .run('page_a', 1, 'home', 'Home', 'pages/home', 0, timestamp, timestamp);
     const runs = new AgentRunRepository(database);
     const service = new ConversationService(
       database,

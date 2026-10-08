@@ -1,7 +1,8 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const projects = sqliteTable('projects', {
-  id: text().primaryKey(),
+  id: integer().primaryKey({ autoIncrement: true }),
+  projectId: text('project_id').notNull().unique(),
   path: text().notNull().unique(),
   name: text().notNull(),
   status: integer().notNull().default(0),
@@ -12,8 +13,9 @@ export const projects = sqliteTable('projects', {
 export const pages = sqliteTable(
   'pages',
   {
-    id: text().primaryKey(),
-    projectId: text('project_id').notNull(),
+    id: integer().primaryKey({ autoIncrement: true }),
+    pageId: text('page_id').notNull().unique(),
+    projectId: integer('project_id').notNull(),
     slug: text().notNull(),
     name: text().notNull(),
     relativePath: text('relative_path').notNull(),
@@ -30,9 +32,9 @@ export const pages = sqliteTable(
 export const conversations = sqliteTable(
   'conversations',
   {
-    id: text().primaryKey(),
-    projectId: text('project_id').notNull(),
-    pageId: text('page_id').notNull(),
+    id: integer().primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id').notNull(),
+    pageId: integer('page_id').notNull(),
     title: text().notNull(),
     status: integer().notNull().default(0),
     createdAt: text('created_at').notNull(),
@@ -47,9 +49,9 @@ export const conversations = sqliteTable(
 export const messages = sqliteTable(
   'messages',
   {
-    id: text().primaryKey(),
-    conversationId: text('conversation_id').notNull(),
-    runId: text('run_id'),
+    id: integer().primaryKey({ autoIncrement: true }),
+    conversationId: integer('conversation_id').notNull(),
+    runId: integer('run_id'),
     role: text().notNull(),
     contentJson: text('content_json').notNull(),
     contentVersion: text('content_version').notNull().default('1'),
@@ -69,11 +71,12 @@ export const messages = sqliteTable(
 export const agentRuns = sqliteTable(
   'agent_runs',
   {
-    id: text().primaryKey(),
-    projectId: text('project_id').notNull(),
-    pageId: text('page_id').notNull(),
-    conversationId: text('conversation_id').notNull(),
-    userMessageId: text('user_message_id').notNull(),
+    id: integer().primaryKey({ autoIncrement: true }),
+    runId: text('run_id').notNull().unique(),
+    projectId: integer('project_id').notNull(),
+    pageId: integer('page_id').notNull(),
+    conversationId: integer('conversation_id').notNull(),
+    userMessageId: integer('user_message_id').notNull(),
     clientRequestId: text('client_request_id').notNull(),
     baseWorkingVersion: integer('base_working_version').notNull(),
     resultWorkingVersion: integer('result_working_version'),
@@ -91,7 +94,7 @@ export const agentRuns = sqliteTable(
     policyVersion: text('policy_version').notNull(),
     toolsetVersion: text('toolset_version').notNull(),
     materialManifestVersion: text('material_manifest_version').notNull(),
-    retryOfRunId: text('retry_of_run_id'),
+    retryOfRunId: integer('retry_of_run_id'),
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
     modelCalls: integer('model_calls').notNull().default(0),
@@ -119,8 +122,8 @@ export const agentRuns = sqliteTable(
 export const agentToolAudits = sqliteTable(
   'agent_tool_audits',
   {
-    id: text().primaryKey(),
-    runId: text('run_id').notNull(),
+    id: integer().primaryKey({ autoIncrement: true }),
+    runId: integer('run_id').notNull(),
     sequence: integer().notNull(),
     toolName: text('tool_name').notNull(),
     phase: text().notNull(),

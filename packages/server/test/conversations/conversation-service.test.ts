@@ -32,19 +32,19 @@ const setup = (path?: string) => {
   const timestamp = new Date().toISOString();
   database.connection
     .prepare(
-      'INSERT INTO projects (id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO projects (project_id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
     )
     .run('project_a', '/tmp/project-a', 'A', 0, timestamp, timestamp);
   database.connection
     .prepare(
-      'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pages (page_id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_a', 'project_a', 'a', 'A', 'pages/a', 0, timestamp, timestamp);
+    .run('page_a', 1, 'a', 'A', 'pages/a', 0, timestamp, timestamp);
   database.connection
     .prepare(
-      'INSERT INTO pages (id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pages (page_id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run('page_b', 'project_a', 'b', 'B', 'pages/b', 0, timestamp, timestamp);
+    .run('page_b', 1, 'b', 'B', 'pages/b', 0, timestamp, timestamp);
   const conversations = new ConversationRepository(database);
   const runs = new AgentRunRepository(database);
   return {
@@ -93,6 +93,30 @@ describe('Conversation persistence', () => {
       first.run.id,
     );
     expect(service.history('project_a', 'page_a', first.conversation.id)).toHaveLength(1);
+    expect(
+      database.connection
+        .prepare(
+          `SELECT
+      p.project_id AS project_id, g.page_id AS page_id, r.run_id AS run_id,
+      typeof(r.project_id) AS project_ref_type, typeof(r.page_id) AS page_ref_type,
+      typeof(r.conversation_id) AS conversation_ref_type,
+      typeof(r.user_message_id) AS message_ref_type
+      FROM agent_runs r
+      JOIN projects p ON p.id = r.project_id
+      JOIN pages g ON g.id = r.page_id
+      JOIN conversations c ON c.id = r.conversation_id
+      JOIN messages m ON m.id = r.user_message_id`,
+        )
+        .get(),
+    ).toEqual({
+      project_id: 'project_a',
+      page_id: 'page_a',
+      run_id: first.run.id,
+      project_ref_type: 'integer',
+      page_ref_type: 'integer',
+      conversation_ref_type: 'integer',
+      message_ref_type: 'integer',
+    });
     expect(() => service.startRun(input({ baseWorkingVersion: 2 }))).toThrow('不同请求');
     database.close();
   });
@@ -135,48 +159,34 @@ describe('Conversation persistence', () => {
     expect(conversations.softDelete(started.conversation.id, new Date().toISOString())).toBe(true);
     expect(conversations.get(started.conversation.id)).toBeUndefined();
     expect(() => service.history('project_a', 'page_a', started.conversation.id)).toThrow('不存在');
-    database.connection
+    const orphanMessage = database.connection
       .prepare(
-        'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO messages (conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(
-        'message_orphan',
-        'conversation_missing',
-        'user',
-        JSON.stringify(content('x')),
-        2,
-        0,
-        first.createdAt,
-        first.createdAt,
-      );
-    expect(conversations.listOrphanMessageIds()).toContain('message_orphan');
-    database.connection
+      .run(9999, 'user', JSON.stringify(content('x')), 2, 0, first.createdAt, first.createdAt);
+    expect(conversations.listOrphanMessageIds()).toContain(
+      `message_${orphanMessage.lastInsertRowid}`,
+    );
+    const orphanConversation = database.connection
       .prepare(
-        'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO conversations (project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(
-        'conversation_orphan',
-        'project_a',
-        'page_missing',
-        'orphan',
-        0,
-        first.createdAt,
-        first.createdAt,
-      );
-    expect(conversations.listOrphanConversationIds()).toContain('conversation_orphan');
+      .run(1, 9999, 'orphan', 0, first.createdAt, first.createdAt);
+    expect(conversations.listOrphanConversationIds()).toContain(
+      `conversation_${orphanConversation.lastInsertRowid}`,
+    );
     database.close();
   });
 
   it('rejects invalid JSON and preserves failed assistant checkpoints without secret details', () => {
     const { database, service, conversations } = setup();
     const started = service.startRun(input());
-    database.connection
+    const badMessage = database.connection
       .prepare(
-        'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO messages (conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
       .run(
-        'message_bad',
-        started.conversation.id,
+        Number(started.conversation.id.slice('conversation_'.length)),
         'assistant',
         '{',
         3,
@@ -185,7 +195,9 @@ describe('Conversation persistence', () => {
         started.message.createdAt,
       );
     expect(() => conversations.listMessages(started.conversation.id)).toThrow('不是合法 JSON');
-    database.connection.prepare('DELETE FROM messages WHERE id = ?').run('message_bad');
+    database.connection
+      .prepare('DELETE FROM messages WHERE id = ?')
+      .run(badMessage.lastInsertRowid);
     const failed = service.failAssistant(
       started.run.id,
       content('模型暂时不可用，请重试。'),

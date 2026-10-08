@@ -263,39 +263,45 @@ describe('Project and Schema HTTP flows', () => {
     };
     const pagePath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
     const timestamp = new Date().toISOString();
-    database.connection
-      .prepare(
-        'INSERT INTO conversations (id, project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run('conversation_lifecycle', project.id, page.id, 'test', 0, timestamp, timestamp);
-    database.connection
-      .prepare(
-        'INSERT INTO messages (id, conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(
-        'message_lifecycle',
-        'conversation_lifecycle',
-        'user',
-        '{"version":"1","blocks":[]}',
-        2,
-        0,
-        timestamp,
-        timestamp,
-      );
+    const projectKey = (
+      database.connection
+        .prepare('SELECT id FROM projects WHERE project_id = ?')
+        .get(project.id) as { id: number }
+    ).id;
+    const pageKey = (
+      database.connection.prepare('SELECT id FROM pages WHERE page_id = ?').get(page.id) as {
+        id: number;
+      }
+    ).id;
+    const conversationId = Number(
+      database.connection
+        .prepare(
+          'INSERT INTO conversations (project_id, page_id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        )
+        .run(projectKey, pageKey, 'test', 0, timestamp, timestamp).lastInsertRowid,
+    );
+    const messageId = Number(
+      database.connection
+        .prepare(
+          'INSERT INTO messages (conversation_id, role, content_json, status, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(conversationId, 'user', '{"version":"1","blocks":[]}', 2, 0, timestamp, timestamp)
+        .lastInsertRowid,
+    );
     database.connection
       .prepare(
         `INSERT INTO agent_runs (
-          id, project_id, page_id, conversation_id, user_message_id, client_request_id,
+          run_id, project_id, page_id, conversation_id, user_message_id, client_request_id,
           base_working_version, model_ref, run_kind, status, budget_json, prompt_version,
           policy_version, toolset_version, material_manifest_version, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         'run_lifecycle',
-        project.id,
-        page.id,
-        'conversation_lifecycle',
-        'message_lifecycle',
+        projectKey,
+        pageKey,
+        conversationId,
+        messageId,
         'request_lifecycle',
         1,
         'fake/model',
@@ -309,6 +315,16 @@ describe('Project and Schema HTTP flows', () => {
         timestamp,
         timestamp,
       );
+    const runKey = (
+      database.connection
+        .prepare('SELECT id FROM agent_runs WHERE run_id = ?')
+        .get('run_lifecycle') as { id: number }
+    ).id;
+    database.connection
+      .prepare(
+        'INSERT INTO agent_tool_audits (run_id, sequence, tool_name, phase, duration_ms, occurred_at) VALUES (?, 0, ?, ?, 0, ?)',
+      )
+      .run(runKey, 'complete_page_run', 'started', timestamp);
     expect(
       (
         await server.inject({
@@ -320,7 +336,7 @@ describe('Project and Schema HTTP flows', () => {
       ).json().data,
     ).toEqual({ deleted: true });
     expect(projects.getPage(project.id, page.id)).toBeUndefined();
-    for (const table of ['conversations', 'messages', 'agent_runs']) {
+    for (const table of ['conversations', 'messages', 'agent_runs', 'agent_tool_audits']) {
       expect(
         database.connection.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get(),
       ).toMatchObject({ count: 0 });

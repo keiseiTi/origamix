@@ -7,6 +7,16 @@ import {
 } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { conversations, messages, pages, projects } from '../database/schema';
+import {
+  decodeDatabaseId,
+  encodeDatabaseId,
+  pageKey,
+  pagePublicId,
+  projectKey,
+  projectPublicId,
+  runKey,
+  runPublicId,
+} from '../database/identity';
 import { conversationStatus, messageStatus } from '../database/status';
 
 export type ConversationStatus = 'active' | 'archived' | 'deleted';
@@ -27,15 +37,23 @@ export interface StoredMessage extends AgentMessage {
   errorCode?: string;
 }
 
-const conversationFromRow = ({
-  deletedAt,
-  ...row
-}: typeof conversations.$inferSelect): ConversationRecord => ({
-  ...row,
+const conversationFromRow = (
+  row: typeof conversations.$inferSelect,
+  client: DatabaseClient,
+): ConversationRecord => ({
+  id: encodeDatabaseId('conversation', row.id),
+  projectId: projectPublicId(client, row.projectId),
+  pageId: pagePublicId(client, row.pageId),
+  title: row.title,
   status: conversationStatus.decode(row.status),
-  ...(deletedAt ? { deletedAt } : {}),
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+  ...(row.deletedAt ? { deletedAt: row.deletedAt } : {}),
 });
-const messageFromRow = (row: typeof messages.$inferSelect): StoredMessage => {
+const messageFromRow = (
+  row: typeof messages.$inferSelect,
+  client: DatabaseClient,
+): StoredMessage => {
   let content: unknown;
   try {
     content = JSON.parse(row.contentJson);
@@ -48,9 +66,9 @@ const messageFromRow = (row: typeof messages.$inferSelect): StoredMessage => {
     throw new Error(`消息 ${row.id} 的 role 无效`);
   return {
     version: '1',
-    messageId: row.id,
-    conversationId: row.conversationId,
-    ...(row.runId ? { runId: row.runId } : {}),
+    messageId: encodeDatabaseId('message', row.id),
+    conversationId: encodeDatabaseId('conversation', row.conversationId),
+    ...(row.runId ? { runId: runPublicId(client, row.runId) } : {}),
     role: row.role as StoredMessage['role'],
     content: content as MessageContent,
     sequence: row.sequence,
@@ -67,15 +85,19 @@ export class ConversationRepository {
     this.client = 'orm' in database ? database.orm : database;
   }
   create(record: ConversationRecord): ConversationRecord {
-    this.client
+    const result = this.client
       .insert(conversations)
       .values({
-        ...record,
+        projectId: projectKey(this.client, record.projectId),
+        pageId: pageKey(this.client, record.pageId),
+        title: record.title,
         status: conversationStatus.encode(record.status),
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
         deletedAt: record.deletedAt ?? null,
       })
       .run();
-    return record;
+    return { ...record, id: encodeDatabaseId('conversation', Number(result.lastInsertRowid)) };
   }
   get(id: string, includeDeleted = false): ConversationRecord | undefined {
     const row = this.client
@@ -83,14 +105,14 @@ export class ConversationRepository {
       .from(conversations)
       .where(
         and(
-          eq(conversations.id, id),
+          eq(conversations.id, decodeDatabaseId('conversation', id)),
           ...(includeDeleted
             ? []
             : [ne(conversations.status, conversationStatus.encode('deleted'))]),
         ),
       )
       .get();
-    return row && conversationFromRow(row);
+    return row && conversationFromRow(row, this.client);
   }
   findActive(projectId: string, pageId: string): ConversationRecord | undefined {
     const row = this.client
@@ -98,15 +120,15 @@ export class ConversationRepository {
       .from(conversations)
       .where(
         and(
-          eq(conversations.projectId, projectId),
-          eq(conversations.pageId, pageId),
+          eq(conversations.projectId, projectKey(this.client, projectId)),
+          eq(conversations.pageId, pageKey(this.client, pageId)),
           eq(conversations.status, conversationStatus.encode('active')),
         ),
       )
       .orderBy(desc(conversations.updatedAt))
       .limit(1)
       .get();
-    return row && conversationFromRow(row);
+    return row && conversationFromRow(row, this.client);
   }
   list(projectId: string, pageId: string, limit = 50, before?: string): ConversationRecord[] {
     return this.client
@@ -114,8 +136,8 @@ export class ConversationRepository {
       .from(conversations)
       .where(
         and(
-          eq(conversations.projectId, projectId),
-          eq(conversations.pageId, pageId),
+          eq(conversations.projectId, projectKey(this.client, projectId)),
+          eq(conversations.pageId, pageKey(this.client, pageId)),
           ne(conversations.status, conversationStatus.encode('deleted')),
           ...(before ? [lt(conversations.updatedAt, before)] : []),
         ),
@@ -123,10 +145,14 @@ export class ConversationRepository {
       .orderBy(desc(conversations.updatedAt))
       .limit(limit)
       .all()
-      .map(conversationFromRow);
+      .map((row) => conversationFromRow(row, this.client));
   }
   touch(id: string, updatedAt: string): void {
-    this.client.update(conversations).set({ updatedAt }).where(eq(conversations.id, id)).run();
+    this.client
+      .update(conversations)
+      .set({ updatedAt })
+      .where(eq(conversations.id, decodeDatabaseId('conversation', id)))
+      .run();
   }
   softDelete(id: string, deletedAt: string): boolean {
     return (
@@ -135,7 +161,7 @@ export class ConversationRepository {
         .set({ status: conversationStatus.encode('deleted'), deletedAt, updatedAt: deletedAt })
         .where(
           and(
-            eq(conversations.id, id),
+            eq(conversations.id, decodeDatabaseId('conversation', id)),
             ne(conversations.status, conversationStatus.encode('deleted')),
           ),
         )
@@ -143,12 +169,11 @@ export class ConversationRepository {
     );
   }
   appendMessage(message: StoredMessage): StoredMessage {
-    this.client
+    const result = this.client
       .insert(messages)
       .values({
-        id: message.messageId,
-        conversationId: message.conversationId,
-        runId: message.runId ?? null,
+        conversationId: decodeDatabaseId('conversation', message.conversationId),
+        runId: message.runId ? runKey(this.client, message.runId) : null,
         role: message.role,
         contentJson: JSON.stringify(message.content),
         contentVersion: message.version,
@@ -159,7 +184,14 @@ export class ConversationRepository {
         updatedAt: message.updatedAt,
       })
       .run();
-    return message;
+    return { ...message, messageId: encodeDatabaseId('message', Number(result.lastInsertRowid)) };
+  }
+  bindMessageRun(messageId: string, runId: string): void {
+    this.client
+      .update(messages)
+      .set({ runId: runKey(this.client, runId) })
+      .where(eq(messages.id, decodeDatabaseId('message', messageId)))
+      .run();
   }
   updateMessage(
     id: string,
@@ -180,28 +212,32 @@ export class ConversationRepository {
           errorCode: input.errorCode ?? null,
           updatedAt: input.updatedAt,
         })
-        .where(eq(messages.id, id))
+        .where(eq(messages.id, decodeDatabaseId('message', id)))
         .run().changes > 0
     );
   }
   getMessage(id: string): StoredMessage | undefined {
-    const row = this.client.select().from(messages).where(eq(messages.id, id)).get();
-    return row && messageFromRow(row);
+    const row = this.client
+      .select()
+      .from(messages)
+      .where(eq(messages.id, decodeDatabaseId('message', id)))
+      .get();
+    return row && messageFromRow(row, this.client);
   }
   findAssistantByRun(runId: string): StoredMessage | undefined {
     const row = this.client
       .select()
       .from(messages)
-      .where(and(eq(messages.runId, runId), eq(messages.role, 'assistant')))
+      .where(and(eq(messages.runId, runKey(this.client, runId)), eq(messages.role, 'assistant')))
       .limit(1)
       .get();
-    return row && messageFromRow(row);
+    return row && messageFromRow(row, this.client);
   }
   nextSequence(conversationId: string): number {
     const row = this.client
       .select({ value: max(messages.sequence) })
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(eq(messages.conversationId, decodeDatabaseId('conversation', conversationId)))
       .get();
     return (row?.value ?? -1) + 1;
   }
@@ -209,22 +245,27 @@ export class ConversationRepository {
     return this.client
       .select()
       .from(messages)
-      .where(and(eq(messages.conversationId, conversationId), gt(messages.sequence, afterSequence)))
+      .where(
+        and(
+          eq(messages.conversationId, decodeDatabaseId('conversation', conversationId)),
+          gt(messages.sequence, afterSequence),
+        ),
+      )
       .orderBy(asc(messages.sequence))
       .limit(limit)
       .all()
-      .map(messageFromRow);
+      .map((row) => messageFromRow(row, this.client));
   }
   listRecentMessages(conversationId: string, limit = 100): StoredMessage[] {
     return this.client
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(eq(messages.conversationId, decodeDatabaseId('conversation', conversationId)))
       .orderBy(desc(messages.sequence))
       .limit(limit)
       .all()
       .reverse()
-      .map(messageFromRow);
+      .map((row) => messageFromRow(row, this.client));
   }
   listOrphanMessageIds(): string[] {
     return this.client
@@ -234,7 +275,7 @@ export class ConversationRepository {
       .where(isNull(conversations.id))
       .orderBy(asc(messages.id))
       .all()
-      .map(({ id }) => id);
+      .map(({ id }) => encodeDatabaseId('message', id));
   }
   listOrphanConversationIds(): string[] {
     return this.client
@@ -248,6 +289,6 @@ export class ConversationRepository {
       .where(or(isNull(projects.id), isNull(pages.id)))
       .orderBy(asc(conversations.id))
       .all()
-      .map(({ id }) => id);
+      .map(({ id }) => encodeDatabaseId('conversation', id));
   }
 }

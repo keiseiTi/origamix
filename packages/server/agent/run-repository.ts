@@ -12,6 +12,16 @@ import {
 } from '@origamix/shared/protocol/agent';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { agentRuns } from '../database/schema';
+import {
+  decodeDatabaseId,
+  encodeDatabaseId,
+  pageKey,
+  pagePublicId,
+  projectKey,
+  projectPublicId,
+  runKey,
+  runPublicId,
+} from '../database/identity';
 import { agentRunStatus } from '../database/status';
 
 export interface AgentRunRecord {
@@ -53,33 +63,34 @@ export interface AgentRunRecord {
 }
 
 type RunRow = typeof agentRuns.$inferSelect;
-const fromRow = (row: RunRow): AgentRunRecord => {
+const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
   let budget: unknown;
   try {
     budget = JSON.parse(row.budgetJson);
   } catch {
-    throw new Error(`Agent Run ${row.id} 的 budget_json 不是合法 JSON`);
+    throw new Error(`Agent Run ${row.runId} 的 budget_json 不是合法 JSON`);
   }
-  if (!Value.Check(RunBudgetSchema, budget)) throw new Error(`Agent Run ${row.id} 的 budget 无效`);
+  if (!Value.Check(RunBudgetSchema, budget))
+    throw new Error(`Agent Run ${row.runId} 的 budget 无效`);
   const status = agentRunStatus.decode(row.status);
   if (!Value.Check(AgentRunStatusSchema, status) || !Value.Check(AgentRunKindSchema, row.runKind))
-    throw new Error(`Agent Run ${row.id} 的状态或类型无效`);
+    throw new Error(`Agent Run ${row.runId} 的状态或类型无效`);
   if (row.outcome !== null && !Value.Check(PageAgentOutcomeSchema, row.outcome))
-    throw new Error(`Agent Run ${row.id} 的 Outcome 无效`);
+    throw new Error(`Agent Run ${row.runId} 的 Outcome 无效`);
   let outcomeJson: unknown;
   if (row.outcomeJson !== null) {
     try {
       outcomeJson = JSON.parse(row.outcomeJson);
     } catch {
-      throw new Error(`Agent Run ${row.id} 的 outcome_json 不是合法 JSON`);
+      throw new Error(`Agent Run ${row.runId} 的 outcome_json 不是合法 JSON`);
     }
   }
   return {
-    id: row.id,
-    projectId: row.projectId,
-    pageId: row.pageId,
-    conversationId: row.conversationId,
-    userMessageId: row.userMessageId,
+    id: row.runId,
+    projectId: projectPublicId(client, row.projectId),
+    pageId: pagePublicId(client, row.pageId),
+    conversationId: encodeDatabaseId('conversation', row.conversationId),
+    userMessageId: encodeDatabaseId('message', row.userMessageId),
     clientRequestId: row.clientRequestId,
     baseWorkingVersion: row.baseWorkingVersion,
     ...(row.resultWorkingVersion === null
@@ -99,7 +110,7 @@ const fromRow = (row: RunRow): AgentRunRecord => {
     policyVersion: row.policyVersion,
     toolsetVersion: row.toolsetVersion,
     materialManifestVersion: row.materialManifestVersion,
-    ...(row.retryOfRunId ? { retryOfRunId: row.retryOfRunId } : {}),
+    ...(row.retryOfRunId ? { retryOfRunId: runPublicId(client, row.retryOfRunId) } : {}),
     inputTokens: row.inputTokens,
     outputTokens: row.outputTokens,
     modelCalls: row.modelCalls,
@@ -115,8 +126,14 @@ const fromRow = (row: RunRow): AgentRunRecord => {
   };
 };
 
-const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
+const toRow = (run: AgentRunRecord, client: DatabaseClient): typeof agentRuns.$inferInsert => ({
   ...run,
+  id: undefined,
+  runId: run.id,
+  projectId: projectKey(client, run.projectId),
+  pageId: pageKey(client, run.pageId),
+  conversationId: decodeDatabaseId('conversation', run.conversationId),
+  userMessageId: decodeDatabaseId('message', run.userMessageId),
   status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
   resultWorkingVersion: run.resultWorkingVersion ?? null,
@@ -125,7 +142,7 @@ const toRow = (run: AgentRunRecord): typeof agentRuns.$inferInsert => ({
   outcomeJson: run.outcomeJson === undefined ? null : JSON.stringify(run.outcomeJson),
   operationCount: run.operationCount ?? null,
   operationDigest: run.operationDigest ?? null,
-  retryOfRunId: run.retryOfRunId ?? null,
+  retryOfRunId: run.retryOfRunId ? runKey(client, run.retryOfRunId) : null,
   durationMs: run.durationMs ?? null,
   errorCode: run.errorCode ?? null,
   errorMessage: run.errorMessage ?? null,
@@ -140,12 +157,12 @@ export class AgentRunRepository {
     this.client = 'orm' in database ? database.orm : database;
   }
   create(run: AgentRunRecord): AgentRunRecord {
-    this.client.insert(agentRuns).values(toRow(run)).run();
+    this.client.insert(agentRuns).values(toRow(run, this.client)).run();
     return run;
   }
   get(id: string): AgentRunRecord | undefined {
-    const row = this.client.select().from(agentRuns).where(eq(agentRuns.id, id)).get();
-    return row && fromRow(row);
+    const row = this.client.select().from(agentRuns).where(eq(agentRuns.runId, id)).get();
+    return row && fromRow(row, this.client);
   }
   findByClientRequest(
     projectId: string,
@@ -157,13 +174,13 @@ export class AgentRunRepository {
       .from(agentRuns)
       .where(
         and(
-          eq(agentRuns.projectId, projectId),
-          eq(agentRuns.pageId, pageId),
+          eq(agentRuns.projectId, projectKey(this.client, projectId)),
+          eq(agentRuns.pageId, pageKey(this.client, pageId)),
           eq(agentRuns.clientRequestId, clientRequestId),
         ),
       )
       .get();
-    return row && fromRow(row);
+    return row && fromRow(row, this.client);
   }
   listActive(): AgentRunRecord[] {
     return this.client
@@ -179,7 +196,7 @@ export class AgentRunRepository {
       )
       .orderBy(asc(agentRuns.createdAt))
       .all()
-      .map(fromRow);
+      .map((row) => fromRow(row, this.client));
   }
   listAll(): AgentRunRecord[] {
     return this.client
@@ -187,7 +204,7 @@ export class AgentRunRepository {
       .from(agentRuns)
       .orderBy(asc(agentRuns.createdAt))
       .all()
-      .map(fromRow);
+      .map((row) => fromRow(row, this.client));
   }
   updateStatus(
     id: string,
@@ -241,7 +258,10 @@ export class AgentRunRepository {
         .update(agentRuns)
         .set(values)
         .where(
-          and(eq(agentRuns.id, id), inArray(agentRuns.status, expected.map(agentRunStatus.encode))),
+          and(
+            eq(agentRuns.runId, id),
+            inArray(agentRuns.status, expected.map(agentRunStatus.encode)),
+          ),
         )
         .run().changes > 0
     );
@@ -260,7 +280,7 @@ export class AgentRunRepository {
       this.client
         .update(agentRuns)
         .set({ ...metrics, updatedAt: new Date().toISOString() })
-        .where(eq(agentRuns.id, id))
+        .where(eq(agentRuns.runId, id))
         .run().changes > 0
     );
   }

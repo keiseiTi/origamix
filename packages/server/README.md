@@ -9,19 +9,21 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 3. 按要理解的业务进入下表对应目录，先读 Service，再读它调用的 Repository 或 Store。
 4. 阅读 `test/` 中与实现目录对应的测试，了解成功、拒绝和恢复场景。
 
-| 目录              | 职责与入口                                                                                                                                                                          |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projects/`       | [project-service.ts](projects/project-service.ts) 编排项目和页面用例；目录授权、Manifest、初始化和源码生成各有对应模块                                                              |
-| `schema/`         | [schema-service.ts](schema/schema-service.ts) 是权威编辑管线；[project-apply-service.ts](schema/project-apply-service.ts) 负责显式应用和重载；两个 Store 分别管理工作副本和目标文件 |
-| `conversations/`  | [conversation-service.ts](conversations/conversation-service.ts) 管理会话、消息和创建 Run 的数据库事务                                                                              |
-| `agent/`          | [agent-service.ts](agent/agent-service.ts) 接收运行请求；[run-executor.ts](agent/run-executor.ts) 编排模型执行；Run 服务管理状态转换；`tools/` 管理工具、权限与预算                 |
-| `diagnostics/`    | [diagnostic-service.ts](diagnostics/diagnostic-service.ts) 校验并清洗渲染诊断；[diagnostic-cache.ts](diagnostics/diagnostic-cache.ts) 只在内存保存诊断                              |
-| `http/`           | 按 Project、Schema、Apply、Agent、Runtime 分文件注册路由，共用鉴权和响应适配                                                                                                        |
-| `database/`       | SQLite 连接、Drizzle 表定义、初始化与兼容性检查；业务 Repository 放在各业务目录                                                                                                     |
-| `evaluation/`     | 固定评测、模型能力探测、安全审计与发布门禁，由 [tooling.ts](tooling.ts) 导出                                                                                                        |
-| `testing/`        | Fake Engine 与确定性模型，供测试或演示使用                                                                                                                                          |
-| `infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复                                                                                                                     |
-| `scripts/`        | 构建、开发监听、模板与启动集成检查                                                                                                                                                  |
+| 目录             | 职责与入口                                                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projects/`      | [project-service.ts](projects/project-service.ts) 编排项目和页面用例；目录授权、Manifest、初始化和源码生成各有对应模块                                                              |
+| `schema/`        | [schema-service.ts](schema/schema-service.ts) 是权威编辑管线；[project-apply-service.ts](schema/project-apply-service.ts) 负责显式应用和重载；两个 Store 分别管理工作副本和目标文件 |
+| `conversations/` | [conversation-service.ts](conversations/conversation-service.ts) 管理会话、消息和创建 Run 的数据库事务                                                                              |
+| `agent/`         | [agent-service.ts](agent/agent-service.ts) 接收运行请求；[run-executor.ts](agent/run-executor.ts) 编排模型执行；Run 服务管理状态转换；`tools/` 管理工具、权限与预算                 |
+| `diagnostics/`   | [diagnostic-service.ts](diagnostics/diagnostic-service.ts) 校验并清洗渲染诊断；[diagnostic-cache.ts](diagnostics/diagnostic-cache.ts) 只在内存保存诊断                              |
+| `http/`          | 按 Project、Schema、Apply、Agent、Runtime 分文件注册路由，共用鉴权和响应适配                                                                                                        |
+| `database/`      | SQLite 连接、Drizzle 表定义、初始化与兼容性检查；业务 Repository 放在各业务目录                                                                                                     |
+
+数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。旧结构不会自动迁移或删除，启动时会报告不兼容。
+| `evaluation/` | 固定评测、模型能力探测、安全审计与发布门禁，由 [tooling.ts](tooling.ts) 导出 |
+| `testing/` | Fake Engine 与确定性模型，供测试或演示使用 |
+| `infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复 |
+| `scripts/` | 构建、开发监听、模板与启动集成检查 |
 
 业务目录内部保留 Service → Repository/Store 的职责边界，不再为每个技术层建立子目录。目录位置不代表允许绕过服务写入。
 

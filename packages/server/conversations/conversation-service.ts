@@ -44,7 +44,7 @@ export class ConversationService {
     if (active) return active;
     const timestamp = now();
     return this.conversations.create({
-      id: id('conversation'),
+      id: '',
       projectId,
       pageId,
       title: '新对话',
@@ -99,39 +99,36 @@ export class ConversationService {
     );
     if (duplicate) return this.existingStartResult(duplicate, input, conversations);
 
-    let shouldCreateConversation = false;
     let conversation = input.conversationId
       ? this.requireConversation(input.conversationId, input.projectId, input.pageId, conversations)
       : conversations.findActive(input.projectId, input.pageId);
     if (!conversation) {
       const timestamp = now();
-      conversation = {
-        id: id('conversation'),
+      conversation = conversations.create({
+        id: '',
         projectId: input.projectId,
         pageId: input.pageId,
         title: '新对话',
         status: 'active',
         createdAt: timestamp,
         updatedAt: timestamp,
-      };
-      shouldCreateConversation = true;
+      });
     }
     if (input.retryOfRunId) this.requireRetryParent(input.retryOfRunId, conversation, runs);
 
     const timestamp = now();
     const runId = id('run');
-    const message: StoredMessage = {
+    const message: StoredMessage = conversations.appendMessage({
       version: '1',
-      messageId: id('message'),
+      messageId: '',
       conversationId: conversation.id,
-      runId,
       role: 'user',
       content: input.content,
       sequence: conversations.nextSequence(conversation.id),
       createdAt: timestamp,
       updatedAt: timestamp,
       status: 'completed',
-    };
+    });
     const run: AgentRunRecord = {
       id: runId,
       projectId: input.projectId,
@@ -159,11 +156,15 @@ export class ConversationService {
       updatedAt: timestamp,
     };
 
-    if (shouldCreateConversation) conversations.create(conversation);
-    conversations.appendMessage(message);
     runs.create(run);
+    conversations.bindMessageRun(message.messageId, runId);
     conversations.touch(conversation.id, timestamp);
-    return { conversation: { ...conversation, updatedAt: timestamp }, message, run, created: true };
+    return {
+      conversation: { ...conversation, updatedAt: timestamp },
+      message: { ...message, runId },
+      run,
+      created: true,
+    };
   }
 
   checkpointAssistant(runId: string, content: MessageContent): StoredMessage {
@@ -180,7 +181,7 @@ export class ConversationService {
     }
     const message: StoredMessage = {
       version: '1',
-      messageId: id('message'),
+      messageId: '',
       conversationId: run.conversationId,
       runId,
       role: 'assistant',

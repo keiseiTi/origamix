@@ -6,6 +6,22 @@ describe('Agent tool audit persistence', () => {
   it('retains ordered safe evidence without tool arguments or Schema content', () => {
     const database = new ApplicationDatabase(':memory:');
     try {
+      database.connection
+        .prepare(
+          `INSERT INTO agent_runs (
+        run_id, project_id, page_id, conversation_id, user_message_id, client_request_id,
+        base_working_version, model_ref, status, budget_json, prompt_version, policy_version,
+        toolset_version, material_manifest_version, created_at, updated_at
+      ) VALUES (?, 1, 1, 1, 1, ?, 1, ?, 0, ?, '1', '1', '1', '1', ?, ?)`,
+        )
+        .run(
+          'run_one',
+          'request_one',
+          'fake/model',
+          '{}',
+          '2026-09-22T00:00:00.000Z',
+          '2026-09-22T00:00:00.000Z',
+        );
       const audits = new AgentToolAuditRepository(database);
       audits.append({
         runId: 'run_one',
