@@ -14,6 +14,7 @@ import {
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
+import { MessageMarkdown } from './message-markdown';
 import type { AgentChatSession } from './use-agent-chat';
 
 const stageLabels = {
@@ -94,8 +95,15 @@ export const ChatWorkspace = ({
     retry,
   } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(false);
   const active = isRunActive(state.stage);
   const modelConfigurationRequired = hasModelApiKey === false;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages, state.streamedText, state.progressHistory, state.stage]);
@@ -111,7 +119,7 @@ export const ChatWorkspace = ({
     if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
     try {
       await send(draft);
-      onDraftChange('');
+      if (mountedRef.current) onDraftChange('');
     } catch {
       // The hook keeps the actionable error and the draft remains available.
     }
@@ -139,7 +147,7 @@ export const ChatWorkspace = ({
             </div>
           ) : state.messages.length === 0 && !state.error ? (
             <p className='rounded-xl border border-dashed border-zinc-200 p-4 text-center text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-              可以从“创建一个客户信息表单”开始。
+              可以从“创建一个表单表格”开始。
             </p>
           ) : (
             <ol className='space-y-4' aria-label='对话记录'>
@@ -152,10 +160,14 @@ export const ChatWorkspace = ({
                       className={
                         message.role === 'user'
                           ? 'max-w-[82%] rounded-2xl bg-zinc-100 px-4 py-2.5 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                          : 'max-w-[88%] whitespace-pre-wrap text-zinc-700 dark:text-zinc-200'
+                          : 'max-w-[88%] min-w-0 text-zinc-700 dark:text-zinc-200'
                       }
                     >
-                      {messageText(message)}
+                      {message.role === 'assistant' ? (
+                        <MessageMarkdown content={messageText(message)} />
+                      ) : (
+                        messageText(message)
+                      )}
                     </div>
                   </li>
                   {message.messageId === currentUserMessageId && progress && (
@@ -168,10 +180,10 @@ export const ChatWorkspace = ({
           {!currentUserMessageId && progress && <div className='mt-4'>{progress}</div>}
           {state.streamedText && (
             <div
-              className='mt-4 max-w-[88%] whitespace-pre-wrap text-zinc-700 dark:text-zinc-200'
+              className='mt-4 max-w-[88%] min-w-0 text-zinc-700 dark:text-zinc-200'
               aria-live='polite'
             >
-              {state.streamedText}
+              <MessageMarkdown content={state.streamedText} />
             </div>
           )}
           {state.stage && (
@@ -281,11 +293,12 @@ export const ChatWorkspace = ({
                       : '描述你想创建或修改的页面'
               }
             />
-            <footer className='flex items-center justify-between'>
+            <footer className='flex items-center justify-between mt-2'>
               <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
                 <LayoutPanelLeft size={14} />
                 当前页面
               </span>
+
               {active ? (
                 <Button
                   size='sm'
@@ -299,12 +312,12 @@ export const ChatWorkspace = ({
               ) : (
                 <Button
                   size='icon-sm'
-                  className='h-7 min-h-7 w-7 min-w-7'
+                  className='h-6 min-h-6 w-6 min-w-6'
                   aria-label='发送'
                   disabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
                   onClick={() => void submit()}
                 >
-                  <Send size={15} />
+                  <Send size={14} />
                 </Button>
               )}
             </footer>

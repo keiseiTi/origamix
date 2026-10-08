@@ -15,17 +15,35 @@ type AgentRequest = { input: CreateAgentRunRequest; inFlight: boolean };
 interface PendingOperations {
   applies: Record<string, ApplyRequest>;
   agents: Record<string, AgentRequest>;
+  agentPreparations: Record<string, string>;
   setApply: (key: string, request: ApplyRequest) => void;
   finishApply: (key: string, requestId: string, confirmed: boolean) => void;
   setAgent: (key: string, request: AgentRequest) => void;
   finishAgent: (key: string, requestId: string, confirmed: boolean) => void;
+  reserveAgent: (key: string, preparationId: string) => boolean;
+  finishAgentPreparation: (key: string, preparationId: string) => void;
 }
 
 // Window memory only. Unmounting a view must not discard an unresolved mutation.
 // Settled requests are removed; uncertain requests survive until explicit retry.
-export const usePendingOperations = create<PendingOperations>((set) => ({
+export const usePendingOperations = create<PendingOperations>((set, get) => ({
   applies: {},
   agents: {},
+  agentPreparations: {},
+  reserveAgent: (key, preparationId) => {
+    if (get().agents[key] || get().agentPreparations[key]) return false;
+    set((state) => ({
+      agentPreparations: { ...state.agentPreparations, [key]: preparationId },
+    }));
+    return true;
+  },
+  finishAgentPreparation: (key, preparationId) =>
+    set((state) => {
+      if (state.agentPreparations[key] !== preparationId) return state;
+      const agentPreparations = { ...state.agentPreparations };
+      delete agentPreparations[key];
+      return { agentPreparations };
+    }),
   setApply: (key, request) => set((state) => ({ applies: { ...state.applies, [key]: request } })),
   finishApply: (key, requestId, confirmed) =>
     set((state) => {

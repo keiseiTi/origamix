@@ -81,7 +81,7 @@ export const Sidebar = ({
       <aside
         id='project-sidebar'
         aria-label='项目侧边栏'
-        className={`z-20 flex h-full w-64 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 px-2.5 pb-2.5 text-[13px] text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 ${
+        className={`z-20 flex h-full w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 px-2.5 pb-2.5 text-[13px] text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 ${
           isTemporary
             ? 'fixed inset-y-0 left-0 rounded-r-xl shadow-[8px_0_30px_rgb(0_0_0/0.14)] dark:shadow-[8px_0_30px_rgb(0_0_0/0.45)]'
             : 'relative'

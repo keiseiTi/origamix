@@ -39,6 +39,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   const [liveRunId, setLiveRunId] = useState<string | null>(null);
   const pageKey = pageOperationKey(projectId, pageId);
   const pending = usePendingOperations((value) => value.agents[pageKey]);
+  const preparing = usePendingOperations((value) => value.agentPreparations[pageKey]);
   const [authority, setAuthority] = useState<string | null>(null);
   const conversationId = useRef<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
@@ -97,7 +98,12 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   useEffect(
     () =>
       usePendingOperations.subscribe((next, previous) => {
-        if (previous.agents[pageKey] && !next.agents[pageKey] && !sending.current) {
+        if (
+          !sending.current &&
+          !next.agents[pageKey] &&
+          !next.agentPreparations[pageKey] &&
+          (previous.agents[pageKey] || previous.agentPreparations[pageKey])
+        ) {
           // A request initiated by an unmounted view has settled. Recheck authority
           // before releasing the new view's editing lock.
           setAuthority(null);
@@ -164,6 +170,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           event.type === 'run.interrupted'
         ) {
           terminalReceived = true;
+          setAuthority(null);
           void loadAuthority();
         }
       },
@@ -195,12 +202,20 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     ): Promise<void> => {
       const content = submission.text.trim();
       const operations = usePendingOperations.getState();
-      if (!content || sending.current || operations.agents[pageKey]?.inFlight)
+      if (
+        !content ||
+        sending.current ||
+        operations.agents[pageKey]?.inFlight ||
+        operations.agentPreparations[pageKey]
+      )
         throw new Error('请求仍在处理中，请稍后重试');
       if (!retryInput && (authority !== pageKey || isRunActive(state.stage)))
         throw new Error('请等待页面运行状态确认后再发送');
       if (!retryInput && operations.agents[pageKey])
         throw new Error('上次发送结果待确认，请先重试');
+      const preparationId = retryInput ? null : requestId();
+      if (preparationId && !operations.reserveAgent(pageKey, preparationId))
+        throw new Error('请求仍在处理中，请稍后重试');
       sending.current = true;
       dispatch({ type: 'submission.started' });
       authorityRequest.current += 1;
@@ -216,7 +231,6 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           ? undefined
           : await schemaService.workingState(projectId, pageId);
         const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
-        if (!current()) throw new Error('页面已切换，请返回原页面重试');
         const latest = usePendingOperations.getState().agents[pageKey];
         if (latest?.inFlight || (!retryInput && latest))
           throw new Error('请求仍在处理中，请稍后重试');
@@ -232,6 +246,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           ...(submission.retryOfRunId ? { retryOfRunId: submission.retryOfRunId } : {}),
         };
         operations.setAgent(pageKey, { input, inFlight: true });
+        if (preparationId) operations.finishAgentPreparation(pageKey, preparationId);
         const created = await createAgentRun(input);
         accepted = true;
         operations.finishAgent(pageKey, input.clientRequestId, true);
@@ -276,15 +291,22 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           setAuthority(null);
           dispatch({
             type: 'history.failed',
-            message: error instanceof Error ? error.message : '发送失败，请重试。',
+            message: accepted
+              ? '请求已提交，正在恢复对话状态。'
+              : error instanceof Error
+                ? error.message
+                : '发送失败，请重试。',
           });
+          if (accepted) void loadAuthority();
         }
+        if (accepted) return;
         throw error;
       } finally {
+        if (preparationId) operations.finishAgentPreparation(pageKey, preparationId);
         sending.current = false;
       }
     },
-    [pageId, projectId, pageKey, authority, state.stage],
+    [pageId, projectId, pageKey, authority, state.stage, loadAuthority],
   );
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
@@ -335,7 +357,11 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   }, [pageKey, authority, loadAuthority, state.run, submit]);
 
   const activity =
-    authority !== pageKey || pending ? 'unknown' : isRunActive(state.stage) ? 'running' : 'idle';
+    authority !== pageKey || pending || preparing
+      ? 'unknown'
+      : isRunActive(state.stage)
+        ? 'running'
+        : 'idle';
   return {
     state,
     activity,

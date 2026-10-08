@@ -29,7 +29,7 @@ const deferred = <T,>() => {
 describe('Agent recovery', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    usePendingOperations.setState({ applies: {}, agents: {} });
+    usePendingOperations.setState({ applies: {}, agents: {}, agentPreparations: {} });
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.listAllMessages.mockResolvedValue({ messages: [] });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
@@ -313,6 +313,70 @@ describe('Agent recovery', () => {
     expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
     expect(usePendingOperations.getState().agents).toEqual({});
     expect(next.result.current.activity).toBe('idle');
+  });
+
+  it('continues a prepared submission after closing its tab and blocks a reopened tab', async () => {
+    const working = deferred<{ workingVersion: number }>();
+    mocks.workingState.mockReturnValueOnce(working.promise);
+    mocks.createAgentRun.mockResolvedValue({
+      conversationId: 'conversation_1',
+      runId: 'run_1',
+      status: 'completed',
+      run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
+    });
+    const first = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(first.result.current.activity).toBe('idle'));
+    let submission!: Promise<void>;
+    act(() => {
+      submission = first.result.current.send('hello');
+    });
+    await waitFor(() => expect(mocks.workingState).toHaveBeenCalled());
+    first.unmount();
+
+    const reopened = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(mocks.listConversations).toHaveBeenCalledTimes(2));
+    expect(reopened.result.current.activity).toBe('unknown');
+    await act(async () => {
+      await expect(reopened.result.current.send('again')).rejects.toThrow();
+    });
+    await act(async () => {
+      working.resolve({ workingVersion: 1 });
+      await submission;
+    });
+    expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
+    expect(usePendingOperations.getState().agentPreparations).toEqual({});
+  });
+
+  it('treats history failure after Run acceptance as recovery rather than failed submission', async () => {
+    mocks.createAgentRun.mockResolvedValue({
+      conversationId: 'conversation_1',
+      runId: 'run_1',
+      status: 'completed',
+      run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
+    });
+    mocks.listConversations
+      .mockResolvedValueOnce({ conversations: [] })
+      .mockResolvedValue({ conversations: [{ conversationId: 'conversation_1' }] });
+    mocks.listAllMessages
+      .mockRejectedValueOnce(new Error('history unavailable'))
+      .mockResolvedValue({
+        messages: [
+          {
+            messageId: 'message_1',
+            runId: 'run_1',
+            sequence: 1,
+            role: 'user',
+            content: { version: '1', blocks: [{ type: 'text', text: 'hello' }] },
+          },
+        ],
+      });
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+    await act(async () => hook.result.current.send('hello'));
+    expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+    expect(hook.result.current.state.run?.runId).toBe('run_1');
+    expect(hook.result.current.state.error).toBeNull();
   });
 
   it('ignores history from the page that was left', async () => {
