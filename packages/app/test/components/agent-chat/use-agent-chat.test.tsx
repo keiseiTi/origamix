@@ -153,9 +153,6 @@ describe('Agent recovery', () => {
     });
     expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
     expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
-    expect(hook.result.current.state.tools).toEqual([
-      { id: 'complete_page_run', name: 'complete_page_run', status: 'completed' },
-    ]);
     expect(hook.result.current.state.workingRefreshKey).toBe('working_run_fast_2');
     expect(hook.result.current.state.stage).toBe('completed');
     await waitFor(

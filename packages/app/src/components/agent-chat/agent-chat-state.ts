@@ -6,23 +6,15 @@ import type {
   ClarificationResult,
 } from '@origamix/shared/protocol/agent';
 
-export interface ToolActivity {
-  id: string;
-  name: string;
-  status: 'running' | 'completed' | 'failed';
-}
-
 export interface AgentChatState {
   messages: AgentMessage[];
   run: AgentRun | null;
   streamedText: string;
   stage: AgentRunStatus | null;
-  tools: ToolActivity[];
   progressMessage: string | null;
   progressHistory: string[];
   workingRefreshKey: string | null;
   lastEventId: number;
-  terminalEventSeen: boolean;
   error: string | null;
   connection: 'idle' | 'connecting' | 'connected' | 'recovering';
 }
@@ -46,12 +38,10 @@ export const initialAgentChatState: AgentChatState = {
   run: null,
   streamedText: '',
   stage: null,
-  tools: [],
   progressMessage: null,
   progressHistory: [],
   workingRefreshKey: null,
   lastEventId: -1,
-  terminalEventSeen: false,
   error: null,
   connection: 'idle',
 };
@@ -103,21 +93,6 @@ const statusFromEvent = (event: AgentEvent): AgentRunStatus | undefined => {
   return undefined;
 };
 
-const updateTool = (tools: ToolActivity[], event: AgentEvent): ToolActivity[] => {
-  const record = payloadRecord(event.payload);
-  const id = payloadString(record, ['toolCallId', 'id', 'toolName']);
-  if (!id) return tools;
-  const current = tools.find((tool) => tool.id === id);
-  const name = payloadString(record, ['toolName', 'name']) ?? current?.name ?? '页面工具';
-  const status =
-    record.phase === 'started'
-      ? 'running'
-      : record.phase === 'failed' || record.phase === 'denied'
-        ? 'failed'
-        : 'completed';
-  return [...tools.filter((tool) => tool.id !== id), { id, name, status }];
-};
-
 const toolLabels: Record<string, string> = {
   get_page_context: '读取页面上下文',
   get_schema_outline: '读取页面结构',
@@ -159,11 +134,9 @@ export const agentChatReducer = (
       run: null,
       stage: 'queued',
       streamedText: '',
-      tools: [],
       progressMessage: '正在提交请求',
       progressHistory: ['正在提交请求'],
       workingRefreshKey: null,
-      terminalEventSeen: false,
       error: null,
       connection: 'connecting',
     };
@@ -197,11 +170,9 @@ export const agentChatReducer = (
       run: action.run ?? null,
       stage: action.run?.status ?? null,
       streamedText: changedRun || hasDurableAnswer ? '' : state.streamedText,
-      tools: changedRun ? [] : state.tools,
       progressMessage: isRunActive(action.run?.status) ? state.progressMessage : null,
       progressHistory: changedRun ? (terminalProgress ? [terminalProgress] : []) : progressHistory,
       lastEventId: changedRun ? -1 : state.lastEventId,
-      terminalEventSeen: changedRun ? false : state.terminalEventSeen,
       workingRefreshKey: action.run?.resultWorkingVersion
         ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
         : changedRun
@@ -222,12 +193,10 @@ export const agentChatReducer = (
       // before presenting that terminal result so the execution path remains visible.
       stage: 'queued',
       streamedText: '',
-      tools: [],
       progressMessage: null,
       progressHistory: ['请求已进入处理队列'],
       workingRefreshKey: null,
       lastEventId: -1,
-      terminalEventSeen: false,
       error: null,
       connection: 'connecting',
     };
@@ -239,7 +208,6 @@ export const agentChatReducer = (
   }
   if (event.eventId <= state.lastEventId) return state;
   const status = statusFromEvent(event);
-  const isToolEvent = event.type.startsWith('tool.');
   const eventPayload = payloadRecord(event.payload);
   const text =
     event.type === 'run.completed' && typeof eventPayload.response === 'string'
@@ -303,10 +271,8 @@ export const agentChatReducer = (
         ? text
         : state.streamedText,
     stage: status ?? state.stage,
-    tools: isToolEvent ? updateTool(state.tools, event) : state.tools,
     progressMessage,
     progressHistory,
-    terminalEventSeen: Boolean(status && terminalStatuses.has(status)) || state.terminalEventSeen,
     workingRefreshKey:
       (event.type === 'working.committed' || event.type === 'run.completed') &&
       typeof eventPayload.resultWorkingVersion === 'number'

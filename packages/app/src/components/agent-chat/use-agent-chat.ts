@@ -36,14 +36,16 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   const sending = useRef(false);
   const authorityRequest = useRef(0);
   const lastSubmittedText = useRef('');
-  const [liveRunId, setLiveRunId] = useState<string | null>(null);
   const pageKey = pageOperationKey(projectId, pageId);
   const pending = usePendingOperations((value) => value.agents[pageKey]);
   const preparing = usePendingOperations((value) => value.agentPreparations[pageKey]);
-  const [authority, setAuthority] = useState<string | null>(null);
+  const [verifiedPageKey, setVerifiedPageKey] = useState<string | null>(null);
   const conversationId = useRef<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  const [latestWorkingVersion, setLatestWorkingVersion] = useState<number | null>(null);
+  const [latestWorking, setLatestWorking] = useState<{
+    pageKey: string;
+    version: number;
+  } | null>(null);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
     const currentGeneration = generation.current;
@@ -59,7 +61,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       const conversation = listed.conversations[0];
       conversationId.current = conversation?.conversationId ?? null;
       if (!conversation) {
-        setAuthority(pageKey);
+        setVerifiedPageKey(pageKey);
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
@@ -68,8 +70,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
       if (current()) {
-        if (run && !isRunActive(run.status)) setLiveRunId(null);
-        setAuthority(pageKey);
+        setVerifiedPageKey(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
       }
     } catch (error) {
@@ -104,20 +105,16 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           !next.agentPreparations[pageKey] &&
           (previous.agents[pageKey] || previous.agentPreparations[pageKey])
         ) {
-          // A request initiated by an unmounted view has settled. Recheck authority
+          // A request initiated by an unmounted view has settled. Recheck the backend
           // before releasing the new view's editing lock.
-          setAuthority(null);
+          setVerifiedPageKey(null);
           void loadAuthority();
         }
       }),
     [pageKey, loadAuthority],
   );
 
-  const activeRunId =
-    state.run &&
-    (isRunActive(state.stage) || (liveRunId === state.run.runId && !state.terminalEventSeen))
-      ? state.run.runId
-      : null;
+  const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
   const clarification = state.run?.clarification;
   useEffect(() => {
     if (!clarification) return;
@@ -126,7 +123,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       void schemaService
         .workingState(projectId, pageId)
         .then((working) => {
-          if (!disposed) setLatestWorkingVersion(working.workingVersion);
+          if (!disposed) setLatestWorking({ pageKey, version: working.workingVersion });
         })
         .catch(() => undefined);
     };
@@ -134,7 +131,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     return () => {
       disposed = true;
     };
-  }, [clarification, pageId, projectId]);
+  }, [clarification, pageId, pageKey, projectId]);
   useEffect(() => {
     if (!activeRunId) return;
     dispatch({ type: 'connection.changed', connection: 'connecting' });
@@ -170,7 +167,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           event.type === 'run.interrupted'
         ) {
           terminalReceived = true;
-          setAuthority(null);
+          setVerifiedPageKey(null);
           void loadAuthority();
         }
       },
@@ -209,7 +206,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         operations.agentPreparations[pageKey]
       )
         throw new Error('请求仍在处理中，请稍后重试');
-      if (!retryInput && (authority !== pageKey || isRunActive(state.stage)))
+      if (!retryInput && (verifiedPageKey !== pageKey || isRunActive(state.stage)))
         throw new Error('请等待页面运行状态确认后再发送');
       if (!retryInput && operations.agents[pageKey])
         throw new Error('上次发送结果待确认，请先重试');
@@ -220,7 +217,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       dispatch({ type: 'submission.started' });
       authorityRequest.current += 1;
       const submissionAuthorityRequest = authorityRequest.current;
-      setAuthority(null);
+      setVerifiedPageKey(null);
       lastSubmittedText.current = content;
       const currentGeneration = generation.current;
       const current = () => mounted.current && generation.current === currentGeneration;
@@ -253,20 +250,19 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         if (!current()) return;
         conversationId.current = created.conversationId;
         const replayEvents = isRunActive(created.status);
-        if (replayEvents) setLiveRunId(created.runId);
         // A renderer can briefly outlive an older desktop Server during a dev
         // rebuild. Recover the Run snapshot instead of silently skipping SSE.
         const run = created.run ?? (await getAgentRun(projectId, created.runId)).run;
         if (!current()) return;
         // The create response includes the Run snapshot, so subscribe before
-        // loading message history or making another authority request.
+        // loading message history or making another backend state request.
         if (replayEvents) dispatch({ type: 'run.queued', run });
         const history = await listAllMessages(projectId, pageId, created.conversationId);
-        // A terminal SSE event may have started a newer authority reload while
+        // A terminal SSE event may have started a newer backend state reload while
         // this initial reconciliation was in flight. Never let this older
         // snapshot overwrite the persisted final assistant message.
         if (!current() || authorityRequest.current !== submissionAuthorityRequest) return;
-        setAuthority(pageKey);
+        setVerifiedPageKey(pageKey);
         dispatch({
           type: 'history.loaded',
           messages: replayEvents
@@ -288,7 +284,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
               error.status !== 408,
           );
         if (current()) {
-          setAuthority(null);
+          setVerifiedPageKey(null);
           dispatch({
             type: 'history.failed',
             message: accepted
@@ -306,7 +302,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         sending.current = false;
       }
     },
-    [pageId, projectId, pageKey, authority, state.stage, loadAuthority],
+    [pageId, projectId, pageKey, verifiedPageKey, state.stage, loadAuthority],
   );
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
@@ -346,7 +342,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         .map((block) => block.text)
         .join('\n');
       await submit({ text }, request.input);
-    } else if (authority !== pageKey) await loadAuthority();
+    } else if (verifiedPageKey !== pageKey) await loadAuthority();
     else if (
       lastSubmittedText.current &&
       state.run &&
@@ -354,10 +350,10 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     )
       await submit({ text: lastSubmittedText.current, retryOfRunId: state.run.runId });
     else await loadAuthority();
-  }, [pageKey, authority, loadAuthority, state.run, submit]);
+  }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
 
   const activity =
-    authority !== pageKey || pending || preparing
+    verifiedPageKey !== pageKey || pending || preparing
       ? 'unknown'
       : isRunActive(state.stage)
         ? 'running'
@@ -368,15 +364,15 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     pendingSubmission: Boolean(pending && !pending.inFlight),
     clarificationExpired: Boolean(
       clarification &&
-      latestWorkingVersion !== null &&
-      latestWorkingVersion !== clarification.baseWorkingVersion,
+      latestWorking?.pageKey === pageKey &&
+      latestWorking.version !== clarification.baseWorkingVersion,
     ),
     send,
     selectClarification,
     cancel,
     retry,
     refresh: async () => {
-      setAuthority(null);
+      setVerifiedPageKey(null);
       await loadAuthority();
     },
   };
