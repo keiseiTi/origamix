@@ -7,10 +7,10 @@ import {
   listConversations,
   listAllMessages,
   subscribeAgentEvents,
-} from '../../services/agent';
-import { pageOperationKey, usePendingOperations } from '../../store/pending-operations';
-import { ApiRequestError } from '../../services/request';
-import { schemaService } from '../../services/schema';
+} from '@/services/agent';
+import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
+import { ApiRequestError } from '@/services/request';
+import { schemaService } from '@/services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 
 const requestId = (): string =>

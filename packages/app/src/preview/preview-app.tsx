@@ -38,9 +38,17 @@ export const PreviewApp = (): React.JSX.Element => {
   }, [pageId, projectId]);
 
   if (error)
-    return <div role='alert' className='grid h-screen place-items-center p-6 text-sm text-danger'>{error}</div>;
+    return (
+      <div role='alert' className='grid h-screen place-items-center p-6 text-sm text-danger'>
+        {error}
+      </div>
+    );
   if (!snapshot)
-    return <div className='grid h-screen place-items-center'><Spinner aria-label='读取页面' /></div>;
+    return (
+      <div className='grid h-screen place-items-center'>
+        <Spinner aria-label='读取页面' />
+      </div>
+    );
 
   return (
     <main className='h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>

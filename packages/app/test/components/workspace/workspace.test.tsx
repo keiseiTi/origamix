@@ -38,7 +38,6 @@ import { Workspace } from '../../../src/components/workspace';
 
 const props = {
   pageId: 'page_a',
-  onCreateProject: vi.fn(),
   editorRef: { current: null },
   onModeChange: vi.fn(),
   onPreview: vi.fn(),

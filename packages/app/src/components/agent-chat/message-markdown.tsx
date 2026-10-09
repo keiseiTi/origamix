@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 
 export const MessageMarkdown = ({ content }: { content: string }): React.JSX.Element => (
-  <div className='min-w-0 break-words text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'>
+  <div className='min-w-0 wrap-break-word text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0'>
     <ReactMarkdown
       components={{
         p: ({ children }) => <p className='my-2 whitespace-pre-wrap'>{children}</p>,

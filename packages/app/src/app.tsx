@@ -2,12 +2,13 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Sidebar } from '@/components/sidebar';
 import { CreateProjectModal } from '@/components/sidebar/mod/create-project-modal';
 import { SettingsModal } from '@/components/settings';
 import { Workspace } from '@/components/workspace';
+import { EmptyWorkspace } from '@/components/workspace/empty-workspace';
 import { PageTabs } from '@/components/workspace/page-tabs';
 import type { EditorHandle } from '@/components/editor';
 import type { WorkspaceMode } from '@/components/workspace';
@@ -64,7 +65,6 @@ const App = (): React.JSX.Element => {
     if (initialPageId) refs.set(initialPageId, { current: null });
     return refs;
   });
-  const emptyEditorRef = useRef<EditorHandle>(null);
   const [schemaRefreshKeys, setSchemaRefreshKeys] = useState<Record<string, string>>({});
   const [mountedPageIds, setMountedPageIds] = useState<string[]>(() => {
     const initialPageId = useWorkspaceStore.getState().activeTabId;
@@ -296,20 +296,12 @@ const App = (): React.JSX.Element => {
                           [committedPageId]: revisionId,
                         }));
                       }}
-                      onCreateProject={() => setIsHomeProjectModalOpen(true)}
                     />
                   </div>
                 );
               })}
               {mountedPages.length === 0 && (
-                <Workspace
-                  editorRef={emptyEditorRef}
-                  onModeChange={async () => undefined}
-                  onPreview={async () => undefined}
-                  schemaRefreshKey=''
-                  onSchemaCommitted={() => undefined}
-                  onCreateProject={() => setIsHomeProjectModalOpen(true)}
-                />
+                <EmptyWorkspace onCreateProject={() => setIsHomeProjectModalOpen(true)} />
               )}
             </div>
           </section>

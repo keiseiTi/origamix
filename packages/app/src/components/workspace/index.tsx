@@ -4,15 +4,13 @@ import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '../agent-chat';
 import { Editor, type EditorHandle, type EditorHistoryState, type EditorTool } from '../editor';
-import { EmptyWorkspace } from './empty-workspace';
 import { WorkspaceHeader, type WorkspaceMode } from './workspace-header';
 import { usePageSession } from './state/use-page-session';
 import { PagePreviewFrame } from './page-preview-frame';
 
 interface WorkspaceProps {
   active?: boolean;
-  pageId?: string;
-  onCreateProject: () => void;
+  pageId: string;
   editorRef: RefObject<EditorHandle | null>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
@@ -24,7 +22,6 @@ interface WorkspaceProps {
 export const Workspace = ({
   active = true,
   pageId,
-  onCreateProject,
   editorRef,
   onModeChange,
   onPreview,
@@ -43,12 +40,7 @@ export const Workspace = ({
       };
     }),
   );
-  if (!page || !project)
-    return (
-      <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-        <EmptyWorkspace onCreateProject={onCreateProject} />
-      </section>
-    );
+  if (!page || !project) throw new Error(`页面 ${pageId} 不在当前工作区中`);
 
   return (
     <PageWorkspace
@@ -77,7 +69,7 @@ const PageWorkspace = ({
   onConfigureModel,
   schemaRefreshKey,
   onSchemaCommitted,
-}: Omit<WorkspaceProps, 'pageId' | 'onCreateProject'> & {
+}: Omit<WorkspaceProps, 'pageId'> & {
   page: PageItem;
   projectId: string;
   projectName: string;
