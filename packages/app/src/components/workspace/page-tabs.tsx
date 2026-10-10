@@ -2,38 +2,45 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceStore } from '@/store/workspace';
+import { isMacDesktop } from '@/utils';
 
+const macDesktop = isMacDesktop();
 interface PageTabsProps {
-  sidebarCollapsed: boolean;
-  isMacDesktop: boolean;
   onSelect: (pageId: string) => void;
   onClose: (pageId: string) => void;
 }
 
-export const PageTabs = ({
-  sidebarCollapsed,
-  isMacDesktop,
-  onSelect,
-  onClose,
-}: PageTabsProps): React.JSX.Element => {
-  const { openPages, activeTabId } = useWorkspaceStore(
+export const PageTabs = ({ onSelect, onClose }: PageTabsProps): React.JSX.Element => {
+  const { openPages, activeTabId, sidebarCollapsed } = useWorkspaceStore(
     useShallow((state) => ({
       openPages: state.openPages,
       activeTabId: state.activeTabId,
+      sidebarCollapsed: state.sidebarCollapsed ?? false,
     })),
   );
+
+  if (openPages.length === 0)
+    return (
+      <div
+        aria-hidden='true'
+        className='flex h-10 shrink-0 border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900'
+      >
+        {sidebarCollapsed && macDesktop && <span className='window-no-drag-region w-32 shrink-0' />}
+        <span className='window-drag-region min-w-0 flex-1' />
+      </div>
+    );
   return (
     <nav
       aria-label='已打开页面'
       className='window-drag-region flex h-10 shrink-0 items-stretch overflow-x-auto bg-zinc-50 dark:bg-zinc-900'
     >
-      {sidebarCollapsed && isMacDesktop && (
+      {sidebarCollapsed && macDesktop && (
         <span
           aria-hidden='true'
           className='window-no-drag-region w-32 shrink-0 border-r border-b border-zinc-200 dark:border-zinc-800'
         />
       )}
-      {sidebarCollapsed && !isMacDesktop && (
+      {sidebarCollapsed && !macDesktop && (
         <span
           aria-hidden='true'
           className='window-no-drag-region w-12 shrink-0 border-b border-zinc-200 dark:border-zinc-800'
@@ -45,7 +52,7 @@ export const PageTabs = ({
           <div
             key={page.id}
             className={`window-no-drag-region group flex min-w-32 max-w-56 items-center border-r border-zinc-200 px-1 dark:border-zinc-800 ${
-              sidebarCollapsed && !isMacDesktop && index === 0 ? 'border-l' : ''
+              sidebarCollapsed && !macDesktop && index === 0 ? 'border-l' : ''
             } ${
               active
                 ? 'bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'

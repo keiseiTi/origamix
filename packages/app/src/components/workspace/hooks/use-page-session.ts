@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
 import type { EditorHandle } from '@/components/editor';
 import { usePageApplicationState } from './use-page-application-state';
@@ -24,18 +24,22 @@ export const derivePageCapabilities = ({
 export const usePageSession = ({
   projectId,
   pageId,
-  schemaRefreshKey,
   active = true,
   editorRef,
-  onSchemaCommitted,
 }: {
   projectId: string;
   pageId: string;
-  schemaRefreshKey: string;
   active?: boolean;
   editorRef: RefObject<EditorHandle | null>;
-  onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
+  const [refresh, setRefresh] = useState<{ pageId: string; key: string } | null>(null);
+  const schemaRefreshKey = refresh?.pageId === pageId ? refresh.key : '';
+  const onSchemaCommitted = useCallback(
+    (committedPageId: string, refreshKey: string): void => {
+      if (committedPageId === pageId) setRefresh({ pageId, key: refreshKey });
+    },
+    [pageId],
+  );
   const application = usePageApplicationState({
     projectId,
     pageId,
@@ -62,6 +66,7 @@ export const usePageSession = ({
   return {
     application,
     agent,
+    schemaRefreshKey,
     capabilities: derivePageCapabilities({
       agentActivity: agent.activity,
       applyStatus: application.applyStatus,

@@ -17,7 +17,7 @@ const schemaMocks = vi.hoisted(() => ({
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
 
 import { usePendingOperations } from '../../../../src/store/pending-operations';
-import { usePageApplicationState } from '../../../../src/components/workspace/state/use-page-application-state';
+import { usePageApplicationState } from '../../../../src/components/workspace/hooks/use-page-application-state';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;

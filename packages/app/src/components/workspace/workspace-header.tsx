@@ -5,9 +5,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Braces,
   Eye,
@@ -15,17 +14,13 @@ import {
   History,
   ListTree,
   MessageSquare,
-  Monitor,
-  Redo2,
-  RefreshCw,
-  Save,
-  Smartphone,
   SquarePen,
   TableOfContents,
-  Undo2,
 } from 'lucide-react';
 import { RevisionHistoryModal } from './revision-history-modal';
 import type { EditorHistoryState, EditorTool } from '../editor';
+import { CanvasControls } from './canvas-controls';
+import { VersionActions, type ApplyStatus } from './version-actions';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
@@ -42,14 +37,7 @@ interface WorkspaceHeaderProps {
   onApply: () => Promise<void>;
   onReloadFromProject: () => Promise<void>;
   onRestoreRevision: (revisionId: string) => Promise<void>;
-  applyStatus:
-    | 'loading'
-    | 'in_sync'
-    | 'draft_unsaved'
-    | 'saved_pending_apply'
-    | 'external_change'
-    | 'result_pending'
-    | 'error';
+  applyStatus: ApplyStatus;
   canApply: boolean;
   canSaveVersion: boolean;
   canReload: boolean;
@@ -88,9 +76,6 @@ export const WorkspaceHeader = ({
   onOpenEditorTool,
 }: WorkspaceHeaderProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
-  const [savingVersion, setSavingVersion] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const openWindow = async (): Promise<void> => {
@@ -104,50 +89,6 @@ export const WorkspaceHeader = ({
       setOpening(false);
     }
   };
-  const apply = async (): Promise<void> => {
-    setApplying(true);
-    setError(null);
-    try {
-      await onApply();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '应用到项目失败');
-    } finally {
-      setApplying(false);
-    }
-  };
-  const saveVersion = async (): Promise<void> => {
-    setSavingVersion(true);
-    setError(null);
-    try {
-      await onSaveVersion();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '保存版本失败');
-    } finally {
-      setSavingVersion(false);
-    }
-  };
-  const reload = async (): Promise<void> => {
-    if (!window.confirm('重新读取项目内容会放弃当前未应用修改，是否继续？')) return;
-    setReloading(true);
-    setError(null);
-    try {
-      await onReloadFromProject();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '重新读取项目内容失败');
-    } finally {
-      setReloading(false);
-    }
-  };
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (!active) return;
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
-      event.preventDefault();
-      if (canSaveVersion && !savingVersion) void saveVersion();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  });
   return (
     <>
       <header className='relative z-10 flex h-12 min-h-12 items-center justify-between gap-3 border-b border-border px-3 text-xs'>
@@ -188,138 +129,31 @@ export const WorkspaceHeader = ({
           </span>
         </div>
         {mode === 'edit' && (
-          <div className='flex min-w-0 flex-1 items-center justify-center gap-2'>
-            <div className='flex rounded-lg bg-muted p-0.5' aria-label='画布设备'>
-              <Button
-                size='sm'
-                variant={viewportWidth === 1440 ? 'secondary' : 'ghost'}
-                onClick={() => onViewportWidthChange(1440)}
-              >
-                <Monitor /> PC
-              </Button>
-              <Button
-                size='sm'
-                variant={viewportWidth === 375 ? 'secondary' : 'ghost'}
-                onClick={() => onViewportWidthChange(375)}
-              >
-                <Smartphone /> MOBILE
-              </Button>
-            </div>
-            <label className='flex items-center gap-1 text-muted-foreground'>
-              画布宽度
-              <Input
-                type='number'
-                min={240}
-                value={viewportWidth}
-                className='h-7 w-20'
-                aria-label='画布宽度'
-                onChange={(event) =>
-                  onViewportWidthChange(Math.max(240, Number(event.target.value) || 240))
-                }
-              />
-              px
-            </label>
-            <div className='flex overflow-hidden rounded-lg border border-border'>
-              <Button
-                size='icon-sm'
-                variant='ghost'
-                className='rounded-none border-r border-border'
-                aria-label='撤销'
-                disabled={!historyState.canUndo}
-                onClick={onUndo}
-              >
-                <Undo2 />
-              </Button>
-              <Button
-                size='icon-sm'
-                variant='ghost'
-                className='rounded-none'
-                aria-label='重做'
-                disabled={!historyState.canRedo}
-                onClick={onRedo}
-              >
-                <Redo2 />
-              </Button>
-            </div>
-          </div>
+          <CanvasControls
+            viewportWidth={viewportWidth}
+            onViewportWidthChange={onViewportWidthChange}
+            historyState={historyState}
+            onUndo={onUndo}
+            onRedo={onRedo}
+          />
         )}
         <div className='flex shrink-0 items-center gap-1'>
-          {applyStatus !== 'draft_unsaved' && (
-            <span
-              className={
-                applyStatus === 'external_change' || applyStatus === 'error'
-                  ? 'text-danger'
-                  : 'text-zinc-500 dark:text-zinc-400'
-              }
-            >
-              {applyStatus === 'loading'
-                ? '检查状态…'
-                : applyStatus === 'in_sync'
-                  ? '与项目一致'
-                  : applyStatus === 'saved_pending_apply'
-                    ? '版本已保存 · 待应用'
-                    : applyStatus === 'external_change'
-                      ? '项目文件已变化'
-                      : applyStatus === 'result_pending'
-                        ? '应用结果待确认'
-                        : '状态不可用'}
-            </span>
-          )}
+          <VersionActions
+            active={active}
+            previewOpening={opening}
+            onSaveVersion={onSaveVersion}
+            onApply={onApply}
+            onReloadFromProject={onReloadFromProject}
+            applyStatus={applyStatus}
+            canApply={canApply}
+            canSaveVersion={canSaveVersion}
+            canReload={canReload}
+            onErrorChange={setError}
+          />
           {error && (
             <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
               {error}
             </span>
-          )}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  className='px-2 text-xs'
-                  disabled={savingVersion || applying || !canSaveVersion}
-                  onClick={() => void saveVersion()}
-                />
-              }
-            >
-              <Save size={14} />
-              {savingVersion ? '保存中…' : '保存版本'}
-            </TooltipTrigger>
-            <TooltipContent side='bottom'>把当前草稿保存为可恢复的历史版本</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  className='px-2 text-xs'
-                  disabled={opening || applying || !canApply}
-                  onClick={() => void apply()}
-                />
-              }
-            >
-              {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
-            </TooltipTrigger>
-            <TooltipContent side='bottom'>把当前已保存页面写入真实项目</TooltipContent>
-          </Tooltip>
-          {applyStatus === 'external_change' && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    size='icon-sm'
-                    variant='ghost'
-                    aria-label='重新读取项目内容'
-                    disabled={reloading || applying || !canReload}
-                    onClick={() => void reload()}
-                  />
-                }
-              >
-                <RefreshCw size={15} />
-              </TooltipTrigger>
-              <TooltipContent side='bottom'>放弃草稿并重新读取项目 Schema</TooltipContent>
-            </Tooltip>
           )}
           <Tooltip>
             <TooltipTrigger

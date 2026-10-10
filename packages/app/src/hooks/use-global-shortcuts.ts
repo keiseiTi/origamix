@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
+import { isMacDesktop } from '@/utils';
 
-export const useGlobalShortcuts = (isMacDesktop: boolean, openSettings: () => void): void => {
+const macDesktop = isMacDesktop();
+
+export const useGlobalShortcuts = (openSettings: () => void): void => {
   useEffect(() => {
     const handleSettingsShortcut = (event: KeyboardEvent): void => {
-      const primaryModifierPressed = isMacDesktop ? event.metaKey : event.ctrlKey;
+      const primaryModifierPressed = macDesktop ? event.metaKey : event.ctrlKey;
       if (!primaryModifierPressed || event.altKey || event.shiftKey || event.code !== 'Comma')
         return;
       event.preventDefault();
@@ -12,5 +15,5 @@ export const useGlobalShortcuts = (isMacDesktop: boolean, openSettings: () => vo
     };
     window.addEventListener('keydown', handleSettingsShortcut, { capture: true });
     return () => window.removeEventListener('keydown', handleSettingsShortcut, { capture: true });
-  }, [isMacDesktop, openSettings]);
+  }, [openSettings]);
 };

@@ -34,15 +34,13 @@ vi.mock('../../../src/components/editor', () => ({
     );
   },
 }));
-import { Workspace } from '../../../src/components/workspace';
+import { PageWorkspace } from '../../../src/components/workspace/page-workspace';
 
 const props = {
   pageId: 'page_a',
   editorRef: { current: null },
   onModeChange: vi.fn(),
   onPreview: vi.fn(),
-  schemaRefreshKey: '',
-  onSchemaCommitted: vi.fn(),
 };
 describe('workspace recovery controls', () => {
   beforeEach(() => {
@@ -111,8 +109,8 @@ describe('workspace recovery controls', () => {
     };
     const view = render(
       <>
-        <Workspace {...props} active />
-        <Workspace {...second} />
+        <PageWorkspace {...props} active />
+        <PageWorkspace {...second} />
       </>,
     );
     await waitFor(() => {
@@ -128,8 +126,8 @@ describe('workspace recovery controls', () => {
 
     view.rerender(
       <>
-        <Workspace {...props} active={false} />
-        <Workspace {...second} active />
+        <PageWorkspace {...props} active={false} />
+        <PageWorkspace {...second} active />
       </>,
     );
     await waitFor(() => {
@@ -166,7 +164,7 @@ describe('workspace recovery controls', () => {
       },
     );
 
-    render(<Workspace {...props} active />);
+    render(<PageWorkspace {...props} active />);
     await waitFor(() => expect(listener).toBeDefined());
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
 
