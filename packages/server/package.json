@@ -37,8 +37,8 @@
     "check:database-schema": "node scripts/check-database-schema.mjs"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.86.1",
-    "@earendil-works/pi-ai": "0.86.1",
+    "@earendil-works/pi-agent-core": "1.1.0",
+    "@earendil-works/pi-ai": "1.1.0",
     "@origamix/materials": "workspace:*",
     "@origamix/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.52",

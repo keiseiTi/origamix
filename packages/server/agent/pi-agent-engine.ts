@@ -134,7 +134,10 @@ export class PiAgentEngine implements AgentEngine {
         }
         return undefined;
       },
-      shouldStopAfterTurn: () => terminalDecisionCompleted,
+      finishTurn: ({ message }) => {
+        if (message.stopReason === 'error' || message.stopReason === 'aborted') return;
+        return terminalDecisionCompleted ? { action: 'end' } : undefined;
+      },
     });
     let eventProcessingError: unknown;
     let eventQueue = Promise.resolve();
