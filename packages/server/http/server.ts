@@ -60,7 +60,7 @@ const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput)
         'Access-Control-Allow-Headers',
         'Authorization, Content-Type, Last-Event-ID, X-Origamix-Service, X-Request-Id',
       );
-      reply.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+      reply.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     }
     if (request.method === 'OPTIONS') return reply.code(204).send();
     if (
@@ -88,9 +88,6 @@ const route: RouteAdapter =
       code: 200,
       data: await handler({
         body: request.body as T,
-        params: request.params as Record<string, string>,
-        headers: request.headers as Record<string, unknown>,
-        query: request.query as Record<string, unknown>,
       }),
     });
   };

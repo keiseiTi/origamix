@@ -112,12 +112,17 @@ describe('HTTP authentication and responses', () => {
       projectService: new ProjectService(projects, templatePath),
     });
 
-    const denied = await server.inject({ method: 'GET', url: '/api/v1/projects' });
+    const denied = await server.inject({
+      method: 'POST',
+      url: '/api/v1/projects/list',
+      payload: {},
+    });
     expect(denied.statusCode).toBe(401);
 
     const response = await server.inject({
-      method: 'GET',
-      url: '/api/v1/projects',
+      method: 'POST',
+      url: '/api/v1/projects/list',
+      payload: {},
       headers: { authorization: 'Bearer desktop-token', 'x-origamix-service': 'service-instance' },
     });
     expect(response.statusCode).toBe(200);
@@ -147,7 +152,7 @@ describe('HTTP authentication and responses', () => {
     try {
       const malformed = await server.inject({
         method: 'POST',
-        url: '/api/v1/projects',
+        url: '/api/v1/projects/create',
         headers,
         payload: {},
       });
@@ -156,9 +161,10 @@ describe('HTTP authentication and responses', () => {
       expect(malformed.json()).toHaveProperty('message');
 
       const missing = await server.inject({
-        method: 'GET',
-        url: '/api/v1/projects/project_missing/pages/page_missing/schema',
+        method: 'POST',
+        url: '/api/v1/pages/schema/get',
         headers,
+        payload: { projectId: 'project_missing', pageId: 'page_missing' },
       });
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toEqual({
@@ -170,7 +176,7 @@ describe('HTTP authentication and responses', () => {
 
       const invalidGrant = await server.inject({
         method: 'POST',
-        url: '/api/v1/projects',
+        url: '/api/v1/projects/create',
         headers,
         payload: {
           name: '测试项目',
@@ -190,7 +196,12 @@ describe('HTTP authentication and responses', () => {
       vi.spyOn(projects, 'listProjects').mockImplementationOnce(() => {
         throw Object.assign(new Error('请求暂不可处理'), { statusCode: 429 });
       });
-      const throttled = await server.inject({ method: 'GET', url: '/api/v1/projects', headers });
+      const throttled = await server.inject({
+        method: 'POST',
+        url: '/api/v1/projects/list',
+        payload: {},
+        headers,
+      });
       expect(throttled.statusCode).toBe(429);
       expect(throttled.json()).toEqual({
         success: false,
@@ -202,7 +213,12 @@ describe('HTTP authentication and responses', () => {
       vi.spyOn(projects, 'listProjects').mockImplementation(() => {
         throw new Error('/private/user/project should not leak');
       });
-      const unexpected = await server.inject({ method: 'GET', url: '/api/v1/projects', headers });
+      const unexpected = await server.inject({
+        method: 'POST',
+        url: '/api/v1/projects/list',
+        payload: {},
+        headers,
+      });
       expect(unexpected.statusCode).toBe(500);
       expect(unexpected.json()).toEqual({
         success: false,

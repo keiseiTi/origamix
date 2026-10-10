@@ -168,11 +168,6 @@ export const RuntimeRenderReportSchema = strictObject({
   observedAt: IsoDateTimeSchema,
 });
 
-export const RuntimeRenderReportBodySchema = Type.Omit(RuntimeRenderReportSchema, [
-  'projectId',
-  'pageId',
-]);
-
 export const RuntimeReportResultSchema = strictObject({
   version: AgentProtocolVersionSchema,
   disposition: Type.Union([Type.Literal('accepted'), Type.Literal('stale')]),
@@ -345,8 +340,6 @@ export const CreateAgentRunRequestSchema = strictObject({
   clarification: Type.Optional(ClarificationSelectionSchema),
   retryOfRunId: Type.Optional(AgentRunIdSchema),
 });
-
-export const CreateAgentRunBodySchema = Type.Omit(CreateAgentRunRequestSchema, ['projectId']);
 
 export const CreateAgentRunResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,

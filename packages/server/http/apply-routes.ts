@@ -1,29 +1,33 @@
 import type { Static } from '@sinclair/typebox';
 import { ApplyPageSchema } from '@origamix/shared/protocol/api';
+import { PageScopeSchema, withPageScope } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
-type ApplyPage = Static<typeof ApplyPageSchema>;
+const ApplyBodySchema = withPageScope(ApplyPageSchema);
 
 export const registerApplyRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   if (!input.projectApplyService) return;
   const projectApply = input.projectApplyService;
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/apply-state',
-    route<void>((request) =>
-      projectApply.getState(request.params.projectId, request.params.pageId),
+  server.post(
+    '/api/v1/pages/apply-state/get',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) =>
+      projectApply.getState(request.body.projectId, request.body.pageId),
     ),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/apply',
-    { schema: { body: ApplyPageSchema } },
-    route<ApplyPage>((request) =>
-      projectApply.apply(request.params.projectId, request.params.pageId, request.body),
-    ),
+    '/api/v1/pages/apply',
+    { schema: { body: ApplyBodySchema } },
+    route<Static<typeof ApplyBodySchema>>((request) => {
+      const { projectId, pageId, ...body } = request.body;
+      return projectApply.apply(projectId, pageId, body);
+    }),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/reload-from-project',
-    route<void>((request) =>
-      projectApply.reloadFromProject(request.params.projectId, request.params.pageId),
+    '/api/v1/pages/reload-from-project',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) =>
+      projectApply.reloadFromProject(request.body.projectId, request.body.pageId),
     ),
   );
 };

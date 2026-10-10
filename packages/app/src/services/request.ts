@@ -34,36 +34,34 @@ export const refreshBackendConnection = async (): Promise<ApiConnection> => {
   return getApiConnection(true);
 };
 
-const headersFor = (current: ApiConnection, init?: RequestInit) => {
-  return {
-    ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
-    ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
-    ...(init?.body ? { 'content-type': 'application/json' } : {}),
-    ...init?.headers,
-  };
-};
+const headersFor = (current: ApiConnection) => ({
+  ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
+  ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
+  'content-type': 'application/json',
+});
 
 const fetchWithConnection = async (
   current: ApiConnection,
   path: string,
-  init?: RequestInit,
-): Promise<Response> => {
-  return fetch(`${current.baseUrl}${path}`, {
+  body: string,
+): Promise<Response> =>
+  fetch(`${current.baseUrl}${path}`, {
+    method: 'POST',
     cache: 'no-store',
-    ...init,
-    headers: headersFor(current, init),
+    body,
+    headers: headersFor(current),
   });
-};
 
 export const request = async <T>(
   path: string,
-  init?: RequestInit,
+  data: object = {},
   validate?: (value: unknown) => value is T,
 ): Promise<T> => {
+  const body = JSON.stringify(data);
   const current = await getApiConnection();
   let response: Response;
   try {
-    response = await fetchWithConnection(current, path, init);
+    response = await fetchWithConnection(current, path, body);
   } catch (error) {
     // Do not replay a mutation after an ambiguous network failure. Clearing the
     // dead connection lets an explicit retry/SSE reconnect obtain fresh authority.
@@ -77,7 +75,7 @@ export const request = async <T>(
       refreshed.baseUrl !== current.baseUrl ||
       refreshed.token !== current.token
     ) {
-      response = await fetchWithConnection(refreshed, path, init);
+      response = await fetchWithConnection(refreshed, path, body);
     }
   }
   const result = await response.json();

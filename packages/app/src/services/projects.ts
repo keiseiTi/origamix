@@ -2,61 +2,32 @@ import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/sha
 import { request } from './request';
 
 export const projectsService = {
-  list: (): Promise<ProjectRecord[]> => request<ProjectRecord[]>('/projects'),
+  list: (): Promise<ProjectRecord[]> => request<ProjectRecord[]>('/projects/list'),
   create: (input: {
     name: string;
     code: string;
     pageDirectory: string;
     directoryGrantId: string;
-  }): Promise<ProjectRecord> =>
-    request<ProjectRecord>('/projects', { method: 'POST', body: JSON.stringify(input) }),
+  }): Promise<ProjectRecord> => request<ProjectRecord>('/projects/create', input),
   open: (input: {
     name?: string;
     code?: string;
     directoryGrantId: string;
     pageDirectory: string;
     initializeIfNeeded?: boolean;
-  }): Promise<OpenProjectResult> =>
-    request<OpenProjectResult>('/projects/open', { method: 'POST', body: JSON.stringify(input) }),
+  }): Promise<OpenProjectResult> => request<OpenProjectResult>('/projects/open', input),
   rename: (projectId: string, name: string): Promise<ProjectRecord> =>
-    request<ProjectRecord>(`/projects/${projectId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name }),
-    }),
+    request<ProjectRecord>('/projects/rename', { projectId, name }),
   delete: (projectId: string): Promise<{ deleted: true }> =>
-    request<{ deleted: true }>(`/projects/${projectId}`, {
-      method: 'DELETE',
-      body: JSON.stringify({ scope: 'desktop_record' }),
-    }),
+    request<{ deleted: true }>('/projects/delete', { projectId, scope: 'desktop_record' }),
   pages: (projectId: string): Promise<PageRecord[]> =>
-    request<PageRecord[]>(`/projects/${projectId}/pages`),
+    request<PageRecord[]>('/pages/list', { projectId }),
   createPage: (projectId: string, input: { name: string; slug: string }): Promise<PageRecord> =>
-    request<PageRecord>(`/projects/${projectId}/pages`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }),
+    request<PageRecord>('/pages/create', { projectId, ...input }),
   renamePage: (projectId: string, pageId: string, name: string): Promise<PageRecord> =>
-    request<PageRecord>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ name }),
-      },
-    ),
+    request<PageRecord>('/pages/rename', { projectId, pageId, name }),
   duplicatePage: (projectId: string, pageId: string): Promise<PageRecord> =>
-    request<PageRecord>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/duplicate`,
-      {
-        method: 'POST',
-        body: JSON.stringify({}),
-      },
-    ),
+    request<PageRecord>('/pages/duplicate', { projectId, pageId }),
   deletePage: (projectId: string, pageId: string): Promise<{ deleted: true }> =>
-    request<{ deleted: true }>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}`,
-      {
-        method: 'DELETE',
-        body: JSON.stringify({ scope: 'desktop_record' }),
-      },
-    ),
+    request<{ deleted: true }>('/pages/delete', { projectId, pageId, scope: 'desktop_record' }),
 };

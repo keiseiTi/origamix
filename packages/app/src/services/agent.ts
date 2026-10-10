@@ -78,9 +78,7 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
 };
 
 export const listConversations = (projectId: string, pageId: string) =>
-  request<ListConversationsResponse>(
-    `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/conversations`,
-  );
+  request<ListConversationsResponse>('/agent/conversations/list', { projectId, pageId });
 
 export const listMessages = (
   projectId: string,
@@ -88,9 +86,12 @@ export const listMessages = (
   conversationId: string,
   afterSequence = -1,
 ) =>
-  request<ListMessagesResponse>(
-    `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/conversations/${encodeURIComponent(conversationId)}/messages?afterSequence=${afterSequence}`,
-  );
+  request<ListMessagesResponse>('/agent/messages/list', {
+    projectId,
+    pageId,
+    conversationId,
+    afterSequence,
+  });
 
 export const listAllMessages = async (
   projectId: string,
@@ -110,27 +111,19 @@ export const listAllMessages = async (
   return { version: '1', messages };
 };
 
-export const createAgentRun = (input: CreateAgentRunRequest) => {
-  const { projectId, ...body } = input;
-  return request<CreateAgentRunResponse>(`/projects/${encodeURIComponent(projectId)}/agent/runs`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-};
+export const createAgentRun = (input: CreateAgentRunRequest) =>
+  request<CreateAgentRunResponse>('/agent/runs/create', input);
 
 export const getAgentRun = (projectId: string, runId: string) =>
-  request<GetAgentRunResponse>(
-    `/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}`,
-  );
+  request<GetAgentRunResponse>('/agent/runs/get', { projectId, runId });
 
 export const cancelAgentRun = (projectId: string, runId: string, requestId: string) =>
-  request<CancelAgentRunResponse>(
-    `/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/cancel`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ version: '1', requestId }),
-    },
-  );
+  request<CancelAgentRunResponse>('/agent/runs/cancel', {
+    version: '1',
+    projectId,
+    runId,
+    requestId,
+  });
 
 export interface AgentEventSubscriptionOptions {
   afterEventId?: number;

@@ -1,10 +1,11 @@
-import type { Static } from '@sinclair/typebox';
+import { Type, type Static } from '@sinclair/typebox';
 import {
   ApplyWorkingOperationsSchema,
   RestoreWorkingRevisionSchema,
   SaveWorkingRevisionSchema,
   UpdateWorkingSchemaSchema,
 } from '@origamix/shared/protocol/api';
+import { RevisionIdSchema } from '@origamix/shared/protocol/schema';
 import {
   applyWorkingSchemaOperations,
   getSchema,
@@ -16,18 +17,22 @@ import {
   updateWorkingSchema,
 } from '../schema/schema-service';
 import { invalid, notFound } from '../errors';
+import { PageScopeSchema, withPageScope } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
-type SaveWorkingRevisionRequest = Static<typeof SaveWorkingRevisionSchema>;
-type RestoreWorkingRevisionRequest = Static<typeof RestoreWorkingRevisionSchema>;
-type UpdateWorkingSchemaRequest = Static<typeof UpdateWorkingSchemaSchema>;
-type ApplyWorkingOperationsRequest = Static<typeof ApplyWorkingOperationsSchema>;
+const RevisionScopeSchema = Type.Object(
+  { ...PageScopeSchema.properties, revisionId: RevisionIdSchema },
+  { additionalProperties: false },
+);
+const WorkingOperationsBodySchema = withPageScope(ApplyWorkingOperationsSchema);
+const WorkingUpdateBodySchema = withPageScope(UpdateWorkingSchemaSchema);
+const SaveRevisionBodySchema = withPageScope(SaveWorkingRevisionSchema);
+const RestoreRevisionBodySchema = Type.Object(
+  { ...withPageScope(RestoreWorkingRevisionSchema).properties, revisionId: RevisionIdSchema },
+  { additionalProperties: false },
+);
 
 export const registerSchemaRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
-  const revisionId = (value: string): string => {
-    if (!/^revision_[A-Za-z0-9_-]+$/.test(value)) throw invalid('Revision ID 无效');
-    return value;
-  };
   const resolvePage = (projectId: string, pageId: string) => {
     const page = input.projects.getPage(projectId, pageId);
     const project = input.projects.getProject(projectId);
@@ -39,21 +44,20 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
       relativePath: page.relativePath,
     };
   };
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/schema',
-    route<void>((request) =>
-      getSchema(resolvePage(request.params.projectId, request.params.pageId)),
+  server.post(
+    '/api/v1/pages/schema/get',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) =>
+      getSchema(resolvePage(request.body.projectId, request.body.pageId)),
     ),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/working-operations',
-    { schema: { body: ApplyWorkingOperationsSchema } },
-    route<ApplyWorkingOperationsRequest>(async (request) => {
+    '/api/v1/pages/working-operations/apply',
+    { schema: { body: WorkingOperationsBodySchema } },
+    route<Static<typeof WorkingOperationsBodySchema>>(async (request) => {
+      const { projectId, pageId, ...body } = request.body;
       try {
-        return await applyWorkingSchemaOperations(
-          resolvePage(request.params.projectId, request.params.pageId),
-          request.body,
-        );
+        return await applyWorkingSchemaOperations(resolvePage(projectId, pageId), body);
       } catch (error) {
         if (error instanceof Error && error.name === 'SchemaOperationError')
           throw invalid(error.message);
@@ -61,54 +65,55 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
       }
     }),
   );
-  server.put(
-    '/api/v1/projects/:projectId/pages/:pageId/working-state',
-    { schema: { body: UpdateWorkingSchemaSchema } },
-    route<UpdateWorkingSchemaRequest>((request) =>
-      updateWorkingSchema(
-        resolvePage(request.params.projectId, request.params.pageId),
-        request.body,
-      ),
+  server.post(
+    '/api/v1/pages/working-state/update',
+    { schema: { body: WorkingUpdateBodySchema } },
+    route<Static<typeof WorkingUpdateBodySchema>>((request) => {
+      const { projectId, pageId, ...body } = request.body;
+      return updateWorkingSchema(resolvePage(projectId, pageId), body);
+    }),
+  );
+  server.post(
+    '/api/v1/pages/working-state/get',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) =>
+      getWorkingSchemaState(resolvePage(request.body.projectId, request.body.pageId)),
     ),
   );
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/working-state',
-    route<void>((request) =>
-      getWorkingSchemaState(resolvePage(request.params.projectId, request.params.pageId)),
+  server.post(
+    '/api/v1/pages/revisions/list',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) =>
+      listRevisionHistory(resolvePage(request.body.projectId, request.body.pageId)),
     ),
   );
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/revisions',
-    route<void>((request) =>
-      listRevisionHistory(resolvePage(request.params.projectId, request.params.pageId)),
-    ),
-  );
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/revisions/:revisionId/schema',
-    route<void>((request) =>
+  server.post(
+    '/api/v1/pages/revisions/schema/get',
+    { schema: { body: RevisionScopeSchema } },
+    route<Static<typeof RevisionScopeSchema>>((request) =>
       getSchemaRevision(
-        resolvePage(request.params.projectId, request.params.pageId),
-        revisionId(request.params.revisionId),
+        resolvePage(request.body.projectId, request.body.pageId),
+        request.body.revisionId,
       ),
     ),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/revisions',
-    { schema: { body: SaveWorkingRevisionSchema } },
-    route<SaveWorkingRevisionRequest>((request) =>
+    '/api/v1/pages/revisions/save',
+    { schema: { body: SaveRevisionBodySchema } },
+    route<Static<typeof SaveRevisionBodySchema>>((request) =>
       saveWorkingRevision(
-        resolvePage(request.params.projectId, request.params.pageId),
+        resolvePage(request.body.projectId, request.body.pageId),
         request.body.expectedWorkingVersion,
       ),
     ),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/revisions/:revisionId/restore',
-    { schema: { body: RestoreWorkingRevisionSchema } },
-    route<RestoreWorkingRevisionRequest>((request) =>
+    '/api/v1/pages/revisions/restore',
+    { schema: { body: RestoreRevisionBodySchema } },
+    route<Static<typeof RestoreRevisionBodySchema>>((request) =>
       restoreRevisionToWorking(
-        resolvePage(request.params.projectId, request.params.pageId),
-        revisionId(request.params.revisionId),
+        resolvePage(request.body.projectId, request.body.pageId),
+        request.body.revisionId,
         request.body.expectedWorkingVersion,
       ),
     ),

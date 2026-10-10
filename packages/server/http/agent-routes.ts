@@ -2,10 +2,12 @@ import {
   CancelAgentRunRequestSchema,
   ClarificationResultSchema,
   type AgentRun,
-  CreateAgentRunBodySchema,
+  CreateAgentRunRequestSchema,
 } from '@origamix/shared/protocol/agent';
 import { Value } from '@sinclair/typebox/value';
-import type { Static } from '@sinclair/typebox';
+import { Type, type Static } from '@sinclair/typebox';
+import { ConversationIdSchema } from '@origamix/shared/protocol/agent';
+import { PageScopeSchema, ProjectIdSchema } from './body-schemas';
 import type { AgentRunRecord } from '../agent/run-repository';
 import { notFound } from '../errors';
 import type { RouteRegistrationContext } from './types';
@@ -50,13 +52,34 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     return run;
   };
 
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/conversations',
-    route<void>((request) => {
-      const projectId = request.params.projectId;
-      return {
-        version: '1',
-        conversations: agent.conversations.list(projectId, request.params.pageId).map((item) => ({
+  const ConversationScopeSchema = Type.Object(
+    { ...PageScopeSchema.properties, conversationId: ConversationIdSchema },
+    { additionalProperties: false },
+  );
+  const MessageListBodySchema = Type.Object(
+    {
+      ...ConversationScopeSchema.properties,
+      afterSequence: Type.Optional(Type.Integer({ minimum: -1 })),
+    },
+    { additionalProperties: false },
+  );
+  const RunScopeSchema = Type.Object(
+    { projectId: ProjectIdSchema, runId: Type.String({ pattern: '^run_[A-Za-z0-9_-]+$' }) },
+    { additionalProperties: false },
+  );
+  const CancelRunBodySchema = Type.Object(
+    { ...RunScopeSchema.properties, ...CancelAgentRunRequestSchema.properties },
+    { additionalProperties: false },
+  );
+
+  server.post(
+    '/api/v1/agent/conversations/list',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>((request) => ({
+      version: '1',
+      conversations: agent.conversations
+        .list(request.body.projectId, request.body.pageId)
+        .map((item) => ({
           version: '1',
           conversationId: item.id,
           projectId: item.projectId,
@@ -66,45 +89,37 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
         })),
-      };
-    }),
-  );
-  server.get(
-    '/api/v1/projects/:projectId/pages/:pageId/conversations/:conversationId/messages',
-    route<void>((request) => {
-      const projectId = request.params.projectId;
-      const pageId = request.params.pageId;
-      const after = Number(request.query.afterSequence ?? -1);
-      return {
-        version: '1',
-        messages: agent.conversations
-          .history(
-            projectId,
-            pageId,
-            request.params.conversationId,
-            Number.isSafeInteger(after) && after >= -1 ? after : -1,
-          )
-          .map((message) => ({
-            version: message.version,
-            messageId: message.messageId,
-            conversationId: message.conversationId,
-            ...(message.runId ? { runId: message.runId } : {}),
-            role: message.role,
-            content: message.content,
-            sequence: message.sequence,
-            createdAt: message.createdAt,
-          })),
-      };
-    }),
+    })),
   );
   server.post(
-    '/api/v1/projects/:projectId/agent/runs',
-    { schema: { body: CreateAgentRunBodySchema } },
-    route<Static<typeof CreateAgentRunBodySchema>>(async (request) => {
-      const started = await agent.service.start({
-        ...request.body,
-        projectId: request.params.projectId,
-      });
+    '/api/v1/agent/messages/list',
+    { schema: { body: MessageListBodySchema } },
+    route<Static<typeof MessageListBodySchema>>((request) => ({
+      version: '1',
+      messages: agent.conversations
+        .history(
+          request.body.projectId,
+          request.body.pageId,
+          request.body.conversationId,
+          request.body.afterSequence ?? -1,
+        )
+        .map((message) => ({
+          version: message.version,
+          messageId: message.messageId,
+          conversationId: message.conversationId,
+          ...(message.runId ? { runId: message.runId } : {}),
+          role: message.role,
+          content: message.content,
+          sequence: message.sequence,
+          createdAt: message.createdAt,
+        })),
+    })),
+  );
+  server.post(
+    '/api/v1/agent/runs/create',
+    { schema: { body: CreateAgentRunRequestSchema } },
+    route<Static<typeof CreateAgentRunRequestSchema>>(async (request) => {
+      const started = await agent.service.start(request.body);
       return {
         version: '1',
         runId: started.run.id,
@@ -116,19 +131,19 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       };
     }, 202),
   );
-  server.get(
-    '/api/v1/projects/:projectId/agent/runs/:runId',
-    route<void>((request) => {
-      const projectId = request.params.projectId;
-      return { version: '1', run: publicRun(requireOwnedRun(projectId, request.params.runId)) };
-    }),
+  server.post(
+    '/api/v1/agent/runs/get',
+    { schema: { body: RunScopeSchema } },
+    route<Static<typeof RunScopeSchema>>((request) => ({
+      version: '1',
+      run: publicRun(requireOwnedRun(request.body.projectId, request.body.runId)),
+    })),
   );
   server.post(
-    '/api/v1/projects/:projectId/agent/runs/:runId/cancel',
-    { schema: { body: CancelAgentRunRequestSchema } },
-    route<{ version: '1'; requestId: string }>((request) => {
-      const projectId = request.params.projectId;
-      const run = requireOwnedRun(projectId, request.params.runId);
+    '/api/v1/agent/runs/cancel',
+    { schema: { body: CancelRunBodySchema } },
+    route<Static<typeof CancelRunBodySchema>>((request) => {
+      const run = requireOwnedRun(request.body.projectId, request.body.runId);
       const cancelled = agent.service.cancel(run.id, request.body.requestId);
       return {
         version: '1',

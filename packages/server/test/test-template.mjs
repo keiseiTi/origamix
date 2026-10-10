@@ -26,42 +26,51 @@ try {
   });
   assert.deepEqual(Object.keys(backend).sort(), ['close', 'port', 'registerGrant']);
   backend.registerGrant('template-test-grant', directory);
-  const request = async (path, body, method = 'POST') => {
+  const request = async (path, body = {}) => {
     const response = await fetch(`http://127.0.0.1:${backend.port}/api/v1${path}`, {
-      method,
+      method: 'POST',
       headers: {
         authorization: 'Bearer template-test-token',
         'x-origamix-service': 'template-test-instance',
-        ...(body ? { 'content-type': 'application/json' } : {}),
+        'content-type': 'application/json',
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      body: JSON.stringify(body),
     });
     const result = await response.json();
     assert.ok(response.ok && result.success, JSON.stringify(result));
     return result.data;
   };
-  const created = await request('/projects', {
+  const created = await request('/projects/create', {
     name: 'Template smoke',
     code: 'project',
     pageDirectory: 'pages',
     directoryGrantId: 'template-test-grant',
   });
-  const page = await request(`/projects/${created.id}/pages`, { name: 'Home', slug: 'home' });
-  const working = await request(
-    `/projects/${created.id}/pages/${page.id}/working-state`,
-    undefined,
-    'GET',
-  );
-  const draft = await request(`/projects/${created.id}/pages/${page.id}/working-operations`, {
+  const page = await request('/pages/create', {
+    projectId: created.id,
+    name: 'Home',
+    slug: 'home',
+  });
+  const working = await request('/pages/working-state/get', {
+    projectId: created.id,
+    pageId: page.id,
+  });
+  const draft = await request('/pages/working-operations/apply', {
+    projectId: created.id,
+    pageId: page.id,
     baseWorkingVersion: working.workingVersion,
     operations: [
       { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
     ],
   });
-  const updated = await request(`/projects/${created.id}/pages/${page.id}/revisions`, {
+  const updated = await request('/pages/revisions/save', {
+    projectId: created.id,
+    pageId: page.id,
     expectedWorkingVersion: draft.workingVersion,
   });
-  await request(`/projects/${created.id}/pages/${page.id}/apply`, {
+  await request('/pages/apply', {
+    projectId: created.id,
+    pageId: page.id,
     expectedRevisionId: updated.revisionId,
     expectedWorkingVersion: updated.workingVersion,
     clientRequestId: 'template-test-apply',

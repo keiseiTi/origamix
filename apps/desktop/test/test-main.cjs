@@ -55,30 +55,38 @@ app
   .whenReady()
   .then(async () => {
     const main = await waitFor(() => BrowserWindow.getAllWindows()[0]);
-    await waitFor(
-      () =>
-        !main.webContents.isLoading() &&
-        main.webContents.executeJavaScript(
-          `Boolean(document.querySelector('main') && !document.querySelector('[aria-label="恢复工作区"]'))`,
-        ),
-    );
+    try {
+      await waitFor(
+        () =>
+          !main.webContents.isLoading() &&
+          main.webContents.executeJavaScript(
+            `Boolean(document.querySelector('main') && !document.querySelector('[aria-label="恢复工作区"]'))`,
+          ),
+      );
+    } catch (error) {
+      console.error(
+        'Workspace startup state:',
+        await main.webContents.executeJavaScript('document.body.innerText.slice(0, 300)'),
+      );
+      throw error;
+    }
     const result = await main.webContents.executeJavaScript(`(async () => {
     const connection = await window.api.backend.getConnection();
-    const request = async (path, body, method = 'POST') => {
+    const request = async (path, body = {}) => {
       const response = await fetch(connection.baseUrl + path, {
-        method: body ? method : 'GET',
+        method: 'POST',
         headers: { Authorization: 'Bearer ' + connection.token, 'X-Origamix-Service': connection.serviceInstanceId,
-          ...(body ? { 'Content-Type': 'application/json' } : {}) },
-        ...(body ? { body: JSON.stringify(body) } : {})
+          'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
       const result = await response.json();
       if (!result.success) throw new Error(result.message || 'Desktop smoke request failed');
       return result.data;
     };
     const grant = await window.api.dialog.chooseProjectParent();
-    const project = await request('/projects', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
-    await request('/projects/' + project.id + '/pages', { name: 'Home', slug: 'home', route: '/' });
-    const pages = await request('/projects/' + project.id + '/pages');
+    const project = await request('/projects/create', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
+    await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
+    const pages = await request('/pages/list', { projectId: project.id });
     return { path: project.path, projectId: project.id, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
@@ -93,9 +101,10 @@ app
     assert.notEqual(recoveredConnection.serviceInstanceId, result.serviceInstanceId);
     const recoveredProjects = await main.webContents.executeJavaScript(`(async () => {
       const connection = await window.api.backend.getConnection();
-      const response = await fetch(connection.baseUrl + '/projects', { headers: {
+      const response = await fetch(connection.baseUrl + '/projects/list', { method: 'POST', body: JSON.stringify({}), headers: {
         Authorization: 'Bearer ' + connection.token,
-        'X-Origamix-Service': connection.serviceInstanceId
+        'X-Origamix-Service': connection.serviceInstanceId,
+        'Content-Type': 'application/json'
       }});
       return response.json();
     })()`);
@@ -118,7 +127,9 @@ app
       page?.click();
     })()`);
     await waitFor(() =>
-      main.webContents.executeJavaScript(`Boolean(document.querySelector('button[aria-label="预览"]'))`),
+      main.webContents.executeJavaScript(
+        `Boolean(document.querySelector('button[aria-label="预览"]'))`,
+      ),
     );
     await main.webContents.executeJavaScript(
       `document.querySelector('button[aria-label="预览"]')?.click()`,

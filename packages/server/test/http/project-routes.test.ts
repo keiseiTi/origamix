@@ -37,7 +37,7 @@ describe('Project and Schema HTTP flows', () => {
     };
     const createProject = await server.inject({
       method: 'POST',
-      url: '/api/v1/projects',
+      url: '/api/v1/projects/create',
       headers,
       payload: {
         name: '客户控制台',
@@ -58,9 +58,9 @@ describe('Project and Schema HTTP flows', () => {
 
     const createPage = await server.inject({
       method: 'POST',
-      url: `/api/v1/projects/${project.id}/pages`,
+      url: '/api/v1/pages/create',
       headers,
-      payload: { name: '客户列表', slug: 'customer-list' },
+      payload: { projectId: project.id, name: '客户列表', slug: 'customer-list' },
     });
     expect(createPage.statusCode).toBe(201);
     const pageResult = createPage.json() as {
@@ -87,9 +87,10 @@ describe('Project and Schema HTTP flows', () => {
     const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
     const targetBeforeEdit = await readFile(targetPath, 'utf8');
     const workingBeforeResponse = await server.inject({
-      method: 'GET',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-state`,
+      method: 'POST',
+      url: '/api/v1/pages/working-state/get',
       headers: projectHeaders,
+      payload: { projectId: project.id, pageId: page.id },
     });
     const workingBefore = workingBeforeResponse.json() as {
       success: true;
@@ -103,9 +104,11 @@ describe('Project and Schema HTTP flows', () => {
     };
     const draftResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-operations`,
+      url: '/api/v1/pages/working-operations/apply',
       headers: projectHeaders,
       payload: {
+        projectId: project.id,
+        pageId: page.id,
         baseWorkingVersion: workingBefore.data.workingVersion,
         operations: [
           {
@@ -124,9 +127,10 @@ describe('Project and Schema HTTP flows', () => {
     };
     expect(draft.data.revisionId).toBe(workingBefore.data.revisionId);
     const workingStateResponse = await server.inject({
-      method: 'GET',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-state`,
+      method: 'POST',
+      url: '/api/v1/pages/working-state/get',
       headers: projectHeaders,
+      payload: { projectId: project.id, pageId: page.id },
     });
     expect(workingStateResponse.statusCode).toBe(200);
     const workingState = workingStateResponse.json() as {
@@ -144,9 +148,13 @@ describe('Project and Schema HTTP flows', () => {
     expect(workingState.data.workingHash).not.toBe(workingState.data.savedSchemaHash);
     const checkpointResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/revisions`,
+      url: '/api/v1/pages/revisions/save',
       headers: projectHeaders,
-      payload: { expectedWorkingVersion: workingState.data.workingVersion },
+      payload: {
+        projectId: project.id,
+        pageId: page.id,
+        expectedWorkingVersion: workingState.data.workingVersion,
+      },
     });
     expect(checkpointResponse.statusCode).toBe(200);
     const saved = checkpointResponse.json() as {
@@ -156,9 +164,10 @@ describe('Project and Schema HTTP flows', () => {
     expect(saved.data.workingVersion).toBeGreaterThan(workingState.data.workingVersion);
     expect(saved.data.revisionId).not.toBe(workingBefore.data.revisionId);
     const historyResponse = await server.inject({
-      method: 'GET',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/revisions`,
+      method: 'POST',
+      url: '/api/v1/pages/revisions/list',
       headers: projectHeaders,
+      payload: { projectId: project.id, pageId: page.id },
     });
     expect(historyResponse.statusCode).toBe(200);
     expect(historyResponse.json()).toMatchObject({
@@ -172,9 +181,11 @@ describe('Project and Schema HTTP flows', () => {
     });
     const applyResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/projects/${project.id}/pages/${page.id}/apply`,
+      url: '/api/v1/pages/apply',
       headers: projectHeaders,
       payload: {
+        projectId: project.id,
+        pageId: page.id,
         expectedRevisionId: saved.data.revisionId,
         expectedWorkingVersion: saved.data.workingVersion,
         clientRequestId: 'deterministic_product_flow',
@@ -327,10 +338,10 @@ describe('Project and Schema HTTP flows', () => {
     expect(
       (
         await server.inject({
-          method: 'DELETE',
-          url: `/api/v1/projects/${project.id}/pages/${page.id}`,
+          method: 'POST',
+          url: '/api/v1/pages/delete',
           headers,
-          payload: { scope: 'desktop_record' },
+          payload: { projectId: project.id, pageId: page.id, scope: 'desktop_record' },
         })
       ).json().data,
     ).toEqual({ deleted: true });
@@ -344,10 +355,10 @@ describe('Project and Schema HTTP flows', () => {
     expect(
       (
         await server.inject({
-          method: 'DELETE',
-          url: `/api/v1/projects/${project.id}`,
+          method: 'POST',
+          url: '/api/v1/projects/delete',
           headers,
-          payload: { scope: 'desktop_record' },
+          payload: { projectId: project.id, scope: 'desktop_record' },
         })
       ).json().data,
     ).toEqual({ deleted: true });

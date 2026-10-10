@@ -22,85 +22,63 @@ interface WorkingSchemaResult extends SchemaResult {
 
 export const schemaService = {
   get: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/schema`,
-    ),
+    request<SchemaResult>('/pages/schema/get', { projectId, pageId }),
   workingState: (projectId: string, pageId: string): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/working-state`,
-    ),
+    request<WorkingSchemaResult>('/pages/working-state/get', { projectId, pageId }),
   listRevisions: (projectId: string, pageId: string): Promise<RevisionHistory> =>
-    request<RevisionHistory>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/revisions`,
-    ),
+    request<RevisionHistory>('/pages/revisions/list', { projectId, pageId }),
   getRevision: (projectId: string, pageId: string, revisionId: string): Promise<SchemaResult> =>
-    request<SchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/revisions/${revisionId}/schema`,
-    ),
+    request<SchemaResult>('/pages/revisions/schema/get', { projectId, pageId, revisionId }),
   updateWorking: (
     projectId: string,
     pageId: string,
     baseWorkingVersion: number,
     schema: OrigamixPageSchema,
   ): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/working-state`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ baseWorkingVersion, schema }),
-      },
-    ),
+    request<WorkingSchemaResult>('/pages/working-state/update', {
+      projectId,
+      pageId,
+      baseWorkingVersion,
+      schema,
+    }),
   applyWorkingOperations: (
     projectId: string,
     pageId: string,
     baseWorkingVersion: number,
     operations: readonly SchemaOperation[],
   ): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/working-operations`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ baseWorkingVersion, operations }),
-      },
-    ),
+    request<WorkingSchemaResult>('/pages/working-operations/apply', {
+      projectId,
+      pageId,
+      baseWorkingVersion,
+      operations,
+    }),
   saveRevision: (
     projectId: string,
     pageId: string,
     expectedWorkingVersion: number,
   ): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/revisions`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ expectedWorkingVersion }),
-      },
-    ),
+    request<WorkingSchemaResult>('/pages/revisions/save', {
+      projectId,
+      pageId,
+      expectedWorkingVersion,
+    }),
   restoreRevision: (
     projectId: string,
     pageId: string,
     revisionId: string,
     expectedWorkingVersion: number,
   ): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/revisions/${revisionId}/restore`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ expectedWorkingVersion }),
-      },
-    ),
+    request<WorkingSchemaResult>('/pages/revisions/restore', {
+      projectId,
+      pageId,
+      revisionId,
+      expectedWorkingVersion,
+    }),
   applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
-    request<PageApplyState>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/apply-state`,
-      undefined,
-      isPageApplyState,
-    ),
+    request<PageApplyState>('/pages/apply-state/get', { projectId, pageId }, isPageApplyState),
   reloadFromProject: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/reload-from-project`,
-      {
-        method: 'POST',
-      },
-    ),
+    request<SchemaResult>('/pages/reload-from-project', { projectId, pageId }),
   apply: (
     projectId: string,
     pageId: string,
@@ -109,14 +87,13 @@ export const schemaService = {
     clientRequestId: string = crypto.randomUUID(),
   ): Promise<ApplyPageResult> =>
     request<ApplyPageResult>(
-      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/apply`,
+      '/pages/apply',
       {
-        method: 'POST',
-        body: JSON.stringify({
-          expectedRevisionId,
-          expectedWorkingVersion,
-          clientRequestId,
-        }),
+        projectId,
+        pageId,
+        expectedRevisionId,
+        expectedWorkingVersion,
+        clientRequestId,
       },
       isApplyPageResult,
     ),

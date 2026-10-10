@@ -39,7 +39,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 可视化编辑通常通过 `http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
 
-版本历史由 `GET /pages/:pageId/revisions` 返回轻量元数据，完整快照仅在查看指定 Revision 时读取。恢复历史只把所选快照复制到 Working，并将其标记为未保存草稿；不会创建 Revision 或写入目标项目。
+版本历史由 `POST /api/v1/pages/revisions/list` 返回轻量元数据，完整快照通过 `POST /api/v1/pages/revisions/schema/get` 按需读取。恢复历史只把所选快照复制到 Working，并将其标记为未保存草稿；不会创建 Revision 或写入目标项目。
 
 自动保留草稿、显式保存版本和历史恢复只更新 Working Schema / Revision，不会隐式写入真实项目的目标 Schema。
 

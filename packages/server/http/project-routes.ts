@@ -8,87 +8,101 @@ import {
   RenamePageSchema,
   RenameProjectSchema,
 } from '@origamix/shared/protocol/api';
+import {
+  EmptyBodySchema,
+  ProjectScopeSchema,
+  withPageScope,
+  withProjectScope,
+} from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
-type CreateProject = Static<typeof CreateProjectSchema>;
-type OpenProject = Static<typeof OpenProjectSchema>;
-type CreatePage = Static<typeof CreatePageSchema>;
-type RenameProject = Static<typeof RenameProjectSchema>;
-type RenamePage = Static<typeof RenamePageSchema>;
-type DuplicatePage = Static<typeof DuplicatePageSchema>;
-type DeleteDesktopRecord = Static<typeof DeleteDesktopRecordSchema>;
+const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
+const DeleteProjectBodySchema = withProjectScope(DeleteDesktopRecordSchema);
+const CreatePageBodySchema = withProjectScope(CreatePageSchema);
+const RenamePageBodySchema = withPageScope(RenamePageSchema);
+const DuplicatePageBodySchema = withPageScope(DuplicatePageSchema);
+const DeletePageBodySchema = withPageScope(DeleteDesktopRecordSchema);
 
 export const registerProjectRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
-  server.get(
-    '/api/v1/projects',
-    route<void>(() => input.projects.listProjects()),
+  server.post(
+    '/api/v1/projects/list',
+    { schema: { body: EmptyBodySchema } },
+    route(() => input.projects.listProjects()),
   );
   server.post(
-    '/api/v1/projects',
+    '/api/v1/projects/create',
     { schema: { body: CreateProjectSchema } },
-    route<CreateProject>((request) => input.projectService.createProject(request.body), 201),
+    route<Static<typeof CreateProjectSchema>>(
+      (request) => input.projectService.createProject(request.body),
+      201,
+    ),
   );
   server.post(
     '/api/v1/projects/open',
     { schema: { body: OpenProjectSchema } },
-    route<OpenProject>((request) => input.projectService.openProject(request.body)),
-  );
-  server.patch(
-    '/api/v1/projects/:projectId',
-    { schema: { body: RenameProjectSchema } },
-    route<RenameProject>((request) =>
-      input.projectService.renameProject(request.params.projectId, request.body.name),
+    route<Static<typeof OpenProjectSchema>>((request) =>
+      input.projectService.openProject(request.body),
     ),
   );
-  server.delete(
-    '/api/v1/projects/:projectId',
-    { schema: { body: DeleteDesktopRecordSchema } },
-    route<DeleteDesktopRecord>((request) => {
-      input.projectService.deleteProject(request.params.projectId);
+  server.post(
+    '/api/v1/projects/rename',
+    { schema: { body: RenameProjectBodySchema } },
+    route<Static<typeof RenameProjectBodySchema>>((request) =>
+      input.projectService.renameProject(request.body.projectId, request.body.name),
+    ),
+  );
+  server.post(
+    '/api/v1/projects/delete',
+    { schema: { body: DeleteProjectBodySchema } },
+    route<Static<typeof DeleteProjectBodySchema>>((request) => {
+      input.projectService.deleteProject(request.body.projectId);
       return { deleted: true as const };
     }),
   );
-  server.get(
-    '/api/v1/projects/:projectId/pages',
-    route<void>((request) => input.projects.listPages(request.params.projectId)),
-  );
   server.post(
-    '/api/v1/projects/:projectId/pages',
-    { schema: { body: CreatePageSchema } },
-    route<CreatePage>(
-      (request) => input.projectService.createPage(request.params.projectId, request.body),
-      201,
+    '/api/v1/pages/list',
+    { schema: { body: ProjectScopeSchema } },
+    route<Static<typeof ProjectScopeSchema>>((request) =>
+      input.projects.listPages(request.body.projectId),
     ),
   );
-  server.patch(
-    '/api/v1/projects/:projectId/pages/:pageId',
-    { schema: { body: RenamePageSchema } },
-    route<RenamePage>((request) =>
+  server.post(
+    '/api/v1/pages/create',
+    { schema: { body: CreatePageBodySchema } },
+    route<Static<typeof CreatePageBodySchema>>((request) => {
+      const { projectId, ...body } = request.body;
+      return input.projectService.createPage(projectId, body);
+    }, 201),
+  );
+  server.post(
+    '/api/v1/pages/rename',
+    { schema: { body: RenamePageBodySchema } },
+    route<Static<typeof RenamePageBodySchema>>((request) =>
       input.projectService.renamePage(
-        request.params.projectId,
-        request.params.pageId,
+        request.body.projectId,
+        request.body.pageId,
         request.body.name,
       ),
     ),
   );
   server.post(
-    '/api/v1/projects/:projectId/pages/:pageId/duplicate',
-    { schema: { body: DuplicatePageSchema } },
-    route<DuplicatePage>(
+    '/api/v1/pages/duplicate',
+    { schema: { body: DuplicatePageBodySchema } },
+    route<Static<typeof DuplicatePageBodySchema>>(
       (request) =>
         input.projectService.duplicatePage(
-          request.params.projectId,
-          request.params.pageId,
+          request.body.projectId,
+          request.body.pageId,
           request.body.name,
         ),
       201,
     ),
   );
-  server.delete(
-    '/api/v1/projects/:projectId/pages/:pageId',
-    { schema: { body: DeleteDesktopRecordSchema } },
-    route<DeleteDesktopRecord>(async (request) => {
-      await input.projectService.deletePage(request.params.projectId, request.params.pageId);
+  server.post(
+    '/api/v1/pages/delete',
+    { schema: { body: DeletePageBodySchema } },
+    route<Static<typeof DeletePageBodySchema>>(async (request) => {
+      await input.projectService.deletePage(request.body.projectId, request.body.pageId);
       return { deleted: true as const };
     }),
   );

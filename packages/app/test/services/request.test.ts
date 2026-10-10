@@ -36,14 +36,16 @@ describe('renderer transport', () => {
     vi.stubGlobal('fetch', fetch);
 
     const { request } = await import('../../src/services/request');
-    await expect(request('/projects/project_one/agent/runs/run_one')).resolves.toEqual({
+    await expect(request('/agent/runs/get')).resolves.toEqual({
       recovered: true,
     });
     expect(getConnection).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      'http://127.0.0.1:1002/api/v1/projects/project_one/agent/runs/run_one',
+      'http://127.0.0.1:1002/api/v1/agent/runs/get',
       expect.objectContaining({
+        method: 'POST',
+        body: '{}',
         headers: expect.objectContaining({
           Authorization: 'Bearer new-token',
           'x-origamix-service': 'new-instance',
@@ -76,12 +78,15 @@ describe('renderer transport', () => {
     vi.stubGlobal('fetch', fetch);
 
     const { request } = await import('../../src/services/request');
-    const init = { method: 'POST', body: '{"clientRequestId":"stable-id"}' };
-    await expect(request('/projects/project_one/agent/runs', init)).rejects.toThrow(
-      'socket closed',
-    );
+    const data = { clientRequestId: 'stable-id' };
+    await expect(request('/agent/runs/create', data)).rejects.toThrow('socket closed');
     expect(fetch).toHaveBeenCalledTimes(1);
-    await expect(request('/projects/project_one/agent/runs', init)).resolves.toEqual({
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://127.0.0.1:1001/api/v1/agent/runs/create',
+      expect.objectContaining({ method: 'POST', body: '{"clientRequestId":"stable-id"}' }),
+    );
+    await expect(request('/agent/runs/create', data)).resolves.toEqual({
       runId: 'existing-run',
     });
     expect(getConnection).toHaveBeenCalledTimes(2);

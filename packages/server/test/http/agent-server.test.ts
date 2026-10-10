@@ -108,6 +108,7 @@ const setup = () => {
 
 const payload = {
   version: '1',
+  projectId: 'project_a',
   pageId: 'page_a',
   clientRequestId: 'request-1',
   baseWorkingVersion: 1,
@@ -121,13 +122,13 @@ describe('Agent HTTP API', () => {
       const headers = auth;
       const first = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/projects/project_a/agent/runs',
+        url: '/api/v1/agent/runs/create',
         headers,
         payload,
       });
       const duplicate = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/projects/project_a/agent/runs',
+        url: '/api/v1/agent/runs/create',
         headers,
         payload,
       });
@@ -138,16 +139,17 @@ describe('Agent HTTP API', () => {
       expect(fixture.dispatch).toHaveBeenCalledTimes(1);
       const runId = first.json().data.runId as string;
       const denied = await fixture.server.inject({
-        method: 'GET',
-        url: `/api/v1/projects/project_b/agent/runs/${runId}`,
+        method: 'POST',
+        url: '/api/v1/agent/runs/get',
         headers: auth,
+        payload: { projectId: 'project_b', runId },
       });
       expect(denied.statusCode).toBe(404);
       const cancel = await fixture.server.inject({
         method: 'POST',
-        url: `/api/v1/projects/project_a/agent/runs/${runId}/cancel`,
+        url: '/api/v1/agent/runs/cancel',
         headers,
-        payload: { version: '1', requestId: 'cancel-1' },
+        payload: { version: '1', projectId: 'project_a', runId, requestId: 'cancel-1' },
       });
       expect(cancel.json()).toMatchObject({ success: true, data: { runId, status: 'cancelling' } });
     } finally {
@@ -162,7 +164,7 @@ describe('Agent HTTP API', () => {
       const headers = auth;
       const created = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/projects/project_a/agent/runs',
+        url: '/api/v1/agent/runs/create',
         headers,
         payload,
       });
@@ -171,9 +173,10 @@ describe('Agent HTTP API', () => {
         conversationId: string;
       };
       const history = await fixture.server.inject({
-        method: 'GET',
-        url: `/api/v1/projects/project_a/pages/page_a/conversations/${conversationId}/messages`,
+        method: 'POST',
+        url: '/api/v1/agent/messages/list',
         headers,
+        payload: { projectId: 'project_a', pageId: 'page_a', conversationId },
       });
       expect(history.json().data.messages).toHaveLength(1);
       expect(history.json().data.messages[0].runId).toBe(runId);
