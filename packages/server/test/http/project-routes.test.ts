@@ -83,12 +83,12 @@ describe('Project and Schema HTTP flows', () => {
       pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
 
-    const projectHeaders = { ...headers, 'x-origamix-project-id': project.id };
+    const projectHeaders = headers;
     const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
     const targetBeforeEdit = await readFile(targetPath, 'utf8');
     const workingBeforeResponse = await server.inject({
       method: 'GET',
-      url: `/api/v1/pages/${page.id}/working-state`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-state`,
       headers: projectHeaders,
     });
     const workingBefore = workingBeforeResponse.json() as {
@@ -103,7 +103,7 @@ describe('Project and Schema HTTP flows', () => {
     };
     const draftResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/working-operations`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-operations`,
       headers: projectHeaders,
       payload: {
         baseWorkingVersion: workingBefore.data.workingVersion,
@@ -125,7 +125,7 @@ describe('Project and Schema HTTP flows', () => {
     expect(draft.data.revisionId).toBe(workingBefore.data.revisionId);
     const workingStateResponse = await server.inject({
       method: 'GET',
-      url: `/api/v1/pages/${page.id}/working-state`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/working-state`,
       headers: projectHeaders,
     });
     expect(workingStateResponse.statusCode).toBe(200);
@@ -144,7 +144,7 @@ describe('Project and Schema HTTP flows', () => {
     expect(workingState.data.workingHash).not.toBe(workingState.data.savedSchemaHash);
     const checkpointResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/revisions`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/revisions`,
       headers: projectHeaders,
       payload: { expectedWorkingVersion: workingState.data.workingVersion },
     });
@@ -157,7 +157,7 @@ describe('Project and Schema HTTP flows', () => {
     expect(saved.data.revisionId).not.toBe(workingBefore.data.revisionId);
     const historyResponse = await server.inject({
       method: 'GET',
-      url: `/api/v1/pages/${page.id}/revisions`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/revisions`,
       headers: projectHeaders,
     });
     expect(historyResponse.statusCode).toBe(200);
@@ -172,7 +172,7 @@ describe('Project and Schema HTTP flows', () => {
     });
     const applyResponse = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/apply`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/apply`,
       headers: projectHeaders,
       payload: {
         expectedRevisionId: saved.data.revisionId,
@@ -259,7 +259,6 @@ describe('Project and Schema HTTP flows', () => {
     const headers = {
       authorization: 'Bearer desktop-token',
       'x-origamix-service': 'service-instance',
-      'x-origamix-project-id': project.id,
     };
     const pagePath = join(project.path, 'src', 'pages', page.slug, 'schema.json');
     const timestamp = new Date().toISOString();
@@ -329,7 +328,7 @@ describe('Project and Schema HTTP flows', () => {
       (
         await server.inject({
           method: 'DELETE',
-          url: `/api/v1/pages/${page.id}`,
+          url: `/api/v1/projects/${project.id}/pages/${page.id}`,
           headers,
           payload: { scope: 'desktop_record' },
         })

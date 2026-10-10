@@ -61,23 +61,23 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
     ),
   );
   server.patch(
-    '/api/v1/pages/:pageId',
+    '/api/v1/projects/:projectId/pages/:pageId',
     { schema: { body: RenamePageSchema } },
     route<RenamePage>((request) =>
       input.projectService.renamePage(
-        String(request.headers['x-origamix-project-id'] ?? ''),
+        request.params.projectId,
         request.params.pageId,
         request.body.name,
       ),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/duplicate',
+    '/api/v1/projects/:projectId/pages/:pageId/duplicate',
     { schema: { body: DuplicatePageSchema } },
     route<DuplicatePage>(
       (request) =>
         input.projectService.duplicatePage(
-          String(request.headers['x-origamix-project-id'] ?? ''),
+          request.params.projectId,
           request.params.pageId,
           request.body.name,
         ),
@@ -85,13 +85,10 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
     ),
   );
   server.delete(
-    '/api/v1/pages/:pageId',
+    '/api/v1/projects/:projectId/pages/:pageId',
     { schema: { body: DeleteDesktopRecordSchema } },
     route<DeleteDesktopRecord>(async (request) => {
-      await input.projectService.deletePage(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-      );
+      await input.projectService.deletePage(request.params.projectId, request.params.pageId);
       return { deleted: true as const };
     }),
   );

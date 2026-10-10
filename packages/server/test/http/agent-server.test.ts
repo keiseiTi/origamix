@@ -108,7 +108,6 @@ const setup = () => {
 
 const payload = {
   version: '1',
-  projectId: 'project_a',
   pageId: 'page_a',
   clientRequestId: 'request-1',
   baseWorkingVersion: 1,
@@ -119,16 +118,16 @@ describe('Agent HTTP API', () => {
   it('acknowledges once with 202 and enforces project ownership', async () => {
     const fixture = setup();
     try {
-      const headers = { ...auth, 'x-origamix-project-id': 'project_a' };
+      const headers = auth;
       const first = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/agent/runs',
+        url: '/api/v1/projects/project_a/agent/runs',
         headers,
         payload,
       });
       const duplicate = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/agent/runs',
+        url: '/api/v1/projects/project_a/agent/runs',
         headers,
         payload,
       });
@@ -140,13 +139,13 @@ describe('Agent HTTP API', () => {
       const runId = first.json().data.runId as string;
       const denied = await fixture.server.inject({
         method: 'GET',
-        url: `/api/v1/agent/runs/${runId}`,
-        headers: { ...auth, 'x-origamix-project-id': 'project_b' },
+        url: `/api/v1/projects/project_b/agent/runs/${runId}`,
+        headers: auth,
       });
       expect(denied.statusCode).toBe(404);
       const cancel = await fixture.server.inject({
         method: 'POST',
-        url: `/api/v1/agent/runs/${runId}/cancel`,
+        url: `/api/v1/projects/project_a/agent/runs/${runId}/cancel`,
         headers,
         payload: { version: '1', requestId: 'cancel-1' },
       });
@@ -160,10 +159,10 @@ describe('Agent HTTP API', () => {
   it('serves authoritative history and live SSE events after subscription', async () => {
     const fixture = setup();
     try {
-      const headers = { ...auth, 'x-origamix-project-id': 'project_a' };
+      const headers = auth;
       const created = await fixture.server.inject({
         method: 'POST',
-        url: '/api/v1/agent/runs',
+        url: '/api/v1/projects/project_a/agent/runs',
         headers,
         payload,
       });
@@ -173,14 +172,14 @@ describe('Agent HTTP API', () => {
       };
       const history = await fixture.server.inject({
         method: 'GET',
-        url: `/api/v1/conversations/${conversationId}/messages`,
-        headers: { ...headers, 'x-origamix-page-id': 'page_a' },
+        url: `/api/v1/projects/project_a/pages/page_a/conversations/${conversationId}/messages`,
+        headers,
       });
       expect(history.json().data.messages).toHaveLength(1);
       expect(history.json().data.messages[0].runId).toBe(runId);
       const streamPromise = fixture.server.inject({
         method: 'GET',
-        url: `/api/v1/agent/runs/${runId}/events`,
+        url: `/api/v1/projects/project_a/agent/runs/${runId}/events`,
         headers: { ...headers, origin: 'http://127.0.0.1:5173' },
       });
       await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(1));

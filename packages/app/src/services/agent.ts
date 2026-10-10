@@ -78,9 +78,9 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
 };
 
 export const listConversations = (projectId: string, pageId: string) =>
-  request<ListConversationsResponse>(`/pages/${encodeURIComponent(pageId)}/conversations`, {
-    projectId,
-  });
+  request<ListConversationsResponse>(
+    `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/conversations`,
+  );
 
 export const listMessages = (
   projectId: string,
@@ -88,13 +88,9 @@ export const listMessages = (
   conversationId: string,
   afterSequence = -1,
 ) =>
-  request<ListMessagesResponse>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
-    projectId,
-    headers: {
-      'x-origamix-page-id': pageId,
-      'x-origamix-after-sequence': String(afterSequence),
-    },
-  });
+  request<ListMessagesResponse>(
+    `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/conversations/${encodeURIComponent(conversationId)}/messages?afterSequence=${afterSequence}`,
+  );
 
 export const listAllMessages = async (
   projectId: string,
@@ -114,22 +110,27 @@ export const listAllMessages = async (
   return { version: '1', messages };
 };
 
-export const createAgentRun = (input: CreateAgentRunRequest) =>
-  request<CreateAgentRunResponse>('/agent/runs', {
+export const createAgentRun = (input: CreateAgentRunRequest) => {
+  const { projectId, ...body } = input;
+  return request<CreateAgentRunResponse>(`/projects/${encodeURIComponent(projectId)}/agent/runs`, {
     method: 'POST',
-    projectId: input.projectId,
-    body: JSON.stringify(input),
+    body: JSON.stringify(body),
   });
+};
 
 export const getAgentRun = (projectId: string, runId: string) =>
-  request<GetAgentRunResponse>(`/agent/runs/${encodeURIComponent(runId)}`, { projectId });
+  request<GetAgentRunResponse>(
+    `/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}`,
+  );
 
 export const cancelAgentRun = (projectId: string, runId: string, requestId: string) =>
-  request<CancelAgentRunResponse>(`/agent/runs/${encodeURIComponent(runId)}/cancel`, {
-    method: 'POST',
-    projectId,
-    body: JSON.stringify({ version: '1', requestId }),
-  });
+  request<CancelAgentRunResponse>(
+    `/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/cancel`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ version: '1', requestId }),
+    },
+  );
 
 export interface AgentEventSubscriptionOptions {
   afterEventId?: number;
@@ -152,13 +153,12 @@ export const subscribeAgentEvents = (
   const connect = async (refresh = false): Promise<void> => {
     const current = refresh ? await refreshBackendConnection() : await getApiConnection();
     const response = await fetch(
-      `${current.baseUrl}/agent/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
+      `${current.baseUrl}/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
       {
         signal: controller.signal,
         headers: {
           ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
           ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
-          'x-origamix-project-id': projectId,
           ...(lastEventId >= 0 ? { 'last-event-id': String(lastEventId) } : {}),
           Accept: 'text/event-stream',
         },

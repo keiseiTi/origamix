@@ -36,21 +36,27 @@ export const projectsService = {
       body: JSON.stringify(input),
     }),
   renamePage: (projectId: string, pageId: string, name: string): Promise<PageRecord> =>
-    request<PageRecord>(`/pages/${pageId}`, {
-      projectId,
-      method: 'PATCH',
-      body: JSON.stringify({ name }),
-    }),
+    request<PageRecord>(
+      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      },
+    ),
   duplicatePage: (projectId: string, pageId: string): Promise<PageRecord> =>
-    request<PageRecord>(`/pages/${pageId}/duplicate`, {
-      projectId,
-      method: 'POST',
-      body: JSON.stringify({}),
-    }),
+    request<PageRecord>(
+      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/duplicate`,
+      {
+        method: 'POST',
+        body: JSON.stringify({}),
+      },
+    ),
   deletePage: (projectId: string, pageId: string): Promise<{ deleted: true }> =>
-    request<{ deleted: true }>(`/pages/${pageId}`, {
-      projectId,
-      method: 'DELETE',
-      body: JSON.stringify({ scope: 'desktop_record' }),
-    }),
+    request<{ deleted: true }>(
+      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ scope: 'desktop_record' }),
+      },
+    ),
 };

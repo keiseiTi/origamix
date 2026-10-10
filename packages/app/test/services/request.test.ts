@@ -36,11 +36,13 @@ describe('renderer transport', () => {
     vi.stubGlobal('fetch', fetch);
 
     const { request } = await import('../../src/services/request');
-    await expect(request('/agent/runs/run_one')).resolves.toEqual({ recovered: true });
+    await expect(request('/projects/project_one/agent/runs/run_one')).resolves.toEqual({
+      recovered: true,
+    });
     expect(getConnection).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      'http://127.0.0.1:1002/api/v1/agent/runs/run_one',
+      'http://127.0.0.1:1002/api/v1/projects/project_one/agent/runs/run_one',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer new-token',
@@ -75,9 +77,13 @@ describe('renderer transport', () => {
 
     const { request } = await import('../../src/services/request');
     const init = { method: 'POST', body: '{"clientRequestId":"stable-id"}' };
-    await expect(request('/agent/runs', init)).rejects.toThrow('socket closed');
+    await expect(request('/projects/project_one/agent/runs', init)).rejects.toThrow(
+      'socket closed',
+    );
     expect(fetch).toHaveBeenCalledTimes(1);
-    await expect(request('/agent/runs', init)).resolves.toEqual({ runId: 'existing-run' });
+    await expect(request('/projects/project_one/agent/runs', init)).resolves.toEqual({
+      runId: 'existing-run',
+    });
     expect(getConnection).toHaveBeenCalledTimes(2);
   });
 });

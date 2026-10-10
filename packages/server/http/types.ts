@@ -28,6 +28,7 @@ export type RouteInput<T> = {
   body: T;
   params: Record<string, string>;
   headers: Record<string, unknown>;
+  query: Record<string, unknown>;
 };
 
 export type RouteAdapter = <T>(

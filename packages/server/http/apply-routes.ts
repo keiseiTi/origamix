@@ -8,32 +8,22 @@ export const registerApplyRoutes = ({ server, input, route }: RouteRegistrationC
   if (!input.projectApplyService) return;
   const projectApply = input.projectApplyService;
   server.get(
-    '/api/v1/pages/:pageId/apply-state',
+    '/api/v1/projects/:projectId/pages/:pageId/apply-state',
     route<void>((request) =>
-      projectApply.getState(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-      ),
+      projectApply.getState(request.params.projectId, request.params.pageId),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/apply',
+    '/api/v1/projects/:projectId/pages/:pageId/apply',
     { schema: { body: ApplyPageSchema } },
     route<ApplyPage>((request) =>
-      projectApply.apply(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-        request.body,
-      ),
+      projectApply.apply(request.params.projectId, request.params.pageId, request.body),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/reload-from-project',
+    '/api/v1/projects/:projectId/pages/:pageId/reload-from-project',
     route<void>((request) =>
-      projectApply.reloadFromProject(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-      ),
+      projectApply.reloadFromProject(request.params.projectId, request.params.pageId),
     ),
   );
 };

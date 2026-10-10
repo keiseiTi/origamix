@@ -7,19 +7,19 @@ export const runtimeService = {
     pageId: string,
     report: Omit<RuntimeRenderReport, 'version' | 'projectId' | 'pageId'>,
   ): Promise<RuntimeReportResult> =>
-    request<RuntimeReportResult>(`/pages/${pageId}/runtime-reports`, {
-      projectId,
-      method: 'POST',
-      body: JSON.stringify({
-        version: '1',
-        projectId,
-        pageId,
-        ...report,
-        diagnostics: report.diagnostics.map((diagnostic) => ({
-          ...diagnostic,
-          pageId,
-          revisionId: report.revisionId,
-        })),
-      }),
-    }),
+    request<RuntimeReportResult>(
+      `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(pageId)}/runtime-reports`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          version: '1',
+          ...report,
+          diagnostics: report.diagnostics.map((diagnostic) => ({
+            ...diagnostic,
+            pageId,
+            revisionId: report.revisionId,
+          })),
+        }),
+      },
+    ),
 };

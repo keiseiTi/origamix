@@ -5,7 +5,7 @@ const security = tooling.auditAgentSecurity({
   logs: ['Authorization=[REDACTED]'],
   sqliteValues: ['credentialRef=desktop-safe-storage'],
   projectFiles: ['schemaVersion=1.0'],
-  urls: ['http://127.0.0.1/api/v1/agent/runs/run_test/events'],
+  urls: ['http://127.0.0.1/api/v1/projects/project_test/agent/runs/run_test/events'],
   sseFrames: ['event: run.completed'],
   clientState: ['connection=idle'],
   previewCapabilities: ['preview.readSnapshot'],

@@ -1,30 +1,23 @@
-import {
-  RuntimeRenderReportSchema,
-  type RuntimeRenderReport,
-} from '@origamix/shared/protocol/agent';
-import { invalid } from '../errors';
+import { RuntimeRenderReportBodySchema } from '@origamix/shared/protocol/agent';
+import type { Static } from '@sinclair/typebox';
 import type { RouteRegistrationContext } from './types';
 
 export const registerRuntimeRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   if (!input.runtimeDiagnostics) return;
   const diagnostics = input.runtimeDiagnostics;
   server.post(
-    '/api/v1/pages/:pageId/runtime-reports',
-    { schema: { body: RuntimeRenderReportSchema } },
-    route<RuntimeRenderReport>((request) => {
-      const projectId = String(request.headers['x-origamix-project-id'] ?? '');
-      if (request.body.projectId !== projectId || request.body.pageId !== request.params.pageId)
-        throw invalid('Runtime 报告归属不匹配');
-      return diagnostics.report(request.body);
+    '/api/v1/projects/:projectId/pages/:pageId/runtime-reports',
+    { schema: { body: RuntimeRenderReportBodySchema } },
+    route<Static<typeof RuntimeRenderReportBodySchema>>((request) => {
+      return diagnostics.report({
+        ...request.body,
+        projectId: request.params.projectId,
+        pageId: request.params.pageId,
+      });
     }),
   );
   server.get(
-    '/api/v1/pages/:pageId/runtime-state',
-    route<void>((request) =>
-      diagnostics.getState(
-        String(request.headers['x-origamix-project-id'] ?? ''),
-        request.params.pageId,
-      ),
-    ),
+    '/api/v1/projects/:projectId/pages/:pageId/runtime-state',
+    route<void>((request) => diagnostics.getState(request.params.projectId, request.params.pageId)),
   );
 };

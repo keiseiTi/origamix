@@ -124,11 +124,9 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const headers = {
       authorization: 'Bearer fake-desktop-token',
       'x-origamix-service': 'test-instance',
-      'x-origamix-project-id': project.id,
     };
     const request = {
       version: '1',
-      projectId: project.id,
       pageId: page.id,
       baseWorkingVersion: (await getWorkingSchemaState(pageRef)).workingVersion,
       clientRequestId: 'agent-edit',
@@ -136,7 +134,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     };
     const response = await server.inject({
       method: 'POST',
-      url: '/api/v1/agent/runs',
+      url: `/api/v1/projects/${project.id}/agent/runs`,
       headers,
       payload: request,
     });
@@ -162,7 +160,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
 
     const duplicate = await server.inject({
       method: 'POST',
-      url: '/api/v1/agent/runs',
+      url: `/api/v1/projects/${project.id}/agent/runs`,
       headers,
       payload: request,
     });
@@ -172,7 +170,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     expect(await readdir(revisions)).toHaveLength(1);
     const stale = await server.inject({
       method: 'POST',
-      url: '/api/v1/agent/runs',
+      url: `/api/v1/projects/${project.id}/agent/runs`,
       headers,
       payload: { ...request, clientRequestId: 'stale-edit' },
     });
@@ -181,7 +179,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const working = await getWorkingSchemaState(pageRef);
     const unsavedApply = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/apply`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/apply`,
       headers,
       payload: {
         expectedRevisionId: edited.revisionId,
@@ -193,8 +191,8 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const saved = await saveWorkingRevision(pageRef, working.workingVersion);
     const foreign = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/apply`,
-      headers: { ...headers, 'x-origamix-project-id': 'project_other' },
+      url: `/api/v1/projects/project_other/pages/${page.id}/apply`,
+      headers,
       payload: {
         expectedRevisionId: saved.revisionId,
         expectedWorkingVersion: saved.workingVersion,
@@ -205,7 +203,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     expect(await readFile(target, 'utf8')).toBe(originalTarget);
     const applied = await server.inject({
       method: 'POST',
-      url: `/api/v1/pages/${page.id}/apply`,
+      url: `/api/v1/projects/${project.id}/pages/${page.id}/apply`,
       headers,
       payload: {
         expectedRevisionId: saved.revisionId,

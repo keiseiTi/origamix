@@ -40,23 +40,18 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
     };
   };
   server.get(
-    '/api/v1/pages/:pageId/schema',
+    '/api/v1/projects/:projectId/pages/:pageId/schema',
     route<void>((request) =>
-      getSchema(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
-      ),
+      getSchema(resolvePage(request.params.projectId, request.params.pageId)),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/working-operations',
+    '/api/v1/projects/:projectId/pages/:pageId/working-operations',
     { schema: { body: ApplyWorkingOperationsSchema } },
     route<ApplyWorkingOperationsRequest>(async (request) => {
       try {
         return await applyWorkingSchemaOperations(
-          resolvePage(
-            String(request.headers['x-origamix-project-id'] ?? ''),
-            request.params.pageId,
-          ),
+          resolvePage(request.params.projectId, request.params.pageId),
           request.body,
         );
       } catch (error) {
@@ -67,56 +62,52 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
     }),
   );
   server.put(
-    '/api/v1/pages/:pageId/working-state',
+    '/api/v1/projects/:projectId/pages/:pageId/working-state',
     { schema: { body: UpdateWorkingSchemaSchema } },
     route<UpdateWorkingSchemaRequest>((request) =>
       updateWorkingSchema(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
+        resolvePage(request.params.projectId, request.params.pageId),
         request.body,
       ),
     ),
   );
   server.get(
-    '/api/v1/pages/:pageId/working-state',
+    '/api/v1/projects/:projectId/pages/:pageId/working-state',
     route<void>((request) =>
-      getWorkingSchemaState(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
-      ),
+      getWorkingSchemaState(resolvePage(request.params.projectId, request.params.pageId)),
     ),
   );
   server.get(
-    '/api/v1/pages/:pageId/revisions',
+    '/api/v1/projects/:projectId/pages/:pageId/revisions',
     route<void>((request) =>
-      listRevisionHistory(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
-      ),
+      listRevisionHistory(resolvePage(request.params.projectId, request.params.pageId)),
     ),
   );
   server.get(
-    '/api/v1/pages/:pageId/revisions/:revisionId/schema',
+    '/api/v1/projects/:projectId/pages/:pageId/revisions/:revisionId/schema',
     route<void>((request) =>
       getSchemaRevision(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
+        resolvePage(request.params.projectId, request.params.pageId),
         revisionId(request.params.revisionId),
       ),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/revisions',
+    '/api/v1/projects/:projectId/pages/:pageId/revisions',
     { schema: { body: SaveWorkingRevisionSchema } },
     route<SaveWorkingRevisionRequest>((request) =>
       saveWorkingRevision(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
+        resolvePage(request.params.projectId, request.params.pageId),
         request.body.expectedWorkingVersion,
       ),
     ),
   );
   server.post(
-    '/api/v1/pages/:pageId/revisions/:revisionId/restore',
+    '/api/v1/projects/:projectId/pages/:pageId/revisions/:revisionId/restore',
     { schema: { body: RestoreWorkingRevisionSchema } },
     route<RestoreWorkingRevisionRequest>((request) =>
       restoreRevisionToWorking(
-        resolvePage(String(request.headers['x-origamix-project-id'] ?? ''), request.params.pageId),
+        resolvePage(request.params.projectId, request.params.pageId),
         revisionId(request.params.revisionId),
         request.body.expectedWorkingVersion,
       ),

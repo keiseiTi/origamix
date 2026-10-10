@@ -34,11 +34,10 @@ export const refreshBackendConnection = async (): Promise<ApiConnection> => {
   return getApiConnection(true);
 };
 
-const headersFor = (current: ApiConnection, init?: RequestInit & { projectId?: string }) => {
+const headersFor = (current: ApiConnection, init?: RequestInit) => {
   return {
     ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
     ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
-    ...(init?.projectId ? { 'x-origamix-project-id': init.projectId } : {}),
     ...(init?.body ? { 'content-type': 'application/json' } : {}),
     ...init?.headers,
   };
@@ -47,7 +46,7 @@ const headersFor = (current: ApiConnection, init?: RequestInit & { projectId?: s
 const fetchWithConnection = async (
   current: ApiConnection,
   path: string,
-  init?: RequestInit & { projectId?: string },
+  init?: RequestInit,
 ): Promise<Response> => {
   return fetch(`${current.baseUrl}${path}`, {
     cache: 'no-store',
@@ -58,7 +57,7 @@ const fetchWithConnection = async (
 
 export const request = async <T>(
   path: string,
-  init?: RequestInit & { projectId?: string },
+  init?: RequestInit,
   validate?: (value: unknown) => value is T,
 ): Promise<T> => {
   const current = await getApiConnection();

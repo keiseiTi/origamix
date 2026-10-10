@@ -26,13 +26,12 @@ try {
   });
   assert.deepEqual(Object.keys(backend).sort(), ['close', 'port', 'registerGrant']);
   backend.registerGrant('template-test-grant', directory);
-  const request = async (path, body, projectId, method = 'POST') => {
+  const request = async (path, body, method = 'POST') => {
     const response = await fetch(`http://127.0.0.1:${backend.port}/api/v1${path}`, {
       method,
       headers: {
         authorization: 'Bearer template-test-token',
         'x-origamix-service': 'template-test-instance',
-        ...(projectId ? { 'x-origamix-project-id': projectId } : {}),
         ...(body ? { 'content-type': 'application/json' } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -48,31 +47,25 @@ try {
     directoryGrantId: 'template-test-grant',
   });
   const page = await request(`/projects/${created.id}/pages`, { name: 'Home', slug: 'home' });
-  const working = await request(`/pages/${page.id}/working-state`, undefined, created.id, 'GET');
-  const draft = await request(
-    `/pages/${page.id}/working-operations`,
-    {
-      baseWorkingVersion: working.workingVersion,
-      operations: [
-        { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
-      ],
-    },
-    created.id,
+  const working = await request(
+    `/projects/${created.id}/pages/${page.id}/working-state`,
+    undefined,
+    'GET',
   );
-  const updated = await request(
-    `/pages/${page.id}/revisions`,
-    { expectedWorkingVersion: draft.workingVersion },
-    created.id,
-  );
-  await request(
-    `/pages/${page.id}/apply`,
-    {
-      expectedRevisionId: updated.revisionId,
-      expectedWorkingVersion: updated.workingVersion,
-      clientRequestId: 'template-test-apply',
-    },
-    created.id,
-  );
+  const draft = await request(`/projects/${created.id}/pages/${page.id}/working-operations`, {
+    baseWorkingVersion: working.workingVersion,
+    operations: [
+      { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
+    ],
+  });
+  const updated = await request(`/projects/${created.id}/pages/${page.id}/revisions`, {
+    expectedWorkingVersion: draft.workingVersion,
+  });
+  await request(`/projects/${created.id}/pages/${page.id}/apply`, {
+    expectedRevisionId: updated.revisionId,
+    expectedWorkingVersion: updated.workingVersion,
+    clientRequestId: 'template-test-apply',
+  });
   const target = JSON.parse(await readFile(join(project, 'src/pages/home/schema.json'), 'utf8'));
   assert.equal(target.elements.element_root.props.height, 321);
   const readme = await readFile(join(project, 'README.md'), 'utf8');

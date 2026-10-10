@@ -157,8 +157,8 @@ describe('HTTP authentication and responses', () => {
 
       const missing = await server.inject({
         method: 'GET',
-        url: '/api/v1/pages/page_missing/schema',
-        headers: { ...headers, 'x-origamix-project-id': 'project_missing' },
+        url: '/api/v1/projects/project_missing/pages/page_missing/schema',
+        headers,
       });
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toEqual({
