@@ -1,0 +1,86 @@
+/* Rspress owns layout and controls; customize its public theme tokens. */
+:root {
+  --rp-c-brand: #c45118;
+  --rp-c-brand-dark: #b34412;
+  --rp-c-brand-darker: #98380f;
+  --rp-c-brand-light: #dc6529;
+  --rp-c-brand-lighter: #ef844c;
+  --rp-c-brand-tint: #c4511810;
+  --rp-home-hero-secondary-color: #c45118;
+  --rp-home-hero-title-bg: linear-gradient(115deg, #98380f, #dc6529);
+  --rp-home-background-bg:
+    radial-gradient(70% 45% at 85% 0%, #f7ddc6 0%, transparent 75%), #fffcf8;
+  --rp-home-feature-bg: var(--rp-c-bg);
+  --rp-c-bg: #fffcf8;
+  --rp-c-bg-soft: #f6f1eb;
+  --rp-c-bg-mute: #efe8df;
+  --rp-c-bg-alt: #fffcf8;
+}
+
+html.rp-dark {
+  --rp-c-brand: #f39a65;
+  --rp-c-brand-dark: #f39a65;
+  --rp-c-brand-darker: #ffb88c;
+  --rp-c-brand-light: #ffb88c;
+  --rp-c-brand-lighter: #ffd0b2;
+  --rp-c-brand-tint: #f39a6518;
+  --rp-home-hero-title-bg: linear-gradient(115deg, #ffd0b2, #f39a65);
+  --rp-home-background-bg:
+    radial-gradient(70% 45% at 85% 0%, #38271e 0%, transparent 75%), #191816;
+  --rp-home-feature-bg: var(--rp-c-bg);
+  --rp-c-bg: #191816;
+  --rp-c-bg-soft: #24221f;
+  --rp-c-bg-mute: #302c27;
+  --rp-c-bg-alt: #191816;
+}
+
+.rp-home-hero {
+  margin-block: 3.5rem;
+}
+
+.rp-home-hero__container {
+  max-width: 52rem;
+  margin-inline: auto;
+}
+
+.rp-home-hero__content {
+  width: 100%;
+}
+
+.rp-home-hero__title-brand {
+  width: auto;
+}
+
+.origamix-home-content {
+  max-width: 72rem;
+  margin: 3rem auto 5rem;
+  padding-inline: 2.5rem;
+  color: var(--rp-c-text-1);
+}
+
+.origamix-home-content h2 {
+  margin-top: 3rem;
+}
+
+.origamix-home-content p {
+  max-width: 52rem;
+}
+
+.origamix-home-content table {
+  width: 100%;
+}
+
+@media (width <= 600px) {
+  .rp-home-hero {
+    margin-block: 2rem;
+  }
+
+  .origamix-home-content {
+    margin-top: 2rem;
+    padding-inline: 1.25rem;
+  }
+}
+
+html.rp-dark .rp-button--brand {
+  background: #ad4516;
+}

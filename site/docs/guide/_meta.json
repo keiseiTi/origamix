@@ -1,0 +1,37 @@
+[
+  {
+    "name": "projects",
+    "label": "项目与页面",
+    "type": "file"
+  },
+  {
+    "name": "agent",
+    "label": "模型配置与 AI 编辑",
+    "type": "file"
+  },
+  {
+    "name": "editor",
+    "label": "可视化编辑",
+    "type": "file"
+  },
+  {
+    "name": "preview",
+    "label": "页面预览",
+    "type": "file"
+  },
+  {
+    "name": "history",
+    "label": "草稿、版本与历史",
+    "type": "file"
+  },
+  {
+    "name": "apply",
+    "label": "应用到项目",
+    "type": "file"
+  },
+  {
+    "name": "faq",
+    "label": "常见问题",
+    "type": "file"
+  }
+]

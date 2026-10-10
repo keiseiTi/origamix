@@ -1,0 +1,122 @@
+[
+  {
+    "text": "项目介绍",
+    "link": "/intro/index",
+    "activeMatch": "/intro/",
+    "items": [
+      {
+        "text": "什么是 Origamix",
+        "link": "/intro/index"
+      },
+      {
+        "text": "工作方式",
+        "link": "/intro/workflow"
+      },
+      {
+        "text": "当前能力与限制",
+        "link": "/intro/status"
+      }
+    ]
+  },
+  {
+    "text": "快速开始",
+    "link": "/start/environment",
+    "activeMatch": "/start/",
+    "items": [
+      {
+        "text": "环境准备",
+        "link": "/start/environment"
+      },
+      {
+        "text": "获取源码与启动",
+        "link": "/start/source"
+      },
+      {
+        "text": "创建第一个页面",
+        "link": "/start/first-page"
+      },
+      {
+        "text": "运行生成项目",
+        "link": "/start/generated-project"
+      }
+    ]
+  },
+  {
+    "text": "使用指南",
+    "link": "/guide/projects",
+    "activeMatch": "/guide/",
+    "items": [
+      {
+        "text": "项目与页面",
+        "link": "/guide/projects"
+      },
+      {
+        "text": "模型配置与 AI 编辑",
+        "link": "/guide/agent"
+      },
+      {
+        "text": "可视化编辑",
+        "link": "/guide/editor"
+      },
+      {
+        "text": "页面预览",
+        "link": "/guide/preview"
+      },
+      {
+        "text": "草稿、版本与历史",
+        "link": "/guide/history"
+      },
+      {
+        "text": "应用到项目",
+        "link": "/guide/apply"
+      },
+      {
+        "text": "常见问题",
+        "link": "/guide/faq"
+      }
+    ]
+  },
+  {
+    "text": "项目架构",
+    "link": "/architecture/index",
+    "activeMatch": "/architecture/",
+    "items": [
+      {
+        "text": "整体架构",
+        "link": "/architecture/index"
+      },
+      {
+        "text": "Desktop：桌面宿主",
+        "link": "/architecture/desktop"
+      },
+      {
+        "text": "App：编辑工作台",
+        "link": "/architecture/app"
+      },
+      {
+        "text": "Server：本地后端",
+        "link": "/architecture/server"
+      },
+      {
+        "text": "Shared：公共契约",
+        "link": "/architecture/shared"
+      },
+      {
+        "text": "Materials：页面物料",
+        "link": "/architecture/materials"
+      },
+      {
+        "text": "Runtime：页面渲染",
+        "link": "/architecture/runtime"
+      },
+      {
+        "text": "Template：生成项目骨架",
+        "link": "/architecture/template"
+      },
+      {
+        "text": "开发与验证",
+        "link": "/architecture/development"
+      }
+    ]
+  }
+]

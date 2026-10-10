@@ -1,0 +1,17 @@
+[
+  {
+    "name": "index",
+    "label": "什么是 Origamix",
+    "type": "file"
+  },
+  {
+    "name": "workflow",
+    "label": "工作方式",
+    "type": "file"
+  },
+  {
+    "name": "status",
+    "label": "当前能力与限制",
+    "type": "file"
+  }
+]

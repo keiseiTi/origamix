@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "pnpm --filter @origamix/desktop dev",
     "dev:web": "pnpm --filter @origamix/app dev",
+    "site": "pnpm --filter @origamix/site dev",
+    "site:build": "pnpm --filter @origamix/site build",
     "build": "pnpm build:libs && pnpm --filter @origamix/app build && pnpm --filter @origamix/server build:assemble && pnpm --filter @origamix/desktop build:assemble",
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
     "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",

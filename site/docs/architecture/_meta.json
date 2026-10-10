@@ -1,0 +1,47 @@
+[
+  {
+    "name": "index",
+    "label": "整体架构",
+    "type": "file"
+  },
+  {
+    "name": "desktop",
+    "label": "Desktop：桌面宿主",
+    "type": "file"
+  },
+  {
+    "name": "app",
+    "label": "App：编辑工作台",
+    "type": "file"
+  },
+  {
+    "name": "server",
+    "label": "Server：本地后端",
+    "type": "file"
+  },
+  {
+    "name": "shared",
+    "label": "Shared：公共契约",
+    "type": "file"
+  },
+  {
+    "name": "materials",
+    "label": "Materials：页面物料",
+    "type": "file"
+  },
+  {
+    "name": "runtime",
+    "label": "Runtime：页面渲染",
+    "type": "file"
+  },
+  {
+    "name": "template",
+    "label": "Template：生成项目骨架",
+    "type": "file"
+  },
+  {
+    "name": "development",
+    "label": "开发与验证",
+    "type": "file"
+  }
+]

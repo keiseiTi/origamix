@@ -1,0 +1,22 @@
+[
+  {
+    "name": "environment",
+    "label": "环境准备",
+    "type": "file"
+  },
+  {
+    "name": "source",
+    "label": "获取源码与启动",
+    "type": "file"
+  },
+  {
+    "name": "first-page",
+    "label": "创建第一个页面",
+    "type": "file"
+  },
+  {
+    "name": "generated-project",
+    "label": "运行生成项目",
+    "type": "file"
+  }
+]
