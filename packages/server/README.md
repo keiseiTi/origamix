@@ -9,21 +9,21 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 3. 按要理解的业务进入下表对应目录，先读 Service，再读它调用的 Repository 或 Store。
 4. 阅读 `test/` 中与实现目录对应的测试，了解成功、拒绝和恢复场景。
 
-| 目录             | 职责与入口                                                                                                                                                                          |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projects/`      | [project-service.ts](projects/project-service.ts) 编排项目和页面用例；目录授权、Manifest、初始化和源码生成各有对应模块                                                              |
-| `schema/`        | [schema-service.ts](schema/schema-service.ts) 是权威编辑管线；[project-apply-service.ts](schema/project-apply-service.ts) 负责显式应用和重载；两个 Store 分别管理工作副本和目标文件 |
-| `conversations/` | [conversation-service.ts](conversations/conversation-service.ts) 管理会话、消息和创建 Run 的数据库事务                                                                              |
-| `agent/`         | [agent-service.ts](agent/agent-service.ts) 接收运行请求；[run-executor.ts](agent/run-executor.ts) 编排模型执行；Run 服务管理状态转换；`tools/` 管理工具、权限与预算                 |
-| `diagnostics/`   | [diagnostic-service.ts](diagnostics/diagnostic-service.ts) 校验并清洗渲染诊断；[diagnostic-cache.ts](diagnostics/diagnostic-cache.ts) 只在内存保存诊断                              |
-| `http/`          | 按 Project、Schema、Apply、Agent、Runtime 分文件注册路由，共用鉴权和响应适配                                                                                                        |
-| `database/`      | SQLite 连接、Drizzle 表定义、初始化与兼容性检查；业务 Repository 放在各业务目录                                                                                                     |
+| 目录              | 职责与入口                                                                                                                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projects/`       | [project-service.ts](projects/project-service.ts) 编排项目和页面用例；目录授权、Manifest、初始化和源码生成各有对应模块                                                              |
+| `schema/`         | [schema-service.ts](schema/schema-service.ts) 是权威编辑管线；[project-apply-service.ts](schema/project-apply-service.ts) 负责显式应用和重载；两个 Store 分别管理工作副本和目标文件 |
+| `conversations/`  | [conversation-service.ts](conversations/conversation-service.ts) 管理会话、消息和创建 Run 的数据库事务                                                                              |
+| `agent/`          | [agent-service.ts](agent/agent-service.ts) 接收运行请求；[run-executor.ts](agent/run-executor.ts) 编排模型执行；Run 服务管理状态转换；`tools/` 管理工具、权限与预算                 |
+| `diagnostics/`    | [diagnostic-service.ts](diagnostics/diagnostic-service.ts) 校验并清洗渲染诊断；[diagnostic-cache.ts](diagnostics/diagnostic-cache.ts) 只在内存保存诊断                              |
+| `http/`           | 按 Project、Schema、Apply、Agent、Runtime 分文件注册路由，共用鉴权和响应适配                                                                                                        |
+| `database/`       | SQLite 连接、Drizzle 表定义、初始化与兼容性检查；业务 Repository 放在各业务目录                                                                                                     |
+| `evaluation/`     | 固定评测、模型能力探测、安全审计与发布门禁，由 [tooling.ts](tooling.ts) 导出                                                                                                        |
+| `testing/`        | Fake Engine 与确定性模型，供测试或演示使用                                                                                                                                          |
+| `infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复                                                                                                                     |
+| `scripts/`        | 构建、开发监听、模板与启动集成检查                                                                                                                                                  |
 
 数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。旧结构不会自动迁移或删除，启动时会报告不兼容。
-| `evaluation/` | 固定评测、模型能力探测、安全审计与发布门禁，由 [tooling.ts](tooling.ts) 导出 |
-| `testing/` | Fake Engine 与确定性模型，供测试或演示使用 |
-| `infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复 |
-| `scripts/` | 构建、开发监听、模板与启动集成检查 |
 
 业务目录内部保留 Service → Repository/Store 的职责边界，不再为每个技术层建立子目录。目录位置不代表允许绕过服务写入。
 
@@ -141,3 +141,56 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 `test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建真实项目和页面、保存并 Apply，然后独立安装、类型检查和构建。它验证生成路径而不是只构建空模板，需要依赖缓存或 registry 网络。
 
 模板 README 是生成项目使用说明的唯一来源，创建时只替换标题并附加项目标识。复制白名单只允许两份已准备的 vendor 归档，不能复制任意 vendor 内容。字段形状由 Shared 校验，项目服务保留页面 ID/slug 唯一性检查；HTTP 错误统一由 Fastify 错误处理器转换。
+
+## 宿主配置与本地 HTTP
+
+推荐通过根 `pnpm dev` 或 `pnpm dev:web` 启动完整宿主。单独调试 API 时，先在 shell 设置 `ORIGAMIX_SERVER_TOKEN`，再运行 `pnpm --filter @origamix/server dev`；监督器准备构建并启动 worker。
+
+| 环境变量                   | 单独 Server dev 的行为                                     |
+| -------------------------- | ---------------------------------------------------------- |
+| `ORIGAMIX_SERVER_TOKEN`    | 必填，作为 bearer token；完整 Desktop/Web 宿主自行生成凭据 |
+| `ORIGAMIX_SERVICE_ID`      | 可选，固定服务实例标识；默认随机生成                       |
+| `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根 `.origamix-web/`                      |
+| `ORIGAMIX_WEB_PROJECT_DIR` | 可选，宿主授权的项目路径                                   |
+| `DEEPSEEK_API_KEY`         | 可选，Agent 与真实模型探测使用的 Key                       |
+
+变量读取见 [dev-worker.mjs](scripts/dev-worker.mjs)。端口由启动时分配，worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
+
+```sh
+curl --fail-with-body "$ORIGAMIX_API_URL/pages/working-state/get" \
+  -H "Authorization: Bearer $ORIGAMIX_SERVER_TOKEN" \
+  -H "X-Origamix-Service: $ORIGAMIX_SERVICE_ID" \
+  -H 'Content-Type: application/json' \
+  --data '{"projectId":"project_example","pageId":"page_example"}'
+```
+
+示例 ID 需替换为已授权项目的真实 ID。目录授权由宿主 `registerGrant` 提供，HTTP 请求中的路径不能替代授权。JSON 业务接口使用 POST；健康检查和 Agent SSE 使用 GET，均通过同一认证边界。失败响应为 `{ success: false, code, data: null, message }`，`X-Request-Id` 用于关联错误，不等同于 Apply/Agent 的幂等请求身份。
+
+常用接口入口：
+
+| 流程                                  | 路由/契约                                                                                     |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 读取/编辑 Working、保存/恢复 Revision | [schema-routes.ts](http/schema-routes.ts) 与 Shared [api.ts](../shared/src/protocol/api.ts)   |
+| 检查 Apply 状态、Apply、从项目重载    | [apply-routes.ts](http/apply-routes.ts)                                                       |
+| 创建/查询/取消 Run、会话及 SSE        | [agent-routes.ts](http/agent-routes.ts) 与 Shared [agent.ts](../shared/src/protocol/agent.ts) |
+
+SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端必须发送认证头；不要把 token 放进 URL。断线后查询持久化 Run/消息和 Working，事件通道不是可恢复数据库。
+
+## 错误与重试
+
+| HTTP 状态      | 处理方向                                                         |
+| -------------- | ---------------------------------------------------------------- |
+| 400 / 422      | 检查请求形状、Operation、Schema 与物料属性；修正后再提交         |
+| 401            | 确认 token 和服务实例标识；后端重启后刷新连接，不自动重放写请求  |
+| 403            | 检查 Origin 和授权边界，不通过放宽校验绕过                       |
+| 404            | 检查项目/页面/Run 身份和归属                                     |
+| 409            | 检查 Working 版本、未保存状态或目标外部变化，先读取最新状态      |
+| 500 / 连接中断 | 写入结果可能不明确，先核对持久化结果；Apply/Agent 保留原请求身份 |
+
+具体业务错误以响应文案和拥有该规则的 Service 为准。数据库不兼容时保留原文件，确认使用的应用版本；没有自动迁移或重置流程。
+
+## pi 与模型适配维护
+
+`pi-agent-core` 与 `pi-ai` 的精确版本以 [package.json](package.json) 和锁文件为准，两者同步升级。当前适配使用 `finishTurn` 在 `complete_page_run` 成功后结束正常回合；错误和取消保持 pi 的退出语义。
+
+升级时对照 [模型注册](agent/pi-runtime.ts)、[引擎适配](agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；配置 `DEEPSEEK_API_KEY` 后运行 `pnpm --filter @origamix/server probe:deepseek` 可验证默认模型的文本流和工具调用，会产生真实 API 请求。未配置 Key 时该脚本跳过探测，不能算探测通过。

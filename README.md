@@ -20,6 +20,16 @@ ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 
 Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整的生产远程部署和浏览器模板下载/导入功能，不应把开发代理当成这些功能的实现。
 
+## 首次使用
+
+1. 用 `pnpm dev` 启动桌面应用，在设置中配置 DeepSeek API Key 和模型。
+2. 选择项目目录；已有清单时打开项目，没有清单时按提示填写初始化信息，再创建或打开页面。
+3. 在编辑器中修改页面，或让 Agent 修改当前页面；成功的修改自动保留为 Working 草稿。
+4. 预览当前草稿，确认后点击“保存版本”创建 Revision，再点击“应用到项目”更新生成项目的 `schema.json`。
+5. 在生成项目目录运行 `pnpm install`、`pnpm dev`；部署说明见生成项目的 README。
+
+浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
+
 ## 包与接口
 
 | 包                                        | 唯一职责                                        | 对外接口                              |

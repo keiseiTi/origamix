@@ -29,3 +29,37 @@ pnpm --filter @origamix/shared build
 ```
 
 `pnpm package:npm` 可与其他发布包一同构建打包。修改协议后必须检查生产者和消费者，根验证命令见 [根 README](../../README.md)。维护约束见 [AGENTS.md](AGENTS.md)。
+
+## 最小页面与编辑请求
+
+下面是包含一个根容器的页面 Schema；这里的 `basicPage` 来自 Ant Design 物料清单，Shared 自身不验证某个物料是否存在。
+
+```json
+{
+  "elements": { "element_root": { "type": "basicPage", "props": {} } },
+  "layout": { "root": "element_root", "structure": { "element_root": [] } },
+  "flows": {},
+  "bindElements": [],
+  "context": { "globalVariables": [] },
+  "extensions": { "origamix": { "schemaVersion": "1.0" } }
+}
+```
+
+视觉编辑的 `/api/v1/pages/working-operations/apply` 请求体示例：
+
+```json
+{
+  "projectId": "project_example",
+  "pageId": "page_example",
+  "baseWorkingVersion": 1,
+  "operations": [
+    { "operation": "updateElementProps", "elementId": "element_root", "set": { "padding": 16 } }
+  ]
+}
+```
+
+ID 和版本需来自当前页面读取结果。该 HTTP 请求使用 `ApplyWorkingOperationsSchema`；Agent 的 `SchemaOperationBatch` 还包含 `version`、`source`、`clientRequestId`、`createdAt` 等字段，经终态工具提交。两者不能混用，完整字段见 [schema.ts](src/protocol/schema.ts) 和 [api.ts](src/protocol/api.ts)。
+
+Working 的 `workingVersion` 用于并发校验，`workingHash` 表示草稿内容，`revisionId` 指向当前保存检查点；Working 可以在同一 Revision 下继续变化。Revision 是不可变快照，不会因普通编辑产生。Apply 还需 `expectedRevisionId`、`expectedWorkingVersion` 和稳定的 `clientRequestId`。
+
+Shared 校验结构、根节点和布局引用/循环；Server 另行验证物料属性、授权、页面归属和当前 Working 版本。通过 Shared 校验不代表请求具备写入权限或一定能应用。

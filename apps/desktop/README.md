@@ -33,4 +33,27 @@ macOS 打包后资源检查：
 pnpm --filter @origamix/desktop test:resources /absolute/path/to/Origamix.app/Contents/Resources
 ```
 
-资源检查不等同于签名安装器启动。安装包发布与签名配置见根 README；`package:dir` 禁用自动 macOS 证书发现。维护约束见 [AGENTS.md](AGENTS.md)。
+资源检查不等同于签名安装器启动。安装包与签名范围见下文；`package:dir` 禁用自动 macOS 证书发现。维护约束见 [AGENTS.md](AGENTS.md)。
+
+## 模型与本地数据
+
+设置支持 DeepSeek 的 `deepseek-flash`（默认）与 `deepseek-v4-pro`。保存模型设置后，下一次 Agent Run 使用新选择，正在执行的 Run 保留启动时模型。Key 由 Main 使用 Electron `safeStorage` 加密；系统加密不可用时，保存新 Key 会报错。
+
+应用数据位于 Electron 的 `app.getPath('userData')`，实际位置取决于操作系统与应用名称：
+
+| 文件/目录                 | 内容                                               |
+| ------------------------- | -------------------------------------------------- |
+| `origamix.db`             | 项目和页面索引、会话、消息、Agent Run 与工具审计   |
+| `model-settings.json`     | 模型选择与加密后的 API Key                         |
+| `user-profile.json`       | 用户资料                                           |
+| 项目目录中的 `.origamix/` | Working、Revision 和恢复回执；不在桌面数据库目录内 |
+
+实现见 [Main](src/main/index.ts)。备份编辑状态需要同时考虑桌面记录和项目 `.origamix/`；停用应用后再复制，避免捕获写入中的状态。不要通过删除数据库处理版本不兼容；当前没有自动数据库迁移。
+
+后端意外退出时 Main 会重新启动它，并生成新的认证信息。Renderer 刷新连接后恢复持久化状态；无法确定结果的写请求不会自动重放。Key 无效时在设置中重新配置；加密不可用时检查系统凭据存储，而不是手工写明文 Key。
+
+## 打包与签名范围
+
+资源和平台选项由 [electron-builder.yml](electron-builder.yml) 管理，图标和 macOS 权限文件位于根目录 [build](../../build)。`pnpm package:dir` 显式禁用 macOS 签名身份，适合本地资源检查；`pnpm package` 不代表已有发行证书或公证配置。
+
+当前 macOS 配置为 `notarize: false`，仓库没有完成证书分发、公证或发布流水线。准备正式发行时需配置相应平台的签名与发布流程，并验证安装器实际启动；`test:resources` 只验证资源结构。签名配置属于发行工作，不能从开发构建成功推断已完成。
