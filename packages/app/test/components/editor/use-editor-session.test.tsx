@@ -46,12 +46,16 @@ describe('useEditorSession', () => {
       revisionId: 'revision_saved',
       workingVersion: 5,
     });
-    const hook = renderHook(() => useEditorSession('project_one', 'page_one', false));
+    const onWorkingCommitted = vi.fn();
+    const hook = renderHook(() =>
+      useEditorSession('project_one', 'page_one', false, onWorkingCommitted),
+    );
     await act(async () => Promise.resolve());
     await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
     await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
 
     act(() => hook.result.current.onChange(next as Schema));
+    expect(onWorkingCommitted).not.toHaveBeenCalled();
     await act(async () => hook.result.current.flush());
 
     expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledWith('project_one', 'page_one', 4, [
@@ -59,5 +63,6 @@ describe('useEditorSession', () => {
     ]);
     expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     expect(hook.result.current.initial?.revisionId).toBe('revision_saved');
+    expect(onWorkingCommitted).toHaveBeenCalledTimes(1);
   });
 });

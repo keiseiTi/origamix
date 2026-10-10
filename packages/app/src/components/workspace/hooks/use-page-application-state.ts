@@ -165,6 +165,7 @@ export const usePageApplicationState = ({
 
   return {
     applyStatus,
+    refreshApplyState,
     saveVersion,
     applyPage,
     reloadFromProject,

@@ -100,6 +100,9 @@ const PageWorkspaceContent = ({
     editorRef,
   });
   const setPageStatus = useWorkspaceStore((state) => state.setPageStatus);
+  const onWorkingCommitted = useCallback((): void => {
+    void application.refreshApplyState();
+  }, [application.refreshApplyState]);
   useEffect(() => {
     const status = application.applyStatus;
     if (
@@ -169,6 +172,7 @@ const PageWorkspaceContent = ({
             tool={editorTool === 'history' ? null : editorTool}
             onCloseTool={() => setEditorTool(null)}
             onHistoryStateChange={updateHistoryState}
+            onWorkingCommitted={onWorkingCommitted}
             readOnly={!capabilities.canEdit}
             readOnlyMessage={
               capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined

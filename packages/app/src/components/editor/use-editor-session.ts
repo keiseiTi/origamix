@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
 import { deriveSchemaOperations } from './derive-schema-operations';
 
-export const useEditorSession = (projectId: string, pageId: string, readOnly: boolean) => {
+export const useEditorSession = (
+  projectId: string,
+  pageId: string,
+  readOnly: boolean,
+  onWorkingCommitted?: () => void,
+) => {
   const [initial, setInitial] = useState<{
     schema: OrigamixPageSchema;
     revisionId: string;
@@ -18,6 +23,11 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
   const pendingRef = useRef<Promise<void> | null>(null);
   const timerRef = useRef<number | null>(null);
   const providerReadyRef = useRef(false);
+  const onWorkingCommittedRef = useRef(onWorkingCommitted);
+
+  useEffect(() => {
+    onWorkingCommittedRef.current = onWorkingCommitted;
+  }, [onWorkingCommitted]);
 
   useEffect(() => {
     let active = true;
@@ -70,6 +80,7 @@ export const useEditorSession = (projectId: string, pageId: string, readOnly: bo
         .then((result) => {
           workingVersionRef.current = result.workingVersion;
           savedHashRef.current = JSON.stringify(result.schema);
+          onWorkingCommittedRef.current?.();
         })
         .finally(() => {
           pendingRef.current = null;

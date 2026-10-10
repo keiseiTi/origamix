@@ -25,10 +25,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../src/components/editor', () => ({
-  Editor: ({ readOnly, readOnlyMessage }: { readOnly: boolean; readOnlyMessage?: string }) => {
+  Editor: ({
+    readOnly,
+    readOnlyMessage,
+    onWorkingCommitted,
+  }: {
+    readOnly: boolean;
+    readOnlyMessage?: string;
+    onWorkingCommitted?: () => void;
+  }) => {
     useEffect(() => mocks.editorMounted(), []);
     return (
-      <button disabled={readOnly} aria-label='编辑画布'>
+      <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
         {readOnlyMessage ?? '画布'}
       </button>
     );
@@ -96,6 +104,39 @@ describe('workspace recovery controls', () => {
     });
   });
   afterEach(cleanup);
+
+  it('refreshes a visual Working commit before saving and applying the page', async () => {
+    mocks.listConversations.mockResolvedValue({ conversations: [] });
+    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
+    render(<PageWorkspace {...props} active />);
+    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
+    const save = () => screen.getByRole('button', { name: '保存版本' }) as HTMLButtonElement;
+    const apply = () => screen.getByRole('button', { name: '应用到项目' }) as HTMLButtonElement;
+    expect(save().disabled).toBe(true);
+    expect(apply().disabled).toBe(true);
+
+    mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
+    fireEvent.click(screen.getByRole('button', { name: '编辑画布' }));
+    await waitFor(() => expect(save().disabled).toBe(false));
+    expect(apply().disabled).toBe(true);
+    expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
+
+    mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    fireEvent.click(save());
+    await waitFor(() => expect(apply().disabled).toBe(false));
+    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2);
+    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    fireEvent.click(apply());
+    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
+    expect(mocks.apply).toHaveBeenCalledWith(
+      'project_1',
+      'page_a',
+      'revision_1',
+      2,
+      expect.any(String),
+    );
+  });
 
   it('keeps retained tab sessions mounted while only the active tab handles shortcuts', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });

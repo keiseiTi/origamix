@@ -38,6 +38,7 @@ interface EditorProps {
   tool: Exclude<EditorTool, 'history'> | null;
   onCloseTool: () => void;
   onHistoryStateChange: (state: EditorHistoryState) => void;
+  onWorkingCommitted?: () => void;
   clarificationCandidates?: readonly { elementId: string; label: string }[];
   clarificationHighlightedElementId?: string | null;
   clarificationExpired?: boolean;
@@ -94,6 +95,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       tool,
       onCloseTool,
       onHistoryStateChange,
+      onWorkingCommitted,
       clarificationCandidates = [],
       clarificationHighlightedElementId = null,
       clarificationExpired = false,
@@ -101,7 +103,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
     },
     ref,
   ): React.JSX.Element => {
-    const session = useEditorSession(projectId, pageId, readOnly);
+    const session = useEditorSession(projectId, pageId, readOnly, onWorkingCommitted);
     const { initial, loading, error, flush, onChange, providerKey } = session;
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [providerKey]);
