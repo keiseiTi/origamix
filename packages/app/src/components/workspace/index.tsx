@@ -1,7 +1,7 @@
 import type { EditorHandle } from '@/components/editor';
 import { useWorkspaceStore } from '@/store/workspace';
-import { EmptyWorkspace } from './empty-workspace';
-import { PageWorkspace } from './page-workspace';
+import { EmptyWorkspace } from './mods/empty-workspace';
+import { PageWorkspace } from './mods/page-workspace';
 import { useMountedPages } from './hooks/use-mounted-pages';
 import type { WorkspaceMode } from './workspace-header';
 

@@ -1,7 +1,7 @@
 import { Monitor, Redo2, Smartphone, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { EditorHistoryState } from '../editor';
+import type { EditorHistoryState } from '../../editor';
 
 interface CanvasControlsProps {
   viewportWidth: number;

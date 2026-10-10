@@ -1,5 +1,5 @@
 import { Spinner } from '@/components/ui/spinner';
-import { RuntimePreview } from '@/runtime/runtime-preview';
+import { RuntimePreview } from '@/preview/runtime-preview';
 import type { PreviewSnapshot } from '@origamix/shared/page-window';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';

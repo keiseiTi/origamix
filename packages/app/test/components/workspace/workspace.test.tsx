@@ -34,7 +34,7 @@ vi.mock('../../../src/components/editor', () => ({
     );
   },
 }));
-import { PageWorkspace } from '../../../src/components/workspace/page-workspace';
+import { PageWorkspace } from '../../../src/components/workspace/mods/page-workspace';
 
 const props = {
   pageId: 'page_a',

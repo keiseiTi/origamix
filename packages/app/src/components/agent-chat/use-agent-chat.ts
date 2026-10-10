@@ -12,10 +12,9 @@ import { pageOperationKey, usePendingOperations } from '@/store/pending-operatio
 import { ApiRequestError } from '@/services/request';
 import { schemaService } from '@/services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
+import { uniqueId } from '@/utils';
 
-const requestId = (): string =>
-  globalThis.crypto?.randomUUID?.() ??
-  `request-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const requestId = (): string => uniqueId();
 
 export type AgentChatSession = {
   state: ReturnType<typeof agentChatReducer>;

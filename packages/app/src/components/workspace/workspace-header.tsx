@@ -17,10 +17,10 @@ import {
   SquarePen,
   TableOfContents,
 } from 'lucide-react';
-import { RevisionHistoryModal } from './revision-history-modal';
+import { RevisionHistoryModal } from './mods/revision-history-modal';
 import type { EditorHistoryState, EditorTool } from '../editor';
-import { CanvasControls } from './canvas-controls';
-import { VersionActions, type ApplyStatus } from './version-actions';
+import { CanvasControls } from './mods/canvas-controls';
+import { VersionActions, type ApplyStatus } from './mods/version-actions';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
