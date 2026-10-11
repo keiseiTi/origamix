@@ -48,7 +48,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build with Tangramino Site
+      - name: Build with Origamix Site
         run: pnpm site:build
 
       - name: Upload artifact
