@@ -3,8 +3,10 @@ import { defineConfig } from '@rspress/core';
 
 export default defineConfig({
   root: path.join(__dirname, 'docs'),
+  base: '/origamix',
   lang: 'zh',
   title: 'Origamix',
+  icon: '/icon.png',
   description:
     'AI 驱动、本地优先的低代码编辑器。项目介绍、源码启动、使用指南与包架构。',
   logo: '/icon.png',
