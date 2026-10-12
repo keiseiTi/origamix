@@ -66,7 +66,7 @@ export const createCompletePageRunTool = (
   return {
     name: 'complete_page_run',
     description:
-      '结束当前页面请求。每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；只回答、无需修改、需要澄清或拒绝时提交对应 outcome。',
+      '结束当前页面请求。每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；多个已有元素匹配但用户没有指定目标或明确批量范围时，必须提交 needs_clarification、question 和真实元素 candidates，不得先修改。只回答、无需修改或拒绝时提交对应 outcome。',
     parameters: CompletePageRunToolParametersSchema,
     execute: async (raw, signal) => {
       if (!Value.Check(CompletePageRunInputSchema, raw)) {

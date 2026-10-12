@@ -138,7 +138,7 @@ export const FIXED_AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
   },
   {
     id: 'eval_clarification',
-    input: '修改两个同名按钮中的一个',
+    input: '当前页面有两个按钮，用户请求：现在要给按钮的名字改为提交。用户未指定元素或批量范围。',
     expectedStatus: 'completed',
     expectedOutcome: 'needs_clarification',
     expectWorkingUpdate: false,

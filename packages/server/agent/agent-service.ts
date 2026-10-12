@@ -111,7 +111,7 @@ export class AgentService {
         modelRef,
         runKind: 'page_assistant',
         budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-        promptVersion: '1',
+        promptVersion: '2',
         policyVersion: '1',
         toolsetVersion: '1',
         materialManifestVersion: 'official-antd@1.0.0',
