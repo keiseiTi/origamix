@@ -28,6 +28,13 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - Use Ant Design controls for material implementations and `lucide-react` for any additional icons. Do not hand-write SVG icons.
 - New or changed visual materials need accessible labels/states where applicable and interaction checks in both light and dark themes.
 
+## Required build workflow
+
+- After changing material implementation, defaults, editor configuration, Manifest definitions or exports, manually run `pnpm --filter @origamix/materials build` from the repository root before integration verification or handoff. Documentation-only changes do not require a build. Do not assume frontend hot reload updates compiled package exports or the running backend.
+- When a change affects the persisted Schema contract or Server validation (properties, types, defaults, hierarchy, events or Manifest exports), then run `pnpm --filter @origamix/server build:assemble`. Server bundles the compiled pure-data Manifest; do not bypass package exports with source aliases or relax validation to mask stale artifacts.
+- For Desktop verification, also assemble the new backend into the host with `pnpm --filter @origamix/desktop build:assemble`. Ensure the running host/backend has reloaded the new artifacts before checking the API. Building files alone does not update an already running process; preserve uncommitted editor drafts before any restart and never replay ambiguous mutations automatically.
+- Report which builds and runtime reloads were completed. If the backend was not reloaded, explicitly state that live API verification still uses the previous rules.
+
 ## Verification
 
 From the repository root:

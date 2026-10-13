@@ -116,6 +116,15 @@ describe('Project and Schema HTTP flows', () => {
             elementId: 'element_root',
             set: { padding: 28 },
           },
+          {
+            operation: 'addElement',
+            elementId: 'form_http',
+            element: {
+              type: 'form',
+              props: { layout: 'horizontal', colon: true, preserve: true, requiredMark: true },
+            },
+            parentId: 'element_root',
+          },
         ],
       },
     });

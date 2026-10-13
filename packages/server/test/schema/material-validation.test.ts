@@ -86,6 +86,9 @@ describe('Manifest-driven Schema validation', () => {
     }
     schema.elements.form_main!.props = {
       layout: 'horizontal',
+      colon: true,
+      preserve: true,
+      labelAlign: 'right',
       labelColVal: 0,
       requiredMark: 'optional',
       initialValues: { name: '张三' },
