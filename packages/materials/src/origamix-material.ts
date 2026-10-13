@@ -1,5 +1,6 @@
 import type { Material } from './material';
 import type { MaterialManifest } from './material-manifest';
+export type { JsonAttributeConfig } from './material';
 
 type ManifestMetadata = Omit<MaterialManifest, 'type' | 'title' | 'defaultProps' | 'context'>;
 
@@ -43,6 +44,7 @@ export const toEditorMaterial = (
     title: material.title,
     type: material.type,
     defaultProps: material.defaultProps,
+    documentationUrl: material.metadata.documentationUrl,
     ...(material.metadata.allowedParentTypes
       ? { dropTypes: [...material.metadata.allowedParentTypes] }
       : {}),

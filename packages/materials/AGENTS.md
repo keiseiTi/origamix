@@ -22,6 +22,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - Runtime adapters should forward supported props and Tangramino context deliberately. Do not leak editor-only props to DOM elements, mutate Schema or add persistence/network side effects.
 - Runtime components use the package-local minimal runtime props contract; do not import editor contracts solely for injected render props. Editor metadata and controls may continue to depend on the editor package through editor-facing entries.
 - Keep manifests serializable except for documented component/render references used by the editor. Defaults must be deterministic and safe to render without project data.
+- Structured attribute editors use `uiType: 'json'` with an editor-only `validateValue` guard. Keep that callable outside Manifest entries; App owns its input UI and passes accepted data through the existing Working pipeline. Do not enable the deferred option editors as a side effect.
 - Prefer `OrigamixMaterial` definitions for simple materials: derive their Manifest with `toMaterialManifest` and attach the runtime component with `toEditorMaterial`. Keep component references and custom render controls outside definitions so Server-facing imports remain pure data.
 - Declare every imported library directly. React and Ant Design remain peer dependencies for consumers; local dependency entries support workspace development and verification.
 - Use Ant Design controls for material implementations and `lucide-react` for any additional icons. Do not hand-write SVG icons.

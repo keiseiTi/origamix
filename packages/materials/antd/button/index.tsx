@@ -6,7 +6,18 @@ export interface IProps
   extends
     Pick<
       ButtonProps,
-      'disabled' | 'loading' | 'onClick' | 'type' | 'shape' | 'href' | 'target' | 'ghost'
+      | 'disabled'
+      | 'loading'
+      | 'onClick'
+      | 'type'
+      | 'shape'
+      | 'href'
+      | 'target'
+      | 'ghost'
+      | 'size'
+      | 'danger'
+      | 'block'
+      | 'htmlType'
     >,
     MaterialComponentProps {
   text?: string;

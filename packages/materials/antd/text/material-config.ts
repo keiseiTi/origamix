@@ -1,10 +1,8 @@
-import React from 'react';
+import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { textManifest } from './manifest';
 
-const Text = React.lazy(() => import('./index'));
-
-const TextMaterial = toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(textManifest, {
     editorConfig: {
       panels: [
@@ -21,52 +19,66 @@ const TextMaterial = toEditorMaterial(
               field: 'type',
               uiType: 'select',
               props: {
-                allowClear: true,
                 options: [
-                  { label: '文本', value: 'text' },
-                  { label: '段落', value: 'paragraph' },
-                  { label: '标题 H1', value: 'h1' },
-                  { label: '标题 H2', value: 'h2' },
-                  { label: '标题 H3', value: 'h3' },
-                  { label: '标题 H4', value: 'h4' },
-                  { label: '标题 H5', value: 'h5' },
+                  {
+                    label: '文本',
+                    value: 'text',
+                  },
+                  {
+                    label: '段落',
+                    value: 'paragraph',
+                  },
+                  {
+                    label: '标题 H1',
+                    value: 'h1',
+                  },
+                  {
+                    label: '标题 H2',
+                    value: 'h2',
+                  },
+                  {
+                    label: '标题 H3',
+                    value: 'h3',
+                  },
+                  {
+                    label: '标题 H4',
+                    value: 'h4',
+                  },
+                  {
+                    label: '标题 H5',
+                    value: 'h5',
+                  },
                 ],
               },
             },
             {
-              label: '文本类型',
+              label: '文本颜色',
               field: 'textType',
               uiType: 'select',
               props: {
-                allowClear: true,
                 options: [
-                  { label: '默认', value: undefined },
-                  { label: '次级', value: 'secondary' },
-                  { label: '成功', value: 'success' },
-                  { label: '警告', value: 'warning' },
-                  { label: '危险', value: 'danger' },
+                  {
+                    label: '默认',
+                    value: undefined,
+                  },
+                  {
+                    label: '次级',
+                    value: 'secondary',
+                  },
+                  {
+                    label: '成功',
+                    value: 'success',
+                  },
+                  {
+                    label: '警告',
+                    value: 'warning',
+                  },
+                  {
+                    label: '危险',
+                    value: 'danger',
+                  },
                 ],
               },
-            },
-            {
-              label: '省略行数',
-              field: 'ellipsis',
-              uiType: 'checkbox',
-            },
-            {
-              label: '可复制',
-              field: 'copyable',
-              uiType: 'checkbox',
-            },
-            {
-              label: '可编辑',
-              field: 'editable',
-              uiType: 'checkbox',
-            },
-            {
-              label: '下划线',
-              field: 'underline',
-              uiType: 'checkbox',
             },
             {
               label: '加粗',
@@ -79,6 +91,16 @@ const TextMaterial = toEditorMaterial(
               uiType: 'checkbox',
             },
             {
+              label: '下划线',
+              field: 'underline',
+              uiType: 'checkbox',
+            },
+            {
+              label: '删除线',
+              field: 'delete',
+              uiType: 'checkbox',
+            },
+            {
               label: '代码样式',
               field: 'code',
               uiType: 'checkbox',
@@ -88,12 +110,27 @@ const TextMaterial = toEditorMaterial(
               field: 'mark',
               uiType: 'checkbox',
             },
+            {
+              label: '禁用样式',
+              field: 'disabled',
+              uiType: 'checkbox',
+            },
+            {
+              label: '可复制',
+              field: 'copyable',
+              uiType: 'checkbox',
+            },
+            {
+              label: '超出省略',
+              field: 'ellipsis',
+              uiType: 'checkbox',
+            },
           ],
         },
       ],
     },
   }),
-  Text,
+  lazy(() => import('./index')),
 );
 
-export default TextMaterial;
+export default material;

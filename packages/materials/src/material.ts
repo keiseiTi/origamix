@@ -71,6 +71,12 @@ export type CustomAttributeConfig = BasicAttributeConfig & {
   render: (props: BasicAttributeConfig) => React.ReactNode;
 };
 
+/** Structured JSON editor; guards belong to editor metadata, never to the Manifest. */
+export type JsonAttributeConfig = BasicAttributeConfig & {
+  uiType: 'json';
+  validateValue: (value: unknown) => string | undefined;
+};
+
 export type AttributeConfig =
   | TextAttributeConfig
   | InputAttributeConfig
@@ -80,6 +86,7 @@ export type AttributeConfig =
   | SelectAttributeConfig
   | SwitchAttributeConfig
   | ColorAttributeConfig
+  | JsonAttributeConfig
   | CustomAttributeConfig;
 
 export type PanelConfig = BasicPanelConfig & {
@@ -87,6 +94,7 @@ export type PanelConfig = BasicPanelConfig & {
 };
 
 export type Material = BasicMaterial & {
+  documentationUrl?: string;
   editorConfig?: BasicEditorConfig & {
     panels?: PanelConfig[];
   };

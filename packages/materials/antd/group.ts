@@ -7,7 +7,7 @@ import Radio from './radio/material-config';
 import Switch from './switch/material-config';
 import Form from './form/material-config';
 import Table from './table/material-config';
-// import Tabs from './tabs/material-config';
+import Tabs from './tabs/material-config';
 import Modal from './modal/material-config';
 import Drawer from './drawer/material-config';
 import Upload from './upload/material-config';
@@ -49,7 +49,7 @@ export const materialGroups = [
   },
   {
     title: '展示物料',
-    children: [Button, Text, Table, Tree],
+    children: [Button, Text, Table, Tree, Tabs],
   },
 ];
 

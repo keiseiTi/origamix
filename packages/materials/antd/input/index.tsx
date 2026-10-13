@@ -8,12 +8,12 @@ export type IProps = InputProps &
   };
 
 export const Input = (props: IProps) => {
-  const { onChange, value, tg_setContextValues, ...restProps } = props;
-  const [innerValue, setInnerValue] = useState<string>();
+  const { onChange, value, defaultValue, tg_setContextValues, ...restProps } = props;
+  const [innerValue, setInnerValue] = useState(value ?? defaultValue);
 
   useEffect(() => {
-    setInnerValue(value);
-  }, [value]);
+    setInnerValue(value ?? defaultValue);
+  }, [value, defaultValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInnerValue(e.target.value);

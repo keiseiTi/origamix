@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Input as AntdInput } from 'antd';
+import type { TextAreaProps } from 'antd/es/input/TextArea';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
-export type IProps = MaterialComponentProps & {
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-};
+export type IProps = TextAreaProps &
+  MaterialComponentProps & {
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  };
 
 export const Textarea = (props: IProps) => {
-  const { onChange, value, tg_setContextValues, ...restProps } = props;
-  const [innerValue, setInnerValue] = useState<string>();
+  const { onChange, value, defaultValue, tg_setContextValues, ...restProps } = props;
+  const [innerValue, setInnerValue] = useState(value ?? defaultValue);
 
   useEffect(() => {
-    setInnerValue(value);
-  }, [value]);
+    setInnerValue(value ?? defaultValue);
+  }, [value, defaultValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInnerValue(e.target.value);

@@ -1,6 +1,6 @@
-import { defineManifest, objectSchema } from '../manifest-definition';
+import { defineSimpleManifest } from '../manifest-definition';
 
-export const tableManifest = defineManifest(
+export const tableManifest = defineSimpleManifest(
   {
     type: 'table',
     title: '表格',
@@ -8,49 +8,220 @@ export const tableManifest = defineManifest(
       rowKey: 'id',
       size: 'middle',
       columns: [
-        { title: '列1', dataIndex: 'col1' },
-        { title: '列2', dataIndex: 'col2' },
+        {
+          title: '列1',
+          dataIndex: 'col1',
+        },
+        {
+          title: '列2',
+          dataIndex: 'col2',
+        },
       ],
       enabledPagination: false,
+      showHeader: true,
+      dataSource: [],
     },
     context: {
       variables: [
-        { name: 'dataSource', description: '数据源' },
-        { name: 'loading', description: '加载中' },
-        { name: 'bordered', description: '是否显示边框' },
+        {
+          name: 'dataSource',
+          description: '数据源',
+        },
+        {
+          name: 'loading',
+          description: '加载中',
+        },
+        {
+          name: 'bordered',
+          description: '是否显示边框',
+        },
       ],
       values: [],
       methods: [],
     },
   },
   {
-    version: '1.0.0',
-    description: '按列展示结构化列表数据。',
-    keywords: ['表格', '列表', '数据'],
+    description: '表格的结构与展示属性。',
+    keywords: ['表格', 'display'],
     role: 'display',
     acceptsChildren: false,
-    propsSchema: objectSchema(
-      {
-        rowKey: { type: 'string', minLength: 1 },
-        size: { type: 'string', enum: ['large', 'middle', 'small'] },
+    documentationUrl: 'https://ant.design/components/table/#api',
+    propsSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        rowKey: {
+          type: 'string',
+          minLength: 1,
+        },
+        size: {
+          type: 'string',
+          enum: ['large', 'middle', 'small'],
+        },
         columns: {
           type: 'array',
-          items: objectSchema(
-            {
-              title: { type: 'string' },
-              dataIndex: { type: 'string' },
-              key: { type: 'string' },
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              title: {
+                type: 'string',
+              },
+              dataIndex: {
+                type: 'string',
+              },
+              key: {
+                type: 'string',
+              },
+              width: {
+                type: 'number',
+                minimum: 1,
+              },
+              align: {
+                type: 'string',
+                enum: ['left', 'center', 'right'],
+              },
+              fixed: {
+                anyOf: [
+                  {
+                    type: 'string',
+                    enum: ['left', 'right'],
+                  },
+                  {
+                    type: 'boolean',
+                  },
+                ],
+              },
+              ellipsis: {
+                type: 'boolean',
+              },
+              hidden: {
+                type: 'boolean',
+              },
             },
-            ['title', 'dataIndex'],
-          ),
+            required: ['title', 'dataIndex'],
+          },
         },
-        dataSource: { type: 'array', items: { type: 'object' } },
-        enabledPagination: { type: 'boolean' },
-        bordered: { type: 'boolean' },
+        dataSource: {
+          type: 'array',
+          items: {
+            type: 'object',
+          },
+        },
+        enabledPagination: {
+          type: 'boolean',
+        },
+        pagination: {
+          anyOf: [
+            {
+              type: 'boolean',
+            },
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                pageSize: {
+                  type: 'integer',
+                  minimum: 1,
+                },
+                current: {
+                  type: 'integer',
+                  minimum: 1,
+                },
+                total: {
+                  type: 'integer',
+                  minimum: 0,
+                },
+                hideOnSinglePage: {
+                  type: 'boolean',
+                },
+                showQuickJumper: {
+                  type: 'boolean',
+                },
+                showSizeChanger: {
+                  type: 'boolean',
+                },
+                simple: {
+                  type: 'boolean',
+                },
+                position: {
+                  type: 'array',
+                  items: {
+                    type: 'string',
+                    enum: [
+                      'topLeft',
+                      'topCenter',
+                      'topRight',
+                      'bottomLeft',
+                      'bottomCenter',
+                      'bottomRight',
+                      'none',
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+        pageSize: {
+          type: 'integer',
+          minimum: 1,
+        },
+        paginationPosition: {
+          type: 'string',
+          enum: [
+            'topLeft',
+            'topCenter',
+            'topRight',
+            'bottomLeft',
+            'bottomCenter',
+            'bottomRight',
+            'none',
+          ],
+        },
+        hideOnSinglePage: {
+          type: 'boolean',
+        },
+        showQuickJumper: {
+          type: 'boolean',
+        },
+        showSizeChanger: {
+          type: 'boolean',
+        },
+        simplePagination: {
+          type: 'boolean',
+        },
+        bordered: {
+          type: 'boolean',
+        },
+        loading: {
+          type: 'boolean',
+        },
+        showHeader: {
+          type: 'boolean',
+        },
+        tableLayout: {
+          type: 'string',
+          enum: ['auto', 'fixed'],
+        },
+        scrollX: {
+          type: 'number',
+          minimum: 1,
+        },
+        scrollY: {
+          type: 'number',
+          minimum: 1,
+        },
+        sticky: {
+          type: 'boolean',
+        },
+        emptyText: {
+          type: 'string',
+        },
       },
-      ['rowKey', 'columns'],
-    ),
-    usage: '用于展示具有稳定字段结构的数据集合。',
-    constraints: ['rowKey 必须对应每行数据的唯一字段。', '列的 dataIndex 应对应数据字段。'],
+      required: ['rowKey', 'columns'],
+    },
+    usage: '配置表格的属性与展示行为。',
+    constraints: ['表格行与列的标识应保持稳定。'],
   },
 );

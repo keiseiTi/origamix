@@ -1,20 +1,24 @@
-// import { OptionsConfig } from '@/components/options-config';
 import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { checkboxManifest } from './manifest';
 
-const CheckboxMaterial = toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(checkboxManifest, {
     editorConfig: {
       panels: [
         {
           title: '属性',
           configs: [
-            // {
-            //   field: 'options',
-            //   uiType: 'custom',
-            //   render: OptionsConfig,
-            // },
+            {
+              label: '禁用',
+              field: 'disabled',
+              uiType: 'checkbox',
+            },
+            {
+              label: '表单字段名',
+              field: 'name',
+              uiType: 'input',
+            },
           ],
         },
       ],
@@ -23,4 +27,4 @@ const CheckboxMaterial = toEditorMaterial(
   lazy(() => import('./index')),
 );
 
-export default CheckboxMaterial;
+export default material;

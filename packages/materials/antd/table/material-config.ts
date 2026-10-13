@@ -1,10 +1,9 @@
-import React from 'react';
+import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { tableManifest } from './manifest';
+import { validateColumns, validateRows } from '../structured-data-validation';
 
-const Table = React.lazy(() => import('./index'));
-
-const TableMaterial = toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(tableManifest, {
     editorConfig: {
       panels: [
@@ -12,59 +11,222 @@ const TableMaterial = toEditorMaterial(
           title: '属性',
           configs: [
             {
-              label: '行 Key',
               field: 'rowKey',
+              label: '行唯一标识字段',
               uiType: 'input',
-              required: true,
-              props: {
-                placeholder: '数据行的唯一标识字段',
-              },
             },
             {
-              label: '表格大小',
+              field: 'columns',
+              validateValue: validateColumns,
+              label: '列配置',
+              uiType: 'json',
+            },
+            {
+              field: 'dataSource',
+              validateValue: validateRows,
+              label: '表格数据',
+              uiType: 'json',
+            },
+            {
               field: 'size',
+              label: '尺寸',
               uiType: 'select',
               props: {
                 options: [
-                  { label: '默认', value: 'middle' },
-                  { label: '小', value: 'small' },
-                  { label: '大', value: 'large' },
+                  {
+                    label: '大',
+                    value: 'large',
+                  },
+                  {
+                    label: '中',
+                    value: 'middle',
+                  },
+                  {
+                    label: '小',
+                    value: 'small',
+                  },
                 ],
               },
             },
-            // {
-            //   label: '列配置',
-            //   field: 'columns',
-            //   uiType: 'custom',
-            //   render: ColumnConfig,
-            // },
             {
-              label: '开启分页',
-              field: 'enabledPagination',
-              uiType: 'checkbox',
-            },
-            // {
-            //   field: 'pagination',
-            //   uiType: 'custom',
-            //   render: PaginationConfig,
-            //   linkageShow: [
-            //     {
-            //       field: 'enabledPagination',
-            //       value: true,
-            //     },
-            //   ],
-            // },
-            {
-              label: '边框',
               field: 'bordered',
+              label: '显示边框',
               uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'loading',
+              label: '加载中',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'showHeader',
+              label: '显示表头',
+              uiType: 'checkbox',
+              defaultValue: true,
+            },
+            {
+              field: 'tableLayout',
+              label: '表格布局',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '自动',
+                    value: 'auto',
+                  },
+                  {
+                    label: '固定',
+                    value: 'fixed',
+                  },
+                ],
+              },
+            },
+            {
+              field: 'scrollX',
+              label: '横向滚动宽度',
+              uiType: 'number',
+              props: {
+                min: 1,
+              },
+            },
+            {
+              field: 'scrollY',
+              label: '纵向滚动高度',
+              uiType: 'number',
+              props: {
+                min: 1,
+              },
+            },
+            {
+              field: 'sticky',
+              label: '固定表头与滚动条',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'emptyText',
+              label: '空数据提示',
+              uiType: 'input',
+            },
+            {
+              field: 'enabledPagination',
+              label: '开启分页',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'pageSize',
+              label: '每页条数',
+              uiType: 'number',
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
+              props: {
+                min: 1,
+                step: 1,
+              },
+            },
+            {
+              field: 'paginationPosition',
+              label: '分页位置',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '上左',
+                    value: 'topLeft',
+                  },
+                  {
+                    label: '上中',
+                    value: 'topCenter',
+                  },
+                  {
+                    label: '上右',
+                    value: 'topRight',
+                  },
+                  {
+                    label: '下左',
+                    value: 'bottomLeft',
+                  },
+                  {
+                    label: '下中',
+                    value: 'bottomCenter',
+                  },
+                  {
+                    label: '下右',
+                    value: 'bottomRight',
+                  },
+                  {
+                    label: '隐藏',
+                    value: 'none',
+                  },
+                ],
+              },
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
+            },
+            {
+              field: 'hideOnSinglePage',
+              label: '单页隐藏分页',
+              uiType: 'checkbox',
+              defaultValue: false,
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
+            },
+            {
+              field: 'showQuickJumper',
+              label: '快速跳页',
+              uiType: 'checkbox',
+              defaultValue: false,
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
+            },
+            {
+              field: 'showSizeChanger',
+              label: '切换每页条数',
+              uiType: 'checkbox',
+              defaultValue: false,
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
+            },
+            {
+              field: 'simplePagination',
+              label: '简洁分页',
+              uiType: 'checkbox',
+              defaultValue: false,
+              linkageShow: [
+                {
+                  field: 'enabledPagination',
+                  value: true,
+                },
+              ],
             },
           ],
         },
       ],
     },
   }),
-  Table,
+  lazy(() => import('./index')),
 );
-
-export default TableMaterial;
+export default material;

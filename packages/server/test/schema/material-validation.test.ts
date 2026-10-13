@@ -41,13 +41,95 @@ const codes = (
 
 describe('Manifest-driven Schema validation', () => {
   it('accepts declared props, hierarchy, event, binding and safe URL', () => {
-    expect(validatePageAgainstMaterials(page(), supportedSet)).toEqual({ valid: true, errors: [] });
+    const schema = page();
+    schema.elements.button_save!.props = {
+      text: '保存',
+      href: '/saved',
+      size: 'small',
+      danger: true,
+      block: true,
+      htmlType: 'button',
+    };
+    schema.elements.input_name!.props = { defaultValue: '姓名', readOnly: true, variant: 'filled' };
+    const inputs = {
+      textarea: { autoSize: { minRows: 2, maxRows: 5 }, readOnly: true },
+      select: { options: [{ label: '数字选项', value: 1 }], status: 'warning', virtual: false },
+      checkbox: { options: [{ label: '选项', value: true }], disabled: true },
+      radio: {
+        options: [{ label: '选项', value: 'one' }],
+        optionType: 'button',
+        buttonStyle: 'solid',
+      },
+      number: { defaultValue: 2, step: 0.5, controls: false },
+      switch: { defaultChecked: true, checkedChildren: '开', loading: true },
+      datePicker: { defaultValue: '2026-10-13', showTime: true, minDate: '2026-01-01' },
+      datePickerRange: {
+        defaultStart: '2026-10-13',
+        defaultEnd: '2026-10-15',
+        startPlaceholder: '开始',
+      },
+      timePicker: { defaultValue: '09:30:00', hourStep: 2, use12Hours: true },
+      cascader: {
+        changeOnSelect: true,
+        options: [{ label: '浙江', value: 'zj', children: [{ label: '杭州', value: 'hz' }] }],
+      },
+      treeSelect: {
+        treeCheckable: true,
+        treeData: [{ title: '部门', value: 'dept', children: [{ title: '小组', value: 'team' }] }],
+      },
+      upload: { action: '/upload', drag: true, listType: 'picture-circle', text: '上传文件' },
+      slider: { range: true, defaultStart: 10, defaultEnd: 30, draggableTrack: true },
+    };
+    for (const [type, props] of Object.entries(inputs)) {
+      schema.elements[`${type}_test`] = { type, props };
+      schema.layout.structure.form_main!.push(`${type}_test`);
+    }
+    schema.elements.form_main!.props = {
+      layout: 'horizontal',
+      labelColVal: 0,
+      requiredMark: 'optional',
+      initialValues: { name: '张三' },
+      variant: 'filled',
+      validateTrigger: 'onBlur',
+    };
+    const displays = {
+      table: {
+        rowKey: 'id',
+        columns: [{ title: '姓名', dataIndex: 'name', width: 120, fixed: 'left' }],
+        dataSource: [{ id: '1', name: '张三' }],
+        enabledPagination: true,
+        pageSize: 5,
+        scrollY: 240,
+      },
+      tree: {
+        checkable: true,
+        defaultCheckedKeys: ['child'],
+        treeData: [{ title: '部门', key: 'root', children: [{ title: '小组', key: 'child' }] }],
+      },
+      tabs: {
+        items: [{ key: 'overview', label: '概览', children: '内容' }],
+        tabPlacement: 'start',
+        destroyOnHidden: true,
+      },
+      modal: { title: '弹窗', open: false, showFooter: false, destroyOnHidden: true },
+      drawer: { title: '抽屉', open: false, placement: 'bottom', customSize: 240, resizable: true },
+    };
+    for (const [type, props] of Object.entries(displays)) {
+      schema.elements[`${type}_test`] = { type, props };
+      schema.layout.structure.element_root!.push(`${type}_test`);
+    }
+    expect(validatePageAgainstMaterials(schema, supportedSet)).toEqual({ valid: true, errors: [] });
   });
 
   it('reports unknown materials and props with stable diagnostics', () => {
     const schema = page();
     schema.elements.input_name = { type: 'mystery', props: {} };
     schema.elements.button_save!.props.extra = true;
+    schema.elements.tabs_test = {
+      type: 'tabs',
+      props: { items: [{ key: '1', label: { unsafe: 'object' } }] },
+    };
+    schema.layout.structure.element_root!.push('tabs_test');
     const result = validatePageAgainstMaterials(schema, supportedSet);
     expect(result.errors).toEqual(
       expect.arrayContaining([
@@ -63,6 +145,7 @@ describe('Manifest-driven Schema validation', () => {
           elementId: 'button_save',
           materialType: 'button',
         }),
+        expect.objectContaining({ code: 'INVALID_MATERIAL_PROPS', elementId: 'tabs_test' }),
       ]),
     );
   });
@@ -88,6 +171,8 @@ describe('Manifest-driven Schema validation', () => {
   it('rejects executable expressions and unsafe URL schemes', () => {
     const schema = page();
     schema.elements.button_save!.props.href = 'javascript:alert(1)';
+    schema.elements.upload_test = { type: 'upload', props: { action: 'javascript:alert(1)' } };
+    schema.layout.structure.form_main!.push('upload_test');
     schema.flows.flow_save = {
       startId: 'node_start',
       nodes: {
@@ -95,6 +180,9 @@ describe('Manifest-driven Schema validation', () => {
       },
     };
     expect(codes(schema)).toEqual(expect.arrayContaining(['UNSAFE_EXPRESSION', 'UNSAFE_URL']));
+    expect(validatePageAgainstMaterials(schema, supportedSet).errors).toContainEqual(
+      expect.objectContaining({ code: 'UNSAFE_URL', path: '/elements/upload_test/props/action' }),
+    );
   });
 
   it('rejects a project/runtime material version mismatch', () => {

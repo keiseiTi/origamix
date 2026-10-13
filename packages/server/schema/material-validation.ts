@@ -125,7 +125,10 @@ const inspectSafeValues = (
   }
   for (const [key, child] of Object.entries(record)) {
     if (
-      /^(?:href|src|url)$/i.test(key) &&
+      (/^(?:href|src|url)$/i.test(key) ||
+        (key === 'action' &&
+          materialType === 'upload' &&
+          path === `/elements/${elementId}/props`)) &&
       typeof child === 'string' &&
       child &&
       !safeUrlPattern.test(child)

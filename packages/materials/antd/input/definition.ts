@@ -23,8 +23,18 @@ export const inputDefinition = defineOrigamixMaterial({
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
+    documentationUrl: 'https://ant.design/components/input/#api',
     propsSchema: objectSchema({
-      type: { type: 'string', enum: ['text', 'password', 'email'] },
+      defaultValue: { type: 'string' },
+      size: { type: 'string', enum: ['large', 'middle', 'small'] },
+      disabled: { type: 'boolean' },
+      readOnly: { type: 'boolean' },
+      status: { type: 'string', enum: ['error', 'warning'] },
+      variant: { type: 'string', enum: ['outlined', 'borderless', 'filled', 'underlined'] },
+      prefix: { type: 'string' },
+      suffix: { type: 'string' },
+      autoComplete: { type: 'string', enum: ['on', 'off'] },
+      type: { type: 'string', enum: ['text', 'password', 'email', 'tel', 'url'] },
       maxLength: { type: 'number', minimum: 0, maximum: 1000 },
       addonBefore: { type: 'string' },
       addonAfter: { type: 'string' },
@@ -41,33 +51,171 @@ export const inputDefinition = defineOrigamixMaterial({
         title: '属性',
         configs: [
           {
+            label: '占位符',
+            field: 'placeholder',
+            uiType: 'input',
+          },
+          {
+            label: '初始内容',
+            field: 'defaultValue',
+            uiType: 'input',
+          },
+          {
             label: '输入类型',
             field: 'type',
             uiType: 'select',
             props: {
               options: [
-                { label: '文本', value: 'text' },
-                { label: '密码', value: 'password' },
-                { label: '邮箱', value: 'email' },
+                {
+                  label: '文本',
+                  value: 'text',
+                },
+                {
+                  label: '密码',
+                  value: 'password',
+                },
+                {
+                  label: '邮箱',
+                  value: 'email',
+                },
+                {
+                  label: '电话',
+                  value: 'tel',
+                },
+                {
+                  label: '网址',
+                  value: 'url',
+                },
               ],
             },
+          },
+          {
+            label: '尺寸',
+            field: 'size',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '大',
+                  value: 'large',
+                },
+                {
+                  label: '中',
+                  value: 'middle',
+                },
+                {
+                  label: '小',
+                  value: 'small',
+                },
+              ],
+            },
+          },
+          {
+            label: '禁用',
+            field: 'disabled',
+            uiType: 'checkbox',
+          },
+          {
+            label: '只读',
+            field: 'readOnly',
+            uiType: 'checkbox',
+          },
+          {
+            label: '允许清除',
+            field: 'allowClear',
+            uiType: 'checkbox',
           },
           {
             label: '最大长度',
             field: 'maxLength',
             uiType: 'number',
-            props: { min: 0, max: 1000, step: 1 },
+            props: {
+              min: 0,
+              step: 1,
+            },
           },
-          { label: '前置标签', field: 'addonBefore', uiType: 'input', props: {} },
-          { label: '后置标签', field: 'addonAfter', uiType: 'input', props: {} },
           {
-            label: '占位符',
-            field: 'placeholder',
-            uiType: 'input',
-            props: { placeholder: '请输入占位符文本' },
+            label: '显示字数',
+            field: 'showCount',
+            uiType: 'checkbox',
           },
-          { label: '允许清除', field: 'allowClear', uiType: 'checkbox' },
-          { label: '显示字数', field: 'showCount', uiType: 'checkbox' },
+          {
+            label: '校验状态',
+            field: 'status',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '默认',
+                  value: undefined,
+                },
+                {
+                  label: '错误',
+                  value: 'error',
+                },
+                {
+                  label: '警告',
+                  value: 'warning',
+                },
+              ],
+            },
+          },
+          {
+            label: '外观',
+            field: 'variant',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '描边',
+                  value: 'outlined',
+                },
+                {
+                  label: '无边框',
+                  value: 'borderless',
+                },
+                {
+                  label: '填充',
+                  value: 'filled',
+                },
+                {
+                  label: '下划线',
+                  value: 'underlined',
+                },
+              ],
+            },
+          },
+          {
+            label: '前缀文字',
+            field: 'prefix',
+            uiType: 'input',
+          },
+          {
+            label: '后缀文字',
+            field: 'suffix',
+            uiType: 'input',
+          },
+          {
+            label: '自动填充',
+            field: 'autoComplete',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '默认',
+                  value: undefined,
+                },
+                {
+                  label: '开启',
+                  value: 'on',
+                },
+                {
+                  label: '关闭',
+                  value: 'off',
+                },
+              ],
+            },
+          },
         ],
       },
     ],

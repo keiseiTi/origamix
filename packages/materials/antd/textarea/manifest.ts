@@ -4,7 +4,7 @@ export const textareaManifest = defineSimpleManifest(
   {
     type: 'textarea',
     title: '文本域',
-    defaultProps: { placeholder: '请输入内容', size: 'middle' },
+    defaultProps: { placeholder: '请输入内容', size: 'middle', autoSize: false },
     context: {
       ...inputContext,
       methods: [
@@ -19,11 +19,27 @@ export const textareaManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
+    documentationUrl: 'https://ant.design/components/input/#api',
     propsSchema: objectSchema({
+      defaultValue: { type: 'string' },
+      disabled: { type: 'boolean' },
+      readOnly: { type: 'boolean' },
+      allowClear: { type: 'boolean' },
+      rows: { type: 'number', minimum: 1 },
+      status: { type: 'string', enum: ['error', 'warning'] },
+      variant: { type: 'string', enum: ['outlined', 'borderless', 'filled', 'underlined'] },
       maxLength: { type: 'number', minimum: 0 },
       showCount: { type: 'boolean' },
       placeholder: { type: 'string' },
-      autoSize: { type: ['boolean', 'object'] },
+      autoSize: {
+        anyOf: [
+          { type: 'boolean' },
+          objectSchema({
+            minRows: { type: 'integer', minimum: 1 },
+            maxRows: { type: 'integer', minimum: 1 },
+          }),
+        ],
+      },
       size: { type: 'string', enum: ['large', 'middle', 'small'] },
     }),
     usage: '用于描述、备注等多行字段。',

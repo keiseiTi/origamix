@@ -2,7 +2,7 @@ import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { numberManifest } from './manifest';
 
-const NumberMaterial = toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(numberManifest, {
     editorConfig: {
       panels: [
@@ -10,25 +10,27 @@ const NumberMaterial = toEditorMaterial(
           title: '属性',
           configs: [
             {
-              label: '默认值',
+              label: '初始值',
               field: 'defaultValue',
               uiType: 'number',
-              props: {},
             },
             {
               label: '最小值',
               field: 'min',
               uiType: 'number',
-              props: {
-                step: 1,
-              },
             },
             {
               label: '最大值',
               field: 'max',
               uiType: 'number',
+            },
+            {
+              label: '步长',
+              field: 'step',
+              uiType: 'number',
               props: {
-                step: 1,
+                min: 0,
+                step: 0.1,
               },
             },
             {
@@ -42,41 +44,124 @@ const NumberMaterial = toEditorMaterial(
               },
             },
             {
-              label: '前缀',
-              field: 'prefix',
-              uiType: 'input',
-              props: {},
-            },
-            {
-              label: '后缀',
-              field: 'suffix',
-              uiType: 'input',
-              props: {},
-            },
-            {
-              label: '前置标签',
-              field: 'addonBefore',
-              uiType: 'input',
-              props: {},
-            },
-            {
-              label: '后置标签',
-              field: 'addonAfter',
-              uiType: 'input',
-              props: {},
-            },
-            {
               label: '占位符',
               field: 'placeholder',
               uiType: 'input',
+            },
+            {
+              label: '尺寸',
+              field: 'size',
+              uiType: 'select',
               props: {
-                placeholder: '请输入占位符文本',
+                options: [
+                  {
+                    label: '大',
+                    value: 'large',
+                  },
+                  {
+                    label: '中',
+                    value: 'middle',
+                  },
+                  {
+                    label: '小',
+                    value: 'small',
+                  },
+                ],
               },
             },
             {
-              label: '允许清除',
-              field: 'allowClear',
+              label: '禁用',
+              field: 'disabled',
               uiType: 'checkbox',
+            },
+            {
+              label: '只读',
+              field: 'readOnly',
+              uiType: 'checkbox',
+            },
+            {
+              label: '显示增减按钮',
+              field: 'controls',
+              defaultValue: true,
+              uiType: 'checkbox',
+            },
+            {
+              label: '键盘调整',
+              field: 'keyboard',
+              defaultValue: true,
+              uiType: 'checkbox',
+            },
+            {
+              label: '滚轮调整',
+              field: 'changeOnWheel',
+              uiType: 'checkbox',
+            },
+            {
+              label: '失焦时校正',
+              field: 'changeOnBlur',
+              defaultValue: true,
+              uiType: 'checkbox',
+            },
+            {
+              label: '校验状态',
+              field: 'status',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '默认',
+                    value: undefined,
+                  },
+                  {
+                    label: '错误',
+                    value: 'error',
+                  },
+                  {
+                    label: '警告',
+                    value: 'warning',
+                  },
+                ],
+              },
+            },
+            {
+              label: '外观',
+              field: 'variant',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '描边',
+                    value: 'outlined',
+                  },
+                  {
+                    label: '无边框',
+                    value: 'borderless',
+                  },
+                  {
+                    label: '填充',
+                    value: 'filled',
+                  },
+                  {
+                    label: '下划线',
+                    value: 'underlined',
+                  },
+                ],
+              },
+            },
+            {
+              label: '小数分隔符',
+              field: 'decimalSeparator',
+              uiType: 'input',
+            },
+            {
+              label: '前缀文字',
+              field: 'prefix',
+              uiType: 'input',
+            },
+            {
+              label: '后缀文字',
+              field: 'suffix',
+              uiType: 'input',
             },
           ],
         },
@@ -86,4 +171,4 @@ const NumberMaterial = toEditorMaterial(
   lazy(() => import('./index')),
 );
 
-export default NumberMaterial;
+export default material;

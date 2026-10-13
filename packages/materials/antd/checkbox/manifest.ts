@@ -26,7 +26,12 @@ export const checkboxManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    propsSchema: objectSchema({ options: optionsSchema }),
+    documentationUrl: 'https://ant.design/components/checkbox/#api',
+    propsSchema: objectSchema({
+      disabled: { type: 'boolean' },
+      name: { type: 'string' },
+      options: optionsSchema,
+    }),
     usage: '用于多选字段。',
     constraints: ['必须置于 form 中。'],
   },

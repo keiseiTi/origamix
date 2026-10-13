@@ -1,27 +1,87 @@
-import { defineSimpleManifest, inputContext, objectSchema } from '../manifest-definition';
-
+import { defineSimpleManifest, objectSchema, inputContext } from '../manifest-definition';
 export const sliderManifest = defineSimpleManifest(
   {
     type: 'slider',
     title: '滑动输入条',
-    defaultProps: {},
+    defaultProps: { min: 0, max: 100, step: 1, range: false, keyboard: true, included: true },
     context: {
-      variables: [
-        { name: 'checked', description: '是否选中' },
-        { name: 'disabled', description: '是否禁用' },
-      ],
-      values: [],
-      methods: inputContext.methods,
+      ...inputContext,
+      variables: [...inputContext.variables, { name: 'checked', description: '保留旧页面属性' }],
     },
   },
   {
-    description: '通过滑动在数值范围内选值。',
-    keywords: ['滑块', '数值', '范围'],
+    description: '滑动输入条属性配置。',
+    keywords: ['滑动输入条'],
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    propsSchema: objectSchema({ min: { type: 'number' }, max: { type: 'number' } }),
-    usage: '用于直观调整数值。',
-    constraints: ['必须置于 form 中。', 'min 不应大于 max。'],
+    documentationUrl: 'https://ant.design/components/slider/#api',
+    propsSchema: objectSchema({
+      min: {
+        type: 'number',
+      },
+      max: {
+        type: 'number',
+      },
+      step: {
+        type: 'number',
+        minimum: 0.01,
+      },
+      range: {
+        type: 'boolean',
+      },
+      defaultValue: {
+        anyOf: [
+          {
+            type: 'number',
+          },
+          {
+            type: 'array',
+            items: {
+              type: 'number',
+            },
+            minItems: 2,
+            maxItems: 2,
+          },
+        ],
+      },
+      defaultStart: {
+        type: 'number',
+      },
+      defaultEnd: {
+        type: 'number',
+      },
+      disabled: {
+        type: 'boolean',
+      },
+      keyboard: {
+        type: 'boolean',
+      },
+      reverse: {
+        type: 'boolean',
+      },
+      vertical: {
+        type: 'boolean',
+      },
+      dots: {
+        type: 'boolean',
+      },
+      included: {
+        type: 'boolean',
+      },
+      draggableTrack: {
+        type: 'boolean',
+      },
+      tooltipMode: {
+        type: 'string',
+        enum: ['auto', 'always', 'hidden'],
+      },
+      tooltipPlacement: {
+        type: 'string',
+        enum: ['top', 'bottom', 'left', 'right'],
+      },
+    }),
+    usage: '用于表单中的滑动输入条。',
+    constraints: ['必须置于 form 中。'],
   },
 );

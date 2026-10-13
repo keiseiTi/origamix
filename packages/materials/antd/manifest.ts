@@ -20,6 +20,7 @@ import { selectManifest } from './select/manifest';
 import { sliderManifest } from './slider/manifest';
 import { switchManifest } from './switch/manifest';
 import { tableManifest } from './table/manifest';
+import { tabsManifest } from './tabs/manifest';
 import { textManifest } from './text/manifest';
 import { textareaManifest } from './textarea/manifest';
 import { timePickerManifest } from './time-picker/manifest';
@@ -44,6 +45,7 @@ export {
   sliderManifest,
   switchManifest,
   tableManifest,
+  tabsManifest,
   textManifest,
   textareaManifest,
   timePickerManifest,
@@ -73,6 +75,7 @@ const manifests = [
   modalManifest,
   drawerManifest,
   tableManifest,
+  tabsManifest,
   textManifest,
   treeManifest,
 ] as const;

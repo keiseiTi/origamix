@@ -1,93 +1,138 @@
-import React from 'react';
-
-const Tabs = React.lazy(() => import('./index'));
-import type { Material } from '../../src/material';
+import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { tabsManifest } from './manifest';
+import { validateTabItems } from '../structured-data-validation';
 
-const TabsMaterial: Material = {
-  Component: Tabs,
-  title: '标签选型卡',
-  type: 'tabs',
-  isContainer: true,
-  dropTypes: ['basicPage'],
-  editorConfig: {
-    panels: [
-      {
-        title: '属性',
-        configs: [
-          {
-            label: '激活键',
-            field: 'activeKey',
-            uiType: 'input',
-          },
-          {
-            label: '默认激活键',
-            field: 'defaultActiveKey',
-            uiType: 'input',
-          },
-          {
-            label: '类型',
-            field: 'type',
-            uiType: 'radio',
-            props: {
-              options: [
-                { label: '线条', value: 'line' },
-                { label: '卡片', value: 'card' },
-                { label: '可编辑卡片', value: 'editable-card' },
-              ],
-            },
-          },
-          {
-            label: '大小',
-            field: 'size',
-            uiType: 'radio',
-            props: {
-              options: [
-                { label: '大', value: 'large' },
-                { label: '中', value: 'middle' },
-                { label: '小', value: 'small' },
-              ],
-            },
-          },
-          {
-            label: '位置',
-            field: 'tabPosition',
-            uiType: 'select',
-            props: {
-              options: [
-                { label: '顶部', value: 'top' },
-                { label: '右侧', value: 'right' },
-                { label: '底部', value: 'bottom' },
-                { label: '左侧', value: 'left' },
-              ],
-            },
-          },
-          {
-            label: '居中',
-            field: 'centered',
-            uiType: 'checkbox',
-          },
-          {
-            label: '销毁隐藏面板',
-            field: 'destroyInactiveTabPane',
-            uiType: 'checkbox',
-          },
-          {
-            label: '页签项(items)',
-            field: 'items',
-            uiType: 'input',
-          },
-        ],
-      },
-    ],
-  },
-};
-
-export default toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(tabsManifest, {
-    editorConfig: TabsMaterial.editorConfig,
-    isContainer: TabsMaterial.isContainer,
+    isContainer: true,
+    editorConfig: {
+      panels: [
+        {
+          title: '属性',
+          configs: [
+            {
+              field: 'items',
+              validateValue: validateTabItems,
+              label: '页签项',
+              uiType: 'json',
+            },
+            {
+              field: 'defaultActiveKey',
+              label: '默认激活键',
+              uiType: 'input',
+            },
+            {
+              field: 'type',
+              label: '类型',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '线条',
+                    value: 'line',
+                  },
+                  {
+                    label: '卡片',
+                    value: 'card',
+                  },
+                  {
+                    label: '可编辑卡片',
+                    value: 'editable-card',
+                  },
+                ],
+              },
+            },
+            {
+              field: 'size',
+              label: '尺寸',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '大',
+                    value: 'large',
+                  },
+                  {
+                    label: '中',
+                    value: 'middle',
+                  },
+                  {
+                    label: '小',
+                    value: 'small',
+                  },
+                ],
+              },
+            },
+            {
+              field: 'tabPlacement',
+              label: '位置',
+              uiType: 'select',
+              defaultValue: 'top',
+              props: {
+                options: [
+                  {
+                    label: '顶部',
+                    value: 'top',
+                  },
+                  {
+                    label: '右侧',
+                    value: 'end',
+                  },
+                  {
+                    label: '底部',
+                    value: 'bottom',
+                  },
+                  {
+                    label: '左侧',
+                    value: 'start',
+                  },
+                ],
+              },
+            },
+            {
+              field: 'tabBarGutter',
+              label: '页签间距',
+              uiType: 'number',
+              props: {
+                min: 0,
+              },
+            },
+            {
+              field: 'centered',
+              label: '居中',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'animated',
+              label: '切换动画',
+              uiType: 'checkbox',
+              defaultValue: true,
+            },
+            {
+              field: 'destroyOnHidden',
+              label: '销毁隐藏面板',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              field: 'hideAdd',
+              label: '隐藏新增按钮',
+              uiType: 'checkbox',
+              defaultValue: true,
+              linkageShow: [
+                {
+                  field: 'type',
+                  value: 'editable-card',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
   }),
-  TabsMaterial.Component,
+  lazy(() => import('./index')),
 );
+export default material;

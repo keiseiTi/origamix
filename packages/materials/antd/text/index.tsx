@@ -13,6 +13,8 @@ export interface IProps {
   ellipsis?: boolean | { rows: number; expandable: boolean; symbol: string };
   code?: boolean;
   mark?: boolean;
+  delete?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
@@ -38,6 +40,8 @@ export const Text = (props: IProps) => {
     strong,
     italic,
     onClick,
+    delete: deleted,
+    disabled,
   } = props;
 
   const _props = {
@@ -51,6 +55,8 @@ export const Text = (props: IProps) => {
     strong: strong,
     italic: italic,
     onClick: onClick,
+    delete: deleted,
+    disabled,
   };
 
   if (type === 'paragraph') {

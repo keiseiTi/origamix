@@ -2,7 +2,7 @@ import { lazy } from 'react';
 import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
 import { datePickerRangeManifest } from './manifest';
 
-const DatePickerMaterial = toEditorMaterial(
+const material = toEditorMaterial(
   fromMaterialManifest(datePickerRangeManifest, {
     editorConfig: {
       panels: [
@@ -10,37 +10,214 @@ const DatePickerMaterial = toEditorMaterial(
           title: '属性',
           configs: [
             {
-              label: '格式化',
-              field: 'format',
+              label: '选择类型',
+              field: 'picker',
               uiType: 'select',
               props: {
-                allowClear: true,
                 options: [
                   {
-                    label: 'YYYY-MM-DD HH:mm:ss',
-                    value: 'YYYY-MM-DD HH:mm:ss',
+                    label: '日期',
+                    value: 'date',
                   },
                   {
-                    label: 'YYYY-MM-DD HH:mm',
-                    value: 'YYYY-MM-DD HH:mm',
+                    label: '周',
+                    value: 'week',
+                  },
+                  {
+                    label: '月',
+                    value: 'month',
+                  },
+                  {
+                    label: '季度',
+                    value: 'quarter',
+                  },
+                  {
+                    label: '年',
+                    value: 'year',
                   },
                 ],
               },
             },
             {
-              label: '占位符',
-              field: 'placeholder',
+              label: '显示格式',
+              field: 'format',
               uiType: 'input',
             },
             {
-              label: '是否显示此刻',
-              field: 'showNow',
+              label: '开始占位符',
+              field: 'startPlaceholder',
+              uiType: 'input',
+            },
+            {
+              label: '结束占位符',
+              field: 'endPlaceholder',
+              uiType: 'input',
+            },
+            {
+              label: '初始开始日期（YYYY-MM-DD）',
+              field: 'defaultStart',
+              uiType: 'input',
+            },
+            {
+              label: '初始结束日期（YYYY-MM-DD）',
+              field: 'defaultEnd',
+              uiType: 'input',
+            },
+            {
+              label: '选择时间',
+              field: 'showTime',
               uiType: 'checkbox',
+              defaultValue: false,
+              linkageShow: [
+                {
+                  field: 'picker',
+                  value: 'date',
+                },
+              ],
+            },
+            {
+              label: '允许开始为空',
+              field: 'allowEmptyStart',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              label: '允许结束为空',
+              field: 'allowEmptyEnd',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              label: '输入只读',
+              field: 'inputReadOnly',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              label: '需要确认',
+              field: 'needConfirm',
+              uiType: 'checkbox',
+              defaultValue: false,
+            },
+            {
+              label: '自动排序',
+              field: 'order',
+              uiType: 'checkbox',
+              defaultValue: true,
+            },
+            {
+              label: '最早日期（YYYY-MM-DD）',
+              field: 'minDate',
+              uiType: 'input',
+            },
+            {
+              label: '最晚日期（YYYY-MM-DD）',
+              field: 'maxDate',
+              uiType: 'input',
+            },
+            {
+              label: '尺寸',
+              field: 'size',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '大',
+                    value: 'large',
+                  },
+                  {
+                    label: '中',
+                    value: 'middle',
+                  },
+                  {
+                    label: '小',
+                    value: 'small',
+                  },
+                ],
+              },
+            },
+            {
+              label: '禁用',
+              field: 'disabled',
+              uiType: 'checkbox',
+              defaultValue: false,
             },
             {
               label: '允许清除',
               field: 'allowClear',
               uiType: 'checkbox',
+              defaultValue: true,
+            },
+            {
+              label: '校验状态',
+              field: 'status',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '默认',
+                    value: undefined,
+                  },
+                  {
+                    label: '错误',
+                    value: 'error',
+                  },
+                  {
+                    label: '警告',
+                    value: 'warning',
+                  },
+                ],
+              },
+            },
+            {
+              label: '外观',
+              field: 'variant',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '描边',
+                    value: 'outlined',
+                  },
+                  {
+                    label: '填充',
+                    value: 'filled',
+                  },
+                  {
+                    label: '无边框',
+                    value: 'borderless',
+                  },
+                  {
+                    label: '下划线',
+                    value: 'underlined',
+                  },
+                ],
+              },
+            },
+            {
+              label: '弹层位置',
+              field: 'placement',
+              uiType: 'select',
+              props: {
+                options: [
+                  {
+                    label: '左下',
+                    value: 'bottomLeft',
+                  },
+                  {
+                    label: '右下',
+                    value: 'bottomRight',
+                  },
+                  {
+                    label: '左上',
+                    value: 'topLeft',
+                  },
+                  {
+                    label: '右上',
+                    value: 'topRight',
+                  },
+                ],
+              },
             },
           ],
         },
@@ -49,5 +226,4 @@ const DatePickerMaterial = toEditorMaterial(
   }),
   lazy(() => import('./index')),
 );
-
-export default DatePickerMaterial;
+export default material;

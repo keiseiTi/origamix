@@ -19,6 +19,8 @@ import {
   type AttributeConfig,
 } from '@tangramino/base-editor';
 import { useEffect, useMemo, useState } from 'react';
+import type { JsonAttributeConfig } from '@origamix/materials/material';
+import { JsonAttributeField } from './json-attribute-field';
 
 interface OptionItem {
   label: string;
@@ -52,6 +54,8 @@ export const AttributePanel = (): React.JSX.Element => {
   const { callSchemaHook } = usePluginCore();
   const [activePanel, setActivePanel] = useState('0');
   const material = activeElement?.material;
+  const documentationUrl = (material as { documentationUrl?: string } | undefined)
+    ?.documentationUrl;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
   const panels = material?.editorConfig?.panels ?? [];
@@ -96,12 +100,23 @@ export const AttributePanel = (): React.JSX.Element => {
   };
 
   const renderField = (config: AttributeConfig): React.JSX.Element | null => {
-    if (!config.uiType || !isVisible(config, values)) return null;
-    const value = values[config.field] ?? config.defaultValue;
+    if (!config.uiType || !isVisible(config, { ...material?.defaultProps, ...values })) return null;
+    const value =
+      values[config.field] ?? config.defaultValue ?? material?.defaultProps?.[config.field];
     const options = optionsOf(config);
     const label = typeof config.label === 'string' ? config.label : config.field;
 
     switch (config.uiType) {
+      case 'json':
+        return (
+          <JsonAttributeField
+            key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
+            label={label}
+            value={value}
+            validateValue={(config as JsonAttributeConfig).validateValue}
+            onChange={(next) => update(config.field, next)}
+          />
+        );
       case 'input':
         return (
           <Input
@@ -110,11 +125,17 @@ export const AttributePanel = (): React.JSX.Element => {
             onChange={(event) => update(config.field, event.target.value)}
           />
         );
-      case 'number':
+      case 'number': {
+        const numberProps = (
+          config as AttributeConfig & { props?: { min?: number; max?: number; step?: number } }
+        ).props;
         return (
           <Input
             aria-label={label}
             type='number'
+            min={numberProps?.min}
+            max={numberProps?.max}
+            step={numberProps?.step}
             value={typeof value === 'number' ? String(value) : ''}
             onChange={(event) =>
               update(
@@ -124,6 +145,7 @@ export const AttributePanel = (): React.JSX.Element => {
             }
           />
         );
+      }
       case 'checkbox':
         if (options.length)
           return <p className='m-0 text-xs text-zinc-500'>多选配置将在后续版本支持。</p>;
@@ -170,7 +192,14 @@ export const AttributePanel = (): React.JSX.Element => {
         return (
           <Select
             aria-label={label}
-            value={value == null ? null : String(value)}
+            items={options.map((option) => ({ label: option.label, value: String(option.value) }))}
+            value={
+              value == null
+                ? options.some((option) => option.value === undefined)
+                  ? 'undefined'
+                  : null
+                : String(value)
+            }
             onValueChange={(key: string | null) =>
               update(
                 config.field,
@@ -178,7 +207,7 @@ export const AttributePanel = (): React.JSX.Element => {
               )
             }
           >
-            <SelectTrigger className='w-full'>
+            <SelectTrigger className='w-full' aria-label={label}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -235,6 +264,16 @@ export const AttributePanel = (): React.JSX.Element => {
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>
           ) : (
             <div className='flex min-h-0 flex-1 flex-col'>
+              {documentationUrl?.startsWith('https://ant.design/components/') && (
+                <a
+                  href={documentationUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='px-3 py-2 text-xs text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary'
+                >
+                  查看官方属性
+                </a>
+              )}
               <div
                 className='flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-zinc-200 px-2 dark:border-zinc-800'
                 role='tablist'

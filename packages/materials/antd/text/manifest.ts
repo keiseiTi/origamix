@@ -29,7 +29,10 @@ export const textManifest = defineManifest(
     keywords: ['文本', '标题', '段落'],
     role: 'display',
     acceptsChildren: false,
+    documentationUrl: 'https://ant.design/components/typography/#api',
     propsSchema: objectSchema({
+      delete: { type: 'boolean' },
+      disabled: { type: 'boolean' },
       text: { type: 'string' },
       type: { type: 'string', enum: ['text', 'paragraph', 'h1', 'h2', 'h3', 'h4', 'h5'] },
       textType: { type: 'string', enum: ['secondary', 'success', 'warning', 'danger'] },

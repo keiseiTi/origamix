@@ -5,12 +5,14 @@ import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/r
 export type IProps = InputNumberProps & MaterialComponentProps;
 
 export const Number = (props: IProps) => {
-  const { value, onChange, tg_setContextValues, ...restProps } = props;
-  const [innerValue, setInnerValue] = useState<string | number | null>();
+  const { value, defaultValue, onChange, tg_setContextValues, ...restProps } = props;
+  const [innerValue, setInnerValue] = useState<string | number | null | undefined>(
+    value ?? defaultValue,
+  );
 
   useEffect(() => {
-    setInnerValue(value);
-  }, [value]);
+    setInnerValue(value ?? defaultValue);
+  }, [value, defaultValue]);
 
   const handleChange = (v: string | number | null) => {
     setInnerValue(v);

@@ -1,11 +1,30 @@
 import React from 'react';
-import { Upload as AntdUpload, type UploadProps } from 'antd';
+import { Button, Upload as AntdUpload, type UploadProps } from 'antd';
+import type { RuntimeMaterialProps } from '../../src/runtime-material';
 
-export type IProps = UploadProps & {};
-
-export const Upload = (props: IProps) => {
-  const { children, ...restProps } = props;
-  return <AntdUpload {...restProps}>{children}</AntdUpload>;
+export type IProps = UploadProps & RuntimeMaterialProps & { drag?: boolean; text?: string };
+export const Upload = ({
+  children,
+  drag,
+  text = '选择文件',
+  disabled,
+  action,
+  beforeUpload,
+  tg_setContextValues,
+  ...rest
+}: IProps) => {
+  const uploadProps: UploadProps = {
+    ...rest,
+    disabled,
+    action,
+    beforeUpload: beforeUpload ?? (action ? undefined : () => false),
+  };
+  if (drag)
+    return <AntdUpload.Dragger {...uploadProps}>{children ?? <p>{text}</p>}</AntdUpload.Dragger>;
+  return (
+    <AntdUpload {...uploadProps}>
+      {children ?? <Button disabled={disabled}>{text}</Button>}
+    </AntdUpload>
+  );
 };
-
 export default Upload;

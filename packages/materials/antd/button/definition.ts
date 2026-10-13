@@ -20,7 +20,13 @@ export const buttonDefinition = defineOrigamixMaterial({
     keywords: ['按钮', '提交', '操作'],
     role: 'action',
     acceptsChildren: false,
+    documentationUrl: 'https://ant.design/components/button/#api',
     propsSchema: objectSchema({
+      disabled: { type: 'boolean' },
+      loading: { type: 'boolean' },
+      danger: { type: 'boolean' },
+      block: { type: 'boolean' },
+      htmlType: { type: 'string', enum: ['button', 'submit', 'reset'] },
       text: { type: 'string' },
       type: { type: 'string', enum: ['default', 'primary', 'dashed', 'link', 'text'] },
       size: { type: 'string', enum: ['large', 'middle', 'small'] },
@@ -41,50 +47,152 @@ export const buttonDefinition = defineOrigamixMaterial({
             label: '按钮文本',
             field: 'text',
             uiType: 'input',
-            props: { placeholder: '请输入按钮文本' },
           },
           {
             label: '按钮类型',
             field: 'type',
             uiType: 'select',
             props: {
-              allowClear: true,
               options: [
-                { label: '默认', value: 'default' },
-                { label: '主要', value: 'primary' },
-                { label: '虚线', value: 'dashed' },
-                { label: '链接', value: 'link' },
-                { label: '文本', value: 'text' },
+                {
+                  label: '默认',
+                  value: 'default',
+                },
+                {
+                  label: '主要',
+                  value: 'primary',
+                },
+                {
+                  label: '虚线',
+                  value: 'dashed',
+                },
+                {
+                  label: '链接',
+                  value: 'link',
+                },
+                {
+                  label: '文本',
+                  value: 'text',
+                },
               ],
             },
           },
           {
-            label: '按钮形状',
+            label: '尺寸',
+            field: 'size',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '大',
+                  value: 'large',
+                },
+                {
+                  label: '中',
+                  value: 'middle',
+                },
+                {
+                  label: '小',
+                  value: 'small',
+                },
+              ],
+            },
+          },
+          {
+            label: '形状',
             field: 'shape',
             uiType: 'select',
             props: {
-              allowClear: true,
               options: [
-                { label: '圆形', value: 'circle' },
-                { label: '圆角', value: 'round' },
+                {
+                  label: '默认',
+                  value: undefined,
+                },
+                {
+                  label: '圆形',
+                  value: 'circle',
+                },
+                {
+                  label: '圆角',
+                  value: 'round',
+                },
               ],
             },
           },
-          { label: '跳转的地址', field: 'href', uiType: 'input' },
           {
-            label: '跳转的目标',
+            label: '禁用',
+            field: 'disabled',
+            uiType: 'checkbox',
+          },
+          {
+            label: '加载中',
+            field: 'loading',
+            uiType: 'checkbox',
+          },
+          {
+            label: '危险样式',
+            field: 'danger',
+            uiType: 'checkbox',
+          },
+          {
+            label: '撑满宽度',
+            field: 'block',
+            uiType: 'checkbox',
+          },
+          {
+            label: '透明背景',
+            field: 'ghost',
+            uiType: 'checkbox',
+          },
+          {
+            label: '跳转地址',
+            field: 'href',
+            uiType: 'input',
+          },
+          {
+            label: '打开方式',
             field: 'target',
             uiType: 'select',
             props: {
-              allowClear: true,
               options: [
-                { label: '当前窗口', value: '_self' },
-                { label: '新窗口', value: '_blank' },
+                {
+                  label: '当前窗口',
+                  value: '_self',
+                },
+                {
+                  label: '新窗口',
+                  value: '_blank',
+                },
               ],
             },
-            linkageShow: [{ field: 'href', isNotEmpty: true }],
+            linkageShow: [
+              {
+                field: 'href',
+                isNotEmpty: true,
+              },
+            ],
           },
-          { label: '按钮背景透明', field: 'ghost', uiType: 'checkbox' },
+          {
+            label: '原生按钮类型',
+            field: 'htmlType',
+            uiType: 'select',
+            props: {
+              options: [
+                {
+                  label: '普通按钮',
+                  value: 'button',
+                },
+                {
+                  label: '提交',
+                  value: 'submit',
+                },
+                {
+                  label: '重置',
+                  value: 'reset',
+                },
+              ],
+            },
+          },
         ],
       },
     ],

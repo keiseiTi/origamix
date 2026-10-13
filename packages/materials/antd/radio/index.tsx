@@ -1,8 +1,8 @@
 import React from 'react';
-import { Radio as AntdRadio, type RadioProps } from 'antd';
+import { Radio as AntdRadio, type RadioGroupProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
 
-export interface IProps extends RadioProps, MaterialComponentProps {
+export interface IProps extends RadioGroupProps, MaterialComponentProps {
   label?: string;
   optionDisplayButton?: boolean;
 }

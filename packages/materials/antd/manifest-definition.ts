@@ -44,7 +44,10 @@ export const inputContext: MaterialManifest['context'] = {
 };
 
 const optionSchema = objectSchema(
-  { label: { type: 'string' }, value: { type: ['string', 'number', 'boolean'] } },
+  {
+    label: { type: 'string' },
+    value: { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+  },
   ['label', 'value'],
 );
 

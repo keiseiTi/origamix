@@ -1,10 +1,11 @@
 import React from 'react';
+import type { RuntimeMaterialProps } from '../../src/runtime-material';
 import { TreeSelect as AntdTreeSelect, type TreeSelectProps } from 'antd';
 
-export type IProps = TreeSelectProps & {};
+export type IProps = TreeSelectProps & RuntimeMaterialProps;
 
 export const TreeSelect = (props: IProps) => {
-  const { ...restProps } = props;
+  const { tg_setContextValues, ...restProps } = props;
   return <AntdTreeSelect {...restProps} />;
 };
 
