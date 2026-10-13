@@ -1,177 +1,303 @@
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogFooter,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { schemaService } from '@/services/schema';
 import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import { Check, GitCommitHorizontal, RotateCcw } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { schemaService } from '@/services/schema';
+import { Braces, History, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-const sourceLabel = (revision: RevisionHistoryItem): string => {
-  if (revision.source.kind === 'agent') return 'Agent 修改';
-  if (revision.source.kind === 'restore') return '历史恢复';
-  return '用户保存';
-};
-
-export const RevisionHistoryModal = ({
-  isOpen,
-  projectId,
-  pageId,
-  canRestore,
-  onClose,
-  onRestore,
-}: {
-  isOpen: boolean;
+interface RevisionHistoryProps {
   projectId: string;
   pageId: string;
   canRestore: boolean;
   onClose: () => void;
   onRestore: (revisionId: string) => Promise<void>;
-}): React.JSX.Element => {
+}
+
+const formatTime = (value: string): string => {
+  const date = new Date(value);
+  const pad = (number: number): string => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const RevisionHistoryContent = ({
+  projectId,
+  pageId,
+  canRestore,
+  onClose,
+  onRestore,
+}: RevisionHistoryProps): React.JSX.Element => {
   const [revisions, setRevisions] = useState<RevisionHistoryItem[]>([]);
-  const [selected, setSelected] = useState<{
-    revisionId: string;
-    schema: OrigamixPageSchema;
-  } | null>(null);
+  const [selected, setSelected] = useState<RevisionHistoryItem | null>(null);
+  const [schema, setSchema] = useState<OrigamixPageSchema | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [listAttempt, setListAttempt] = useState(0);
+  const [viewAttempt, setViewAttempt] = useState(0);
+  const mounted = useRef(false);
+  const restorePending = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) return;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     schemaService
       .listRevisions(projectId, pageId)
       .then((result) => active && setRevisions(result.revisions))
-      .catch(
-        (reason) =>
-          active && setError(reason instanceof Error ? reason.message : '无法读取版本历史'),
-      )
+      .catch((reason) => {
+        if (active) setListError(reason instanceof Error ? reason.message : '无法读取版本历史');
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [isOpen, pageId, projectId]);
+  }, [projectId, pageId, listAttempt]);
 
-  const view = async (revisionId: string): Promise<void> => {
-    setError(null);
-    try {
-      const result = await schemaService.getRevision(projectId, pageId, revisionId);
-      setSelected({ revisionId, schema: result.schema });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '无法读取历史版本');
-    }
+  useEffect(() => {
+    if (!selected) return;
+    let active = true;
+    schemaService
+      .getRevision(projectId, pageId, selected.revisionId)
+      .then((result) => active && setSchema(result.schema))
+      .catch((reason) => {
+        if (active) setViewError(reason instanceof Error ? reason.message : '无法读取历史版本');
+      })
+      .finally(() => active && setViewing(false));
+    return () => {
+      active = false;
+    };
+  }, [projectId, pageId, selected, viewAttempt]);
+
+  const view = (revision: RevisionHistoryItem): void => {
+    setSelected(revision);
+    setSchema(null);
+    setViewError(null);
+    setViewing(true);
+    setViewAttempt((attempt) => attempt + 1);
   };
 
   const restore = async (revisionId: string): Promise<void> => {
-    if (
-      !window.confirm(
-        '恢复历史版本会替换当前 Working 草稿，但不会自动保存版本或应用到项目。是否继续？',
-      )
-    )
+    if (!canRestore || restorePending.current) return;
+    if (!window.confirm('恢复此版本将替换当前草稿，不会自动保存版本或应用到项目。是否继续？'))
       return;
+    restorePending.current = true;
     setRestoring(revisionId);
-    setError(null);
+    setRestoreError(null);
     try {
       await onRestore(revisionId);
-      onClose();
+      if (mounted.current) onClose();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '恢复历史版本失败');
+      if (mounted.current)
+        setRestoreError(reason instanceof Error ? reason.message : '恢复历史版本失败');
     } finally {
-      setRestoring(null);
+      restorePending.current = false;
+      if (mounted.current) setRestoring(null);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className='h-[80vh] w-[60vw] max-w-[60vw] sm:max-w-[60vw]'>
-        <DialogHeader>
-          <DialogTitle>版本历史</DialogTitle>
-        </DialogHeader>
-        <div className='grid min-h-0 flex-1 grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] gap-3 overflow-hidden'>
-          {loading ? (
-            <div className='col-span-2 grid min-h-36 place-items-center'>
-              <Spinner aria-label='加载版本历史' />
-            </div>
-          ) : revisions.length === 0 ? (
-            <p className='col-span-2 rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-              暂无已保存版本
-            </p>
-          ) : (
-            <ol className='grid content-start gap-2 overflow-y-auto pr-1' aria-label='版本列表'>
-              {revisions.map((revision) => (
-                <li
-                  key={revision.revisionId}
-                  className={`flex flex-wrap items-center gap-2 rounded-lg border p-3 ${selected?.revisionId === revision.revisionId ? 'border-primary bg-primary/5' : 'border-zinc-200 dark:border-zinc-700'}`}
+    <>
+      <DialogHeader className='shrink-0 border-b border-border px-5 py-4 pr-12'>
+        <DialogTitle className='flex items-center gap-2'>
+          <History className='size-4 text-muted-foreground' />
+          版本历史
+        </DialogTitle>
+        <DialogDescription>查看已保存的 Schema，或将历史版本恢复到当前草稿。</DialogDescription>
+      </DialogHeader>
+      <div className='grid min-h-0 flex-1 grid-rows-2 overflow-hidden md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:grid-rows-1'>
+        <section
+          aria-label='版本列表'
+          className='flex min-h-0 min-w-0 flex-col border-b border-border md:border-r md:border-b-0'
+        >
+          <div className='flex h-11 shrink-0 items-center justify-between border-b border-border px-4'>
+            <h3 className='text-sm font-medium'>已保存版本</h3>
+            {!loading && !listError && (
+              <span className='text-xs text-muted-foreground'>{revisions.length} 个版本</span>
+            )}
+          </div>
+          <div className='min-h-0 flex-1 overflow-auto'>
+            {loading ? (
+              <div
+                role='status'
+                className='flex h-full min-h-28 items-center justify-center gap-2 text-muted-foreground'
+              >
+                <Spinner /> 正在加载版本历史…
+              </div>
+            ) : listError ? (
+              <div className='flex h-full min-h-28 flex-col items-center justify-center gap-3 p-4'>
+                <p role='alert' className='text-sm text-danger'>
+                  {listError}
+                </p>
+                <Button
+                  size='sm'
+                  variant='outline'
+                  onClick={() => {
+                    setListError(null);
+                    setLoading(true);
+                    setListAttempt((attempt) => attempt + 1);
+                  }}
                 >
-                  <GitCommitHorizontal className='shrink-0 text-zinc-400' size={17} />
-                  <div className='min-w-0 flex-1'>
-                    <div className='flex flex-wrap items-center gap-2 text-sm font-medium'>
-                      <span>{sourceLabel(revision)}</span>
-                      {revision.isCurrent && (
-                        <span className='rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary'>
-                          最近保存
-                        </span>
-                      )}
-                      {revision.isApplied && (
-                        <span className='inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] text-success'>
-                          <Check size={11} /> 已应用
-                        </span>
-                      )}
-                    </div>
-                    <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
-                      {new Date(revision.createdAt).toLocaleString()} ·{' '}
-                      {revision.schemaHash.slice(0, 10)}
-                    </p>
-                  </div>
-                  <Button size='sm' variant='ghost' onClick={() => void view(revision.revisionId)}>
-                    查看
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant='secondary'
-                    disabled={!canRestore || restoring !== null}
-                    onClick={() => void restore(revision.revisionId)}
-                  >
-                    <RotateCcw size={13} />
-                    {restoring === revision.revisionId ? '恢复中…' : '恢复'}
-                  </Button>
-                </li>
-              ))}
-            </ol>
-          )}
-          {selected ? (
-            <section
-              aria-label='版本内容'
-              className='flex min-h-0 flex-col gap-2 rounded-lg border border-border p-3'
+                  重新加载
+                </Button>
+              </div>
+            ) : revisions.length === 0 ? (
+              <div className='flex h-full min-h-28 flex-col items-center justify-center gap-2 p-4 text-muted-foreground'>
+                <History className='size-6' />
+                <p>暂无已保存版本</p>
+                <p className='text-xs'>保存版本后，可在这里查看与恢复。</p>
+              </div>
+            ) : (
+              <table className='w-full min-w-[400px] text-left text-xs' aria-label='历史版本'>
+                <thead className='sticky top-0 z-10 bg-muted text-muted-foreground'>
+                  <tr className='border-b border-border'>
+                    <th scope='col' className='px-4 py-3 font-medium'>
+                      时间
+                    </th>
+                    <th scope='col' className='px-3 py-3 font-medium'>
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revisions.map((revision) => (
+                    <tr
+                      key={revision.revisionId}
+                      aria-selected={selected?.revisionId === revision.revisionId}
+                      className={`border-b border-border transition-colors ${selected?.revisionId === revision.revisionId ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
+                    >
+                      <td className='px-4 py-3 align-top flex items-center'>
+                        <time
+                          dateTime={revision.createdAt}
+                          className='whitespace-nowrap tabular-nums mr-2'
+                        >
+                          {formatTime(revision.createdAt)}
+                        </time>
+                        {(revision.isCurrent || revision.isApplied) && (
+                          <div className='flex gap-2 text-[10px] text-muted-foreground'>
+                            {revision.isCurrent && <span>最近保存</span>}
+                            {revision.isApplied && <span>已应用</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td className='py-2 align-top'>
+                        <div className='flex items-center gap-1 whitespace-nowrap'>
+                          <Button
+                            size='sm'
+                            variant='ghost'
+                            aria-label={`查看 ${formatTime(revision.createdAt)} 的版本`}
+                            onClick={() => view(revision)}
+                          >
+                            查看
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='ghost'
+                            disabled={!canRestore || restoring !== null}
+                            aria-label={`恢复 ${formatTime(revision.createdAt)} 的版本`}
+                            onClick={() => void restore(revision.revisionId)}
+                          >
+                            {restoring === revision.revisionId ? (
+                              <Spinner />
+                            ) : (
+                              <RotateCcw className='size-3.5' />
+                            )}
+                            {restoring === revision.revisionId ? '恢复中…' : '恢复'}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {restoreError && (
+            <p
+              role='alert'
+              className='shrink-0 border-t border-border px-4 py-3 text-xs text-danger'
             >
-              <h3 className='text-sm font-medium'>版本内容</h3>
-              <pre className='min-h-0 flex-1 overflow-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'>
-                {JSON.stringify(selected.schema, null, 2)}
-              </pre>
-            </section>
-          ) : !loading && revisions.length > 0 ? (
-            <div className='grid place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground'>
-              选择左侧版本查看 Schema 内容
-            </div>
-          ) : null}
-          {error && (
-            <p role='alert' className='col-span-2 text-sm text-danger'>
-              {error}
+              {restoreError}
             </p>
           )}
-        </div>
-        <DialogFooter>
-          <DialogClose render={<Button variant='outline' />}>关闭</DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </section>
+        <section aria-label='版本 Schema' className='flex min-h-0 min-w-0 flex-col'>
+          <div className='flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border px-4'>
+            <h3 className='flex items-center gap-2 text-sm font-medium'>
+              <Braces className='size-4 text-muted-foreground' />
+              Schema
+            </h3>
+            {selected && (
+              <span className='truncate text-xs text-muted-foreground'>
+                {formatTime(selected.createdAt)}
+              </span>
+            )}
+          </div>
+          {viewing ? (
+            <div
+              role='status'
+              className='flex min-h-0 flex-1 items-center justify-center gap-2 text-muted-foreground'
+            >
+              <Spinner /> 正在加载 Schema…
+            </div>
+          ) : viewError ? (
+            <div className='flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4'>
+              <p role='alert' className='text-sm text-danger'>
+                {viewError}
+              </p>
+              <Button size='sm' variant='outline' onClick={() => selected && view(selected)}>
+                重试
+              </Button>
+            </div>
+          ) : schema ? (
+            <>
+              <div className='shrink-0 border-b border-border px-4 py-2'>
+                <code className='block break-all select-all font-mono text-[10px] text-muted-foreground'>
+                  {selected?.schemaHash}
+                </code>
+              </div>
+              <pre
+                tabIndex={0}
+                aria-label='Schema JSON'
+                className='min-h-0 flex-1 overflow-auto bg-muted/30 p-4 font-mono text-xs leading-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+              >
+                {JSON.stringify(schema, null, 2)}
+              </pre>
+            </>
+          ) : (
+            <div className='flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4 text-muted-foreground'>
+              <Braces className='size-8' />
+              <p className='text-sm'>点击“查看”展示版本 Schema</p>
+            </div>
+          )}
+        </section>
+      </div>
+    </>
   );
 };
+
+export const RevisionHistoryModal = ({
+  isOpen,
+  ...props
+}: RevisionHistoryProps & { isOpen: boolean }): React.JSX.Element => (
+  <Dialog open={isOpen} onOpenChange={(open) => !open && props.onClose()}>
+    <DialogContent className='flex h-[min(80dvh,800px)]  max-w-[1040px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1040px]'>
+      {isOpen && <RevisionHistoryContent key={`${props.projectId}:${props.pageId}`} {...props} />}
+    </DialogContent>
+  </Dialog>
+);

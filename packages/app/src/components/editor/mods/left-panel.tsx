@@ -1,5 +1,13 @@
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
+} from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import { useEditorCore, type ActiveElement } from '@tangramino/base-editor';
 import { useMemo, useState } from 'react';
@@ -110,13 +118,13 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
   if (hidden) {
     return (
       <Button
-        size='icon-xs'
+        size='icon-sm'
         variant='ghost'
         className='absolute top-1 left-1 z-10 bg-background shadow-sm'
         aria-label='展开左侧面板'
         onClick={() => setHidden(false)}
       >
-        <PanelLeftOpen />
+        <PanelRightClose />
       </Button>
     );
   }
@@ -144,13 +152,13 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
           ))}
         </div>
         <Button
-          size='icon-xs'
+          size='icon-sm'
           variant='ghost'
           className='mb-1.5'
           aria-label='收起左侧面板'
           onClick={() => setHidden(true)}
         >
-          <PanelLeftClose />
+          <PanelRightOpen />
         </Button>
       </div>
       <div className='min-h-0 flex-1'>
