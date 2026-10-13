@@ -1,3 +1,4 @@
+import { CodeEditor } from '@/components/editor/mods/code-editor';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -271,13 +272,13 @@ const RevisionHistoryContent = ({
                   {selected?.schemaHash}
                 </code>
               </div>
-              <pre
-                tabIndex={0}
-                aria-label='Schema JSON'
-                className='min-h-0 flex-1 overflow-auto bg-muted/30 p-4 font-mono text-xs leading-6 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
-              >
-                {JSON.stringify(schema, null, 2)}
-              </pre>
+              <CodeEditor
+                value={JSON.stringify(schema, null, 2)}
+                language='json'
+                readOnly
+                ariaLabel='历史版本 Schema JSON'
+                className='h-auto flex-1'
+              />
             </>
           ) : (
             <div className='flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4 text-muted-foreground'>

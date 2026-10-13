@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { CodeEditor } from './code-editor';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { SchemaUtils, type Schema } from '@tangramino/engine';
 import { useEditorCore } from '@tangramino/base-editor';
 import { Copy } from 'lucide-react';
@@ -9,6 +10,7 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
   const schema = useEditorCore((state) => state.schema);
   const setSchema = useEditorCore((state) => state.setSchema);
   const [code, setCode] = useState('');
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -27,19 +29,34 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
 
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
-      <Textarea
+      <CodeEditor
         value={code}
-        onChange={(event) => setCode(event.target.value)}
-        className='min-h-0 flex-1 resize-none rounded-none border-0 font-mono text-xs focus-visible:ring-0'
-        spellCheck={false}
-        aria-label='Schema JSON'
+        onChange={(value) => {
+          setCode(value);
+          setCopyStatus(null);
+        }}
+        className='h-auto flex-1'
+        language='json'
+        ariaLabel='Schema JSON'
       />
+      {copyStatus && (
+        <p role='status' className='px-3 text-sm text-muted-foreground'>
+          {copyStatus}
+        </p>
+      )}
       {error && <p className='px-3 text-sm text-danger'>{error}</p>}
       <footer className='flex justify-end gap-2 border-t border-border bg-muted/40 p-3'>
-        <Button variant='outline' onClick={() => void navigator.clipboard.writeText(code)}>
-          <Copy />
-          复制 Schema
-        </Button>
+        <CopyToClipboard
+          text={code}
+          onCopy={(_text, success) =>
+            setCopyStatus(success ? 'Schema 已复制' : '复制失败，请在编辑器中全选后复制')
+          }
+        >
+          <Button variant='outline'>
+            <Copy />
+            复制 Schema
+          </Button>
+        </CopyToClipboard>
         <Button onClick={save}>保存 Schema</Button>
       </footer>
     </div>
