@@ -23,7 +23,6 @@ export const inputDefinition = defineOrigamixMaterial({
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/input/#api',
     propsSchema: objectSchema({
       defaultValue: { type: 'string' },
       size: { type: 'string', enum: ['large', 'middle', 'small'] },

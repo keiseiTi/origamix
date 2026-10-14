@@ -16,7 +16,6 @@ export type MaterialManifest = Readonly<{
   version: string;
   title: string;
   description: string;
-  documentationUrl?: string;
   keywords: readonly string[];
   role: MaterialRole;
   propsSchema: JsonSchema;

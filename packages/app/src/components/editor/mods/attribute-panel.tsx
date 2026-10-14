@@ -54,8 +54,6 @@ export const AttributePanel = (): React.JSX.Element => {
   const { callSchemaHook } = usePluginCore();
   const [activePanel, setActivePanel] = useState('0');
   const material = activeElement?.material;
-  const documentationUrl = (material as { documentationUrl?: string } | undefined)
-    ?.documentationUrl;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
   const panels = material?.editorConfig?.panels ?? [];
@@ -264,16 +262,6 @@ export const AttributePanel = (): React.JSX.Element => {
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>
           ) : (
             <div className='flex min-h-0 flex-1 flex-col'>
-              {documentationUrl?.startsWith('https://ant.design/components/') && (
-                <a
-                  href={documentationUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='px-3 py-2 text-xs text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary'
-                >
-                  查看官方属性
-                </a>
-              )}
               <div
                 className='flex h-10 shrink-0 items-end gap-1 overflow-x-auto border-b border-zinc-200 px-2 dark:border-zinc-800'
                 role='tablist'

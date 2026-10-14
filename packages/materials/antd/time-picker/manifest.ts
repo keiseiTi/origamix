@@ -12,7 +12,6 @@ export const timePickerManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/time-picker/#api',
     propsSchema: objectSchema({
       format: {
         type: 'string',

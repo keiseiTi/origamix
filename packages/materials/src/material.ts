@@ -94,7 +94,6 @@ export type PanelConfig = BasicPanelConfig & {
 };
 
 export type Material = BasicMaterial & {
-  documentationUrl?: string;
   editorConfig?: BasicEditorConfig & {
     panels?: PanelConfig[];
   };

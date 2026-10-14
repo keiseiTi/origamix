@@ -28,7 +28,6 @@ export const switchManifest = defineManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/switch/#api',
     propsSchema: objectSchema({
       disabled: { type: 'boolean' },
       loading: { type: 'boolean' },

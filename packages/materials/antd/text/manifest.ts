@@ -29,7 +29,6 @@ export const textManifest = defineManifest(
     keywords: ['文本', '标题', '段落'],
     role: 'display',
     acceptsChildren: false,
-    documentationUrl: 'https://ant.design/components/typography/#api',
     propsSchema: objectSchema({
       delete: { type: 'boolean' },
       disabled: { type: 'boolean' },

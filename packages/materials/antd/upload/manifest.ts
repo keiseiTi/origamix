@@ -12,7 +12,6 @@ export const uploadManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/upload/#api',
     propsSchema: objectSchema({
       text: {
         type: 'string',

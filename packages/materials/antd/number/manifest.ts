@@ -23,7 +23,6 @@ export const numberManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/input-number/#api',
     propsSchema: objectSchema({
       step: { type: 'number', minimum: 0 },
       disabled: { type: 'boolean' },

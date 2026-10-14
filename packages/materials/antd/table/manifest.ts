@@ -45,7 +45,6 @@ export const tableManifest = defineSimpleManifest(
     keywords: ['表格', 'display'],
     role: 'display',
     acceptsChildren: false,
-    documentationUrl: 'https://ant.design/components/table/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

@@ -16,7 +16,6 @@ export const cascaderManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/cascader/#api',
     propsSchema: hierarchicalOptionsSchema('options', {
       placeholder: {
         type: 'string',

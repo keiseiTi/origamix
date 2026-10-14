@@ -12,7 +12,6 @@ export const datePickerRangeManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/date-picker/#api',
     propsSchema: objectSchema({
       picker: {
         type: 'string',

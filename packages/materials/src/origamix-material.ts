@@ -44,7 +44,6 @@ export const toEditorMaterial = (
     title: material.title,
     type: material.type,
     defaultProps: material.defaultProps,
-    documentationUrl: material.metadata.documentationUrl,
     ...(material.metadata.allowedParentTypes
       ? { dropTypes: [...material.metadata.allowedParentTypes] }
       : {}),

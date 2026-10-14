@@ -35,7 +35,6 @@ export const selectManifest = defineManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/select/#api',
     propsSchema: objectSchema({
       disabled: { type: 'boolean' },
       showSearch: { type: 'boolean' },

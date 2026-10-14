@@ -20,7 +20,6 @@ export const buttonDefinition = defineOrigamixMaterial({
     keywords: ['按钮', '提交', '操作'],
     role: 'action',
     acceptsChildren: false,
-    documentationUrl: 'https://ant.design/components/button/#api',
     propsSchema: objectSchema({
       disabled: { type: 'boolean' },
       loading: { type: 'boolean' },

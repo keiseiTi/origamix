@@ -19,7 +19,6 @@ export const treeSelectManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/tree-select/#api',
     propsSchema: hierarchicalOptionsSchema('treeData', {
       placeholder: {
         type: 'string',

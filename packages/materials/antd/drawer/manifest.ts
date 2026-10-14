@@ -24,7 +24,6 @@ export const drawerManifest = defineSimpleManifest(
     keywords: ['抽屉容器', 'overlay'],
     role: 'overlay',
     acceptsChildren: true,
-    documentationUrl: 'https://ant.design/components/drawer/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

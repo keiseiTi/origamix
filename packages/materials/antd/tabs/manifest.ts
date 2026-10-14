@@ -32,7 +32,6 @@ export const tabsManifest = defineSimpleManifest(
     role: 'layout',
     acceptsChildren: true,
     allowedParentTypes: ['basicPage', 'container', 'modal', 'drawer'],
-    documentationUrl: 'https://ant.design/components/tabs/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

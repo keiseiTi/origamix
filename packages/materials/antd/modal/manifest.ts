@@ -25,7 +25,6 @@ export const modalManifest = defineSimpleManifest(
     keywords: ['弹窗容器', 'overlay'],
     role: 'overlay',
     acceptsChildren: true,
-    documentationUrl: 'https://ant.design/components/modal/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

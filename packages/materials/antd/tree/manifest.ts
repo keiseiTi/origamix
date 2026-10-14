@@ -64,7 +64,6 @@ export const treeManifest = defineSimpleManifest(
     keywords: ['树', 'display'],
     role: 'display',
     acceptsChildren: false,
-    documentationUrl: 'https://ant.design/components/tree/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

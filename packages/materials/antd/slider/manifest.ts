@@ -15,7 +15,6 @@ export const sliderManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/slider/#api',
     propsSchema: objectSchema({
       min: {
         type: 'number',

@@ -48,7 +48,6 @@ export const formManifest = defineSimpleManifest(
     role: 'layout',
     acceptsChildren: true,
     allowedParentTypes: ['basicPage', 'container', 'tabs', 'modal', 'drawer'],
-    documentationUrl: 'https://ant.design/components/form/#api',
     propsSchema: {
       type: 'object',
       additionalProperties: false,

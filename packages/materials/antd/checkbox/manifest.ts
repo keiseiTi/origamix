@@ -26,7 +26,6 @@ export const checkboxManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/checkbox/#api',
     propsSchema: objectSchema({
       disabled: { type: 'boolean' },
       name: { type: 'string' },

@@ -19,7 +19,6 @@ export const textareaManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/input/#api',
     propsSchema: objectSchema({
       defaultValue: { type: 'string' },
       disabled: { type: 'boolean' },

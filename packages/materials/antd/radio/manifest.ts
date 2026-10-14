@@ -26,7 +26,6 @@ export const radioManifest = defineSimpleManifest(
     role: 'input',
     acceptsChildren: false,
     allowedParentTypes: ['form'],
-    documentationUrl: 'https://ant.design/components/radio/#api',
     propsSchema: objectSchema({
       disabled: { type: 'boolean' },
       name: { type: 'string' },
