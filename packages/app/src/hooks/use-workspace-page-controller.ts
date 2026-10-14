@@ -3,15 +3,7 @@ import type { EditorHandle } from '@/components/editor';
 import { useWorkspaceStore, type PageItem, type WorkspaceMode } from '@/store/workspace';
 import { useWorkspaceTransitions } from './use-workspace-transitions';
 
-export const useWorkspacePageController = ({
-  onEnterEdit,
-  onEnterChat,
-  onPageSelected,
-}: {
-  onEnterEdit: () => void;
-  onEnterChat: () => void;
-  onPageSelected: () => void;
-}) => {
+export const useWorkspacePageController = ({ onPageSelected }: { onPageSelected: () => void }) => {
   const editorRefs = useRef(new Map<string, { current: EditorHandle | null }>());
 
   const editorRefForPage = useCallback((pageId: string): { current: EditorHandle | null } => {
@@ -62,10 +54,6 @@ export const useWorkspacePageController = ({
 
   const changeMode = async (pageId: string, mode: WorkspaceMode): Promise<void> =>
     transition(() => {
-      const currentMode =
-        useWorkspaceStore.getState().openPages.find((tab) => tab.id === pageId)?.mode ?? 'chat';
-      if (mode === 'edit' && currentMode !== 'edit') onEnterEdit();
-      if (mode === 'chat') onEnterChat();
       useWorkspaceStore.getState().setPageMode(pageId, mode);
     });
 

@@ -10,7 +10,6 @@ import { useState } from 'react';
 import {
   Braces,
   Eye,
-  GitBranch,
   History,
   ListTree,
   MessageSquare,
@@ -112,9 +111,6 @@ export const PageToolbar = ({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
                 <ListTree /> 全局变量
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onOpenEditorTool('logic')}>
-                <GitBranch /> 逻辑编辑
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
                 <Braces /> Schema 编辑器

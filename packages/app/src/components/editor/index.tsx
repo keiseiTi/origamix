@@ -23,7 +23,7 @@ export interface EditorHandle {
   undo: () => void;
 }
 
-export type EditorTool = 'history' | 'globals' | 'logic' | 'schema';
+export type EditorTool = 'history' | 'globals' | 'schema';
 export interface EditorHistoryState {
   canRedo: boolean;
   canUndo: boolean;

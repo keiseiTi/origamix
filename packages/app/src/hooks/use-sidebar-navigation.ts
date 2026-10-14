@@ -17,10 +17,6 @@ export const useSidebarNavigation = () => {
     setSidebarPeek(false);
     setSidebarPeekEnabled(true);
   }, []);
-  const enterEdit = useCallback((): void => {
-    collapse();
-    setSidebarPeekEnabled(true);
-  }, [collapse]);
 
   return {
     visible: !sidebarCollapsed || sidebarPeek,
@@ -28,7 +24,6 @@ export const useSidebarNavigation = () => {
     closePeek,
     collapse,
     pinOpen,
-    enterEdit,
     onToggleMouseEnter: (): void => {
       if (sidebarCollapsed && sidebarPeekEnabled) setSidebarPeek(true);
     },

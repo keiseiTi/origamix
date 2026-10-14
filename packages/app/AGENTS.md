@@ -6,7 +6,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/app.tsx` coordinates page transitions and global dialogs; `src/components/app-layout/index.tsx` composes the left Sidebar and right Workspace.
 - `src/components/workspace/index.tsx` owns restoration and the top/content structure; `page-tabs.tsx` owns the top tab bar, and `workspace-content.tsx` selects restoration, empty and retained page sessions. `page-session.tsx` owns each retained page session and chat/edit/preview views; `page-toolbar.tsx`, `toolbar/`, `history/` and `preview/` own its controls and auxiliary surfaces.
-- `src/components/sidebar/sidebar-navigation.tsx` owns Sidebar and SidebarToggle with one `useSidebarNavigation` instance; its narrow ref handle coordinates committed page/mode transitions and global dialogs. Persisted collapse preferences remain in the preferences store.
+- `src/components/sidebar/sidebar-navigation.tsx` owns Sidebar and SidebarToggle with one `useSidebarNavigation` instance; its narrow ref handle closes temporary navigation for page selection and global dialogs. Mode changes preserve the user-selected sidebar collapse preference. Persisted collapse preferences remain in the preferences store.
 - `src/services/request.ts` and sibling services: typed HTTP requests and errors.
 - `src/store/`: window-scoped workspace and preference projections; `pending-operations.ts` retains unresolved Apply/Agent request identities in memory across view unmounts.
 - `src/hooks/`: cross-component workflow orchestration; feature-owned editor, Agent and Apply sessions remain beside their components.

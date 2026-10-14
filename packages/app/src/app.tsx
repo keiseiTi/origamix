@@ -21,8 +21,6 @@ const App = (): React.JSX.Element => {
   useAppPreferences();
 
   const pages = useWorkspacePageController({
-    onEnterEdit: () => sidebarRef.current?.enterEdit(),
-    onEnterChat: () => sidebarRef.current?.pinOpen(),
     onPageSelected: () => sidebarRef.current?.closePeek(),
   });
 

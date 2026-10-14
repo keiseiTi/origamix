@@ -5,8 +5,6 @@ import { SidebarToggle } from './sidebar-toggle';
 
 export interface SidebarNavigationHandle {
   closePeek: () => void;
-  enterEdit: () => void;
-  pinOpen: () => void;
 }
 
 type SidebarNavigationProps = Omit<ComponentProps<typeof Sidebar>, 'onPin' | 'onTemporaryClose'> & {
@@ -18,12 +16,8 @@ export const SidebarNavigation = ({
   ...sidebarProps
 }: SidebarNavigationProps): React.JSX.Element => {
   const navigation = useSidebarNavigation();
-  const { closePeek, enterEdit, pinOpen } = navigation;
-  useImperativeHandle(ref, () => ({ closePeek, enterEdit, pinOpen }), [
-    closePeek,
-    enterEdit,
-    pinOpen,
-  ]);
+  const { closePeek, pinOpen } = navigation;
+  useImperativeHandle(ref, () => ({ closePeek }), [closePeek]);
 
   return (
     <>
