@@ -7,6 +7,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - [README.md](README.md): onboarding, domain map, request flows and verification guide.
 
 - `index.ts`: utility-process adapter; `runtime.ts`: host-independent startup/shutdown; only `startServer` is exported, returning only `port`, `registerGrant` and `close`.
+- `/projects/list` returns active projects with their active `pages` records for one-request workspace restoration; page lists remain available for page-scoped refreshes.
 - `http/server.ts`: shared authentication, error mapping and HTTP response adaptation; `http/` registers business domains.
 - `projects/project-service.ts`: project use-case facade and orchestration; directory grants, manifest store, scaffold and source modules own grants, manifest changes, initialization and generated source respectively.
 - `schema/schema-service.ts`: authoritative edit pipeline and per-page serialization. Working v2 separates the mutable, automatically retained draft (`workingVersion`/`workingHash`) from explicit immutable Revision checkpoints. `schema/schema-commit.ts` owns checkpoint commit/recovery and v1 Working-file upgrade under that page queue; `schema/schema-hash.ts` owns pure hashing. `schema/working-schema-store.ts` owns Working/Revision/journal paths and atomic JSON persistence.

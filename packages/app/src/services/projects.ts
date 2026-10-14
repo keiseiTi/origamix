@@ -1,8 +1,13 @@
-import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
+import type {
+  OpenProjectResult,
+  PageRecord,
+  ProjectRecord,
+  ProjectWithPages,
+} from '@origamix/shared/protocol/api';
 import { request } from './request';
 
 export const projectsService = {
-  list: (): Promise<ProjectRecord[]> => request<ProjectRecord[]>('/projects/list'),
+  list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),
   create: (input: {
     name: string;
     code: string;

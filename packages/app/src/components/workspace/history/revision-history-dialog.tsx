@@ -292,7 +292,7 @@ const RevisionHistoryContent = ({
   );
 };
 
-export const RevisionHistoryModal = ({
+export const RevisionHistoryDialog = ({
   isOpen,
   ...props
 }: RevisionHistoryProps & { isOpen: boolean }): React.JSX.Element => (

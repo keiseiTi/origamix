@@ -7,7 +7,7 @@ import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import { ProjectNavigation } from './project-navigation';
 import { usePreferencesStore } from '@/store/preferences';
-import { useWorkspaceStore, type PageItem } from '@/store/workspace';
+import { type PageItem } from '@/store/workspace';
 import { useProjectActions } from '@/hooks/use-project-actions';
 import { isMacDesktop } from '@/utils';
 
@@ -30,7 +30,7 @@ export const Sidebar = ({
   onPageCreated,
   onSelectPage,
 }: SidebarProps): React.JSX.Element => {
-  const isTemporary = useWorkspaceStore((state) => state.sidebarCollapsed ?? false);
+  const isTemporary = usePreferencesStore((state) => state.sidebarCollapsed);
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const userProfile = usePreferencesStore((state) => state.userProfile);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);

@@ -17,14 +17,14 @@ import {
   SquarePen,
   TableOfContents,
 } from 'lucide-react';
-import { RevisionHistoryModal } from './mods/revision-history-modal';
-import type { EditorHistoryState, EditorTool } from '../editor';
-import { CanvasControls } from './mods/canvas-controls';
-import { VersionActions, type ApplyStatus } from './mods/version-actions';
+import { RevisionHistoryDialog } from './history/revision-history-dialog';
+import type { EditorHistoryState, EditorTool } from '../editor/index';
+import { CanvasControls } from './toolbar/canvas-controls';
+import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
-interface WorkspaceHeaderProps {
+interface PageToolbarProps {
   active: boolean;
   projectName: string;
   pageName: string;
@@ -50,7 +50,7 @@ interface WorkspaceHeaderProps {
   onOpenEditorTool: (tool: EditorTool | null) => void;
 }
 
-export const WorkspaceHeader = ({
+export const PageToolbar = ({
   active,
   projectName,
   pageName,
@@ -74,7 +74,7 @@ export const WorkspaceHeader = ({
   onUndo,
   onRedo,
   onOpenEditorTool,
-}: WorkspaceHeaderProps): React.JSX.Element => {
+}: PageToolbarProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -138,7 +138,7 @@ export const WorkspaceHeader = ({
           />
         )}
         <div className='flex shrink-0 items-center gap-1'>
-          <VersionActions
+          <RevisionActions
             active={active}
             previewOpening={opening}
             onSaveVersion={onSaveVersion}
@@ -192,7 +192,7 @@ export const WorkspaceHeader = ({
         </div>
       </header>
       {historyOpen && (
-        <RevisionHistoryModal
+        <RevisionHistoryDialog
           isOpen
           projectId={projectId}
           pageId={pageId}

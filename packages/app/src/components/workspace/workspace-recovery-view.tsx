@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWorkspaceStore } from '@/store/workspace';
 
-export const WorkspaceRestoreView = (): React.JSX.Element => {
+export const WorkspaceRecoveryView = (): React.JSX.Element => {
   const error = useWorkspaceStore((state) => state.workspaceError);
 
   return (

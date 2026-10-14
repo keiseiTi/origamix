@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
+import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore } from '@/store/workspace';
 import { isMacDesktop } from '@/utils';
 
@@ -11,15 +12,17 @@ interface PageTabsProps {
 }
 
 export const PageTabs = ({ onSelect, onClose }: PageTabsProps): React.JSX.Element => {
-  const { openPages, activeTabId, sidebarCollapsed } = useWorkspaceStore(
+  const { openPages, activeTabId, workspaceReady } = useWorkspaceStore(
     useShallow((state) => ({
       openPages: state.openPages,
+      workspaceReady: state.workspaceReady,
       activeTabId: state.activeTabId,
-      sidebarCollapsed: state.sidebarCollapsed ?? false,
     })),
   );
 
-  if (openPages.length === 0)
+  const sidebarCollapsed = usePreferencesStore((state) => state.sidebarCollapsed);
+
+  if (!workspaceReady || openPages.length === 0)
     return (
       <div
         aria-hidden='true'

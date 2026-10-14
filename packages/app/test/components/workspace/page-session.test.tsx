@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
-vi.mock('../../../src/components/editor', () => ({
+vi.mock('../../../src/components/editor/index', () => ({
   Editor: ({
     readOnly,
     readOnlyMessage,
@@ -42,7 +42,7 @@ vi.mock('../../../src/components/editor', () => ({
     );
   },
 }));
-import { PageWorkspace } from '../../../src/components/workspace/mods/page-workspace';
+import { PageSession } from '../../../src/components/workspace/page-session';
 
 const props = {
   pageId: 'page_a',
@@ -109,7 +109,7 @@ describe('workspace recovery controls', () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
     mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
-    render(<PageWorkspace {...props} active />);
+    render(<PageSession {...props} active />);
     await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
     const save = () => screen.getByRole('button', { name: '保存版本' }) as HTMLButtonElement;
     const apply = () => screen.getByRole('button', { name: '应用到项目' }) as HTMLButtonElement;
@@ -150,8 +150,8 @@ describe('workspace recovery controls', () => {
     };
     const view = render(
       <>
-        <PageWorkspace {...props} active />
-        <PageWorkspace {...second} />
+        <PageSession {...props} active />
+        <PageSession {...second} />
       </>,
     );
     await waitFor(() => {
@@ -167,8 +167,8 @@ describe('workspace recovery controls', () => {
 
     view.rerender(
       <>
-        <PageWorkspace {...props} active={false} />
-        <PageWorkspace {...second} active />
+        <PageSession {...props} active={false} />
+        <PageSession {...second} active />
       </>,
     );
     await waitFor(() => {
@@ -205,7 +205,7 @@ describe('workspace recovery controls', () => {
       },
     );
 
-    render(<PageWorkspace {...props} active />);
+    render(<PageSession {...props} active />);
     await waitFor(() => expect(listener).toBeDefined());
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
 

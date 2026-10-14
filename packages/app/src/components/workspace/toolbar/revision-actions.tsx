@@ -12,7 +12,7 @@ export type ApplyStatus =
   | 'result_pending'
   | 'error';
 
-interface VersionActionsProps {
+interface RevisionActionsProps {
   active: boolean;
   previewOpening: boolean;
   onSaveVersion: () => Promise<void>;
@@ -25,7 +25,7 @@ interface VersionActionsProps {
   onErrorChange: (error: string | null) => void;
 }
 
-export const VersionActions = ({
+export const RevisionActions = ({
   active,
   previewOpening,
   onSaveVersion,
@@ -36,7 +36,7 @@ export const VersionActions = ({
   canSaveVersion,
   canReload,
   onErrorChange,
-}: VersionActionsProps): React.JSX.Element => {
+}: RevisionActionsProps): React.JSX.Element => {
   const [savingVersion, setSavingVersion] = useState(false);
   const [applying, setApplying] = useState(false);
   const [reloading, setReloading] = useState(false);

@@ -1,54 +1,39 @@
-import type { EditorHandle } from '@/components/editor';
-import { useWorkspaceStore } from '@/store/workspace';
-import { EmptyWorkspace } from './mods/empty-workspace';
-import { PageWorkspace } from './mods/page-workspace';
-import { useMountedPages } from './hooks/use-mounted-pages';
-import type { WorkspaceMode } from './workspace-header';
+import { useWorkspaceRestore } from '@/hooks/use-workspace-restore';
+import { WorkspaceContent, type WorkspaceContentProps } from './workspace-content';
+import { PageTabs } from './page-tabs';
 
-interface WorkspaceProps {
-  editorRefForPage: (pageId: string) => { current: EditorHandle | null };
-  onModeChange: (pageId: string, mode: WorkspaceMode) => Promise<void>;
-  onPreview: (pageId: string) => Promise<void>;
-  onConfigureModel: () => void;
-  onCreateProject: () => void;
+interface WorkspaceProps extends WorkspaceContentProps {
+  onSelectPage: (pageId: string) => void;
+  onClosePage: (pageId: string) => void;
+  transitionError: string | null;
 }
 
 export const Workspace = ({
-  editorRefForPage,
-  onModeChange,
-  onPreview,
-  onConfigureModel,
-  onCreateProject,
+  onSelectPage,
+  onClosePage,
+  transitionError,
+  ...contentProps
 }: WorkspaceProps): React.JSX.Element => {
-  const selectedPageId = useWorkspaceStore((state) => state.activeTabId);
-  const mountedPageIds = useMountedPages();
-
-  if (mountedPageIds.length === 0) return <EmptyWorkspace onCreateProject={onCreateProject} />;
+  useWorkspaceRestore();
 
   return (
-    <div className='relative flex min-h-0 flex-1'>
-      {mountedPageIds.map((pageId) => {
-        const active = pageId === selectedPageId;
-        return (
+    <section aria-label='工作区' className='flex min-h-0 min-w-0 flex-1 flex-col'>
+      <header className='flex shrink-0 flex-col'>
+        <PageTabs onSelect={onSelectPage} onClose={onClosePage} />
+      </header>
+      <div className='relative flex min-h-0 min-w-0 flex-1'>
+        <WorkspaceContent {...contentProps} />
+        {transitionError && (
           <div
-            key={pageId}
-            className={`absolute inset-0 flex min-h-0 ${active ? 'visible' : 'invisible pointer-events-none'}`}
-            aria-hidden={!active}
-            inert={active ? undefined : true}
+            role='alert'
+            className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
           >
-            <PageWorkspace
-              active={active}
-              pageId={pageId}
-              editorRef={editorRefForPage(pageId)}
-              onModeChange={(mode) => onModeChange(pageId, mode)}
-              onPreview={() => onPreview(pageId)}
-              onConfigureModel={onConfigureModel}
-            />
+            操作未完成：{transitionError}。编辑内容已保留，请重试。
           </div>
-        );
-      })}
-    </div>
+        )}
+      </div>
+    </section>
   );
 };
 
-export type { WorkspaceMode } from './workspace-header';
+export type { WorkspaceMode } from './page-toolbar';

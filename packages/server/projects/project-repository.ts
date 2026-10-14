@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
-import type { PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
+import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared/protocol/api';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import {
   agentRuns,
@@ -44,14 +44,14 @@ export class ProjectRepository {
   private transact<T>(action: (client: DatabaseClient) => T): T {
     return this.database ? this.database.transaction(action) : action(this.client);
   }
-  listProjects(): ProjectRecord[] {
+  listProjects(): ProjectWithPages[] {
     return this.client
       .select()
       .from(projects)
       .where(eq(projects.status, 0))
       .orderBy(desc(projects.lastOpenedAt))
       .all()
-      .map(projectRecord);
+      .map((row) => ({ ...projectRecord(row), pages: this.listPages(row.projectId) }));
   }
   getProject(id: string): ProjectRecord | undefined {
     const row = this.client.select().from(projects).where(eq(projects.projectId, id)).get();

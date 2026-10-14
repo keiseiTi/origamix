@@ -9,11 +9,11 @@ import {
   type EditorHistoryState,
   type EditorTool,
 } from '@/components/editor';
-import { WorkspaceHeader, type WorkspaceMode } from '../workspace-header';
-import { usePageSession } from '../hooks/use-page-session';
-import { PagePreviewFrame } from './page-preview-frame';
+import { PageToolbar, type WorkspaceMode } from './page-toolbar';
+import { usePageSession } from './hooks/use-page-session';
+import { PagePreviewFrame } from './preview/page-preview-frame';
 
-export interface PageWorkspaceProps {
+export interface PageSessionProps {
   active?: boolean;
   pageId: string;
   editorRef: RefObject<EditorHandle | null>;
@@ -22,14 +22,14 @@ export interface PageWorkspaceProps {
   onConfigureModel?: () => void;
 }
 
-export const PageWorkspace = ({
+export const PageSession = ({
   active = true,
   pageId,
   editorRef,
   onModeChange,
   onPreview,
   onConfigureModel,
-}: PageWorkspaceProps): React.JSX.Element => {
+}: PageSessionProps): React.JSX.Element => {
   const { page, project } = useWorkspaceStore(
     useShallow((state) => {
       const project = state.projects.find((item) =>
@@ -44,7 +44,7 @@ export const PageWorkspace = ({
   if (!page || !project) throw new Error(`页面 ${pageId} 不在当前工作区中`);
 
   return (
-    <PageWorkspaceContent
+    <PageSessionContent
       active={active}
       page={page}
       projectId={project.id}
@@ -57,7 +57,7 @@ export const PageWorkspace = ({
   );
 };
 
-const PageWorkspaceContent = ({
+const PageSessionContent = ({
   active = true,
   page,
   projectId,
@@ -66,7 +66,7 @@ const PageWorkspaceContent = ({
   onModeChange,
   onPreview,
   onConfigureModel,
-}: Omit<PageWorkspaceProps, 'pageId'> & {
+}: Omit<PageSessionProps, 'pageId'> & {
   page: PageItem;
   projectId: string;
   projectName: string;
@@ -134,7 +134,7 @@ const PageWorkspaceContent = ({
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       {mode !== 'preview' && (
-        <WorkspaceHeader
+        <PageToolbar
           active={active}
           projectName={projectName ?? '未命名项目'}
           pageName={page.name}

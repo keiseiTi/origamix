@@ -25,7 +25,6 @@ export interface OpenPageTab extends PageItem {
 }
 
 export interface WorkspaceSession {
-  sidebarCollapsed?: boolean;
   activeTabId: string | null;
   openPages: OpenPageTab[];
   pageDrafts: Record<string, string>;
@@ -38,8 +37,6 @@ interface WorkspaceState extends WorkspaceSession {
   setProjects: (update: ProjectItem[] | ((projects: ProjectItem[]) => ProjectItem[])) => void;
   restoreWorkspace: (projects: ProjectItem[]) => void;
   failWorkspaceRestore: (message: string) => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  restoreSidebarCollapsed: (collapsed: boolean) => void;
   selectPage: (pageId: string) => void;
   closePage: (pageId: string) => void;
   removePages: (pageIds: Iterable<string>) => void;
@@ -50,7 +47,11 @@ interface WorkspaceState extends WorkspaceSession {
 }
 
 const storageKey = 'origamix:view-session';
-const emptySession: WorkspaceSession = { activeTabId: null, openPages: [], pageDrafts: {} };
+const emptySession: WorkspaceSession = {
+  activeTabId: null,
+  openPages: [],
+  pageDrafts: {},
+};
 const isMode = (value: unknown): value is WorkspaceMode =>
   value === 'chat' || value === 'edit' || value === 'preview';
 
@@ -119,8 +120,6 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           ? record.activePageId
           : null;
     return {
-      sidebarCollapsed:
-        typeof record.sidebarCollapsed === 'boolean' ? record.sidebarCollapsed : undefined,
       activeTabId,
       openPages,
       pageDrafts: stringRecord(record.pageDrafts),
@@ -199,9 +198,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       };
     }),
   failWorkspaceRestore: (workspaceError) => set({ workspaceError }),
-  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
-  restoreSidebarCollapsed: (sidebarCollapsed) =>
-    set((state) => (state.sidebarCollapsed === undefined ? { sidebarCollapsed } : state)),
   selectPage: (pageId) =>
     set((state) => {
       const location = pageLocation(state.projects, pageId);
@@ -271,7 +267,6 @@ useWorkspaceStore.subscribe((state) => {
   try {
     const session: WorkspaceSession = {
       activeTabId: state.activeTabId,
-      sidebarCollapsed: state.sidebarCollapsed,
       openPages: state.openPages.map((tab) => ({ ...tab, status: null })),
       pageDrafts: state.pageDrafts,
     };

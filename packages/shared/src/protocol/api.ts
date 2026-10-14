@@ -38,6 +38,13 @@ export const PageRecordSchema = Type.Object({
   updatedAt: Type.String(),
 });
 
+export const ProjectWithPagesSchema = Type.Intersect([
+  ProjectRecordSchema,
+  Type.Object({ pages: Type.Array(PageRecordSchema) }),
+]);
+
+export type ProjectWithPages = Static<typeof ProjectWithPagesSchema>;
+
 export const CreateProjectSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),

@@ -10,18 +10,16 @@ export const useWorkspaceRestore = (): boolean => {
     const restore = async (): Promise<void> => {
       try {
         const projectRecords = await projectsService.list();
-        const projects = await Promise.all(
-          projectRecords.map(async (project) => ({
-            id: project.id,
-            name: project.name,
-            path: project.path,
-            pages: (await projectsService.pages(project.id)).map((page) => ({
-              id: page.id,
-              name: page.name,
-              fileName: page.slug,
-            })),
+        const projects = projectRecords.map((project) => ({
+          id: project.id,
+          name: project.name,
+          path: project.path,
+          pages: project.pages.map((page) => ({
+            id: page.id,
+            name: page.name,
+            fileName: page.slug,
           })),
-        );
+        }));
         if (active) useWorkspaceStore.getState().restoreWorkspace(projects);
       } catch (error) {
         if (active)

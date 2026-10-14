@@ -73,4 +73,4 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 - Agent 断线或后端重启：界面从持久化 Run、消息和 Working 恢复；恢复状态未加载时编辑与提交可能暂时禁用，失败时使用界面重试入口。不会自动恢复模型请求。
 - 预览报未知物料或渲染失败：检查 Schema 类型、物料注册和属性；渲染错误不会证明草稿已损坏，也不会写入目标项目。
 
-这些流程的实现入口见 [编辑会话](src/components/editor)、[版本操作](src/components/workspace/mods/version-actions.tsx) 和 [历史管理](src/components/workspace/mods/revision-history-modal.tsx)。
+这些流程的实现入口见 [编辑会话](src/components/editor)、[版本操作](src/components/workspace/toolbar/revision-actions.tsx) 和 [历史管理](src/components/workspace/history/revision-history-dialog.tsx)。

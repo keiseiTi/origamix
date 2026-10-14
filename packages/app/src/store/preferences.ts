@@ -8,6 +8,8 @@ export interface UserProfile {
 }
 
 interface PreferencesState {
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   theme: AppTheme;
   userProfile: UserProfile;
   hasModelApiKey: boolean | undefined;
@@ -24,7 +26,36 @@ const readTheme = (): AppTheme => {
   }
 };
 
+const sidebarStorageKey = 'origamix:sidebar-collapsed';
+
+const readSidebarCollapsed = (): boolean => {
+  try {
+    const stored = sessionStorage.getItem(sidebarStorageKey);
+    if (stored !== null) return stored === 'true';
+    // Retain the previous window preference before Workspace rewrites its session.
+    const legacy: unknown = JSON.parse(sessionStorage.getItem('origamix:view-session') ?? 'null');
+    const collapsed =
+      legacy !== null &&
+      typeof legacy === 'object' &&
+      'sidebarCollapsed' in legacy &&
+      legacy.sidebarCollapsed === true;
+    sessionStorage.setItem(sidebarStorageKey, String(collapsed));
+    return collapsed;
+  } catch {
+    return false;
+  }
+};
+
 export const usePreferencesStore = create<PreferencesState>((set) => ({
+  sidebarCollapsed: readSidebarCollapsed(),
+  setSidebarCollapsed: (sidebarCollapsed) => {
+    try {
+      sessionStorage.setItem(sidebarStorageKey, String(sidebarCollapsed));
+    } catch {
+      // Keep the window preference usable when storage is unavailable.
+    }
+    set({ sidebarCollapsed });
+  },
   theme: readTheme(),
   userProfile: { name: 'Origamix 用户', iconBackground: '#2563eb' },
   hasModelApiKey: undefined,

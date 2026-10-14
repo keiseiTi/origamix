@@ -105,6 +105,32 @@ describe('HTTP authentication and responses', () => {
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
     const projects = new ProjectRepository(database);
+    const timestamp = '2026-01-01T00:00:00.000Z';
+    const project = {
+      id: 'project_list',
+      name: '列表项目',
+      path: directory,
+      status: 0,
+      createdAt: timestamp,
+      lastOpenedAt: timestamp,
+    };
+    const page = {
+      id: 'page_list',
+      projectId: project.id,
+      name: '列表页面',
+      slug: 'list-page',
+      relativePath: 'src/pages/list-page/schema.json',
+      status: 0,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const emptyProject = { ...project, id: 'project_empty', path: join(directory, 'empty') };
+    projects.reconcile(project, [page, { ...page, id: 'page_hidden', slug: 'hidden', status: 1 }]);
+    projects.reconcile(emptyProject, []);
+    projects.reconcile(
+      { ...project, id: 'project_hidden', path: join(directory, 'hidden'), status: 1 },
+      [],
+    );
     const server = createHttpServer({
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
@@ -129,8 +155,12 @@ describe('HTTP authentication and responses', () => {
     expect(response.json()).toMatchObject({
       success: true,
       code: 200,
-      data: [],
+      data: expect.arrayContaining([
+        { ...project, pages: [page] },
+        { ...emptyProject, pages: [] },
+      ]),
     });
+    expect(response.json().data).toHaveLength(2);
     expect(response.headers['x-request-id']).toBeTruthy();
     await server.close();
     database.close();
