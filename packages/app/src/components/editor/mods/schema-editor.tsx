@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
   const setSchema = useEditorCore((state) => state.setSchema);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(() => JSON.stringify(schema, null, 2));
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -28,14 +28,14 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
   };
 
   return (
-    <div className='flex min-h-0 flex-1 flex-col'>
+    <div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
       <CodeEditor
         value={code}
         onChange={(value) => {
           setCode(value);
           setCopyStatus(null);
         }}
-        className='h-auto flex-1'
+        className='h-0 flex-1'
         language='json'
         ariaLabel='Schema JSON'
       />
@@ -45,7 +45,7 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
         </p>
       )}
       {error && <p className='px-3 text-sm text-danger'>{error}</p>}
-      <footer className='flex justify-end gap-2 border-t border-border bg-muted/40 p-3'>
+      <footer className='flex shrink-0 justify-end gap-2 border-t border-border bg-muted/40 p-3'>
         <CopyToClipboard
           text={code}
           onCopy={(_text, success) =>
