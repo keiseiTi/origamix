@@ -1,0 +1,13 @@
+.flow-canvas .lf-graph {
+  background: transparent;
+}
+.flow-canvas .lf-html-node {
+  overflow: visible;
+}
+.dark .flow-canvas .lf-grid {
+  opacity: 0.3;
+}
+.flow-canvas .lf-text-input {
+  color: var(--foreground);
+  background: var(--background);
+}

@@ -6,7 +6,8 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { createEngine, type Schema } from '@tangramino/engine';
+import { logicNodes } from './logic-nodes';
+import { createEngine, withFlowEngine, type Schema } from '@tangramino/engine';
 import { ReactView } from '@tangramino/react';
 
 export interface RuntimeDiagnostic {
@@ -76,7 +77,28 @@ const RuntimeCanvas = ({
   materials: NonNullable<ComponentProps<typeof ReactView>['components']>;
   onOutcome?: (outcome: RuntimeOutcome) => void;
 }): React.JSX.Element => {
-  const engine = useMemo(() => createEngine(schema), [schema]);
+  const engine = useMemo(() => {
+    const instance = createEngine(schema);
+    // Engine's legacy object-variable initializer evaluates JavaScript. Initialize
+    // declarative JSON here and give the event adapter no executable defaults.
+    for (const variable of schema.context?.globalVariables ?? []) {
+      let value: unknown = variable.defaultValue;
+      if (variable.type === 'object' || variable.type === 'array') {
+        try {
+          value = JSON.parse(String(value));
+        } catch {
+          value = undefined;
+        }
+      }
+      instance.setGlobalVariable(variable.name, value);
+    }
+    withFlowEngine({
+      engine: instance,
+      schema: { ...schema, context: { globalVariables: [] } },
+      logicNodes,
+    });
+    return instance;
+  }, [schema]);
   const unknownTypes = useMemo(
     () => findUnknownMaterialTypes(schema, materials),
     [materials, schema],

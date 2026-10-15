@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import type { EventTarget } from '../../flow-editor/model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -49,7 +51,11 @@ const optionsOf = (config: AttributeConfig): OptionItem[] => {
   return Array.isArray(props.props?.options) ? props.props.options : [];
 };
 
-export const AttributePanel = (): React.JSX.Element => {
+export const AttributePanel = ({
+  onEditEvent,
+}: {
+  onEditEvent: (target: EventTarget) => void;
+}): React.JSX.Element => {
   const { activeElement, materials, schema, setActiveElement, setSchema } = useEditorCore();
   const { callSchemaHook } = usePluginCore();
   const [activePanel, setActivePanel] = useState('0');
@@ -257,6 +263,32 @@ export const AttributePanel = (): React.JSX.Element => {
             <span className='shrink-0' title={String(material?.title)}>
               {material?.title}
             </span>
+          </div>
+          <div className='border-b p-3'>
+            <p className='mb-2 text-xs font-medium'>事件</p>
+            {material?.contextConfig?.methods?.length ? (
+              material.contextConfig.methods.map((method) => (
+                <Button
+                  key={method.name}
+                  data-flow-event={method.name}
+                  variant='outline'
+                  size='sm'
+                  className='mb-1 w-full justify-between'
+                  onClick={() =>
+                    onEditEvent({
+                      elementId: activeElement.id,
+                      event: method.name,
+                      label: method.description || method.name,
+                    })
+                  }
+                >
+                  <span>{method.description || method.name}</span>
+                  <span className='text-xs text-muted-foreground'>逻辑编辑</span>
+                </Button>
+              ))
+            ) : (
+              <p className='text-xs text-muted-foreground'>此组件没有可配置事件</p>
+            )}
           </div>
           {panels.length === 0 ? (
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>

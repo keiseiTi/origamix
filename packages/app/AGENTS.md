@@ -11,6 +11,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - `src/store/`: window-scoped workspace and preference projections; `pending-operations.ts` retains unresolved Apply/Agent request identities in memory across view unmounts.
 - `src/hooks/`: cross-component workflow orchestration; feature-owned editor, Agent and Apply sessions remain beside their components.
 - `src/components/agent-chat/`, `src/components/editor/`, `src/components/settings/`: feature-owned UI and state.
+- `src/components/flow-editor/`: LogicFlow canvas, React nodes and event graph translation; event entry comes from the selected material’s `contextConfig.methods`. Declarative actions execute in Runtime. Layouts live in Schema extensions and share the existing Working save session.
 - `src/components/editor/`: editing UI and its save session; `src/preview/` and `src/components/workspace/preview/page-preview-frame.tsx`: reusable runtime rendering and the retained iframe preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
@@ -44,7 +45,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Editor fills the work area; overlay navigation must not resize the canvas. When editable state returns, flush pending edits before page/mode switches and preview, block transitions on save failure and safely clear invalid selections after Schema changes.
 - Include keyboard operation, overlay focus restoration, Esc dismissal, loading/empty/error states and save feedback. Keep the fixed composer and overlays usable at narrow widths.
 - Verify affected surfaces in light and dark themes, including preview and disabled/error states. Avoid hard-coded light-only colors.
-- These are acceptance constraints for relevant changes, not claims that all planned editor/Agent features exist. Do not add drag/drop, flow editing or AI implementation unless requested.
+- These are acceptance constraints for relevant changes, not claims that all planned editor/Agent features exist. Do not add AI implementation unless requested. Event flow editing supports declarative property, visibility and global-variable actions; do not introduce script evaluation.
 
 ## Verification
 
