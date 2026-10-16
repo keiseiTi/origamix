@@ -1,3 +1,4 @@
+import { withCommonMaterialManifest } from '../src/material-manifest';
 import type { JsonSchema, MaterialManifest } from '../src/material-manifest';
 
 export const objectSchema = (
@@ -14,7 +15,7 @@ type MaterialCore = Pick<MaterialManifest, 'type' | 'title' | 'defaultProps' | '
 type ManifestDetails = Omit<MaterialManifest, keyof MaterialCore>;
 
 export const defineManifest = (core: MaterialCore, details: ManifestDetails): MaterialManifest => {
-  return { ...core, ...details };
+  return withCommonMaterialManifest({ ...core, ...details });
 };
 
 export const defineSimpleManifest = (

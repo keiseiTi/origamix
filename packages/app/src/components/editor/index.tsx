@@ -16,7 +16,6 @@ import type { MaterialGroup } from './mods/material-panel';
 import { EditorToolDialog } from './mods/editor-tool-dialog';
 import { useEditorSession } from './use-editor-session';
 import { ClarificationHighlightContext } from './clarification-highlight';
-import { materialPlugin } from './plugins/material';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
@@ -126,7 +125,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
     const session = useEditorSession(projectId, pageId, readOnly, onWorkingCommitted);
     const { initial, loading, error, flush, onChange, providerKey } = session;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const plugins = useMemo(() => [historyPlugin({ limit: 100 }), materialPlugin()], [providerKey]);
+    const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [providerKey]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const historyRef = useRef<any>(undefined);
 

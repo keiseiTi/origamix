@@ -272,12 +272,30 @@ describe('Schema Service', () => {
     const draft = await applyWorkingSchemaOperations(page, {
       baseWorkingVersion: working.workingVersion,
       operations: [
-        { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 16 } },
+        {
+          operation: 'updateElementProps',
+          elementId: 'element_root',
+          set: { padding: 16, alias: '页面布局' },
+        },
       ],
     });
     expect(draft.revisionId).toBe(initialRevisionId);
-    expect(draft.schema.elements.element_root.props.padding).toBe(16);
+    expect(draft.schema.elements.element_root.props).toMatchObject({
+      padding: 16,
+      alias: '页面布局',
+    });
+    for (const set of [{ alias: 42 }, { unknownProperty: 'rejected' }]) {
+      await expect(
+        applyWorkingSchemaOperations(page, {
+          baseWorkingVersion: draft.workingVersion,
+          operations: [{ operation: 'updateElementProps', elementId: 'element_root', set }],
+        }),
+      ).rejects.toThrow('INVALID_MATERIAL_PROPS');
+      expect((await getSchema(page)).schema).toEqual(draft.schema);
+      expect((await getWorkingSchemaState(page)).workingVersion).toBe(draft.workingVersion);
+    }
     const saved = await saveWorkingRevision(page, draft.workingVersion);
     expect(saved.revisionId).not.toBe(initialRevisionId);
+    expect((await getSchema(page)).schema.elements.element_root.props.alias).toBe('页面布局');
   });
 });

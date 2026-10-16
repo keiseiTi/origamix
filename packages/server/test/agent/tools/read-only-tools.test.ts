@@ -7,7 +7,7 @@ const revisionId = 'revision_current';
 const schema: OrigamixPageSchema = {
   elements: {
     element_root: { type: 'container', props: { padding: 16 } },
-    'form-main': { type: 'form', props: { layout: 'vertical' } },
+    'form-main': { type: 'form', props: { layout: 'vertical', alias: '报名表单' } },
     'input-name': { type: 'input', props: { placeholder: '姓名' } },
   },
   layout: {
@@ -85,9 +85,9 @@ describe('read-only Agent tools', () => {
       revisionId,
       totalElements: 3,
       nodes: [
-        { id: 'element_root', type: 'container', depth: 0 },
-        { id: 'form-main', type: 'form', depth: 1 },
-        { id: 'input-name', type: 'input', depth: 2 },
+        { id: 'element_root', label: 'element_root', type: 'container', depth: 0 },
+        { id: 'form-main', label: '报名表单', type: 'form', depth: 1 },
+        { id: 'input-name', label: 'input-name', type: 'input', depth: 2 },
       ],
     });
     await execute('get_page_context', scope);

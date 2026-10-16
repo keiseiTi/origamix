@@ -15,7 +15,7 @@ export const AgentRunKindSchema = Type.Literal('page_assistant');
 
 export const ClarificationCandidateSchema = strictObject({
   elementId: Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' }),
-  label: Type.String({ minLength: 1, maxLength: 120 }),
+  label: Type.String({ minLength: 1 }),
   description: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
 });
 

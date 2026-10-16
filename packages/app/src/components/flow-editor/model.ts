@@ -7,11 +7,7 @@ export interface EventTarget {
   label: string;
 }
 
-export const nodeKinds = [
-  { type: 'setElementProps', title: '设置元素属性', description: '更新组件的属性值' },
-  { type: 'visibleElement', title: '设置元素显隐', description: '显示或隐藏页面组件' },
-  { type: 'setGlobalVariable', title: '设置全局变量', description: '更新页面中的全局变量' },
-] as const;
+export { nodeKinds } from './nodes/definitions';
 
 export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphData => {
   const graphs = schema.extensions.flowGraph as Record<string, LogicFlow.GraphData> | undefined;
@@ -41,11 +37,25 @@ export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphD
         properties: node.props,
       })),
       edges: Object.values(flow.nodes).flatMap((node) =>
-        node.next.map((id) => ({
-          id: `${node.id}-${id}`,
+        node.next.map((id, index) => ({
+          id: `${node.id}-${id}-${index}`,
           type: 'polyline',
           sourceNodeId: node.id,
           targetNodeId: id,
+          ...(node.type === 'condition'
+            ? (() => {
+                const condition = Array.isArray(node.props.condition)
+                  ? (node.props.condition as { value: boolean; nextNode: string }[])
+                  : [];
+                const branch =
+                  condition.filter((item) => item.nextNode === id)[
+                    node.next.slice(0, index).filter((nextId) => nextId === id).length
+                  ]?.value === false
+                    ? 'false'
+                    : 'true';
+                return { sourceAnchorId: `${node.id}_${branch}`, properties: { branch } };
+              })()
+            : {}),
           startPoint: { x: 0, y: 0 },
           endPoint: { x: 0, y: 0 },
         })),
@@ -74,11 +84,31 @@ export const toFlow = (graph: LogicFlow.GraphData): Flow => {
       },
     ]),
   );
+  for (const node of Object.values(nodes)) {
+    if (node.type === 'condition') node.props = { ...node.props, condition: [] };
+  }
   for (const edge of graph.edges) {
     const source = nodes[edge.sourceNodeId];
     const target = nodes[edge.targetNodeId];
     if (!source || !target) throw new Error('连线指向了不存在的节点');
     if (target.id === start.id) throw new Error('开始节点不能有输入连线');
+    if (source.type === 'condition') {
+      const branches = source.props.condition as { value: boolean; nextNode: string }[];
+      const branch =
+        edge.properties?.branch ??
+        (edge.sourceAnchorId?.endsWith('_false')
+          ? 'false'
+          : edge.sourceAnchorId?.endsWith('_true')
+            ? 'true'
+            : branches.some((item) => item.value)
+              ? 'false'
+              : 'true');
+      if (branch !== 'true' && branch !== 'false') throw new Error('条件连线必须属于真或假分支');
+      const value = branch === 'true';
+      if (branches.length >= 2 || branches.some((item) => item.value === value))
+        throw new Error('条件节点的真、假分支各只能连接一个节点');
+      branches.push({ value, nextNode: target.id });
+    }
     source.next.push(target.id);
     target.prev.push(source.id);
   }

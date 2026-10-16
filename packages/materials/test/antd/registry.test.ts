@@ -8,6 +8,10 @@ describe('material boundary used by editing and preview', () => {
     expect(() => JSON.stringify(antdMaterialManifest)).not.toThrow();
     for (const material of antdMaterialManifest.materials) {
       expect(material.type in materialComponents).toBe(true);
+      expect(material.propsSchema.additionalProperties).toBe(false);
+      expect(material.propsSchema.properties).toMatchObject({ alias: { type: 'string' } });
+      expect(material.propsSchema.required ?? []).not.toContain('alias');
+      expect(material.context.methods.filter((method) => method.name === 'init')).toHaveLength(1);
       expect(antdValidationMaterialRegistry[material.type]?.version).toBe(material.version);
     }
   });

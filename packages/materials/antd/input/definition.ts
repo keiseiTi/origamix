@@ -1,4 +1,4 @@
-import { defineOrigamixMaterial } from '../../src/origamix-material';
+import { defineOrigamixMaterial } from '../../src/material-definition';
 import { objectSchema } from '../manifest-definition';
 
 export const inputDefinition = defineOrigamixMaterial({

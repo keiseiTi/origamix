@@ -1,3 +1,4 @@
+import { getElementLabel } from '@origamix/shared/protocol/schema';
 import LogicFlow from '@logicflow/core';
 import { SelectionSelect } from '@logicflow/extension';
 import '@logicflow/core/lib/style/index.css';
@@ -7,14 +8,12 @@ import { useEditorCore } from '@tangramino/base-editor';
 import { SchemaUtils } from '@tangramino/engine';
 import { Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { FieldLabel } from '@/components/ui/field';
-import { JsonAttributeField } from '../editor/mods/json-attribute-field';
 import { nodeKinds, readGraph, toFlow, type EventTarget } from './model';
-import { reactNode } from './react-node';
+import { createReactNode } from './react-node';
 import './style.css';
 import { EventTree } from './event-tree';
-import { FlowSelect } from './flow-select';
+import { defaultNodeProps, getNodeDefinition } from './nodes/definitions';
+import { NodeProperties } from './nodes/node-properties';
 
 export const FlowEditor = ({
   target,
@@ -82,6 +81,7 @@ export const FlowEditor = ({
       adjustEdge: false,
     });
     lfRef.current = lf;
+    const reactNode = createReactNode((id) => getElementLabel(id, schemaRef.current.elements[id]));
     lf.register({ type: 'start', ...reactNode });
     nodeKinds.forEach((kind) => lf.register({ type: kind.type, ...reactNode }));
     lf.setTheme({
@@ -169,9 +169,8 @@ export const FlowEditor = ({
       bounds.left + bounds.width / 2,
       bounds.top + bounds.height / 2,
     );
-    lf.addNode({ type, ...canvasOverlayPosition, properties: {} });
+    lf.addNode({ type, ...canvasOverlayPosition, properties: defaultNodeProps(type) });
   };
-  const properties = selected?.properties ?? {};
   return (
     <section
       className='flex min-h-0 flex-1 flex-col bg-white text-foreground dark:bg-zinc-950'
@@ -209,7 +208,10 @@ export const FlowEditor = ({
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;
                     event.preventDefault();
-                    lfRef.current?.dnd.startDrag({ type: kind.type, properties: {} });
+                    lfRef.current?.dnd.startDrag({
+                      type: kind.type,
+                      properties: defaultNodeProps(kind.type),
+                    });
                   }}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -232,7 +234,8 @@ export const FlowEditor = ({
           <div ref={container} className='flow-canvas absolute inset-0' aria-label='事件流程画布' />
           {target && (
             <div className='absolute top-3 left-3 rounded-md border border-border bg-white/90 px-2.5 py-1.5 text-xs text-muted-foreground dark:bg-zinc-950/90'>
-              {target.label} · {target.elementId}
+              {getElementLabel(target.elementId, schema.elements[target.elementId])} ·{' '}
+              {target.label}
             </div>
           )}
           {target && (
@@ -309,92 +312,34 @@ export const FlowEditor = ({
             {selected
               ? String(
                   selected.properties?.title ||
-                    nodeKinds.find((kind) => kind.type === selected.type)?.title ||
+                    selected.properties?.alias ||
+                    getNodeDefinition(String(selected.type))?.title ||
                     '开始',
                 )
               : '节点配置'}
           </h3>
           {!selected ? (
             <p className='text-xs text-muted-foreground'>请从左侧画布中选中节点</p>
-          ) : selected.type === 'start' ? (
-            <p className='text-sm text-muted-foreground'>
-              {target?.label}触发后，从此节点开始执行。
-            </p>
           ) : (
             <>
-              <FieldLabel>节点名称</FieldLabel>
-              <Input
-                aria-label='节点名称'
-                value={String(properties.title ?? '')}
-                placeholder={nodeKinds.find((kind) => kind.type === selected.type)?.title}
-                onChange={(event) => update({ title: event.target.value })}
+              <NodeProperties
+                key={selected.id}
+                node={selected}
+                onChange={update}
+                eventLabel={target?.label}
               />
-              {selected.type !== 'setGlobalVariable' ? (
-                <>
-                  <FieldLabel>目标组件</FieldLabel>
-                  <FlowSelect
-                    label='目标组件'
-                    value={String(properties.elementId ?? '')}
-                    onChange={(value) => update({ elementId: value })}
-                    options={Object.entries(schema.elements).map(([id, element]) => ({
-                      value: id,
-                      label: `${element.type} · ${id}`,
-                    }))}
-                  />
-                </>
-              ) : (
-                <>
-                  <FieldLabel>全局变量</FieldLabel>
-                  <FlowSelect
-                    label='全局变量'
-                    value={String(properties.name ?? '')}
-                    onChange={(value) => update({ name: value })}
-                    options={(schema.context?.globalVariables ?? []).map((variable) => ({
-                      value: variable.name,
-                      label: variable.name,
-                    }))}
-                  />
-                </>
-              )}
-              {selected.type === 'visibleElement' ? (
+              {selected.type !== 'start' && (
                 <Button
                   variant='outline'
-                  onClick={() => update({ visible: properties.visible === false })}
+                  onClick={() => {
+                    lfRef.current?.deleteNode(selected.id);
+                    setSelected(null);
+                  }}
                 >
-                  {properties.visible === false ? '隐藏组件' : '显示组件'}
+                  <Trash2 size={14} />
+                  删除节点
                 </Button>
-              ) : (
-                <JsonAttributeField
-                  key={`${selected.id}:${JSON.stringify(properties)}`}
-                  label={
-                    selected.type === 'setElementProps' ? '属性对象（JSON）' : '变量值（JSON）'
-                  }
-                  value={
-                    selected.type === 'setElementProps'
-                      ? (properties.value ?? {})
-                      : (properties.value ?? null)
-                  }
-                  validateValue={
-                    selected.type === 'setElementProps'
-                      ? (value) =>
-                          value !== null && typeof value === 'object' && !Array.isArray(value)
-                            ? undefined
-                            : '请输入属性对象'
-                      : () => undefined
-                  }
-                  onChange={(value) => update({ value })}
-                />
               )}
-              <Button
-                variant='outline'
-                onClick={() => {
-                  lfRef.current?.deleteNode(selected.id);
-                  setSelected(null);
-                }}
-              >
-                <Trash2 size={14} />
-                删除节点
-              </Button>
             </>
           )}
         </aside>

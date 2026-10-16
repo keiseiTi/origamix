@@ -1,3 +1,4 @@
+import { getElementLabel } from '@origamix/shared/protocol/schema';
 import { Button } from '@/components/ui/button';
 import {
   ChevronDown,
@@ -96,7 +97,6 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
             : null;
         })
         .filter((item): item is ActiveElement => item !== null);
-      const alias = typeof element.props?.alias === 'string' ? element.props.alias : '';
       return {
         activeElement: {
           id,
@@ -105,7 +105,7 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
           material,
           parents,
         },
-        title: alias ? `${alias}（${material.title}）` : String(material.title),
+        title: getElementLabel(id, element),
         children: (schema.layout.structure[id] ?? [])
           .map(buildNode)
           .filter((item): item is OutlineNode => item !== null),

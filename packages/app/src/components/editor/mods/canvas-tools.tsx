@@ -1,3 +1,4 @@
+import { getElementLabel } from '@origamix/shared/protocol/schema';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -97,7 +98,7 @@ export const EditorOverlay = (): React.JSX.Element | null => {
       <div
         className={`pointer-events-auto absolute w-max whitespace-nowrap bg-blue-600 px-2 py-1 text-xs text-white shadow-sm ${isBlock ? '-top-7 left-0 rounded-t' : '-bottom-7 right-0 rounded-b'}`}
       >
-        {material.title}
+        {getElementLabel(id, schema.elements[id])}
       </div>
       {!isRoot && (
         <div

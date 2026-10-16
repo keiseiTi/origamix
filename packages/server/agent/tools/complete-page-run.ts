@@ -4,9 +4,10 @@ import {
   CompletePageRunInputSchema,
   CompletePageRunToolParametersSchema,
   type CompletePageRunInput,
+  type ClarificationCandidate,
   type PageAgentOutcome,
 } from '@origamix/shared/protocol/agent';
-import type { SchemaOperation } from '@origamix/shared/protocol/schema';
+import { getElementLabel, type SchemaOperation } from '@origamix/shared/protocol/schema';
 import type { AgentRunRepository } from '../run-repository';
 import type { AgentRunService } from '../run-service';
 import type { ProjectRepository } from '../../projects/project-repository';
@@ -113,15 +114,6 @@ export const createCompletePageRunTool = (
       }
 
       const outcome = terminalOutcome(input);
-      const outcomeJson =
-        input.outcome === 'needs_clarification'
-          ? {
-              clarificationId: `clarification_${randomUUID()}`,
-              baseWorkingVersion: scope.baseWorkingVersion,
-              question: input.question,
-              ...(input.candidates ? { candidates: input.candidates } : {}),
-            }
-          : input;
       const operations = input.outcome === 'apply_changes' ? input.operations : undefined;
       const digest = operations ? operationDigest(operations) : undefined;
       const response = terminalResponse(input);
@@ -134,6 +126,7 @@ export const createCompletePageRunTool = (
       const project = dependencies.projects.getProject(scope.projectId);
       const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
       if (!project || !page) throw notFound('页面不存在或不属于当前项目');
+      let candidates: ClarificationCandidate[] | undefined;
       if (input.outcome === 'needs_clarification' && input.candidates?.length) {
         const working = await getWorkingSchemaState({
           projectPath: project.path,
@@ -151,7 +144,20 @@ export const createCompletePageRunTool = (
           }
           seen.add(candidate.elementId);
         }
+        candidates = input.candidates.map((candidate) => ({
+          ...candidate,
+          label: getElementLabel(candidate.elementId, working.schema.elements[candidate.elementId]),
+        }));
       }
+      const outcomeJson =
+        input.outcome === 'needs_clarification'
+          ? {
+              clarificationId: `clarification_${randomUUID()}`,
+              baseWorkingVersion: scope.baseWorkingVersion,
+              question: input.question,
+              ...(candidates ? { candidates } : {}),
+            }
+          : input;
       dependencies.runService.transition(scope.runId, 'deciding', {
         outcomeJson,
         ...(!operations ? { outcome } : {}),

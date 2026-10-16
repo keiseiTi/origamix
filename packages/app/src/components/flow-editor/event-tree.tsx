@@ -1,3 +1,4 @@
+import { getElementLabel } from '@origamix/shared/protocol/schema';
 import { useEditorCore } from '@tangramino/base-editor';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
@@ -83,7 +84,7 @@ export const EventTree = ({
     const next = new Set(ancestors).add(id);
     return {
       id,
-      title: String(element.props?.alias || material?.title || element.type),
+      title: getElementLabel(id, element),
       events: (material?.contextConfig?.methods ?? []).map((method) => ({
         elementId: id,
         event: method.name,

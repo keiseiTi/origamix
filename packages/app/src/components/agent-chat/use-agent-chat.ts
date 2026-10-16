@@ -316,7 +316,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         throw new Error('选项已过期，请重新描述你的需求');
       }
       await submit({
-        text: `选择澄清项：${candidate.label}（元素 ${candidate.elementId}）`,
+        text: `选择澄清项：${candidate.label}`,
         clarification: {
           runId: state.run.runId,
           clarificationId: clarification.clarificationId,

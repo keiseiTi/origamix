@@ -31,6 +31,28 @@ export type MaterialManifest = Readonly<{
   constraints: readonly string[];
 }>;
 
+/** Platform properties and lifecycle events shared by all material families. */
+export const withCommonMaterialManifest = (manifest: MaterialManifest): MaterialManifest => ({
+  ...manifest,
+  propsSchema: {
+    ...manifest.propsSchema,
+    properties: {
+      ...(manifest.propsSchema.properties as Readonly<Record<string, JsonSchema>>),
+      alias: { type: 'string', description: '元素别名，用于说明元素用途。' },
+    },
+    required:
+      (manifest.propsSchema.required as readonly string[] | undefined)?.filter(
+        (field) => field !== 'alias',
+      ) ?? [],
+  },
+  context: {
+    ...manifest.context,
+    methods: manifest.context.methods.some((method) => method.name === 'init')
+      ? manifest.context.methods
+      : [{ name: 'init', description: '初始化' }, ...manifest.context.methods],
+  },
+});
+
 export type ValidationMaterialManifest = Readonly<{
   type: string;
   version: string;

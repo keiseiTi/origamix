@@ -169,3 +169,12 @@ export type OrigamixPageSchema = Static<typeof PageSchema>;
 export type ChangeSource = Static<typeof ChangeSourceSchema>;
 export type SchemaOperation = Static<typeof SchemaOperationSchema>;
 export type SchemaOperationBatch = Static<typeof SchemaOperationBatchSchema>;
+
+/** User-facing element identity; mutations must continue to use the element ID. */
+export const getElementLabel = (
+  elementId: string,
+  element?: { props?: Record<string, unknown> },
+): string => {
+  const alias = element?.props?.alias;
+  return typeof alias === 'string' && alias.trim() ? alias : elementId;
+};

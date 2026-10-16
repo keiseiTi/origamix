@@ -64,4 +64,87 @@ describe('event graph commit', () => {
     expect(() => toFlow(graph)).toThrow('循环');
     expect(flow.nodes.action?.next).toEqual([]);
   });
+  it('preserves true/false branch ownership on reconstruction and rejects duplicate branch connections', () => {
+    const graph: LogicFlow.GraphData = {
+      nodes: [
+        { id: 'start', type: 'start', x: 0, y: 0 },
+        { id: 'check', type: 'condition', x: 200, y: 0, properties: { judgment: true } },
+        { id: 'yes', type: 'openModalDrawer', x: 400, y: 0 },
+        { id: 'no', type: 'closeModalDrawer', x: 400, y: 100 },
+      ],
+      edges: [
+        {
+          id: 'entry',
+          type: 'polyline',
+          startPoint: { x: 0, y: 0 },
+          endPoint: { x: 0, y: 0 },
+          sourceNodeId: 'start',
+          targetNodeId: 'check',
+        },
+        {
+          id: 'true',
+          type: 'polyline',
+          startPoint: { x: 0, y: 0 },
+          endPoint: { x: 0, y: 0 },
+          sourceNodeId: 'check',
+          sourceAnchorId: 'check_true',
+          targetNodeId: 'yes',
+        },
+        {
+          id: 'false',
+          type: 'polyline',
+          startPoint: { x: 0, y: 0 },
+          endPoint: { x: 0, y: 0 },
+          sourceNodeId: 'check',
+          sourceAnchorId: 'check_false',
+          targetNodeId: 'no',
+        },
+      ],
+    };
+    const flow = toFlow(graph);
+    expect(flow.nodes.check?.props.condition).toEqual([
+      { value: true, nextNode: 'yes' },
+      { value: false, nextNode: 'no' },
+    ]);
+    const restored = readGraph(
+      {
+        elements: {},
+        layout: { root: 'root', structure: {} },
+        extensions: {},
+        bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
+        flows: { flow },
+      } as Schema,
+      { elementId: 'button', event: 'onClick', label: '点击' },
+    );
+    expect(toFlow(restored).nodes.check?.props.condition).toEqual(
+      flow.nodes.check?.props.condition,
+    );
+    const sharedTarget = structuredClone(graph);
+    sharedTarget.edges[2]!.targetNodeId = 'yes';
+    const sharedFlow = toFlow(sharedTarget);
+    const sharedRestored = readGraph(
+      {
+        elements: {},
+        layout: { root: 'root', structure: {} },
+        extensions: {},
+        bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
+        flows: { flow: sharedFlow },
+      } as Schema,
+      { elementId: 'button', event: 'onClick', label: '点击' },
+    );
+    expect(toFlow(sharedRestored).nodes.check?.props.condition).toEqual(
+      sharedFlow.nodes.check?.props.condition,
+    );
+    graph.edges.push({
+      id: 'duplicate',
+      type: 'polyline',
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 0 },
+      sourceNodeId: 'check',
+      sourceAnchorId: 'check_true',
+      targetNodeId: 'no',
+    });
+    expect(() => toFlow(graph)).toThrow('分支');
+    expect(flow.nodes.check?.next).toEqual(['yes', 'no']);
+  });
 });

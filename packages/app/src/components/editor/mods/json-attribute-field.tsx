@@ -16,7 +16,7 @@ export const JsonAttributeField = ({
   validateValue,
   onChange,
 }: Props): React.JSX.Element => {
-  const [text, setText] = useState(() => JSON.stringify(value ?? [], null, 2));
+  const [text, setText] = useState(() => JSON.stringify(value === undefined ? [] : value, null, 2));
   const [error, setError] = useState<string>();
   const errorId = useId();
   const apply = (): void => {
