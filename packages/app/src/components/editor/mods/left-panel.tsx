@@ -1,14 +1,6 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
 import { Button } from '@/components/ui/button';
-import {
-  ChevronDown,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-  X,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import { useEditorCore, type ActiveElement } from '@tangramino/base-editor';
 import { useMemo, useState } from 'react';
@@ -105,7 +97,11 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
           material,
           parents,
         },
-        title: getElementLabel(id, element),
+        title: getElementLabel(
+          id,
+          element,
+          typeof material?.title === 'string' ? material.title : undefined,
+        ),
         children: (schema.layout.structure[id] ?? [])
           .map(buildNode)
           .filter((item): item is OutlineNode => item !== null),

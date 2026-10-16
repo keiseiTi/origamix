@@ -1,3 +1,4 @@
+import { antdMaterialManifest } from '@origamix/materials/antd/manifest';
 import { createHash, randomUUID } from 'node:crypto';
 import { Value } from '@sinclair/typebox/value';
 import {
@@ -7,7 +8,7 @@ import {
   type ClarificationCandidate,
   type PageAgentOutcome,
 } from '@origamix/shared/protocol/agent';
-import { getElementLabel, type SchemaOperation } from '@origamix/shared/protocol/schema';
+import { getAgentElementLabel, type SchemaOperation } from '@origamix/shared/protocol/schema';
 import type { AgentRunRepository } from '../run-repository';
 import type { AgentRunService } from '../run-service';
 import type { ProjectRepository } from '../../projects/project-repository';
@@ -146,7 +147,13 @@ export const createCompletePageRunTool = (
         }
         candidates = input.candidates.map((candidate) => ({
           ...candidate,
-          label: getElementLabel(candidate.elementId, working.schema.elements[candidate.elementId]),
+          label: getAgentElementLabel(
+            candidate.elementId,
+            working.schema.elements[candidate.elementId],
+            antdMaterialManifest.materials.find(
+              (material) => material.type === working.schema.elements[candidate.elementId]?.type,
+            )?.title,
+          ),
         }));
       }
       const outcomeJson =

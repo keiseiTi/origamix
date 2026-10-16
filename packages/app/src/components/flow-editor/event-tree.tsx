@@ -84,7 +84,11 @@ export const EventTree = ({
     const next = new Set(ancestors).add(id);
     return {
       id,
-      title: getElementLabel(id, element),
+      title: getElementLabel(
+        id,
+        element,
+        typeof material?.title === 'string' ? material.title : undefined,
+      ),
       events: (material?.contextConfig?.methods ?? []).map((method) => ({
         elementId: id,
         event: method.name,

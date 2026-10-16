@@ -1,5 +1,4 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
-import { Button } from '@/components/ui/button';
 import type { EventTarget } from '../../flow-editor/model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel } from '@/components/ui/field';
@@ -264,18 +263,34 @@ export const AttributePanel = ({
               >
                 <span
                   className='max-w-24 truncate'
-                  title={getElementLabel(parent.id, schema.elements[parent.id])}
+                  title={getElementLabel(
+                    parent.id,
+                    schema.elements[parent.id],
+                    String(parent.material.title),
+                  )}
                 >
-                  {getElementLabel(parent.id, schema.elements[parent.id])}
+                  {getElementLabel(
+                    parent.id,
+                    schema.elements[parent.id],
+                    String(parent.material.title),
+                  )}
                 </span>
                 <ChevronRight size={12} className='mx-1' />
               </button>
             ))}
             <span
               className='shrink-0'
-              title={getElementLabel(activeElement.id, schema.elements[activeElement.id])}
+              title={getElementLabel(
+                activeElement.id,
+                schema.elements[activeElement.id],
+                String(activeElement.material.title),
+              )}
             >
-              {getElementLabel(activeElement.id, schema.elements[activeElement.id])}
+              {getElementLabel(
+                activeElement.id,
+                schema.elements[activeElement.id],
+                String(activeElement.material.title),
+              )}
             </span>
           </div>
           {panels.length === 0 ? (

@@ -23,6 +23,7 @@ export const FlowEditor = ({
   onTargetChange: (target: EventTarget) => void;
 }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
+  const materials = useEditorCore((state) => state.materials);
   const setSchema = useEditorCore((state) => state.setSchema);
   const container = useRef<HTMLDivElement>(null);
   const lfRef = useRef<LogicFlow | null>(null);
@@ -81,7 +82,18 @@ export const FlowEditor = ({
       adjustEdge: false,
     });
     lfRef.current = lf;
-    const reactNode = createReactNode((id) => getElementLabel(id, schemaRef.current.elements[id]));
+    const reactNode = createReactNode((id) =>
+      getElementLabel(
+        id,
+        schemaRef.current.elements[id],
+        String(
+          materials.find((material) => material.type === schemaRef.current.elements[id]?.type)
+            ?.title ??
+            schemaRef.current.elements[id]?.type ??
+            id,
+        ),
+      ),
+    );
     lf.register({ type: 'start', ...reactNode });
     nodeKinds.forEach((kind) => lf.register({ type: kind.type, ...reactNode }));
     lf.setTheme({
@@ -234,8 +246,18 @@ export const FlowEditor = ({
           <div ref={container} className='flow-canvas absolute inset-0' aria-label='事件流程画布' />
           {target && (
             <div className='absolute top-3 left-3 rounded-md border border-border bg-white/90 px-2.5 py-1.5 text-xs text-muted-foreground dark:bg-zinc-950/90'>
-              {getElementLabel(target.elementId, schema.elements[target.elementId])} ·{' '}
-              {target.label}
+              {getElementLabel(
+                target.elementId,
+                schema.elements[target.elementId],
+                String(
+                  materials.find(
+                    (material) => material.type === schema.elements[target.elementId]?.type,
+                  )?.title ??
+                    schema.elements[target.elementId]?.type ??
+                    target.elementId,
+                ),
+              )}{' '}
+              · {target.label}
             </div>
           )}
           {target && (

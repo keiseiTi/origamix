@@ -85,9 +85,9 @@ describe('read-only Agent tools', () => {
       revisionId,
       totalElements: 3,
       nodes: [
-        { id: 'element_root', label: 'element_root', type: 'container', depth: 0 },
+        { id: 'element_root', label: 'element_root（容器）', type: 'container', depth: 0 },
         { id: 'form-main', label: '报名表单', type: 'form', depth: 1 },
-        { id: 'input-name', label: 'input-name', type: 'input', depth: 2 },
+        { id: 'input-name', label: 'input-name（输入框）', type: 'input', depth: 2 },
       ],
     });
     await execute('get_page_context', scope);

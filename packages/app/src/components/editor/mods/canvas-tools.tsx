@@ -98,7 +98,7 @@ export const EditorOverlay = (): React.JSX.Element | null => {
       <div
         className={`pointer-events-auto absolute w-max whitespace-nowrap bg-blue-600 px-2 py-1 text-xs text-white shadow-sm ${isBlock ? '-top-7 left-0 rounded-t' : '-bottom-7 right-0 rounded-b'}`}
       >
-        {getElementLabel(id, schema.elements[id])}
+        {getElementLabel(id, schema.elements[id], String(material.title))}
       </div>
       {!isRoot && (
         <div

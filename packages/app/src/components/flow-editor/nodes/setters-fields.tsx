@@ -82,7 +82,14 @@ export const SettersFields = ({
                     }))
                   : Object.entries(schema.elements).map(([id, item]) => ({
                       value: id,
-                      label: getElementLabel(id, item),
+                      label: getElementLabel(
+                        id,
+                        item,
+                        String(
+                          materials.find((material) => material.type === item.type)?.title ??
+                            item.type,
+                        ),
+                      ),
                     }))
               }
               onChange={(value) =>

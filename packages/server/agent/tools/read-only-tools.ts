@@ -5,7 +5,7 @@ import {
   antdMaterialManifest,
   getAntdMaterialManifests,
 } from '@origamix/materials/antd/manifest';
-import { getElementLabel, type OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import { getAgentElementLabel, type OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { ProjectRepository } from '../../projects/project-repository';
 import { conflict, invalid, notFound } from '../../errors';
 import {
@@ -98,7 +98,11 @@ const elementSummary = (schema: OrigamixPageSchema, elementId: string): JsonObje
   const element = schema.elements[elementId]!;
   return {
     id: elementId,
-    label: getElementLabel(elementId, element),
+    label: getAgentElementLabel(
+      elementId,
+      element,
+      antdMaterialManifest.materials.find((material) => material.type === element.type)?.title,
+    ),
     type: element.type,
     props: compactValue(element.props),
     childIds: schema.layout.structure[elementId] ?? [],
@@ -195,7 +199,12 @@ export const createReadOnlyAgentTools = (
             seen.add(id);
             nodes.push({
               id,
-              label: getElementLabel(id, element),
+              label: getAgentElementLabel(
+                id,
+                element,
+                antdMaterialManifest.materials.find((material) => material.type === element.type)
+                  ?.title,
+              ),
               type: element.type,
               depth,
               propKeys: Object.keys(element.props).slice(0, MAX_PROP_KEYS),

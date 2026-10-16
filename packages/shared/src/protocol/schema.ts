@@ -170,11 +170,28 @@ export type ChangeSource = Static<typeof ChangeSourceSchema>;
 export type SchemaOperation = Static<typeof SchemaOperationSchema>;
 export type SchemaOperationBatch = Static<typeof SchemaOperationBatchSchema>;
 
-/** User-facing element identity; mutations must continue to use the element ID. */
+/** Editor labels use aliases first, then the localized material title. IDs remain the mutation identity. */
 export const getElementLabel = (
   elementId: string,
-  element?: { props?: Record<string, unknown> },
+  element?: { type?: string; props?: Record<string, unknown> },
+  materialTitle?: string,
 ): string => {
   const alias = element?.props?.alias;
-  return typeof alias === 'string' && alias.trim() ? alias : elementId;
+  return typeof alias === 'string' && alias.trim()
+    ? alias
+    : materialTitle || element?.type || elementId;
+};
+
+/** Agent references keep unaliased elements distinguishable by their stable ID. */
+export const getAgentElementLabel = (
+  elementId: string,
+  element?: { type?: string; props?: Record<string, unknown> },
+  materialTitle?: string,
+): string => {
+  const alias = element?.props?.alias;
+  return typeof alias === 'string' && alias.trim()
+    ? alias
+    : element?.type
+      ? `${elementId}（${materialTitle || element.type}）`
+      : elementId;
 };
