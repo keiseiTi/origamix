@@ -1,11 +1,16 @@
+import { materialGroups } from '../../antd/editor';
 import { describe, expect, it } from 'vitest';
-import materialComponents from '../../antd/index';
+import materialComponents from '../../antd/runtime';
 import { antdMaterialManifest, antdValidationMaterialRegistry } from '../../antd/manifest';
 
 describe('material boundary used by editing and preview', () => {
   it('publishes serializable materials that validation and rendering both recognize', () => {
     expect(() => structuredClone(antdMaterialManifest)).not.toThrow();
     expect(() => JSON.stringify(antdMaterialManifest)).not.toThrow();
+    for (const material of materialGroups.flatMap((group) => group.children)) {
+      expect(antdValidationMaterialRegistry[material.type]).toBeDefined();
+      expect(material.type in materialComponents).toBe(true);
+    }
     for (const material of antdMaterialManifest.materials) {
       expect(material.type in materialComponents).toBe(true);
       expect(material.propsSchema.additionalProperties).toBe(false);

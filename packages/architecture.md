@@ -4,22 +4,22 @@
 
 ## 依赖与入口
 
-| 包                     | 允许的工作区依赖与职责                     | 入口状态                                                        |
-| ---------------------- | ------------------------------------------ | --------------------------------------------------------------- |
-| Shared                 | 无工作区依赖；平台协议、Manifest 格式      | `protocol/material-manifest` 已提供通用类型和格式版本           |
-| UI                     | 无工作区依赖；基础控件、主题               | `@origamix/ui/<control>`、`utils`、`styles.css` 已提供          |
-| Editor                 | Shared、UI；画布、FlowEditor、通用编辑组件 | `visual`、`flow`、`components`、`core` 及类型入口已提供         |
-| Materials 的编辑入口   | Shared、Editor 公共入口、UI                | 现有 `antd/group`、`material` 保留；阶段 4 整理为 `antd/editor` |
-| Materials 的纯数据入口 | Shared                                     | `antd/manifest` 保留；具体内容仍归物料                          |
-| Materials 的运行入口   | 不依赖编辑层；未来可用独立 UI 基础控件     | 现有 `antd` 保留；阶段 4 整理为 `antd/runtime`                  |
-| Runtime                | Shared；渲染和声明式逻辑                   | 接收运行注册表，不导入具体物料                                  |
-| App                    | Shared、UI、Editor、Materials、Runtime     | 负责项目装配、HTTP、Working 会话、Agent、Revision、Apply        |
-| Server                 | Shared、物料纯数据入口                     | 权威校验、Working、Revision、授权文件写入                       |
-| Template               | Runtime、物料运行入口                      | 独立运行，不导入工作台或本地后端                                |
+| 包                     | 允许的工作区依赖与职责                     | 入口状态                                                 |
+| ---------------------- | ------------------------------------------ | -------------------------------------------------------- |
+| Shared                 | 无工作区依赖；平台协议、Manifest 格式      | `protocol/material-manifest` 已提供通用类型和格式版本    |
+| UI                     | 无工作区依赖；基础控件、主题               | `@origamix/ui/<control>`、`utils`、`styles.css` 已提供   |
+| Editor                 | Shared、UI；画布、FlowEditor、通用编辑组件 | `visual`、`flow`、`components`、`core` 及类型入口已提供  |
+| Materials 的编辑入口   | Shared、Editor 公共入口、UI                | `antd/editor` 提供分组、清单及扩展注册；旧入口保留兼容   |
+| Materials 的纯数据入口 | Shared                                     | `antd/manifest` 保留；具体内容仍归物料                   |
+| Materials 的运行入口   | 不依赖编辑层；未来可用独立 UI 基础控件     | `antd/runtime` 用于预览与生成页面；`antd` 保留兼容       |
+| Runtime                | Shared；渲染和声明式逻辑                   | 接收运行注册表，不导入具体物料                           |
+| App                    | Shared、UI、Editor、Materials、Runtime     | 负责项目装配、HTTP、Working 会话、Agent、Revision、Apply |
+| Server                 | Shared、物料纯数据入口                     | 权威校验、Working、Revision、授权文件写入                |
+| Template               | Runtime、物料运行入口                      | 独立运行，不导入工作台或本地后端                         |
 
-表中的目标入口不代表已开放导出。当前 `materials/manifest` 为兼容入口，重导出 Shared 的通用格式，同时保留物料转换辅助；不会改动清单数据或持久化 Schema。
+表中的入口均已开放导出。当前 `materials/manifest` 为兼容入口，重导出 Shared 的通用格式，同时保留物料转换辅助；不会改动清单数据或持久化 Schema。
 
-Editor 不导入具体物料，Materials 不导入 App，生成项目和预览运行链路不导入 Editor。物料包目前仍存在编辑依赖，真正的安装/发布隔离在阶段 4 处理；仅拆分入口不能证明安装依赖已经隔离。
+Editor 不导入具体物料，Materials 不导入 App，生成项目和预览运行链路不导入 Editor。HeroUI 与 Tangramino base-editor 为可选编辑 peer；运行入口不引用编辑声明。独立模板 smoke 检查编辑引擎未被安装，并执行类型检查与构建；模板自身的 HeroUI 基础控件保留。
 
 ## 实现迁移归属
 
@@ -49,6 +49,8 @@ Manifest 是可序列化数据，不能包含 React 组件、校验函数或执�
 
 阶段 1 用 App 现有编辑模式、工具及命令句柄实际消费 Editor 类型入口，保留本地重导出供现有调用方使用。Manifest 原入口通过兼容重导出继续工作。阶段 2 已将基础控件和主题迁入 UI，App 直接使用公开入口；工作台与 iframe 文档显式启用各自主题。阶段 3 已迁移编辑器实现；App 仅保留页面宿主装配、Working 队列、HTTP、版本与 Agent 协调。Monaco workers 由 App 的 Vite 启动入口配置。
 
-后续顺序：物料三入口整理 → 表格列编辑器验证 → 技术栈解析与加载 → 全链路迁移验证。
+阶段 4 已整理三入口并迁移 App、预览和新生成的页面；旧入口保留兼容，专属属性编辑器尚未激活。
+
+后续顺序：表格列编辑器验证 → 技术栈解析与加载 → 全链路迁移验证。
 
 维护规则见各包 AGENTS.md。源码或契约变更执行根 lint、typecheck、test、build；只对新增核心流程风险补充最小测试，不为纯类型别名或组件搬迁新增测试。

@@ -1,5 +1,5 @@
 import { Button } from '@origamix/ui/button';
-import materialComponents from '@origamix/materials/antd';
+import materialComponents from '@origamix/materials/antd/runtime';
 import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime/react';
 import type { Schema } from '@tangramino/engine';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';

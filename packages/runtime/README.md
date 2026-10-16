@@ -43,7 +43,7 @@ pnpm --filter @origamix/runtime build
 
 ```tsx
 import { OrigamixPage } from '@origamix/runtime/react';
-import materials from '@origamix/materials/antd';
+import materials from '@origamix/materials/antd/runtime';
 import schema from './schema.json';
 
 const Page = (): React.JSX.Element => (

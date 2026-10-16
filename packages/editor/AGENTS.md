@@ -17,7 +17,7 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 - Each flush translates against the last acknowledged Working snapshot through `createEditorTransaction`. Typed operations are preferred; the internal candidate fallback is only for operation protocol gaps. Prop edits and Flow edits use the same host queue.
 - Preserve scoped async results, failed drafts and flush rejection before page/mode/preview transitions. Readonly view changes must not reach the host; never add a separate save path to a panel or flow node.
 - CodeEditor receives theme explicitly or from the Editor context. App configures Monaco workers in its Vite bootstrap; this package must not import Vite worker queries or App preferences.
-- Materials still have legacy editor attribute types until stage 4. `JsonAttributeConfig` is the editor-owned structured-field shape; no imports back into Materials are allowed. Registered custom property editor activation remains stage 5.
+- Materials owns its Tangramino/HeroUI panel configuration types behind its editor entry. `JsonAttributeConfig` is the editor-owned structured-field shape; no imports back into Materials are allowed. Registered custom property editor activation remains stage 5.
 - Keep extensions limited to selected-element props. Do not expose raw engine, HTTP, filesystem, App Store or a generic host SDK.
 
 ## Verification

@@ -26,6 +26,8 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Verification
 
+Generated page shells consume `@origamix/materials/antd/runtime`. Template smoke verifies that standalone installation does not pull editor engines. HeroUI remains a direct scaffold UI dependency.
+
 From the repository root:
 
 ```sh

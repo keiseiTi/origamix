@@ -9,7 +9,7 @@ const pageComponentName = (slug: string): string => {
 
 const pageComponentSource = (slug: string): string => {
   const componentName = pageComponentName(slug);
-  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
+  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd/runtime';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
 };
 
 export class ProjectSourceService {

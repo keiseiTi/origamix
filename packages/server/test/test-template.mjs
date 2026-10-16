@@ -90,6 +90,23 @@ try {
     });
     if (child.error || child.status !== 0) throw child.error ?? new Error(`pnpm ${args[0]} failed`);
   }
+  const installed = JSON.parse(
+    await readFile(join(project, 'node_modules/@origamix/materials/package.json'), 'utf8'),
+  );
+  assert.equal(installed.dependencies?.['@tangramino/base-editor'], undefined);
+  assert.equal(installed.peerDependenciesMeta?.['@tangramino/base-editor']?.optional, true);
+  const lockfile = await readFile(join(project, 'pnpm-lock.yaml'), 'utf8');
+  for (const forbidden of [
+    '@tangramino/base-editor',
+    '@logicflow/',
+    '@origamix/editor',
+    'monaco-editor',
+  ]) {
+    assert.ok(
+      !lockfile.includes(forbidden.endsWith('/') ? forbidden : forbidden + '@'),
+      `Generated project installed editor dependency: ${forbidden}`,
+    );
+  }
   console.info(
     'Template smoke passed: project creation, save, Apply, independent installation, typecheck and build.',
   );

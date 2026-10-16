@@ -5,6 +5,8 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     'antd/index': 'antd/index.ts',
+    'antd/runtime': 'antd/runtime.ts',
+    'antd/editor': 'antd/editor.ts',
     'antd/group': 'antd/group.ts',
     'antd/manifest': 'antd/manifest.ts',
     'src/material-manifest': 'src/material-manifest.ts',

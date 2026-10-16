@@ -6,8 +6,11 @@ import type {
   EditorHistoryState,
   EditorMaterialRegistration,
 } from '@origamix/editor/contracts';
-import materialGroups from '@origamix/materials/antd/group';
-import { antdMaterialManifest } from '@origamix/materials/antd/manifest';
+import {
+  materialGroups,
+  antdMaterialManifest,
+  propertyEditors,
+} from '@origamix/materials/antd/editor';
 import { Spinner } from '@origamix/ui/spinner';
 import { Button } from '@origamix/ui/button';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
@@ -37,7 +40,7 @@ interface EditorProps {
 const registration: EditorMaterialRegistration = {
   catalog: antdMaterialManifest,
   groups: materialGroups,
-  propertyEditors: [],
+  propertyEditors,
 };
 
 export const PageEditor = forwardRef<EditorHandle, EditorProps>(
