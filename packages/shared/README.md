@@ -4,16 +4,17 @@
 
 ## 公开子路径
 
-| `@origamix/shared/` 后缀                      | 用途                        |
-| --------------------------------------------- | --------------------------- |
-| `protocol/api`                                | HTTP 请求、结果及项目记录   |
-| `protocol/schema`                             | 页面数据与 Schema Operation |
-| `protocol/validation`                         | 结构和图引用语义校验        |
-| `protocol/project-manifest`                   | 项目及页面 Manifest 格式    |
-| `protocol/agent`、`protocol/agent-validation` | Agent 协议与校验            |
-| `desktop-api`                                 | 宿主命名能力契约            |
-| `page-window`                                 | 预览输入与诊断契约          |
-| `credential-gateway`                          | 凭据网关消息校验            |
+| `@origamix/shared/` 后缀                      | 用途                                      |
+| --------------------------------------------- | ----------------------------------------- |
+| `protocol/api`                                | HTTP 请求、结果及项目记录                 |
+| `protocol/flow-node`                          | 逻辑节点 Manifest、属性 Schema 与连接约束 |
+| `protocol/schema`                             | 页面数据与 Schema Operation               |
+| `protocol/validation`                         | 结构和图引用语义校验                      |
+| `protocol/project-manifest`                   | 项目及页面 Manifest 格式                  |
+| `protocol/agent`、`protocol/agent-validation` | Agent 协议与校验                          |
+| `desktop-api`                                 | 宿主命名能力契约                          |
+| `page-window`                                 | 预览输入与诊断契约                        |
+| `credential-gateway`                          | 凭据网关消息校验                          |
 
 出口显式列举，测试和新增内部文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
@@ -63,3 +64,23 @@ ID 和版本需来自当前页面读取结果。该 HTTP 请求使用 `ApplyWork
 Working 的 `workingVersion` 用于并发校验，`workingHash` 表示草稿内容，`revisionId` 指向当前保存检查点；Working 可以在同一 Revision 下继续变化。Revision 是不可变快照，不会因普通编辑产生。Apply 还需 `expectedRevisionId`、`expectedWorkingVersion` 和稳定的 `clientRequestId`。
 
 Shared 校验结构、根节点和布局引用/循环；Server 另行验证物料属性、授权、页面归属和当前 Working 版本。通过 Shared 校验不代表请求具备写入权限或一定能应用。
+
+## 逻辑节点 Manifest
+
+`@origamix/shared/protocol/flow-node` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `FlowValueReferenceSchema` / `FlowValueReference`。
+
+目录包含开始、接口请求、自定义 JS、设置元素属性、触发元素方法、显隐元素、条件判断、设置全局变量、打开和关闭弹窗抽屉。每个节点声明 `type`、中文 `title`、`description`、`executable`、`defaultProps`、`propsSchema`、连接规则和使用约束；有返回值的可执行节点同时声明 `returnsSchema`。
+
+```ts
+import { getFlowNodeManifest } from '@origamix/shared/protocol/flow-node';
+
+const requestNode = getFlowNodeManifest('interfaceRequest');
+// 消费方通过自己的接收边界校验 requestNode.propsSchema。
+// 编辑器创建草稿时克隆 defaultProps，避免修改公共目录对象。
+```
+
+`defaultProps` 是编辑器的初始草稿，可能包含空 URL、空目标 ID 或空属性名；它不是已配置完成的示例。`propsSchema` 描述规范字段和基础类型；元素是否存在、属性/方法是否由物料公开、变量是否声明、分支和连线是否一致、是否存在循环等，需要消费方结合当前页面做语义校验。属性 Schema 接受通用 JSON 数据的字段仍需消费方执行既有安全检查，不能用 TypeScript 类型断言替代验证。
+
+值引用使用 `{ $ref: 'global' | 'result', name, path? }`。`name` 是变量名或返回值来源节点 ID，`path` 是点分隔的数据路径；引用解析整个字段值，不递归求值嵌套 JSON，也不执行字符串表达式。自定义 JS 的 `executable` 为 `false`，仅保存代码配置。
+
+本模块不包含 React、LogicFlow、表单控件或执行函数。本次仅新增共享契约，现有 App 节点定义、Runtime 执行代码、Server 校验和 Agent 工具尚未接入；既有兼容属性由原消费方继续处理，此目录描述新的规范字段。

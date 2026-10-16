@@ -11,7 +11,7 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   clean: true,
-  splitting: true,
+  splitting: false,
   sourcemap: true,
   external: ['@heroui/react', '@tangramino/base-editor', 'antd', 'react', 'react/jsx-runtime'],
 });

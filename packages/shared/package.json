@@ -14,7 +14,8 @@
     "./protocol/api": "./src/protocol/api.ts",
     "./protocol/project-manifest": "./src/protocol/project-manifest.ts",
     "./protocol/schema": "./src/protocol/schema.ts",
-    "./protocol/validation": "./src/protocol/validation.ts"
+    "./protocol/validation": "./src/protocol/validation.ts",
+    "./protocol/flow-node": "./src/protocol/flow-node.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -54,6 +55,10 @@
       "./protocol/validation": {
         "types": "./dist/protocol/validation.d.mts",
         "import": "./dist/protocol/validation.js"
+      },
+      "./protocol/flow-node": {
+        "types": "./dist/protocol/flow-node.d.mts",
+        "import": "./dist/protocol/flow-node.js"
       }
     }
   },

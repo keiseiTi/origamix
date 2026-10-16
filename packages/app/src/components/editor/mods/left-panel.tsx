@@ -1,6 +1,5 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import { useEditorCore, type ActiveElement } from '@tangramino/base-editor';
 import { useMemo, useState } from 'react';
@@ -111,20 +110,6 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
     return root ? [root] : [];
   }, [materials, schema]);
 
-  if (hidden) {
-    return (
-      <Button
-        size='icon-sm'
-        variant='ghost'
-        className='absolute top-1 left-1 z-10 bg-background shadow-sm'
-        aria-label='展开左侧面板'
-        onClick={() => setHidden(false)}
-      >
-        <PanelRightClose />
-      </Button>
-    );
-  }
-
   return (
     <aside className='flex h-full w-60 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'>
       <div className='flex h-10 items-end justify-between border-b border-zinc-200 px-2 dark:border-zinc-800'>
@@ -147,15 +132,6 @@ export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.El
             </button>
           ))}
         </div>
-        <Button
-          size='icon-sm'
-          variant='ghost'
-          className='mb-1.5'
-          aria-label='收起左侧面板'
-          onClick={() => setHidden(true)}
-        >
-          <PanelRightOpen />
-        </Button>
       </div>
       <div className='min-h-0 flex-1'>
         {activeTab === 'materials' ? (

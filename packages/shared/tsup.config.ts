@@ -10,6 +10,7 @@ export default defineConfig({
     'protocol/agent': 'src/protocol/agent.ts',
     'protocol/api': 'src/protocol/api.ts',
     'protocol/project-manifest': 'src/protocol/project-manifest.ts',
+    'protocol/flow-node': 'src/protocol/flow-node.ts',
     'protocol/schema': 'src/protocol/schema.ts',
     'protocol/validation': 'src/protocol/validation.ts',
   },
@@ -18,7 +19,7 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   clean: true,
-  splitting: true,
+  splitting: false,
   sourcemap: true,
   external: ['@sinclair/typebox', 'ajv', 'ajv-formats'],
 });
