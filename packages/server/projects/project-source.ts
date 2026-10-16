@@ -1,15 +1,23 @@
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+  validateResolvedProjectStack,
+  type ProjectStack,
+} from '@origamix/shared/protocol/project-stack';
 import { copyTemplate } from '../template';
 
 const pageComponentName = (slug: string): string => {
   return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
 };
 
-const pageComponentSource = (slug: string): string => {
+const pageComponentSource = (slug: string, stack: ProjectStack): string => {
+  validateResolvedProjectStack(stack);
+  // Explicit built-in module paths; project files never choose executable imports.
+  const runtimeEntry = '@origamix/runtime/react';
+  const materialEntry = '@origamix/materials/antd/runtime';
   const componentName = pageComponentName(slug);
-  return `import { OrigamixPage } from '@origamix/runtime/react';\nimport materials from '@origamix/materials/antd/runtime';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
+  return `import { OrigamixPage } from '${runtimeEntry}';\nimport materials from '${materialEntry}';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
 };
 
 export class ProjectSourceService {
@@ -39,10 +47,15 @@ export class ProjectSourceService {
     );
   }
 
-  async createPageEntry(projectPath: string, pageDirectory: string, slug: string): Promise<void> {
+  async createPageEntry(
+    projectPath: string,
+    pageDirectory: string,
+    slug: string,
+    stack: ProjectStack,
+  ): Promise<void> {
     await writeFileAtomically(
       join(projectPath, 'src', pageDirectory, slug, 'index.tsx'),
-      pageComponentSource(slug),
+      pageComponentSource(slug, stack),
     );
   }
 

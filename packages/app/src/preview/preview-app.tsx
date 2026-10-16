@@ -53,6 +53,7 @@ export const PreviewApp = (): React.JSX.Element => {
   return (
     <main className='h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
       <RuntimePreview
+        stack={snapshot.stack}
         schema={snapshot.schema}
         revisionId={snapshot.revisionId}
         onOutcome={({ outcome, diagnostics }) =>

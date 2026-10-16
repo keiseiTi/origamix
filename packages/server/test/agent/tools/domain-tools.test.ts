@@ -1,8 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
+import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { ProductDocsProvider } from '../../../agent/product-docs-provider';
 import type { RuntimeDiagnosticService } from '../../../diagnostics/diagnostic-service';
 import { createDomainAgentTools } from '../../../agent/tools/domain-tools';
+
+let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
+beforeAll(async () => {
+  projectFixture = await createProjectStackFixture();
+});
+afterAll(async () => {
+  await projectFixture.close();
+});
 
 const schema: OrigamixPageSchema = {
   elements: { element_root: { type: 'container', props: {} } },
@@ -27,7 +36,8 @@ const tools = (maxResultBytes?: number) => {
     { projectId: 'project_test', pageId: 'page_test' },
     {
       projects: {
-        getProject: (id) => (id === 'project_test' ? ({ id } as never) : undefined),
+        getProject: (id) =>
+          id === 'project_test' ? ({ id, path: projectFixture.path } as never) : undefined,
         getPage: (projectId, pageId) =>
           projectId === 'project_test' && pageId === 'page_test'
             ? ({ id: pageId } as never)

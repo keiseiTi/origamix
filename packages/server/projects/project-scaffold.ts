@@ -1,5 +1,6 @@
 import { cp, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared/protocol/project-stack';
 import { nanoid } from 'nanoid';
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { ProjectSourceService } from './project-source';
@@ -26,8 +27,9 @@ export class ProjectScaffoldService {
             projectId: `project_${nanoid()}`,
             name: input.name,
             code: input.code,
-            framework: 'react',
-            uiLibrary: 'antd',
+            framework: BUILTIN_PROJECT_STACK.framework,
+            uiLibrary: BUILTIN_PROJECT_STACK.uiLibrary,
+            materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
             pageDirectory: input.pageDirectory,
             pages: [],
           },

@@ -4,5 +4,9 @@
   "framework": "react",
   "uiLibrary": "antd",
   "pageDirectory": "pages",
-  "pages": []
+  "pages": [],
+  "materialSet": {
+    "id": "official-antd",
+    "version": "1.0.0"
+  }
 }

@@ -4,17 +4,12 @@ import type {
   EditorMode,
   EditorTool,
   EditorHistoryState,
-  EditorMaterialRegistration,
 } from '@origamix/editor/contracts';
-import {
-  materialGroups,
-  antdMaterialManifest,
-  propertyEditors,
-} from '@origamix/materials/antd/editor';
 import { Spinner } from '@origamix/ui/spinner';
 import { Button } from '@origamix/ui/button';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
+import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
 
 interface EditorProps {
@@ -36,17 +31,17 @@ interface EditorProps {
   onClarificationSelect?: (elementId: string) => void;
 }
 
-// The current built-in choice remains App-owned until project stack resolution lands.
-const registration: EditorMaterialRegistration = {
-  catalog: antdMaterialManifest,
-  groups: materialGroups,
-  propertyEditors,
-};
-
 export const PageEditor = forwardRef<EditorHandle, EditorProps>(
   ({ projectId, pageId, visible, onWorkingCommitted, readOnly = false, ...viewProps }, ref) => {
     const theme = usePreferencesStore((state) => state.theme);
-    const session = useEditorSession(projectId, pageId, readOnly, onWorkingCommitted);
+    const materials = useEditorMaterials(projectId, visible);
+    const session = useEditorSession(
+      projectId,
+      pageId,
+      readOnly,
+      onWorkingCommitted,
+      Boolean(materials.registration),
+    );
     const viewRef = useRef<EditorHandle>(null);
     useImperativeHandle(
       ref,
@@ -59,7 +54,19 @@ export const PageEditor = forwardRef<EditorHandle, EditorProps>(
     );
     // Keep host recovery alive without mounting canvas portals in chat or preview.
     if (!visible) return null;
-    if (session.loading)
+    if (materials.error)
+      return (
+        <div
+          role='alert'
+          className='grid min-h-0 flex-1 place-content-center gap-3 p-6 text-sm text-destructive'
+        >
+          <span>{materials.error}。页面草稿已保留，请检查项目配置后重试。</span>
+          <Button variant='outline' onClick={materials.retry}>
+            重试加载物料
+          </Button>
+        </div>
+      );
+    if (session.loading || !materials.registration)
       return (
         <div className='grid min-h-0 flex-1 place-items-center'>
           <Spinner aria-label='加载编辑器' />
@@ -96,7 +103,7 @@ export const PageEditor = forwardRef<EditorHandle, EditorProps>(
           ref={viewRef}
           schema={session.initial.schema}
           sessionKey={session.providerKey}
-          registration={registration}
+          registration={materials.registration}
           theme={theme}
           readOnly={readOnly}
           onChange={session.onChange}

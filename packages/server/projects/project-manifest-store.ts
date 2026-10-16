@@ -6,6 +6,10 @@ import {
   type ProjectManifest,
   type ProjectPageManifest,
 } from '@origamix/shared/protocol/project-manifest';
+import {
+  BUILTIN_PROJECT_STACK,
+  resolveProjectStack,
+} from '@origamix/shared/protocol/project-stack';
 import { invalid, notFound } from '../errors';
 import { nanoid } from 'nanoid';
 
@@ -23,8 +27,9 @@ export class ProjectManifestStore {
   ): Promise<void> {
     await this.writeManifest(projectPath, {
       ...input,
-      framework: 'react',
-      uiLibrary: 'antd',
+      framework: BUILTIN_PROJECT_STACK.framework,
+      uiLibrary: BUILTIN_PROJECT_STACK.uiLibrary,
+      materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],
     });
   }
@@ -47,11 +52,15 @@ export class ProjectManifestStore {
       projectId: manifest.projectId ?? `project_${nanoid()}`,
       name: manifest.name ?? defaults.name,
       code: manifest.code ?? defaults.code,
-      framework: manifest.framework ?? 'react',
-      uiLibrary: manifest.uiLibrary ?? 'antd',
+      framework:
+        manifest.framework === undefined ? BUILTIN_PROJECT_STACK.framework : manifest.framework,
+      uiLibrary:
+        manifest.uiLibrary === undefined ? BUILTIN_PROJECT_STACK.uiLibrary : manifest.uiLibrary,
       pageDirectory: manifest.pageDirectory ?? defaults.pageDirectory,
       pages: manifest.pages ?? [],
     };
+    const stack = this.resolveStack(completed);
+    Object.assign(completed, { materialSet: stack.materialSet });
     if (!isProjectManifest(completed)) throw invalid('项目清单字段无效');
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(completed.code)))
       throw invalid('项目清单中的项目标识无效');
@@ -72,6 +81,7 @@ export class ProjectManifestStore {
       manifest = { ...manifest, pageDirectory: 'pages' };
     }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
+    const stack = this.resolveStack(manifest);
     const ids = new Set<string>();
     const slugs = new Set<string>();
     for (const page of manifest.pages) {
@@ -80,7 +90,19 @@ export class ProjectManifestStore {
       ids.add(page.pageId);
       slugs.add(page.slug);
     }
-    return manifest;
+    return { ...manifest, materialSet: stack.materialSet };
+  }
+
+  private resolveStack(descriptor: unknown) {
+    try {
+      return resolveProjectStack(descriptor);
+    } catch (reason) {
+      throw invalid(reason instanceof Error ? reason.message : '项目技术栈配置无效');
+    }
+  }
+
+  async readStack(projectPath: string) {
+    return this.resolveStack(await this.readManifest(projectPath));
   }
 
   async readPages(projectPath: string): Promise<ProjectPageManifest[]> {

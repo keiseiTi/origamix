@@ -22,6 +22,7 @@ export const useEditorSession = (
   pageId: string,
   readOnly: boolean,
   onWorkingCommitted?: () => void,
+  readyToEdit = true,
 ) => {
   // A new ref cell per scope isolates queues even when an old request is pending.
   const sessionRef = useMemo<{ current: Session }>(
@@ -85,12 +86,16 @@ export const useEditorSession = (
   }, [projectId, pageId, sessionRef]);
 
   useEffect(() => {
-    if (loaded?.sessionRef !== sessionRef || !loaded.initial) return;
+    if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
+    const ownedSession = sessionRef.current;
     const timer = window.setTimeout(() => {
-      sessionRef.current.ready = sessionRef.current.active;
+      ownedSession.ready = ownedSession.active;
     }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loaded, sessionRef]);
+    return () => {
+      window.clearTimeout(timer);
+      ownedSession.ready = false;
+    };
+  }, [loaded, sessionRef, readyToEdit]);
 
   const flush = useCallback(async (): Promise<void> => {
     if (sessionRef.current.timer !== null) {

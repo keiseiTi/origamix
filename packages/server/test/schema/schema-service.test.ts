@@ -70,6 +70,29 @@ describe('Schema Service', () => {
       },
     });
 
+    // Version selection must reject writes without changing retained Working or target.
+    const manifestPath = join(page.projectPath, 'origamix.project.json');
+    const manifestSource = await readFile(manifestPath, 'utf8');
+    const targetPath = join(page.projectPath, 'src/pages', page.slug, 'schema.json');
+    const targetSource = await readFile(targetPath, 'utf8');
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        ...JSON.parse(manifestSource),
+        materialSet: { id: 'official-antd', version: '9.0.0' },
+      }),
+    );
+    await expect(
+      updateWorkingSchema(page, {
+        baseWorkingVersion: updated.workingVersion,
+        schema,
+      }),
+    ).rejects.toThrow('9.0.0');
+    expect((await getWorkingSchemaState(page)).workingVersion).toBe(updated.workingVersion);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetSource);
+    expect(await readFile(manifestPath, 'utf8')).toContain('9.0.0');
+    await writeFile(manifestPath, manifestSource);
+
     expect(updated.workingVersion).toBe(initial.workingVersion + 1);
     expect(updated.revisionId).toBe(initialRevisionId);
     expect(updated.workingHash).not.toBe(updated.savedSchemaHash);

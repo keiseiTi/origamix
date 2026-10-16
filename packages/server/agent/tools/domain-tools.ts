@@ -6,7 +6,7 @@ import { invalid, notFound } from '../../errors';
 import type { ProjectRepository } from '../../projects/project-repository';
 import type { ProductDocsProvider } from '../product-docs-provider';
 import type { RuntimeDiagnosticService } from '../../diagnostics/diagnostic-service';
-import { validatePageAgainstMaterials } from '../../schema/material-validation';
+import { validateProjectPageAgainstMaterials } from '../../schema/material-validation';
 import type { AgentEngineTool } from '../engine';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
@@ -81,9 +81,10 @@ export const createDomainAgentTools = (
         assertPage();
         const structural = validatePage(input.schema);
         const result = structural.valid
-          ? validatePageAgainstMaterials(input.schema as OrigamixPageSchema, [
-              { id: 'official-antd', version: '1.0.0' },
-            ])
+          ? await validateProjectPageAgainstMaterials(
+              dependencies.projects.getProject(scope.projectId)!.path,
+              input.schema as OrigamixPageSchema,
+            )
           : {
               valid: false,
               errors: [

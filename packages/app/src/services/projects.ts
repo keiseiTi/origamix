@@ -4,9 +4,15 @@ import type {
   ProjectRecord,
   ProjectWithPages,
 } from '@origamix/shared/protocol/api';
+import {
+  validateResolvedProjectStack,
+  type ProjectStack,
+} from '@origamix/shared/protocol/project-stack';
 import { request } from './request';
 
 export const projectsService = {
+  stack: async (projectId: string): Promise<ProjectStack> =>
+    validateResolvedProjectStack(await request<unknown>('/projects/stack/get', { projectId })),
   list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),
   create: (input: {
     name: string;

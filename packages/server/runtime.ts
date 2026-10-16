@@ -1,3 +1,4 @@
+import { loadProjectMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
 import { AgentRunRepository } from './agent/run-repository';
@@ -105,13 +106,16 @@ export const startServer = async (input: {
             pageId: scope.pageId,
             workingVersion: scope.baseWorkingVersion,
           },
-          { projects },
+          { projects, loadMaterials: loadProjectMaterials },
         ),
         ...createDomainAgentTools(
           { projectId: scope.projectId, pageId: scope.pageId },
           { projects, docs: productDocs, diagnostics: runtimeDiagnostics },
         ),
-        createCompletePageRunTool({ projects, runs, runService }, scope),
+        createCompletePageRunTool(
+          { projects, runs, runService, loadMaterials: loadProjectMaterials },
+          scope,
+        ),
       ]),
     audit: (event) => {
       toolAudits.append(event);

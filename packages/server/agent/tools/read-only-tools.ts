@@ -1,10 +1,7 @@
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import {
-  antdAgentMaterialCatalog,
-  antdMaterialManifest,
-  getAntdMaterialManifests,
-} from '@origamix/materials/antd/manifest';
+import type { ProjectMaterialReader } from './material-reader';
+import type { MaterialManifestCatalog } from '@origamix/shared/protocol/material-manifest';
 import { getAgentElementLabel, type OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { ProjectRepository } from '../../projects/project-repository';
 import { conflict, invalid, notFound } from '../../errors';
@@ -45,6 +42,7 @@ export interface ReadOnlyToolScope {
 }
 
 export interface ReadOnlyToolDependencies {
+  loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   readSchema?: (
     page: SchemaPageRef,
@@ -94,14 +92,18 @@ const boundedResult = (value: JsonObject): JsonObject => {
   };
 };
 
-const elementSummary = (schema: OrigamixPageSchema, elementId: string): JsonObject => {
+const elementSummary = (
+  schema: OrigamixPageSchema,
+  elementId: string,
+  catalog: MaterialManifestCatalog,
+): JsonObject => {
   const element = schema.elements[elementId]!;
   return {
     id: elementId,
     label: getAgentElementLabel(
       elementId,
       element,
-      antdMaterialManifest.materials.find((material) => material.type === element.type)?.title,
+      catalog.materials.find((material) => material.type === element.type)?.title,
     ),
     type: element.type,
     props: compactValue(element.props),
@@ -115,6 +117,8 @@ export const createReadOnlyAgentTools = (
   dependencies: ReadOnlyToolDependencies,
 ): AgentEngineTool[] => {
   const cache = new Map<string, Promise<unknown>>();
+  let materialManifest: MaterialManifestCatalog;
+  let agentCatalog: Awaited<ReturnType<ProjectMaterialReader>>['agentCatalog'];
   let schemaPromise:
     Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> | undefined;
 
@@ -131,6 +135,9 @@ export const createReadOnlyAgentTools = (
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
     if (!page || page.status !== 0) throw notFound('页面不存在或不属于该项目');
+    const materials = await dependencies.loadMaterials(project.path);
+    materialManifest = materials.manifest;
+    agentCatalog = materials.agentCatalog;
     schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)({
       projectPath: project.path,
       pageId: page.id,
@@ -175,7 +182,7 @@ export const createReadOnlyAgentTools = (
             rootElementId: schema.layout.root,
             elementCount: Object.keys(schema.elements).length,
             materialTypes: [...new Set(materialTypes)].sort(),
-            materialSet: antdMaterialManifest.materialSet,
+            materialSet: materialManifest.materialSet,
           });
         });
       },
@@ -202,7 +209,7 @@ export const createReadOnlyAgentTools = (
               label: getAgentElementLabel(
                 id,
                 element,
-                antdMaterialManifest.materials.find((material) => material.type === element.type)
+                materialManifest.materials.find((material) => material.type === element.type)
                   ?.title,
               ),
               type: element.type,
@@ -244,7 +251,7 @@ export const createReadOnlyAgentTools = (
               return;
             }
             seen.add(id);
-            elements.push(elementSummary(schema, id));
+            elements.push(elementSummary(schema, id, materialManifest));
             for (const child of schema.layout.structure[id] ?? []) visit(child, currentDepth + 1);
           };
           visit(input.elementId, 0);
@@ -259,7 +266,7 @@ export const createReadOnlyAgentTools = (
     },
     {
       name: 'search_materials',
-      description: '在 official-antd 物料摘要中搜索类型、名称、说明或关键词。',
+      description: '在当前项目的物料摘要中搜索类型、名称、说明或关键词。',
       parameters: SearchMaterialsInputSchema,
       execute: async (raw, signal) => {
         assertNotAborted(signal);
@@ -269,7 +276,7 @@ export const createReadOnlyAgentTools = (
         if (!query) throw invalid('物料搜索词不能为空');
         const limit = input.limit ?? 5;
         return cached(`material-search:${query}:${limit}`, async () => {
-          const matches = antdAgentMaterialCatalog
+          const matches = agentCatalog
             .filter((material) =>
               [material.type, material.title, material.description, ...material.keywords]
                 .join('\n')
@@ -277,22 +284,24 @@ export const createReadOnlyAgentTools = (
                 .includes(query),
             )
             .slice(0, limit);
-          return boundedResult({ materialSet: antdMaterialManifest.materialSet, query, matches });
+          return boundedResult({ materialSet: materialManifest.materialSet, query, matches });
         });
       },
     },
     {
       name: 'get_material_manifest',
-      description: '按准确 type 读取 official-antd 的单个纯数据 Material Manifest。',
+      description: '按准确 type 读取当前项目的单个纯数据 Material Manifest。',
       parameters: MaterialManifestInputSchema,
       execute: async (raw, signal) => {
         assertNotAborted(signal);
         const input = assertInput<MaterialManifestInput>(MaterialManifestInputSchema, raw);
         await load(input, signal);
         return cached(`material-manifest:${input.type}`, async () => {
-          const manifest = getAntdMaterialManifests([input.type])[0];
+          const manifest = materialManifest.materials.find(
+            (material) => material.type === input.type,
+          );
           if (!manifest) throw notFound('物料类型不存在于当前 Material Set');
-          return boundedResult({ materialSet: antdMaterialManifest.materialSet, manifest });
+          return boundedResult({ materialSet: materialManifest.materialSet, manifest });
         });
       },
     },

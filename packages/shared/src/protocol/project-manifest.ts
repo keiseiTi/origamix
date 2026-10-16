@@ -1,4 +1,5 @@
 import { Type, type Static } from '@sinclair/typebox';
+import { VersionedStackReferenceSchema } from './project-stack';
 import { Value } from '@sinclair/typebox/value';
 
 export const ProjectPageManifestSchema = Type.Object({
@@ -12,6 +13,7 @@ export const ProjectManifestSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
   framework: Type.Literal('react'),
   uiLibrary: Type.Literal('antd'),
+  materialSet: Type.Optional(VersionedStackReferenceSchema),
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
 });

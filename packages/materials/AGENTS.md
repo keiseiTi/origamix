@@ -10,6 +10,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - `antd/*/definition.ts`: the single serializable source for editor metadata and Manifest data when a material has migrated to `OrigamixMaterial`.
 - `src/material-definition.ts`: pure-data definition/Manifest converters; editor-specific conversion remains in `src/origamix-material.ts`. Keep React rendering helpers out of Server-facing Manifest imports.
 - `antd/manifest-definition.ts`: shared declaration helpers for colocated manifests; it has no React or editor imports.
+- `antd/material-set.ts`: installed material-set identity shared by Manifest and runtime; runtime exports it so lazy consumers can check the installed version without loading editor metadata.
 - `antd/*/index.tsx`: thin Tangramino-compatible component adapters.
 - `antd/*/material-config.ts`: stable material metadata, defaults, context and editor controls.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.

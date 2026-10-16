@@ -47,11 +47,17 @@ describe('useEditorSession', () => {
       workingVersion: 5,
     });
     const onWorkingCommitted = vi.fn();
-    const hook = renderHook(() =>
-      useEditorSession('project_one', 'page_one', false, onWorkingCommitted),
+    const hook = renderHook(
+      ({ ready }) => useEditorSession('project_one', 'page_one', false, onWorkingCommitted, ready),
+      { initialProps: { ready: false } },
     );
     await act(async () => Promise.resolve());
     await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
+    // Slow material loading must not admit engine bootstrap snapshots as edits.
+    act(() => hook.result.current.onChange(next));
+    await act(async () => hook.result.current.flush());
+    expect(schemaMocks.applyWorkingOperations).not.toHaveBeenCalled();
+    hook.rerender({ ready: true });
     await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
 
     act(() => hook.result.current.onChange(next));

@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import {
+  BUILTIN_PROJECT_STACK,
+  resolveProjectStack,
+  validateResolvedProjectStack,
+} from '../../src/protocol/project-stack';
 import { isProjectManifest } from '../../src/protocol/project-manifest';
 
 const manifest = () => ({
@@ -13,6 +18,21 @@ const manifest = () => ({
 describe('project manifest protocol', () => {
   it('accepts the supported project and page format', () => {
     expect(isProjectManifest(manifest())).toBe(true);
+    expect(resolveProjectStack(manifest())).toEqual(BUILTIN_PROJECT_STACK);
+    expect(validateResolvedProjectStack(BUILTIN_PROJECT_STACK)).toEqual(BUILTIN_PROJECT_STACK);
+    expect(() =>
+      resolveProjectStack({
+        ...manifest(),
+        materialSet: { id: 'official-antd', version: '9.0.0' },
+      }),
+    ).toThrow('9.0.0');
+    expect(() => resolveProjectStack({ ...manifest(), materialSet: null })).toThrow();
+    expect(() =>
+      validateResolvedProjectStack({
+        ...BUILTIN_PROJECT_STACK,
+        runtime: { id: 'origamix.react', version: '9.0.0' },
+      }),
+    ).toThrow();
   });
 
   it.each([{ pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(

@@ -30,6 +30,13 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
     route(() => input.projects.listProjects()),
   );
   server.post(
+    '/api/v1/projects/stack/get',
+    { schema: { body: ProjectScopeSchema } },
+    route<Static<typeof ProjectScopeSchema>>((request) =>
+      input.projectService.getStack(request.body.projectId),
+    ),
+  );
+  server.post(
     '/api/v1/projects/create',
     { schema: { body: CreateProjectSchema } },
     route<Static<typeof CreateProjectSchema>>(

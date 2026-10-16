@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
+import { projectsService } from '@/services/projects';
 import { schemaService } from '@/services/schema';
 import type { AppTheme } from '@/store/preferences';
 
@@ -61,8 +62,11 @@ export const PagePreviewFrame = ({
       pending.current = true;
       if (manual) setRefreshing(true);
       try {
-        const result = await schemaService.get(projectId, pageId);
-        const next = { ...result, theme } satisfies PreviewSnapshot;
+        const [result, stack] = await Promise.all([
+          schemaService.get(projectId, pageId),
+          projectsService.stack(projectId),
+        ]);
+        const next = { ...result, stack, theme } satisfies PreviewSnapshot;
         setSnapshot(next);
         publishSnapshot(next);
         setError(null);
@@ -101,7 +105,11 @@ export const PagePreviewFrame = ({
             pageId,
             result.visualRevisionId,
           );
-          const fallback = { ...visual, theme } satisfies PreviewSnapshot;
+          const fallback = {
+            ...visual,
+            stack: await projectsService.stack(projectId),
+            theme,
+          } satisfies PreviewSnapshot;
           setSnapshot(fallback);
           publishSnapshot(fallback);
           setError('当前版本渲染失败，已回退到最近一次正常预览');

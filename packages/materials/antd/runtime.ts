@@ -1,3 +1,4 @@
+export { materialSet } from './material-set';
 import { withRuntimeMaterialProps } from '../src/runtime-material';
 import { Button } from './button';
 import { Input } from './input';

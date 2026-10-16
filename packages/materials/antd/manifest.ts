@@ -1,3 +1,4 @@
+import { materialSet } from './material-set';
 import {
   MATERIAL_MANIFEST_FORMAT_VERSION,
   toAgentMaterialSummary,
@@ -82,7 +83,7 @@ const manifests = [
 
 export const antdMaterialManifest: MaterialManifestCatalog = {
   formatVersion: MATERIAL_MANIFEST_FORMAT_VERSION,
-  materialSet: { id: 'official-antd', version: '1.0.0' },
+  materialSet,
   materials: manifests,
 };
 

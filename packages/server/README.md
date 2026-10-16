@@ -2,6 +2,8 @@
 
 Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Schema 编辑与应用、会话和 Agent 执行。HTTP 只监听 `127.0.0.1`，目录授权和模型凭据由宿主提供。
 
+项目清单中的 `framework`、`uiLibrary` 与 `materialSet` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回匹配的物料集、Runtime 和模板身份/版本；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。显式不支持的版本拒绝写入，旧项目缺少物料集字段时保留原内置版本。
+
 ## 从哪里开始
 
 1. [runtime.ts](runtime.ts)：查看依赖装配、启动和关闭。

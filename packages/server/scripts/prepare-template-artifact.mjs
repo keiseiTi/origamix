@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { resolveProjectStack } from '@origamix/shared/protocol/project-stack';
 import { copyTemplate } from '@origamix/server/template';
 
 const packages = [
@@ -14,6 +15,20 @@ export const prepareTemplateArtifact = async ({
   runtimePackage,
   materialsPackage,
 }) => {
+  const stack = resolveProjectStack(
+    JSON.parse(await readFile(join(sourceTemplate, 'origamix.project.json'), 'utf8')),
+  );
+  const runtimeManifest = JSON.parse(await readFile(join(runtimePackage, 'package.json'), 'utf8'));
+  const materialManifest = JSON.parse(
+    await readFile(join(materialsPackage, 'package.json'), 'utf8'),
+  );
+  const templateManifest = JSON.parse(await readFile(join(sourceTemplate, 'package.json'), 'utf8'));
+  if (
+    runtimeManifest.version !== stack.runtime.version ||
+    materialManifest.version !== stack.materialSet.version ||
+    templateManifest.version !== stack.template.version
+  )
+    throw new Error('Template artifact versions do not match the supported project stack');
   await rm(targetTemplate, { recursive: true, force: true });
   await copyTemplate(sourceTemplate, targetTemplate);
   const vendor = join(targetTemplate, 'vendor');

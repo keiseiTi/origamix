@@ -4,6 +4,7 @@ import { basename, isAbsolute, join, relative } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import { resolveProjectStack } from '@origamix/shared/protocol/project-stack';
 import { validatePage } from '@origamix/shared/protocol/validation';
 import {
   discardInitializedPageSchema,
@@ -154,6 +155,14 @@ export class ProjectService {
     return { status: 'opened', project: await this.reconcile(path) };
   }
 
+  async getStack(projectId: string) {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+    const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.projectId !== projectId) throw invalid('项目清单身份已变化，请重新打开项目');
+    return resolveProjectStack(manifest);
+  }
+
   async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
     return this.createPageWithSchema(projectId, input, schemaTemplate());
   }
@@ -197,7 +206,12 @@ export class ProjectService {
       await mkdir(pagePath);
       pageDirectoryCreated = true;
       await this.projectApply.initializeTarget(pageRef, schema);
-      await this.source.createPageEntry(project.path, manifest.pageDirectory, input.slug);
+      await this.source.createPageEntry(
+        project.path,
+        manifest.pageDirectory,
+        input.slug,
+        resolveProjectStack(manifest),
+      );
       await initializePageSchema(pageRef, schema);
       const nextPage = { pageId: id, name, slug: input.slug };
       await this.manifest.addPage(project.path, nextPage);

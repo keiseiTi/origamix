@@ -1,10 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
+import { createProjectStackFixture } from '../../testing/project-stack-fixture';
+import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import type { StoredMessage } from '../../conversations/conversation-repository';
 import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ContextAssembler } from '../../agent/context-assembler';
 
-const page = { projectPath: '/project', pageId: 'page_home', slug: 'home' };
+let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
+beforeAll(async () => {
+  projectFixture = await createProjectStackFixture();
+});
+afterAll(async () => {
+  await projectFixture.close();
+});
+
+const page = {
+  get projectPath() {
+    return projectFixture.path;
+  },
+  pageId: 'page_home',
+  slug: 'home',
+};
 const currentRequest = '添加表单';
 const schema = (extra = 0): OrigamixPageSchema => ({
   elements: Object.fromEntries([

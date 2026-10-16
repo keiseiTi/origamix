@@ -1,4 +1,4 @@
-import { antdMaterialManifest } from '@origamix/materials/antd/manifest';
+import type { ProjectMaterialReader } from './material-reader';
 import { createHash, randomUUID } from 'node:crypto';
 import { Value } from '@sinclair/typebox/value';
 import {
@@ -27,6 +27,7 @@ export interface CompletePageRunToolScope {
 }
 
 export interface CompletePageRunToolDependencies {
+  loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   runs: Pick<AgentRunRepository, 'get'>;
   runService: AgentRunService;
@@ -127,6 +128,7 @@ export const createCompletePageRunTool = (
       const project = dependencies.projects.getProject(scope.projectId);
       const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
       if (!project || !page) throw notFound('页面不存在或不属于当前项目');
+      const materials = await dependencies.loadMaterials(project.path);
       let candidates: ClarificationCandidate[] | undefined;
       if (input.outcome === 'needs_clarification' && input.candidates?.length) {
         const working = await getWorkingSchemaState({
@@ -150,7 +152,7 @@ export const createCompletePageRunTool = (
           label: getAgentElementLabel(
             candidate.elementId,
             working.schema.elements[candidate.elementId],
-            antdMaterialManifest.materials.find(
+            materials.manifest.materials.find(
               (material) => material.type === working.schema.elements[candidate.elementId]?.type,
             )?.title,
           ),

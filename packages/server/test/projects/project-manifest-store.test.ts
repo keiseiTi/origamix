@@ -51,6 +51,7 @@ it('fills only missing manifest fields from the open-project defaults', async ()
       code: 'opened-project',
       framework: 'react',
       uiLibrary: 'antd',
+      materialSet: { id: 'official-antd', version: '1.0.0' },
       pageDirectory: 'screens',
       pages: [],
     });

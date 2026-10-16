@@ -1,11 +1,6 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
-import {
-  antdMaterialManifest,
-  antdValidationMaterialRegistry,
-} from '@origamix/materials/antd/manifest';
-import type { ValidationMaterialManifest } from '@origamix/materials/manifest';
+import { builtinProjectMaterials, loadProjectMaterials } from '../projects/project-materials';
+import type { ValidationMaterialManifest } from '@origamix/shared/protocol/material-manifest';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 
 export type MaterialValidationErrorCode =
@@ -37,21 +32,14 @@ export interface MaterialValidationRuntime {
   registry: Readonly<Record<string, ValidationMaterialManifest>>;
 }
 
-interface ProjectDescriptor {
-  framework?: string;
-  uiLibrary?: string;
-}
-
 const ajv = new Ajv({ allErrors: true, strict: true });
 const validatorCache = new WeakMap<object, ValidateFunction>();
 const safeUrlPattern = /^(?:(?:https?):\/\/|(?:mailto|tel):|\/(?!\/)|\.{1,2}\/|#)/i;
 const unsafeExpressionPattern =
   /(?:\b(?:eval|Function|import|require|process|globalThis|window|document|fetch|XMLHttpRequest)\b|__proto__|prototype|constructor|=>|;|(?<![=!<>])=(?!=))/;
 
-export const defaultMaterialValidationRuntime: MaterialValidationRuntime = {
-  materialSet: antdMaterialManifest.materialSet,
-  registry: antdValidationMaterialRegistry,
-};
+export const defaultMaterialValidationRuntime: MaterialValidationRuntime =
+  builtinProjectMaterials.validation;
 
 const error = (
   code: MaterialValidationErrorCode,
@@ -319,14 +307,12 @@ export const validatePageAgainstMaterials = (
 export const validateProjectPageAgainstMaterials = async (
   projectPath: string,
   schema: OrigamixPageSchema,
-  runtime: MaterialValidationRuntime = defaultMaterialValidationRuntime,
+  runtime?: MaterialValidationRuntime,
 ): Promise<MaterialValidationResult> => {
-  const descriptor = JSON.parse(
-    await readFile(join(projectPath, 'origamix.project.json'), 'utf8'),
-  ) as ProjectDescriptor;
-  const materialSets =
-    descriptor.framework === 'react' && descriptor.uiLibrary === 'antd'
-      ? [{ id: 'official-antd', version: '1.0.0' }]
-      : [];
-  return validatePageAgainstMaterials(schema, materialSets, runtime);
+  const materials = await loadProjectMaterials(projectPath);
+  return validatePageAgainstMaterials(
+    schema,
+    [materials.manifest.materialSet],
+    runtime ?? materials.validation,
+  );
 };

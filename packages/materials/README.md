@@ -14,6 +14,8 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 
 旧 `antd` 与 `antd/group` 入口保留兼容。新增消费者使用上述三个入口。`editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器在后续阶段接入。
 
+`runtime` 同时导出轻量的 `materialSet` 身份/版本，供按需加载时核对安装包；它与 Manifest 引用同一份包内声明，不会因此加载编辑配置。
+
 运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
 
 消费页面需要 Ant Design 样式及 Tailwind；Tailwind v4 应通过 `@source` 显式扫描已安装的 `@origamix/materials/dist`。App 与生成项目模板已配置各自的源码/安装包路径。

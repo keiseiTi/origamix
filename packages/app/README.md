@@ -10,6 +10,7 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 - [src/components/editor](src/components/editor)：PageEditor 宿主装配、Working 会话、保存队列；编辑实现见 [Editor](../editor/README.md)。
 - [src/components/agent-chat](src/components/agent-chat)：Agent 会话及事件恢复。
 - [src/preview](src/preview)：给 Runtime 渲染结果添加工作台反馈；引擎创建归 Runtime。
+- [src/materials](src/materials)：读取 Server 解析的项目技术栈，通过固定导入表按需加载编辑/运行物料；加载失败可重试，旧页面响应不会覆盖当前注册。
 - [dev-server.ts](dev-server.ts)：Node 开发宿主，允许使用 Server 的公开启动入口。
 
 `src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。编辑会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。

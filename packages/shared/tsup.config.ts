@@ -9,6 +9,7 @@ export default defineConfig({
     'protocol/agent-validation': 'src/protocol/agent-validation.ts',
     'protocol/agent': 'src/protocol/agent.ts',
     'protocol/api': 'src/protocol/api.ts',
+    'protocol/project-stack': 'src/protocol/project-stack.ts',
     'protocol/project-manifest': 'src/protocol/project-manifest.ts',
     'protocol/flow-node': 'src/protocol/flow-node.ts',
     'protocol/material-manifest': 'src/protocol/material-manifest.ts',

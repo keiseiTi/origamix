@@ -1,3 +1,4 @@
+import { loadProjectMaterials } from '../../projects/project-materials';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,7 +25,12 @@ import { createHttpServer } from '../../http/server';
 
 it('reports the invalid terminal field so a rejected reset can be repaired', async () => {
   const tool = createCompletePageRunTool(
-    { projects: {} as never, runs: {} as never, runService: {} as never },
+    {
+      projects: {} as never,
+      runs: {} as never,
+      runService: {} as never,
+      loadMaterials: loadProjectMaterials,
+    },
     {
       runId: 'run_test',
       messageId: 'message_test',
@@ -98,7 +104,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       createTools: (scope) =>
         createDefaultAgentToolEntries([
           createCompletePageRunTool(
-            { projects, runs, runService },
+            { projects, runs, runService, loadMaterials: loadProjectMaterials },
             { ...scope, maxSchemaBytes: 256 * 1024 },
           ),
         ]),

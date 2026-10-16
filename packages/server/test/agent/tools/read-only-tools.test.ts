@@ -1,7 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { loadProjectMaterials } from '../../../projects/project-materials';
+import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
+import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { ApiError } from '../../../errors';
 import { createReadOnlyAgentTools } from '../../../agent/tools/read-only-tools';
+
+let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
+beforeAll(async () => {
+  projectFixture = await createProjectStackFixture();
+});
+afterAll(async () => {
+  await projectFixture.close();
+});
 
 const revisionId = 'revision_current';
 const schema: OrigamixPageSchema = {
@@ -30,7 +40,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVers
       id === 'project_one'
         ? {
             id,
-            path: '/authorized/project',
+            path: projectFixture.path,
             name: 'Project',
             status: 0,
             createdAt: '2026-01-01T00:00:00.000Z',
@@ -60,7 +70,7 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVers
       pageId: 'page_one',
       workingVersion: 1,
     },
-    { projects, readSchema },
+    { projects, readSchema, loadMaterials: loadProjectMaterials },
   );
   const execute = (name: string, input: unknown) => {
     const tool = tools.find((candidate) => candidate.name === name);
@@ -93,7 +103,7 @@ describe('read-only Agent tools', () => {
     await execute('get_page_context', scope);
     expect(readSchema).toHaveBeenCalledTimes(1);
     expect(readSchema).toHaveBeenCalledWith({
-      projectPath: '/authorized/project',
+      projectPath: projectFixture.path,
       pageId: 'page_one',
       slug: 'home',
       relativePath: 'src/pages/home',

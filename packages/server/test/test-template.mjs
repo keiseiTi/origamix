@@ -1,3 +1,4 @@
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared/protocol/project-stack';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -46,6 +47,14 @@ try {
     pageDirectory: 'pages',
     directoryGrantId: 'template-test-grant',
   });
+  assert.deepEqual(
+    await request('/projects/stack/get', { projectId: created.id }),
+    BUILTIN_PROJECT_STACK,
+  );
+  assert.deepEqual(
+    JSON.parse(await readFile(join(project, 'origamix.project.json'), 'utf8')).materialSet,
+    BUILTIN_PROJECT_STACK.materialSet,
+  );
   const page = await request('/pages/create', {
     projectId: created.id,
     name: 'Home',

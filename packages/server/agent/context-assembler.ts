@@ -1,4 +1,4 @@
-import { antdAgentMaterialCatalog } from '@origamix/materials/antd/manifest';
+import { loadProjectMaterials } from '../projects/project-materials';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
 import { conflict } from '../errors';
 import type { StoredMessage } from '../conversations/conversation-repository';
@@ -205,7 +205,8 @@ export class ContextAssembler {
       docsTruncated = true;
     }
 
-    let materialCatalog = JSON.stringify(antdAgentMaterialCatalog);
+    const materials = await loadProjectMaterials(input.page.projectPath);
+    let materialCatalog = JSON.stringify(materials.agentCatalog);
     let context: Omit<AssembledAgentContext, 'sizeChars'> = {
       version: '1',
       savedRevisionId: current.revisionId,
