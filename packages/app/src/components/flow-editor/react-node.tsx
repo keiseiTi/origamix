@@ -5,6 +5,8 @@ import { getNodeDefinition } from './nodes/definitions';
 
 class EventNodeModel extends HtmlNodeModel {
   setAttributes(): void {
+    const connections = getNodeDefinition(String(this.type))?.connections;
+    const branched = connections?.outputs.includes('true') ?? false;
     this.width = 148;
     this.height = 48;
     this.text.editable = false;
@@ -12,30 +14,28 @@ class EventNodeModel extends HtmlNodeModel {
       {
         message: '请从输出锚点连接节点',
         validate: (_source, _target, anchor) =>
-          String(this.type) !== 'condition' ||
-          Boolean(anchor?.id?.endsWith('_true') || anchor?.id?.endsWith('_false')),
+          !branched || Boolean(anchor?.id?.endsWith('_true') || anchor?.id?.endsWith('_false')),
       },
     ];
     this.targetRules = [
       {
         message: '开始节点不能接收连线，条件节点请连接左侧输入锚点',
         validate: (_source, _target, _sourceAnchor, anchor) =>
-          String(this.type) !== 'start' &&
-          (String(this.type) !== 'condition' || anchor?.id === `${this.id}_in`),
+          Boolean(connections?.acceptsInput) && (!branched || anchor?.id === `${this.id}_in`),
       },
     ];
-    this.anchorsOffset =
-      String(this.type) === 'condition'
-        ? []
-        : String(this.type) === 'start'
-          ? [[74, 0]]
-          : [
-              [-74, 0],
-              [74, 0],
-            ];
+    this.anchorsOffset = branched
+      ? []
+      : !connections?.acceptsInput
+        ? [[74, 0]]
+        : [
+            [-74, 0],
+            [74, 0],
+          ];
   }
   getDefaultAnchor() {
-    if (String(this.type) !== 'condition') return super.getDefaultAnchor();
+    const connections = getNodeDefinition(String(this.type))?.connections;
+    if (!connections?.outputs.includes('true')) return super.getDefaultAnchor();
     return [
       { x: this.x - 74, y: this.y, id: `${this.id}_in` },
       { x: this.x + 74, y: this.y - 12, id: `${this.id}_true` },
@@ -86,13 +86,13 @@ export const createReactNode = (resolveElementLabel: (id: string) => string) => 
               {String(model.type) === 'start'
                 ? '事件触发'
                 : String(
-                    String(model.type) === 'customJS'
+                    getNodeDefinition(String(model.type))?.executable === false
                       ? '仅配置 · 暂不执行'
                       : targetLabel || model.properties.name || '点击配置节点',
                   )}
             </div>
           </div>
-          {String(model.type) === 'condition' && (
+          {getNodeDefinition(String(model.type))?.connections.outputs.includes('true') && (
             <div className='ml-auto flex flex-col gap-1 text-[9px] text-muted-foreground'>
               <span>真</span>
               <span>假</span>

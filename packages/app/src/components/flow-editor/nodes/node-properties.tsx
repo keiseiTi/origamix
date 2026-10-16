@@ -6,7 +6,7 @@ import { FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FlowSelect } from '../flow-select';
-import { getNodeDefinition } from './definitions';
+import { getNodeDefinition, getNodePropertyChoices, getNodePropertySchema } from './definitions';
 import { SettersFields } from './setters-fields';
 import { ValueField } from './value-field';
 
@@ -23,6 +23,8 @@ export const NodeProperties = ({
   const materials = useEditorCore((state) => state.materials);
   const properties = node.properties ?? {};
   const type = node.type;
+  const definition = getNodeDefinition(String(type));
+  const timeoutSchema = getNodePropertySchema(String(type), 'timeout');
   const elementOptions = Object.entries(schema.elements).map(([id, item]) => ({
     value: id,
     label: getElementLabel(
@@ -53,6 +55,7 @@ export const NodeProperties = ({
       <p className='break-all text-[11px] text-muted-foreground'>
         类型：{type} · ID：{node.id}
       </p>
+      {definition && <p className='text-xs text-muted-foreground'>{definition.description}</p>}
       {type === 'start' && (
         <p className='text-xs text-muted-foreground'>
           {eventLabel ?? '事件'}触发后，从此节点开始执行。开始节点不可删除。
@@ -88,6 +91,7 @@ export const NodeProperties = ({
           </div>
           <ValueField
             label='显隐设置'
+            literalType='boolean'
             value={properties.value ?? properties.visible ?? true}
             onChange={(value) => onChange({ value })}
           />
@@ -112,20 +116,17 @@ export const NodeProperties = ({
       )}
       {type === 'interfaceRequest' && (
         <>
-          <div className='space-y-1.5'>
-            <FieldLabel htmlFor={`url-${node.id}`}>请求 URL</FieldLabel>
-            <Input
-              id={`url-${node.id}`}
-              placeholder='https://api.example.com/data'
-              value={String(properties.url ?? '')}
-              onChange={(event) => onChange({ url: event.target.value })}
-            />
-          </div>
+          <ValueField
+            label='请求 URL'
+            literalType='string'
+            value={properties.url ?? ''}
+            onChange={(url) => onChange({ url })}
+          />
           <FieldLabel>请求方法</FieldLabel>
           <FlowSelect
             label='请求方法'
             value={String(properties.method ?? 'get')}
-            options={['get', 'post', 'delete', 'put', 'patch'].map((method) => ({
+            options={getNodePropertyChoices('interfaceRequest', 'method').map((method) => ({
               value: method,
               label: method.toUpperCase(),
             }))}
@@ -134,6 +135,7 @@ export const NodeProperties = ({
           <ValueField
             label='请求头参数'
             objectOnly
+            literalType='stringRecord'
             value={properties.headers ?? {}}
             onChange={(headers) => onChange({ headers })}
           />
@@ -153,12 +155,15 @@ export const NodeProperties = ({
             <Input
               id={`timeout-${node.id}`}
               type='number'
-              min={100}
-              max={60000}
+              min={Number(timeoutSchema.minimum)}
+              max={Number(timeoutSchema.maximum)}
               value={Number(properties.timeout ?? 10000)}
               onChange={(event) =>
                 onChange({
-                  timeout: Math.max(100, Math.min(60000, Number(event.target.value) || 10000)),
+                  timeout: Math.max(
+                    Number(timeoutSchema.minimum),
+                    Math.min(Number(timeoutSchema.maximum), Number(event.target.value) || 10000),
+                  ),
                 })
               }
             />
@@ -178,13 +183,15 @@ export const NodeProperties = ({
             onChange={(event) => onChange({ code: event.target.value })}
             spellCheck={false}
           />
-          <p
-            role='status'
-            className='rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground'
-          >
-            仅保存代码配置，当前暂不执行自定义 JS。
-          </p>
         </>
+      )}
+      {definition?.executable === false && (
+        <p
+          role='status'
+          className='rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground'
+        >
+          当前节点仅保存配置，不参与执行。
+        </p>
       )}
       {type === 'condition' && (
         <>
@@ -197,13 +204,19 @@ export const NodeProperties = ({
           <FlowSelect
             label='比较方式'
             value={String(properties.operator ?? 'truthy')}
-            options={[
-              ['truthy', '是否为真'],
-              ['equals', '等于'],
-              ['notEquals', '不等于'],
-              ['greater', '大于'],
-              ['less', '小于'],
-            ].map(([value, label]) => ({ value: value!, label: label! }))}
+            options={getNodePropertyChoices('condition', 'operator').map((value) => ({
+              value,
+              label:
+                (
+                  {
+                    truthy: '是否为真',
+                    equals: '等于',
+                    notEquals: '不等于',
+                    greater: '大于',
+                    less: '小于',
+                  } as Record<string, string>
+                )[value] ?? value,
+            }))}
             onChange={(operator) => onChange({ operator })}
           />
           {properties.operator && properties.operator !== 'truthy' && (

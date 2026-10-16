@@ -11,11 +11,13 @@ export const ValueField = ({
   value,
   onChange,
   objectOnly = false,
+  literalType,
 }: {
   label: string;
   value: unknown;
   onChange: (value: unknown) => void;
   objectOnly?: boolean;
+  literalType?: 'string' | 'boolean' | 'stringRecord';
 }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
   const record = asRecord(value);
@@ -33,21 +35,48 @@ export const ValueField = ({
         ]}
         onChange={(next) =>
           onChange(
-            next === 'literal' ? (objectOnly ? {} : null) : { $ref: next, name: '', path: '' },
+            next === 'literal'
+              ? objectOnly
+                ? {}
+                : literalType === 'string'
+                  ? ''
+                  : literalType === 'boolean'
+                    ? true
+                    : null
+              : { $ref: next, name: '', path: '' },
           )
         }
       />
-      {source === 'literal' ? (
+      {source === 'literal' && literalType === 'string' ? (
+        <Input
+          aria-label={label}
+          value={typeof value === 'string' ? value : ''}
+          placeholder='https://api.example.com/data'
+          onChange={(event) => onChange(event.target.value)}
+        />
+      ) : source === 'literal' ? (
         <JsonAttributeField
           key={JSON.stringify(value)}
           label={label}
           value={value ?? (objectOnly ? {} : null)}
-          validateValue={(candidate) =>
-            objectOnly &&
-            (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate))
-              ? '请输入 JSON 对象'
-              : undefined
-          }
+          validateValue={(candidate) => {
+            if (
+              objectOnly &&
+              (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate))
+            )
+              return '请输入 JSON 对象';
+            if (
+              literalType === 'stringRecord' &&
+              Object.values(asRecord(candidate)).some((item) => typeof item !== 'string')
+            )
+              return '请求头各项值必须为字符串';
+            if (
+              (literalType === 'string' || literalType === 'boolean') &&
+              typeof candidate !== literalType
+            )
+              return literalType === 'string' ? '请输入 JSON 字符串' : '请输入 true 或 false';
+            return undefined;
+          }}
           onChange={onChange}
         />
       ) : (

@@ -1,5 +1,6 @@
 import type LogicFlow from '@logicflow/core';
 import type { Flow, Schema } from '@tangramino/engine';
+import { getNodeDefinition } from './nodes/definitions';
 
 export interface EventTarget {
   elementId: string;
@@ -91,7 +92,8 @@ export const toFlow = (graph: LogicFlow.GraphData): Flow => {
     const source = nodes[edge.sourceNodeId];
     const target = nodes[edge.targetNodeId];
     if (!source || !target) throw new Error('连线指向了不存在的节点');
-    if (target.id === start.id) throw new Error('开始节点不能有输入连线');
+    if (getNodeDefinition(target.type)?.connections.acceptsInput === false)
+      throw new Error('开始节点不能有输入连线');
     if (source.type === 'condition') {
       const branches = source.props.condition as { value: boolean; nextNode: string }[];
       const branch =

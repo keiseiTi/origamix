@@ -7,6 +7,8 @@ import { FieldLabel } from '@/components/ui/field';
 import { FlowSelect } from '../flow-select';
 import { ValueField } from './value-field';
 import { asRecord } from './values';
+import { getAntdMaterialManifests } from '@origamix/materials/antd/manifest';
+import { defaultNodeProps } from './definitions';
 
 export const SettersFields = ({
   type,
@@ -49,9 +51,28 @@ export const SettersFields = ({
       {setters.map((setter, index) => {
         const element = schema.elements[String(setter.elementId ?? '')];
         const material = materials.find((item) => item.type === element?.type);
+        const fieldLabels = new Map(
+          (material?.editorConfig?.panels ?? []).flatMap((panel) =>
+            (panel.configs ?? []).map((field) => [field.field, field.label] as const),
+          ),
+        );
+        const declaredProps = getAntdMaterialManifests([element?.type ?? ''])[0]?.propsSchema
+          .properties as Record<string, { description?: string }> | undefined;
+        const declaredFields = Object.entries(declaredProps ?? {}).map(([name, definition]) => ({
+          name,
+          description:
+            typeof fieldLabels.get(name) === 'string'
+              ? String(fieldLabels.get(name))
+              : (definition.description ?? name),
+        }));
         const fields = method
           ? (material?.contextConfig?.contextValues ?? []).filter((item) => item.isMethod)
-          : (material?.contextConfig?.variables ?? []);
+          : [
+              ...declaredFields,
+              ...(material?.contextConfig?.variables ?? []).filter(
+                (field) => !declaredProps?.[field.name],
+              ),
+            ];
         return (
           <div key={keys[index] ?? index} className='space-y-2 rounded-md border border-border p-2'>
             <div className='flex items-center justify-between'>
@@ -95,7 +116,9 @@ export const SettersFields = ({
               onChange={(value) =>
                 patch(
                   index,
-                  global ? { name: value } : { elementId: value, propName: '', methodName: '' },
+                  global
+                    ? { name: value }
+                    : { elementId: value, ...(method ? { methodName: '' } : { propName: '' }) },
                 )
               }
             />
@@ -136,12 +159,7 @@ export const SettersFields = ({
           onChange({
             setters: [
               ...setters,
-              {
-                ...(global
-                  ? { name: '' }
-                  : { elementId: '', ...(method ? { methodName: '' } : { propName: '' }) }),
-                value: method ? [] : null,
-              },
+              (defaultNodeProps(type).setters as Record<string, unknown>[])[0]!,
             ],
           });
           setKeys((current) => [...current, crypto.randomUUID()]);
