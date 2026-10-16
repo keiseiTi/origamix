@@ -1,3 +1,4 @@
+import type { AttributeConfig } from '@tangramino/base-editor';
 import type { ComponentType } from 'react';
 import type { EditorPageScope } from './contracts';
 
@@ -24,3 +25,9 @@ export type PropertyEditorRegistration = Readonly<{
   field: string;
   Component: ComponentType<PropertyEditorProps>;
 }>;
+
+/** Structured field validation is an editor concern and never serialized in a Manifest. */
+export type JsonAttributeConfig = AttributeConfig & {
+  uiType: 'json';
+  validateValue: (value: unknown) => string | undefined;
+};

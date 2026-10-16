@@ -1,36 +1,21 @@
-import { Spinner } from '@origamix/ui/spinner';
-import {
-  DragOverlay,
-  EditorProvider,
-  historyPlugin,
-  usePluginContext,
-  useEditorCore,
-  type Material,
-} from '@tangramino/base-editor';
-import type { Schema } from '@tangramino/engine';
-import materialGroups from '@origamix/materials/antd/group';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { InsertPositionIndicator } from './mods/insert-position-indicator';
-import { MainContent } from './mods/main-content';
-import type { MaterialGroup } from './mods/material-panel';
-import { EditorToolDialog } from './mods/editor-tool-dialog';
-import { useEditorSession } from './use-editor-session';
-import { ClarificationHighlightContext } from './clarification-highlight';
-
+import { Editor as EditorView } from '@origamix/editor/visual';
 import type {
   EditorHandle,
   EditorMode,
   EditorTool,
   EditorHistoryState,
+  EditorMaterialRegistration,
 } from '@origamix/editor/contracts';
-export type {
-  EditorHandle,
-  EditorMode,
-  EditorTool,
-  EditorHistoryState,
-} from '@origamix/editor/contracts';
+import materialGroups from '@origamix/materials/antd/group';
+import { antdMaterialManifest } from '@origamix/materials/antd/manifest';
+import { Spinner } from '@origamix/ui/spinner';
+import { Button } from '@origamix/ui/button';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { usePreferencesStore } from '@/store/preferences';
+import { useEditorSession } from './use-editor-session';
 
 interface EditorProps {
+  visible: boolean;
   projectId: string;
   pageId: string;
   readOnly?: boolean;
@@ -48,147 +33,73 @@ interface EditorProps {
   onClarificationSelect?: (elementId: string) => void;
 }
 
-const groups = materialGroups as MaterialGroup[];
-const materials = groups.flatMap((group) => group.children) as Material[];
-
-const HistoryBridge = ({
-  historyRef,
-  onChange,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  historyRef: React.RefObject<any | undefined>;
-  onChange: (state: EditorHistoryState) => void;
-}): null => {
-  const schema = useEditorCore((state) => state.schema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const history = usePluginContext<any>('history');
-  useEffect(() => {
-    historyRef.current = history;
-    onChange({ canUndo: history?.canUndo() ?? false, canRedo: history?.canRedo() ?? false });
-  }, [history, historyRef, onChange, schema]);
-  return null;
+// The current built-in choice remains App-owned until project stack resolution lands.
+const registration: EditorMaterialRegistration = {
+  catalog: antdMaterialManifest,
+  groups: materialGroups,
+  propertyEditors: [],
 };
 
-const EditorCanvas = ({
-  viewportWidth,
-  mode,
-  onModeChange,
-}: {
-  viewportWidth: number;
-  mode: EditorMode;
-  onModeChange: (mode: EditorMode) => Promise<void>;
-}): React.JSX.Element => {
-  const dragElement = useEditorCore((state) => state.dragElement);
-
-  const dragTitle = (dragElement as Material)?.title ?? '';
-
-  return (
-    <>
-      <MainContent
-        groups={groups}
-        viewportWidth={viewportWidth}
-        mode={mode}
-        onModeChange={onModeChange}
-      />
-      <DragOverlay>
-        <div className='rounded-md border border-blue-500 bg-white/95 px-3 py-2 text-xs text-blue-700 shadow-lg dark:bg-zinc-900 dark:text-blue-300'>
-          {dragTitle}
-        </div>
-      </DragOverlay>
-      <InsertPositionIndicator />
-    </>
-  );
-};
-
-export const Editor = forwardRef<EditorHandle, EditorProps>(
-  (
-    {
-      projectId,
-      pageId,
-      readOnly = false,
-      readOnlyMessage,
-      viewportWidth,
-      mode = 'view',
-      onModeChange = async () => undefined,
-      tool,
-      onCloseTool,
-      onHistoryStateChange,
-      onWorkingCommitted,
-      clarificationCandidates = [],
-      clarificationHighlightedElementId = null,
-      clarificationExpired = false,
-      onClarificationSelect,
-    },
-    ref,
-  ): React.JSX.Element => {
+export const PageEditor = forwardRef<EditorHandle, EditorProps>(
+  ({ projectId, pageId, visible, onWorkingCommitted, readOnly = false, ...viewProps }, ref) => {
+    const theme = usePreferencesStore((state) => state.theme);
     const session = useEditorSession(projectId, pageId, readOnly, onWorkingCommitted);
-    const { initial, loading, error, flush, onChange, providerKey } = session;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [providerKey]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const historyRef = useRef<any>(undefined);
-
+    const viewRef = useRef<EditorHandle>(null);
     useImperativeHandle(
       ref,
       () => ({
-        flush,
-        undo: () => historyRef.current?.undo(),
-        redo: () => historyRef.current?.redo(),
+        flush: session.flush,
+        undo: () => viewRef.current?.undo(),
+        redo: () => viewRef.current?.redo(),
       }),
-      [flush],
+      [session.flush],
     );
-
-    if (loading) {
+    // Keep host recovery alive without mounting canvas portals in chat or preview.
+    if (!visible) return null;
+    if (session.loading)
       return (
         <div className='grid min-h-0 flex-1 place-items-center'>
           <Spinner aria-label='加载编辑器' />
         </div>
       );
-    }
-    if (!initial) {
+    if (!session.initial)
       return (
         <div
           role='alert'
-          className='grid min-h-0 flex-1 place-items-center p-6 text-sm text-danger'
+          className='grid min-h-0 flex-1 place-items-center p-6 text-sm text-destructive'
         >
-          {error ?? 'Schema 不可用'}
+          {session.error ?? 'Schema 不可用'}
         </div>
       );
-    }
-
     return (
-      <div className='relative border-t flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-        <ClarificationHighlightContext.Provider
-          value={{
-            candidates: clarificationCandidates,
-            highlightedElementId: clarificationHighlightedElementId,
-            expired: clarificationExpired,
-            onSelect: onClarificationSelect,
-          }}
-        >
-          <EditorProvider
-            key={providerKey}
-            materials={materials}
-            plugins={plugins}
-            schema={initial.schema as Schema}
-            onChange={onChange}
-          >
-            <HistoryBridge historyRef={historyRef} onChange={onHistoryStateChange} />
-            <EditorCanvas viewportWidth={viewportWidth} mode={mode} onModeChange={onModeChange} />
-            <EditorToolDialog tool={tool} onClose={onCloseTool} />
-          </EditorProvider>
-        </ClarificationHighlightContext.Provider>
-        {readOnly && (
+      <>
+        {session.error && (
           <div
-            className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
-            role='status'
+            role='alert'
+            className='flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-xs text-destructive'
           >
-            <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
-              {readOnlyMessage ?? 'AI 正在修改，编辑暂时锁定'}
-            </span>
+            <span>{session.error}；编辑内容已保留。</span>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => void session.flush().catch(() => undefined)}
+            >
+              重试保存草稿
+            </Button>
           </div>
         )}
-      </div>
+        <EditorView
+          {...viewProps}
+          ref={viewRef}
+          schema={session.initial.schema}
+          sessionKey={session.providerKey}
+          registration={registration}
+          theme={theme}
+          readOnly={readOnly}
+          onChange={session.onChange}
+          onFlush={session.flush}
+        />
+      </>
     );
   },
 );

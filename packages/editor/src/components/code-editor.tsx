@@ -1,12 +1,13 @@
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useContext, useEffect, useEffectEvent, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
 import { cn } from '@origamix/ui/utils';
-import { usePreferencesStore } from '@/store/preferences';
-import './use-monaco-worker';
+import { EditorThemeContext } from '../core/environment';
+import type { EditorTheme } from '../contracts';
 
 export interface CodeEditorProps {
+  theme?: EditorTheme;
   value?: string;
   onChange?: (value: string) => void;
   className?: string;
@@ -17,6 +18,7 @@ export interface CodeEditorProps {
 }
 
 export const CodeEditor = ({
+  theme: themeOverride,
   value = '',
   onChange,
   className,
@@ -25,7 +27,8 @@ export const CodeEditor = ({
   readOnly = false,
   ariaLabel = '代码编辑器',
 }: CodeEditorProps): React.JSX.Element => {
-  const theme = usePreferencesStore((state) => state.theme);
+  const inheritedTheme = useContext(EditorThemeContext);
+  const theme = themeOverride ?? inheritedTheme;
   const container = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const syncingValue = useRef(false);

@@ -1,8 +1,21 @@
-import type { Schema } from '@tangramino/engine';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { EditorTransaction } from '@origamix/editor/contracts';
+import { createEditorTransaction } from '@origamix/editor/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
-import { deriveSchemaOperations } from './derive-schema-operations';
+
+type WorkingState = Awaited<ReturnType<typeof schemaService.workingState>>;
+type Session = {
+  scope: { projectId: string; pageId: string };
+  active: boolean;
+  ready: boolean;
+  draft: OrigamixPageSchema | null;
+  savedHash: string;
+  workingVersion: number;
+  pending: Promise<void> | null;
+  timer: number | null;
+  failed: boolean;
+};
 
 export const useEditorSession = (
   projectId: string,
@@ -10,111 +23,159 @@ export const useEditorSession = (
   readOnly: boolean,
   onWorkingCommitted?: () => void,
 ) => {
-  const [initial, setInitial] = useState<{
-    schema: OrigamixPageSchema;
-    revisionId: string;
-    workingVersion: number;
+  // A new ref cell per scope isolates queues even when an old request is pending.
+  const sessionRef = useMemo<{ current: Session }>(
+    () => ({
+      current: {
+        scope: { projectId, pageId },
+        active: false,
+        ready: false,
+        draft: null,
+        savedHash: '',
+        workingVersion: 0,
+        pending: null,
+        timer: null,
+        failed: false,
+      },
+    }),
+    [projectId, pageId],
+  );
+  const [loaded, setLoaded] = useState<{
+    sessionRef: { current: Session };
+    initial: WorkingState | null;
+    error: string | null;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const draftRef = useRef<OrigamixPageSchema | null>(null);
-  const savedHashRef = useRef('');
-  const workingVersionRef = useRef(0);
-  const pendingRef = useRef<Promise<void> | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const providerReadyRef = useRef(false);
+  const [failure, setFailure] = useState<{
+    sessionRef: { current: Session };
+    message: string;
+  } | null>(null);
   const onWorkingCommittedRef = useRef(onWorkingCommitted);
-
   useEffect(() => {
     onWorkingCommittedRef.current = onWorkingCommitted;
   }, [onWorkingCommitted]);
 
   useEffect(() => {
     let active = true;
-    providerReadyRef.current = false;
+    const ownedSession = sessionRef.current;
+    sessionRef.current.active = true;
+    sessionRef.current.ready = false;
     schemaService
       .workingState(projectId, pageId)
       .then((result) => {
         if (!active) return;
-        const hash = JSON.stringify(result.schema);
-        draftRef.current = result.schema;
-        savedHashRef.current = hash;
-        workingVersionRef.current = result.workingVersion;
-        setInitial(result);
-        setError(null);
+        sessionRef.current.draft = result.schema;
+        sessionRef.current.savedHash = JSON.stringify(result.schema);
+        sessionRef.current.workingVersion = result.workingVersion;
+        setLoaded({ sessionRef, initial: result, error: null });
       })
-      .catch((reason) => {
-        if (!active) return;
-        setError(reason instanceof Error ? reason.message : '无法读取 Schema');
-      })
-      .finally(() => active && setLoading(false));
+      .catch((reason: unknown) => {
+        if (active)
+          setLoaded({
+            sessionRef,
+            initial: null,
+            error: reason instanceof Error ? reason.message : '无法读取 Schema',
+          });
+      });
     return () => {
       active = false;
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      ownedSession.active = false;
+      ownedSession.ready = false;
+      if (ownedSession.timer !== null) window.clearTimeout(ownedSession.timer);
     };
-  }, [projectId, pageId]);
-
-  const flush = useCallback(async (): Promise<void> => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    while (true) {
-      if (pendingRef.current) await pendingRef.current;
-      const draft = draftRef.current;
-      const draftHash = draft ? JSON.stringify(draft) : '';
-      if (!draft || draftHash === savedHashRef.current) return;
-      if (readOnly) throw new Error('AI 正在修改当前页面，请等待本轮完成');
-      const saved = JSON.parse(savedHashRef.current) as OrigamixPageSchema;
-      const operations = deriveSchemaOperations(saved, draft);
-      const request =
-        operations && operations.length > 0
-          ? schemaService.applyWorkingOperations(
-              projectId,
-              pageId,
-              workingVersionRef.current,
-              operations,
-            )
-          : schemaService.updateWorking(projectId, pageId, workingVersionRef.current, draft);
-      const operation = request
-        .then((result) => {
-          workingVersionRef.current = result.workingVersion;
-          savedHashRef.current = JSON.stringify(result.schema);
-          onWorkingCommittedRef.current?.();
-        })
-        .finally(() => {
-          pendingRef.current = null;
-        });
-      pendingRef.current = operation;
-      await operation;
-    }
-  }, [pageId, projectId, readOnly]);
-
-  const onChange = useCallback(
-    (schema: Schema): void => {
-      if (!providerReadyRef.current || readOnly) return;
-      const next = schema as OrigamixPageSchema;
-      const nextHash = JSON.stringify(next);
-      draftRef.current = next;
-      if (nextHash === savedHashRef.current) return;
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => void flush().catch(() => undefined), 700);
-    },
-    [flush, readOnly],
-  );
+  }, [projectId, pageId, sessionRef]);
 
   useEffect(() => {
-    if (!initial) return;
+    if (loaded?.sessionRef !== sessionRef || !loaded.initial) return;
     const timer = window.setTimeout(() => {
-      providerReadyRef.current = true;
+      sessionRef.current.ready = sessionRef.current.active;
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [initial]);
+  }, [loaded, sessionRef]);
 
-  const providerKey = useMemo(
-    () => (initial ? `${projectId}:${pageId}:${initial.workingVersion}` : ''),
-    [initial, pageId, projectId],
-  );
+  const flush = useCallback(async (): Promise<void> => {
+    if (sessionRef.current.timer !== null) {
+      window.clearTimeout(sessionRef.current.timer);
+      sessionRef.current.timer = null;
+    }
+    try {
+      while (sessionRef.current.active) {
+        if (sessionRef.current.pending) {
+          await sessionRef.current.pending;
+          continue;
+        }
+        if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
+        const draft = sessionRef.current.draft;
+        if (!draft || JSON.stringify(draft) === sessionRef.current.savedHash) return;
+        if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
+        const transaction: EditorTransaction = createEditorTransaction(
+          {
+            scope: sessionRef.current.scope,
+            workingVersion: sessionRef.current.workingVersion,
+            schema: JSON.parse(sessionRef.current.savedHash) as OrigamixPageSchema,
+          },
+          draft,
+        );
+        const request =
+          transaction.kind === 'operations'
+            ? schemaService.applyWorkingOperations(
+                transaction.scope.projectId,
+                transaction.scope.pageId,
+                transaction.baseWorkingVersion,
+                transaction.operations,
+              )
+            : schemaService.updateWorking(
+                transaction.scope.projectId,
+                transaction.scope.pageId,
+                transaction.baseWorkingVersion,
+                transaction.schema,
+              );
+        const operation = request
+          .then((result) => {
+            if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
+            sessionRef.current.workingVersion = result.workingVersion;
+            sessionRef.current.savedHash = JSON.stringify(result.schema);
+            sessionRef.current.failed = false;
+            setFailure(null);
+            onWorkingCommittedRef.current?.();
+          })
+          .finally(() => {
+            if (sessionRef.current.pending === operation) sessionRef.current.pending = null;
+          });
+        sessionRef.current.pending = operation;
+        await operation;
+      }
+      throw new Error('编辑会话已关闭');
+    } catch (reason) {
+      if (sessionRef.current.active) {
+        sessionRef.current.failed = true;
+        setFailure({
+          sessionRef,
+          message: reason instanceof Error ? reason.message : '草稿保存失败，编辑内容已保留',
+        });
+      }
+      throw reason;
+    }
+  }, [readOnly, sessionRef]);
 
-  return { initial, loading, error, flush, onChange, providerKey };
+  const onChange = (schema: OrigamixPageSchema): void => {
+    if (!sessionRef.current.active || !sessionRef.current.ready || readOnly) return;
+    sessionRef.current.draft = schema;
+    if (JSON.stringify(schema) === sessionRef.current.savedHash) return;
+    if (sessionRef.current.timer !== null) window.clearTimeout(sessionRef.current.timer);
+    // A failed/ambiguous write needs an explicit flush; typing does not replay it.
+    if (!sessionRef.current.failed)
+      sessionRef.current.timer = window.setTimeout(() => void flush().catch(() => undefined), 700);
+  };
+
+  const current = loaded?.sessionRef === sessionRef ? loaded : null;
+  const initial = current?.initial ?? null;
+  const providerKey = initial ? `${projectId}:${pageId}:${initial.workingVersion}` : '';
+  return {
+    initial,
+    loading: !current,
+    error: failure?.sessionRef === sessionRef ? failure.message : (current?.error ?? null),
+    flush,
+    onChange,
+    providerKey,
+  };
 };

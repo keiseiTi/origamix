@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type LogicFlow from '@logicflow/core';
 import type { Schema } from '@tangramino/engine';
-import { readGraph, toFlow } from '../../../src/components/flow-editor/model';
+import { readGraph, toFlow } from '../../src/flow/model';
 
 // Server cannot check the canvas-to-engine translation or prevent recursive
 // Engine traversal of a newly connected graph before it becomes a draft.

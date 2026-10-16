@@ -64,7 +64,6 @@ const OutlineItem = ({
 
 export const LeftPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.Element => {
   const { schema, materials, activeElement, setActiveElement } = useEditorCore();
-  const [hidden, setHidden] = useState(false);
   const [activeTab, setActiveTab] = useState<'materials' | 'outline'>('materials');
 
   const outline = useMemo<OutlineNode[]>(() => {

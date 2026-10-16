@@ -100,6 +100,11 @@ export default defineConfig([
     },
   },
   {
+    files: ['packages/editor/src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['packages/ui/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },

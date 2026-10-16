@@ -3,13 +3,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
-import {
-  Editor,
-  type EditorHandle,
-  type EditorMode,
-  type EditorHistoryState,
-  type EditorTool,
-} from '@/components/editor';
+import { PageEditor } from '@/components/editor';
+import type {
+  EditorHandle,
+  EditorMode,
+  EditorHistoryState,
+  EditorTool,
+} from '@origamix/editor/contracts';
 import { PageToolbar, type WorkspaceMode } from './page-toolbar';
 import { usePageSession } from './hooks/use-page-session';
 import { PagePreviewFrame } from './preview/page-preview-frame';
@@ -171,8 +171,9 @@ const PageSessionContent = ({
       <>
         <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
         <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-          <Editor
-            key={`${projectId}:${page.id}:${mode}:${editorSchemaRefreshKey}`}
+          <PageEditor
+            visible={active && mode === 'edit'}
+            key={`${projectId}:${page.id}:${active}:${mode}:${editorSchemaRefreshKey}`}
             ref={editorRef}
             projectId={projectId}
             pageId={page.id}

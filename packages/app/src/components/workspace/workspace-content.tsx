@@ -1,4 +1,4 @@
-import type { EditorHandle } from '@/components/editor';
+import type { EditorHandle } from '@origamix/editor/contracts';
 import { WorkspaceRecoveryView } from './workspace-recovery-view';
 import { useWorkspaceStore } from '@/store/workspace';
 import { EmptyWorkspace } from './empty-workspace';

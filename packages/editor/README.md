@@ -1,28 +1,47 @@
 # Editor
 
-阶段 1 提供编辑器公开类型契约。当前画布和 FlowEditor 实现仍位于 App；本包尚未导出编辑器组件，也未接管现有保存会话。
+页面编辑实现包，包含可视化编辑器和 FlowEditor。App 负责项目装配、Working 会话、HTTP、Agent、Revision 与 Apply；本包只负责编辑体验、引擎适配和编辑数据转换。
 
-| 已有入口                      | 内容                                                                         |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `@origamix/editor/contracts`  | 编辑模式、工具、历史、命令句柄、页面作用域、Working 投影、编辑事务、物料注册 |
-| `@origamix/editor/extensions` | 专属属性编辑器输入、原子属性修改、字段编辑器注册                             |
+| 公开入口                      | 内容                                                |
+| ----------------------------- | --------------------------------------------------- |
+| `@origamix/editor/visual`     | `Editor`、`EditorProps`；统一画布和逻辑编辑上下文   |
+| `@origamix/editor/flow`       | 共享引擎上下文内使用的 `FlowEditor`                 |
+| `@origamix/editor/flow/model` | 图数据与声明式 Flow 的转换                          |
+| `@origamix/editor/components` | `CodeEditor`、`JsonAttributeField`                  |
+| `@origamix/editor/core`       | `deriveSchemaOperations`、`createEditorTransaction` |
+| `@origamix/editor/contracts`  | 模式、主题、句柄、页面作用域、事务及物料注册类型    |
+| `@origamix/editor/extensions` | 属性编辑器和结构化字段契约                          |
+| `@origamix/editor/styles.css` | Tailwind 源码扫描入口                               |
 
-使用 `import type` 引用。这些接口是工作台内部边界，不是 HTTP 协议；Server 接收边界继续使用 Shared 的运行时校验。包暂为 private，不承诺外部发布兼容性。
+这是私有工作区包，声明出口指向源码以支持 HMR；构建生成 ESM 与类型声明供集成验证。
 
-## 编辑与持久化
+## 宿主装配
 
-`EditorTransaction` 携带 project/page 作用域和 baseWorkingVersion。普通修改提交非空 Operation Batch；仅协议无法安全表达的修改允许内部 candidate 分支。App 的提交适配器调用现有 Server 管线，并返回带原作用域的新 Working 状态。Editor 必须拒绝过期结果；失败保留草稿。`flush` 在持久化失败时拒绝，阻止切页、切视图和预览。保存 Revision 和 Apply 均由 App 的显式动作负责。
+App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过句柄调用 flush/undo/redo；切页、切换编辑视图与预览前必须等待 flush 成功。底层引擎状态按模块共享，因此 App 只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
 
-`EditorMaterialRegistration` 由 App 装配：纯数据 catalog、Tangramino 物料分组、字段属性编辑器。分组暂沿用引擎公开 Material 类型，不暴露引擎实例。装配时必须核对 catalog 的物料身份、版本及类型；该类型声明本身不执行校验。
+schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置引擎。历史恢复或 Agent 新提交由 App 开启新会话。代码编辑器读取传入主题，独立使用时可显式传 `theme`；Monaco workers 由 App 的构建宿主配置，Editor 内不包含 Vite 专有 worker 导入。
 
-属性编辑器拿到 scope、elementId、field、value、只读状态和校验信息。`onCommit` 一次提交多个属性的 set/unset；同一字段不可同时 set/unset，空修改不产生事务。Editor 适配器负责目标绑定、只读与陈旧状态检查，并转为统一事务。回调成功表示接受到编辑事务，持久化完成以 `flush` 为准。局部表单草稿属于属性编辑器。
+消费方在已有 Tailwind/UI 样式入口之后导入：
 
-宿主能力目前没有实际消费者，因此不预设上传、目录选择等 SDK。未来需要时增加命名、最小能力接口；项目操作不通过本包暴露。
+```css
+@import '@origamix/editor/styles.css';
+```
 
-完整依赖方向及迁移清单见 [架构边界](../architecture.md)，维护要求见 [AGENTS.md](AGENTS.md)。
+Editor 不导入任何物料家族。App 当前装配默认 Antd，FlowEditor 从同一注册 catalog 获取属性契约。物料三入口整理与专属属性编辑器启用仍属于后续阶段；`propertyEditors` 暂未激活。
+
+## 提交与恢复
+
+App 持有最后一次确认的 Working、当前本地候选及版本。flush 调用 `createEditorTransaction`，再通过现有 Server 管线提交。普通编辑使用非空 Operation Batch，仅无法安全表达的修改使用内部完整候选分支。一次事务不创建 Revision，也不写真实项目。
+
+保存失败保留候选、展示错误并阻止切换；继续输入不会自动重放失败请求，用户可显式重试。每个项目/页面拥有独立提交队列，切换后旧响应不能修改新页面或触发新页面的提交回调。保存 Revision 和 Apply 始终属于 App 的显式业务动作。
+
+扩展只能提交受控的元素属性修改，不获取 HTTP、App Store、原始引擎或保存/Apply 权限。Manifest 保持纯数据，Server 继续拥有最终校验权。
 
 ```sh
 pnpm --filter @origamix/editor lint
 pnpm --filter @origamix/editor typecheck
+pnpm --filter @origamix/editor test
 pnpm --filter @origamix/editor build
 ```
+
+已有核心测试随实现迁入 `test/core` 和 `test/flow`；App 会话测试继续验证保存失败和过期响应。架构见 [架构边界](../architecture.md)，维护要求见 [AGENTS.md](AGENTS.md)。

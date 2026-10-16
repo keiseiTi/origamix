@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
-import type { EditorHandle } from '@/components/editor';
+import type { EditorHandle } from '@origamix/editor/contracts';
 import { usePageApplicationState } from './use-page-application-state';
 
 export const derivePageCapabilities = ({

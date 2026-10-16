@@ -3,6 +3,7 @@ import type { MaterialManifestCatalog } from '@origamix/shared/protocol/material
 import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
 import type { PropertyEditorRegistration } from './extensions';
 
+export type EditorTheme = 'light' | 'dark';
 export type EditorMode = 'view' | 'logic';
 export type EditorTool = 'history' | 'globals' | 'schema';
 export type EditorHistoryState = Readonly<{ canUndo: boolean; canRedo: boolean }>;

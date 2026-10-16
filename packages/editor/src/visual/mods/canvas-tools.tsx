@@ -9,7 +9,7 @@ import {
   type EnhancedComponentProps,
 } from '@tangramino/base-editor';
 import { Move, Trash2 } from 'lucide-react';
-import { removeEditorElement } from './editor-schema';
+import { removeEditorElement } from '../../core/editor-schema';
 import { useClarificationHighlight } from '../clarification-highlight';
 
 export const DropIndicator = ({

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @source '../../materials/antd';
 @import '@origamix/ui/styles.css';
+@import '@origamix/editor/styles.css';
 
 /* Custom Scrollbar for Agent Chat */
 .agent-chat-scrollbar {

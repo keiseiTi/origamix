@@ -1,4 +1,5 @@
-import { CodeEditor } from '@/components/editor/mods/code-editor';
+import { CodeEditor } from '@origamix/editor/components';
+import { usePreferencesStore } from '@/store/preferences';
 import { Button } from '@origamix/ui/button';
 import {
   Dialog,
@@ -35,6 +36,7 @@ const RevisionHistoryContent = ({
   onClose,
   onRestore,
 }: RevisionHistoryProps): React.JSX.Element => {
+  const theme = usePreferencesStore((state) => state.theme);
   const [revisions, setRevisions] = useState<RevisionHistoryItem[]>([]);
   const [selected, setSelected] = useState<RevisionHistoryItem | null>(null);
   const [schema, setSchema] = useState<OrigamixPageSchema | null>(null);
@@ -273,6 +275,7 @@ const RevisionHistoryContent = ({
                 </code>
               </div>
               <CodeEditor
+                theme={theme}
                 value={JSON.stringify(schema, null, 2)}
                 language='json'
                 readOnly

@@ -11,18 +11,18 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Repository map
 
-| Package guidance                          | Owns                                                          | Start reading                                                                       |
-| ----------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                          |
-| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                           |
-| [Editor](packages/editor/AGENTS.md)       | 编辑器公开契约，后续承接画布与 FlowEditor                     | `packages/editor/src/contracts.ts`、`packages/editor/src/extensions.ts`             |
-| [UI](packages/ui/AGENTS.md)               | 公共基础控件、工具与主题基础                                  | `packages/ui/src/components/`、`packages/ui/src/styles/styles.css`                  |
-| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/` |
-| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests                | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`              |
-| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/react.tsx`                                                        |
-| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/runtime.ts`, `packages/server/projects/`                           |
-| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`               |
-| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                          |
+| Package guidance                          | Owns                                                          | Start reading                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                                     |
+| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                                      |
+| [Editor](packages/editor/AGENTS.md)       | 画布、FlowEditor、编辑公共组件与契约                          | `packages/editor/src/visual/`、`packages/editor/src/flow/`、`packages/editor/src/contracts.ts` |
+| [UI](packages/ui/AGENTS.md)               | 公共基础控件、工具与主题基础                                  | `packages/ui/src/components/`、`packages/ui/src/styles/styles.css`                             |
+| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`            |
+| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests                | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`                         |
+| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/react.tsx`                                                                   |
+| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/runtime.ts`, `packages/server/projects/`                                      |
+| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`                          |
+| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                                     |
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.

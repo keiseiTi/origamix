@@ -1,0 +1,4 @@
+/* Include editor-owned Tailwind classes in the consuming workbench. */
+@source './visual';
+@source './flow';
+@source './components';

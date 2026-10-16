@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import App from './app';
 import { PreviewApp } from './preview/preview-app';
+import './components/editor/monaco-workers';
 import './main.css';
 
 const router = createBrowserRouter([

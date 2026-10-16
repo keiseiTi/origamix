@@ -1,3 +1,4 @@
+import type LogicFlow from '@logicflow/core';
 import { HtmlNode, HtmlNodeModel } from '@logicflow/core';
 import { createRoot, type Root } from 'react-dom/client';
 import { Play, Workflow } from 'lucide-react';
@@ -44,7 +45,9 @@ class EventNodeModel extends HtmlNodeModel {
   }
 }
 
-export const createReactNode = (resolveElementLabel: (id: string) => string) => {
+export const createReactNode = (
+  resolveElementLabel: (id: string) => string,
+): Pick<LogicFlow.RegisterConfig, 'view' | 'model'> => {
   class EventNode extends HtmlNode {
     reactRoot?: Root;
     mountElement?: HTMLDivElement;

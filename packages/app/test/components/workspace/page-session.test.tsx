@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../src/components/editor/index', () => ({
-  Editor: ({
+  PageEditor: ({
     readOnly,
     readOnlyMessage,
     onWorkingCommitted,

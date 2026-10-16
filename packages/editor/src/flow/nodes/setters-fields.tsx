@@ -7,7 +7,7 @@ import { FieldLabel } from '@origamix/ui/field';
 import { FlowSelect } from '../flow-select';
 import { ValueField } from './value-field';
 import { asRecord } from './values';
-import { getAntdMaterialManifests } from '@origamix/materials/antd/manifest';
+import { useMaterialCatalog } from '../../core/environment';
 import { defaultNodeProps } from './definitions';
 
 export const SettersFields = ({
@@ -19,6 +19,7 @@ export const SettersFields = ({
   properties: Record<string, unknown>;
   onChange: (patch: Record<string, unknown>) => void;
 }): React.JSX.Element => {
+  const catalog = useMaterialCatalog();
   const schema = useEditorCore((state) => state.schema);
   const materials = useEditorCore((state) => state.materials);
   const global = type === 'setGlobalVariable';
@@ -56,7 +57,7 @@ export const SettersFields = ({
             (panel.configs ?? []).map((field) => [field.field, field.label] as const),
           ),
         );
-        const declaredProps = getAntdMaterialManifests([element?.type ?? ''])[0]?.propsSchema
+        const declaredProps = catalog.find((item) => item.type === element?.type)?.propsSchema
           .properties as Record<string, { description?: string }> | undefined;
         const declaredFields = Object.entries(declaredProps ?? {}).map(([name, definition]) => ({
           name,

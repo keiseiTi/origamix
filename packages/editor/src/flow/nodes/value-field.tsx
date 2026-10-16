@@ -1,7 +1,7 @@
 import { useEditorCore } from '@tangramino/base-editor';
 import { FieldLabel } from '@origamix/ui/field';
 import { Input } from '@origamix/ui/input';
-import { JsonAttributeField } from '../../editor/mods/json-attribute-field';
+import { JsonAttributeField } from '../../components/json-attribute-field';
 import { FlowSelect } from '../flow-select';
 
 import { asRecord } from './values';

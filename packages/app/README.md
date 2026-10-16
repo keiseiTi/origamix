@@ -7,12 +7,12 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 - [src/app.tsx](src/app.tsx)：工作台装配。
 - [src/services](src/services)：通过 Shared 契约调用 HTTP，统一认证刷新和错误处理。
 - [src/store](src/store)：窗口级导航和偏好投影；导航、页签和未发送草稿使用 `sessionStorage`。
-- [src/components/editor](src/components/editor)：编辑会话、保存队列和编辑器集成。
+- [src/components/editor](src/components/editor)：PageEditor 宿主装配、Working 会话、保存队列；编辑实现见 [Editor](../editor/README.md)。
 - [src/components/agent-chat](src/components/agent-chat)：Agent 会话及事件恢复。
 - [src/preview](src/preview)：给 Runtime 渲染结果添加工作台反馈；引擎创建归 Runtime。
 - [dev-server.ts](dev-server.ts)：Node 开发宿主，允许使用 Server 的公开启动入口。
 
-`src/` 依赖 Shared、UI、Editor 契约、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。编辑会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
+`src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。编辑会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
 
 基础控件通过 `@origamix/ui/<control>` 引用，`main.css` 显式引入公共样式；`index.html` 的 `origamix-ui` 类启用主题。App 保留主题偏好、状态色和布局，组件生成规则见 [UI README](../ui/README.md)。
 
@@ -68,7 +68,7 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 ## 事件节点配置
 
-编辑模式的“逻辑”视图从页面事件树选择事件，再将节点拖入画布。[节点定义适配](src/components/flow-editor/nodes/definitions.ts) 直接读取 [Shared 的 flowNodeManifests](../shared/src/protocol/flow-node.ts)，复用节点名称、类型、默认配置、执行状态及连线信息。请求方法、条件运算符和超时范围同样读取清单；App 保留各节点的配置表单，支持请求参数、多条属性/方法/变量设置、组件多选显隐、真/假条件及弹窗/抽屉操作。属性选项包含物料声明的属性与上下文变量，方法选项只显示公开的上下文方法。条件的右上、右下锚点分别连接真、假分支；开始节点由事件入口创建。
+编辑模式的“逻辑”视图从页面事件树选择事件，再将节点拖入画布。[节点定义适配](../editor/src/flow/nodes/definitions.ts) 直接读取 [Shared 的 flowNodeManifests](../shared/src/protocol/flow-node.ts)，复用节点名称、类型、默认配置、执行状态及连线信息。请求方法、条件运算符和超时范围同样读取清单；Editor 拥有各节点的配置表单，支持请求参数、多条属性/方法/变量设置、组件多选显隐、真/假条件及弹窗/抽屉操作。属性选项包含物料声明的属性与上下文变量，方法选项只显示公开的上下文方法。条件的右上、右下锚点分别连接真、假分支；开始节点由事件入口创建。
 
 值可使用 JSON、全局变量或前序节点返回值。自定义 JS 保留代码配置并显示“暂不执行”，不会在工作台或预览中执行代码。逻辑修改沿用 Working 草稿、保存版本和应用到项目的流程。
 

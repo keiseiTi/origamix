@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { schemaService } from '@/services/schema';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { ApiRequestError } from '@/services/request';
-import type { EditorHandle } from '../../editor';
+import type { EditorHandle } from '@origamix/editor/contracts';
 
 export type PageApplyStatus =
   | 'loading'
