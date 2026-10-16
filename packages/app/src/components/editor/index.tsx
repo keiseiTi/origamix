@@ -16,12 +16,15 @@ import type { MaterialGroup } from './mods/material-panel';
 import { EditorToolDialog } from './mods/editor-tool-dialog';
 import { useEditorSession } from './use-editor-session';
 import { ClarificationHighlightContext } from './clarification-highlight';
+import { materialPlugin } from './plugins/material';
 
 export interface EditorHandle {
   flush: () => Promise<void>;
   redo: () => void;
   undo: () => void;
 }
+
+export type EditorMode = 'view' | 'logic';
 
 export type EditorTool = 'history' | 'globals' | 'schema';
 export interface EditorHistoryState {
@@ -35,6 +38,8 @@ interface EditorProps {
   readOnly?: boolean;
   readOnlyMessage?: string;
   viewportWidth: number;
+  mode?: EditorMode;
+  onModeChange?: (mode: EditorMode) => Promise<void>;
   tool: Exclude<EditorTool, 'history'> | null;
   onCloseTool: () => void;
   onHistoryStateChange: (state: EditorHistoryState) => void;
@@ -66,14 +71,27 @@ const HistoryBridge = ({
   return null;
 };
 
-const EditorCanvas = ({ viewportWidth }: { viewportWidth: number }): React.JSX.Element => {
+const EditorCanvas = ({
+  viewportWidth,
+  mode,
+  onModeChange,
+}: {
+  viewportWidth: number;
+  mode: EditorMode;
+  onModeChange: (mode: EditorMode) => Promise<void>;
+}): React.JSX.Element => {
   const dragElement = useEditorCore((state) => state.dragElement);
 
   const dragTitle = (dragElement as Material)?.title ?? '';
 
   return (
     <>
-      <MainContent groups={groups} viewportWidth={viewportWidth} />
+      <MainContent
+        groups={groups}
+        viewportWidth={viewportWidth}
+        mode={mode}
+        onModeChange={onModeChange}
+      />
       <DragOverlay>
         <div className='rounded-md border border-blue-500 bg-white/95 px-3 py-2 text-xs text-blue-700 shadow-lg dark:bg-zinc-900 dark:text-blue-300'>
           {dragTitle}
@@ -92,6 +110,8 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       readOnly = false,
       readOnlyMessage,
       viewportWidth,
+      mode = 'view',
+      onModeChange = async () => undefined,
       tool,
       onCloseTool,
       onHistoryStateChange,
@@ -106,7 +126,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
     const session = useEditorSession(projectId, pageId, readOnly, onWorkingCommitted);
     const { initial, loading, error, flush, onChange, providerKey } = session;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [providerKey]);
+    const plugins = useMemo(() => [historyPlugin({ limit: 100 }), materialPlugin()], [providerKey]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const historyRef = useRef<any>(undefined);
 
@@ -156,7 +176,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
             onChange={onChange}
           >
             <HistoryBridge historyRef={historyRef} onChange={onHistoryStateChange} />
-            <EditorCanvas viewportWidth={viewportWidth} />
+            <EditorCanvas viewportWidth={viewportWidth} mode={mode} onModeChange={onModeChange} />
             <EditorToolDialog tool={tool} onClose={onCloseTool} />
           </EditorProvider>
         </ClarificationHighlightContext.Provider>

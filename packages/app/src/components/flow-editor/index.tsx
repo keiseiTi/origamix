@@ -5,7 +5,7 @@ import '@logicflow/extension/lib/style/index.css';
 import { useEffect, useRef, useState } from 'react';
 import { useEditorCore } from '@tangramino/base-editor';
 import { SchemaUtils } from '@tangramino/engine';
-import { ArrowLeft, Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
+import { Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel } from '@/components/ui/field';
@@ -13,14 +13,15 @@ import { JsonAttributeField } from '../editor/mods/json-attribute-field';
 import { nodeKinds, readGraph, toFlow, type EventTarget } from './model';
 import { reactNode } from './react-node';
 import './style.css';
+import { EventTree } from './event-tree';
 import { FlowSelect } from './flow-select';
 
 export const FlowEditor = ({
   target,
-  onClose,
+  onTargetChange,
 }: {
-  target: EventTarget;
-  onClose: () => void;
+  target: EventTarget | null;
+  onTargetChange: (target: EventTarget) => void;
 }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
   const setSchema = useEditorCore((state) => state.setSchema);
@@ -37,7 +38,7 @@ export const FlowEditor = ({
   const commit = (): void => {
     const schema = schemaRef.current;
     const lf = lfRef.current;
-    if (!lf) return;
+    if (!lf || !target) return;
     const graph = lf.getGraphRawData();
     try {
       const flow = toFlow(graph);
@@ -65,15 +66,16 @@ export const FlowEditor = ({
       setError(reason instanceof Error ? reason.message : '流程更新失败');
     }
   };
-  const initialGraph = useRef(readGraph(schema, target));
+  const initialGraph = useRef(target ? readGraph(schema, target) : null);
   useEffect(() => {
-    if (!container.current) return;
+    if (!container.current || !initialGraph.current) return;
     const lf = new LogicFlow({
       container: container.current,
       grid: { size: 20, type: 'dot', config: { color: '#a1a1aa', thickness: 1 } },
       background: { backgroundColor: 'transparent' },
       plugins: [SelectionSelect],
-      keyboard: { enabled: false },
+      keyboard: { enabled: true },
+      guards: { beforeDelete: (data) => data.type !== 'start' },
       history: true,
       edgeTextEdit: false,
       nodeTextEdit: false,
@@ -88,13 +90,47 @@ export const FlowEditor = ({
     });
     lf.render(initialGraph.current);
     lastGraph.current = JSON.stringify(lf.getGraphRawData());
+    // Canvas-scoped shortcuts must commit through the same Working pipeline.
+    // Keep the previously unavailable clipboard shortcuts disabled.
+    lf.keyboard.off(['cmd+c', 'ctrl+c', 'cmd+v', 'ctrl+v']);
+    lf.keyboard.on(['delete', 'backspace'], () => {
+      const elements = lf.getSelectElements(true);
+      elements.edges.forEach((edge) => lf.deleteEdge(edge.id));
+      elements.nodes.forEach((node) => lf.deleteNode(node.id));
+      setSelected(null);
+      lf.container.focus();
+      return false;
+    });
+    lf.keyboard.on(['cmd+z', 'ctrl+z'], () => {
+      lf.undo();
+      commit();
+      setSelected(null);
+      lf.container.focus();
+      return false;
+    });
+    lf.keyboard.on(['cmd+y', 'ctrl+y', 'cmd+shift+z', 'ctrl+shift+z'], () => {
+      lf.redo();
+      commit();
+      setSelected(null);
+      lf.container.focus();
+      return false;
+    });
+    const selectAddedNode = ({ data }: { data: LogicFlow.NodeData }): void => {
+      lf.selectElementById(data.id);
+      setSelected(data);
+      lf.container.focus();
+    };
+    lf.on('node:add,node:dnd-add', selectAddedNode);
+    lf.on('node:delete', ({ data }) =>
+      setSelected((current) => (current?.id === data.id ? null : current)),
+    );
     lf.on('node:click', ({ data }) => setSelected(data));
     lf.on('blank:click', () => setSelected(null));
     lf.on('history:change', ({ data }) =>
       setHistoryState({ undoAble: data.undoAble, redoAble: data.redoAble }),
     );
     lf.on(
-      'node:add,node:delete,node:drop,node:properties-change,edge:add,edge:delete,edge:adjust',
+      'node:add,node:dnd-add,node:delete,node:drop,node:properties-change,edge:add,edge:delete,edge:adjust',
       () => commit(),
     );
     lf.setDefaultEdgeType('polyline');
@@ -111,7 +147,7 @@ export const FlowEditor = ({
 
   useEffect(() => {
     const lf = lfRef.current;
-    if (!lf) return;
+    if (!lf || !target) return;
     const graph = readGraph(schema, target);
     if (JSON.stringify(graph) === lastGraph.current) return;
     lf.render(graph);
@@ -125,45 +161,22 @@ export const FlowEditor = ({
     lf.setProperties(selected.id, patch);
     setSelected(lf.getNodeDataById(selected.id) ?? null);
   };
-  const add = (type: string): void => {
+  const addWithKeyboard = (type: string): void => {
     const lf = lfRef.current;
-    if (!lf) return;
-    const existing = lf.getGraphRawData().nodes;
-    const node = lf.addNode({
-      type,
-      x: Math.max(...existing.map((item) => item.x)) + 260,
-      y: 180,
-      properties: {},
-    });
-    lf.fitView(40, 40);
-    lf.selectElementById(node.id);
-    setSelected(node.getData());
+    if (!lf || !container.current) return;
+    const bounds = container.current.getBoundingClientRect();
+    const { canvasOverlayPosition } = lf.getPointByClient(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    );
+    lf.addNode({ type, ...canvasOverlayPosition, properties: {} });
   };
   const properties = selected?.properties ?? {};
-  const displayedGraph = readGraph(schema, target);
-  const selectNode = (id: string): void => {
-    lfRef.current?.selectElementById(id);
-    setSelected(lfRef.current?.getNodeDataById(id) ?? null);
-  };
   return (
     <section
-      className='flex min-h-0 flex-1 flex-col bg-background text-foreground'
+      className='flex min-h-0 flex-1 flex-col bg-white text-foreground dark:bg-zinc-950'
       aria-label='逻辑编辑器'
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && !event.defaultPrevented) onClose();
-      }}
-      tabIndex={-1}
     >
-      <header className='flex min-h-11 items-center gap-3 border-b px-3'>
-        <Button size='sm' variant='ghost' onClick={onClose} autoFocus>
-          <ArrowLeft size={14} />
-          视图编辑
-        </Button>
-        <span className='text-sm font-medium'>逻辑编辑</span>
-        <span className='truncate text-xs text-muted-foreground'>
-          {target.elementId} · {target.label}
-        </span>
-      </header>
       {error && (
         <div role='alert' className='border-b bg-destructive/10 px-4 py-2 text-sm text-destructive'>
           {error}，已保留上一次有效流程。
@@ -172,156 +185,140 @@ export const FlowEditor = ({
       <div className='flex min-h-0 flex-1 overflow-x-auto'>
         <aside
           aria-label='流程节点面板'
-          className='w-48 shrink-0 space-y-3 overflow-auto border-r p-3'
+          className='flex w-60 shrink-0 flex-col overflow-auto border-r border-border bg-white dark:bg-zinc-950'
         >
-          <h3 className='text-sm font-medium'>节点属性</h3>
-          <p className='text-xs text-muted-foreground'>点击添加节点，拖动锚点连接执行顺序。</p>
-          {nodeKinds.map((kind) => (
-            <Button
-              key={kind.type}
-              variant='outline'
-              className='h-auto w-full flex-col items-start whitespace-normal py-3 text-left'
-              onClick={() => add(kind.type)}
-            >
-              <span>{kind.title}</span>
-              <span className='text-xs font-normal text-muted-foreground'>{kind.description}</span>
-            </Button>
-          ))}
-          <h3 className='border-t pt-3 text-xs font-medium'>当前流程</h3>
-          {displayedGraph.nodes.map((node) => (
-            <Button
-              key={node.id}
-              variant={selected?.id === node.id ? 'secondary' : 'ghost'}
-              size='sm'
-              className='w-full justify-start truncate'
-              onClick={() => selectNode(node.id)}
-            >
-              {String(
-                node.properties?.title ||
-                  nodeKinds.find((kind) => kind.type === node.type)?.title ||
-                  '开始',
-              )}
-            </Button>
-          ))}
-          {selected && (
-            <div className='space-y-2 border-t pt-3'>
-              <FlowSelect
-                label='下一节点'
-                value=''
-                options={displayedGraph.nodes
-                  .filter((node) => node.type !== 'start' && node.id !== selected.id)
-                  .map((node) => ({
-                    value: node.id,
-                    label: String(
-                      node.properties?.title ||
-                        nodeKinds.find((kind) => kind.type === node.type)?.title ||
-                        node.type,
-                    ),
-                  }))}
-                onChange={(id) =>
-                  lfRef.current?.addEdge({
-                    type: 'polyline',
-                    sourceNodeId: selected.id,
-                    targetNodeId: id,
-                  })
-                }
-              />
-              {displayedGraph.edges
-                .filter(
-                  (edge) => edge.sourceNodeId === selected.id || edge.targetNodeId === selected.id,
-                )
-                .map((edge) => (
-                  <Button
-                    key={edge.id}
-                    variant='outline'
-                    size='sm'
-                    className='w-full'
-                    onClick={() => lfRef.current?.deleteEdge(edge.id)}
-                  >
-                    删除连线{' '}
-                    {displayedGraph.nodes.findIndex((node) => node.id === edge.sourceNodeId) + 1} →{' '}
-                    {displayedGraph.nodes.findIndex((node) => node.id === edge.targetNodeId) + 1}
-                  </Button>
-                ))}
+          <details open className='border-b border-border'>
+            <summary className='cursor-pointer px-3 py-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring'>
+              页面事件树
+            </summary>
+            <EventTree selected={target} onSelect={onTargetChange} />
+          </details>
+          <details open className='border-b border-border'>
+            <summary className='cursor-pointer px-3 py-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring'>
+              事件节点
+            </summary>
+            <div className='space-y-1 p-2 pt-0'>
+              {nodeKinds.map((kind) => (
+                <Button
+                  key={kind.type}
+                  variant='outline'
+                  size='sm'
+                  className='h-8 w-full cursor-grab justify-start text-xs font-normal active:cursor-grabbing'
+                  title={`${kind.description}；拖入画布，或按 Enter 添加`}
+                  disabled={!target}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.preventDefault();
+                    lfRef.current?.dnd.startDrag({ type: kind.type, properties: {} });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    addWithKeyboard(kind.type);
+                  }}
+                >
+                  {kind.title}
+                </Button>
+              ))}
+            </div>
+          </details>
+        </aside>
+        <div className='relative min-w-72 flex-1 bg-zinc-50 dark:bg-zinc-900'>
+          {!target && (
+            <div className='absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground'>
+              从左侧页面事件树中选择事件，开始配置逻辑
             </div>
           )}
-        </aside>
-        <div className='relative min-w-72 flex-1'>
           <div ref={container} className='flow-canvas absolute inset-0' aria-label='事件流程画布' />
-          <div className='absolute bottom-4 left-4 flex gap-1 rounded-lg border bg-background p-1 shadow-sm'>
-            <Button
-              size='icon-sm'
-              variant='ghost'
-              aria-label='撤销流程修改'
-              disabled={!historyState.undoAble}
-              onClick={() => {
-                lfRef.current?.undo();
-                commit();
-                setSelected(null);
-              }}
-            >
-              <Undo2 size={16} />
-            </Button>
-            <Button
-              size='icon-sm'
-              variant='ghost'
-              aria-label='重做流程修改'
-              disabled={!historyState.redoAble}
-              onClick={() => {
-                lfRef.current?.redo();
-                commit();
-                setSelected(null);
-              }}
-            >
-              <Redo2 size={16} />
-            </Button>
-            <Button
-              size='icon-sm'
-              variant='ghost'
-              aria-label='放大'
-              onClick={() => lfRef.current?.zoom(true)}
-            >
-              <Plus size={16} />
-            </Button>
-            <Button
-              size='icon-sm'
-              variant='ghost'
-              aria-label='缩小'
-              onClick={() => lfRef.current?.zoom(false)}
-            >
-              <Minus size={16} />
-            </Button>
-            <Button
-              size='icon-sm'
-              variant='ghost'
-              aria-label='适应画布'
-              onClick={() => lfRef.current?.fitView(40, 40)}
-            >
-              <Maximize size={16} />
-            </Button>
-            <Button
-              size='sm'
-              variant='ghost'
-              onClick={() => {
-                lfRef.current
-                  ?.getSelectElements()
-                  .edges.forEach((edge) => lfRef.current?.deleteEdge(edge.id));
-              }}
-            >
-              删除选中连线
-            </Button>
-          </div>
+          {target && (
+            <div className='absolute top-3 left-3 rounded-md border border-border bg-white/90 px-2.5 py-1.5 text-xs text-muted-foreground dark:bg-zinc-950/90'>
+              {target.label} · {target.elementId}
+            </div>
+          )}
+          {target && (
+            <div className='absolute bottom-3 left-3 flex gap-1 rounded-lg border border-border bg-white p-1 shadow-sm dark:bg-zinc-950'>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                aria-label='撤销流程修改'
+                disabled={!historyState.undoAble}
+                onClick={() => {
+                  lfRef.current?.undo();
+                  commit();
+                  setSelected(null);
+                }}
+              >
+                <Undo2 size={16} />
+              </Button>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                aria-label='重做流程修改'
+                disabled={!historyState.redoAble}
+                onClick={() => {
+                  lfRef.current?.redo();
+                  commit();
+                  setSelected(null);
+                }}
+              >
+                <Redo2 size={16} />
+              </Button>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                aria-label='放大'
+                onClick={() => lfRef.current?.zoom(true)}
+              >
+                <Plus size={16} />
+              </Button>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                aria-label='缩小'
+                onClick={() => lfRef.current?.zoom(false)}
+              >
+                <Minus size={16} />
+              </Button>
+              <Button
+                size='icon-sm'
+                variant='ghost'
+                aria-label='适应画布'
+                onClick={() => lfRef.current?.fitView(40, 40)}
+              >
+                <Maximize size={16} />
+              </Button>
+              <Button
+                size='sm'
+                variant='ghost'
+                onClick={() => {
+                  lfRef.current
+                    ?.getSelectElements()
+                    .edges.forEach((edge) => lfRef.current?.deleteEdge(edge.id));
+                }}
+              >
+                删除选中连线
+              </Button>
+            </div>
+          )}
         </div>
         <aside
           aria-label='流程节点配置'
-          className='w-64 shrink-0 space-y-4 overflow-auto border-l p-4'
+          className='w-64 shrink-0 space-y-3 overflow-auto border-l border-border bg-white p-3 dark:bg-zinc-950'
         >
-          <h3 className='text-sm font-medium'>节点配置</h3>
+          <h3 className='border-b border-border pb-3 text-xs font-medium'>
+            {selected
+              ? String(
+                  selected.properties?.title ||
+                    nodeKinds.find((kind) => kind.type === selected.type)?.title ||
+                    '开始',
+                )
+              : '节点配置'}
+          </h3>
           {!selected ? (
-            <p className='text-xs text-muted-foreground'>请从画布中选中节点</p>
+            <p className='text-xs text-muted-foreground'>请从左侧画布中选中节点</p>
           ) : selected.type === 'start' ? (
             <p className='text-sm text-muted-foreground'>
-              {target.label}触发后，从此节点开始执行。
+              {target?.label}触发后，从此节点开始执行。
             </p>
           ) : (
             <>

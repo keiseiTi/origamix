@@ -17,7 +17,7 @@ import {
   TableOfContents,
 } from 'lucide-react';
 import { RevisionHistoryDialog } from './history/revision-history-dialog';
-import type { EditorHistoryState, EditorTool } from '../editor/index';
+import type { EditorHistoryState, EditorTool, EditorMode } from '../editor/index';
 import { CanvasControls } from './toolbar/canvas-controls';
 import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
 
@@ -30,6 +30,8 @@ interface PageToolbarProps {
   projectId: string;
   pageId: string;
   mode: WorkspaceMode;
+  editorMode?: EditorMode;
+  onEditorModeChange?: (mode: EditorMode) => Promise<void>;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
   onSaveVersion: () => Promise<void>;
@@ -56,6 +58,8 @@ export const PageToolbar = ({
   projectId,
   pageId,
   mode,
+  editorMode = 'view',
+  onEditorModeChange,
   onModeChange,
   onPreview,
   onSaveVersion,
@@ -125,13 +129,47 @@ export const PageToolbar = ({
           </span>
         </div>
         {mode === 'edit' && (
-          <CanvasControls
-            viewportWidth={viewportWidth}
-            onViewportWidthChange={onViewportWidthChange}
-            historyState={historyState}
-            onUndo={onUndo}
-            onRedo={onRedo}
-          />
+          <div className='flex min-w-0 items-center gap-3'>
+            <div
+              role='group'
+              aria-label='编辑模式'
+              className='flex shrink-0 items-center gap-1 rounded-lg border border-border p-0.5'
+            >
+              {(
+                [
+                  ['view', '视图'],
+                  ['logic', '逻辑'],
+                ] as const
+              ).map(([value, label]) => (
+                <Button
+                  key={value}
+                  size='sm'
+                  variant={editorMode === value ? 'secondary' : 'ghost'}
+                  aria-pressed={editorMode === value}
+                  disabled={opening || !onEditorModeChange}
+                  onClick={() => {
+                    setError(null);
+                    void onEditorModeChange?.(value).catch((reason: unknown) =>
+                      setError(
+                        reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
+                      ),
+                    );
+                  }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            {editorMode === 'view' && (
+              <CanvasControls
+                viewportWidth={viewportWidth}
+                onViewportWidthChange={onViewportWidthChange}
+                historyState={historyState}
+                onUndo={onUndo}
+                onRedo={onRedo}
+              />
+            )}
+          </div>
         )}
         <div className='flex shrink-0 items-center gap-1'>
           <RevisionActions

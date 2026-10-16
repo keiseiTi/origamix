@@ -62,7 +62,14 @@ export const AttributePanel = ({
   const material = activeElement?.material;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
-  const panels = material?.editorConfig?.panels ?? [];
+  const methods = material?.contextConfig?.methods;
+  const panels = [
+    ...(material?.editorConfig?.panels ?? []).map((panel) => ({
+      ...panel,
+      kind: 'attributes' as const,
+    })),
+    ...(methods?.length ? [{ title: '事件', kind: 'events' as const, methods }] : []),
+  ];
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -264,32 +271,6 @@ export const AttributePanel = ({
               {material?.title}
             </span>
           </div>
-          <div className='border-b p-3'>
-            <p className='mb-2 text-xs font-medium'>事件</p>
-            {material?.contextConfig?.methods?.length ? (
-              material.contextConfig.methods.map((method) => (
-                <Button
-                  key={method.name}
-                  data-flow-event={method.name}
-                  variant='outline'
-                  size='sm'
-                  className='mb-1 w-full justify-between'
-                  onClick={() =>
-                    onEditEvent({
-                      elementId: activeElement.id,
-                      event: method.name,
-                      label: method.description || method.name,
-                    })
-                  }
-                >
-                  <span>{method.description || method.name}</span>
-                  <span className='text-xs text-muted-foreground'>逻辑编辑</span>
-                </Button>
-              ))
-            ) : (
-              <p className='text-xs text-muted-foreground'>此组件没有可配置事件</p>
-            )}
-          </div>
           {panels.length === 0 ? (
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>
           ) : (
@@ -315,6 +296,28 @@ export const AttributePanel = ({
               <div className='min-h-0 flex-1 overflow-auto p-3'>
                 {panels.map((panel, index) => {
                   if (activePanel !== String(index)) return null;
+                  if (panel.kind === 'events') {
+                    return (
+                      <div key='events'>
+                        {panel.methods.map((method) => (
+                          <div
+                            key={method.name}
+                            data-flow-event={method.name}
+                            className='cursor-pointer mb-2 w-full justify-between p-2 border border-solid border-blue-500 rounded'
+                            onClick={() =>
+                              onEditEvent({
+                                elementId: activeElement.id,
+                                event: method.name,
+                                label: method.description || method.name,
+                              })
+                            }
+                          >
+                            <span>{method.description || method.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
                   return (
                     <div key={`${String(panel.title)}-${index}`} className='space-y-3'>
                       {(panel.configs ?? []).map((config) => {

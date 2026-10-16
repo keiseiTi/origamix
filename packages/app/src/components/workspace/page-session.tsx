@@ -6,6 +6,7 @@ import { ChatWorkspace } from '@/components/agent-chat';
 import {
   Editor,
   type EditorHandle,
+  type EditorMode,
   type EditorHistoryState,
   type EditorTool,
 } from '@/components/editor';
@@ -80,6 +81,11 @@ const PageSessionContent = ({
   );
   const theme = usePreferencesStore((state) => state.theme);
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
+  const [editorMode, setEditorMode] = useState<EditorMode>('view');
+  const changeEditorMode = async (next: EditorMode): Promise<void> => {
+    await editorRef.current?.flush();
+    setEditorMode(next);
+  };
   const [viewportWidth, setViewportWidth] = useState(1440);
   const [editorTool, setEditorTool] = useState<EditorTool | null>(null);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
@@ -141,6 +147,8 @@ const PageSessionContent = ({
           projectId={projectId}
           pageId={page.id}
           mode={mode}
+          editorMode={editorMode}
+          onEditorModeChange={changeEditorMode}
           onModeChange={onModeChange}
           onPreview={onPreview}
           onSaveVersion={application.saveVersion}
@@ -169,6 +177,8 @@ const PageSessionContent = ({
             projectId={projectId}
             pageId={page.id}
             viewportWidth={viewportWidth}
+            mode={editorMode}
+            onModeChange={changeEditorMode}
             tool={editorTool === 'history' ? null : editorTool}
             onCloseTool={() => setEditorTool(null)}
             onHistoryStateChange={updateHistoryState}

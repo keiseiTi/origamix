@@ -105,6 +105,30 @@ describe('workspace recovery controls', () => {
   });
   afterEach(cleanup);
 
+  it('keeps the current edit mode when flushing fails and retries without remounting the editor', async () => {
+    mocks.listConversations.mockResolvedValue({ conversations: [] });
+    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    useWorkspaceStore.getState().setPageMode('page_a', 'edit');
+    const flush = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('草稿保存失败'))
+      .mockResolvedValue(undefined);
+    const editorRef = { current: { flush, undo: vi.fn(), redo: vi.fn() } };
+    render(<PageSession {...props} editorRef={editorRef} active />);
+    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: '逻辑' }));
+    await waitFor(() => expect(screen.getByText('草稿保存失败')).toBeTruthy());
+    expect(screen.getByRole('button', { name: '视图' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: '逻辑' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '逻辑' }).getAttribute('aria-pressed')).toBe(
+        'true',
+      ),
+    );
+    expect(flush).toHaveBeenCalledTimes(2);
+    expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes a visual Working commit before saving and applying the page', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
