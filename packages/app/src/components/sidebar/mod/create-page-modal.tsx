@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -6,9 +6,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+} from '@origamix/ui/dialog';
+import { Field, FieldLabel } from '@origamix/ui/field';
+import { Input } from '@origamix/ui/input';
 import { useState } from 'react';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { projectsService } from '@/services/projects';

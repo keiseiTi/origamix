@@ -1,0 +1,31 @@
+{
+  "name": "@origamix/editor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./contracts": "./src/contracts.ts",
+    "./extensions": "./src/extensions.ts"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@origamix/shared": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "@tangramino/base-editor": "^0.1.3"
+  },
+  "devDependencies": {
+    "react": "^19.2.8",
+    "@types/react": "^19.2.18",
+    "@tangramino/base-editor": "^0.1.3",
+    "tsup": "^8.5.0"
+  }
+}

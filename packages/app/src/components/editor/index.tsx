@@ -1,4 +1,4 @@
-import { Spinner } from '../ui/spinner';
+import { Spinner } from '@origamix/ui/spinner';
 import {
   DragOverlay,
   EditorProvider,
@@ -17,19 +17,18 @@ import { EditorToolDialog } from './mods/editor-tool-dialog';
 import { useEditorSession } from './use-editor-session';
 import { ClarificationHighlightContext } from './clarification-highlight';
 
-export interface EditorHandle {
-  flush: () => Promise<void>;
-  redo: () => void;
-  undo: () => void;
-}
-
-export type EditorMode = 'view' | 'logic';
-
-export type EditorTool = 'history' | 'globals' | 'schema';
-export interface EditorHistoryState {
-  canRedo: boolean;
-  canUndo: boolean;
-}
+import type {
+  EditorHandle,
+  EditorMode,
+  EditorTool,
+  EditorHistoryState,
+} from '@origamix/editor/contracts';
+export type {
+  EditorHandle,
+  EditorMode,
+  EditorTool,
+  EditorHistoryState,
+} from '@origamix/editor/contracts';
 
 interface EditorProps {
   projectId: string;

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@origamix/ui/dialog';
 import type { EditorTool } from '..';
 import { GlobalVariablesPanel } from './global-variables-panel';
 import { SchemaEditor } from './schema-editor';

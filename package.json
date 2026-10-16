@@ -11,7 +11,7 @@
     "site:build": "pnpm --filter @origamix/site build",
     "build": "pnpm build:libs && pnpm --filter @origamix/app build && pnpm --filter @origamix/server build:assemble && pnpm --filter @origamix/desktop build:assemble",
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
-    "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
+    "build:libs": "pnpm --filter @origamix/ui --filter @origamix/shared --filter @origamix/editor --filter @origamix/runtime --filter @origamix/materials build",
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,mjs,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",

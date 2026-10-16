@@ -16,6 +16,8 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - `src/components/editor/`: editing UI and its save session; `src/preview/` and `src/components/workspace/preview/page-preview-frame.tsx`: reusable runtime rendering and the retained iframe preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
+- Editor 的公开模式、工具、历史和命令句柄类型由 `@origamix/editor/contracts` 提供；当前实现仍在 App。迁移边界见 [架构说明](../architecture.md)，HTTP/Working 会话继续归 App。
+
 ## Runtime boundaries
 
 - Nothing under `src/` may import Node.js, Electron, Server or Desktop implementations. Use the typed optional desktop bridge and service-layer business requests.
@@ -39,8 +41,10 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Interaction contract
 
-- Use the repository-owned shadcn/ui components in `src/components/ui/`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
-- `src/main.css` explicitly includes Materials' Ant Design source in Tailwind scanning. Keep this source declaration when adding package-owned canvas classes; workbench input controls remain App-owned.
+- `index.html` opts the workbench/preview document into `origamix-ui`; shared palette and foundation styles come from `@origamix/ui/styles.css`. App keeps status colors, scrollbar, layout and theme preference. Keep UI primitives and their generator aliases in the UI package rather than recreating `src/components/ui/`.
+
+- Use the shared shadcn/ui components through `@origamix/ui/<control>`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
+- `src/main.css` explicitly includes Materials' Ant Design source in Tailwind scanning. Keep this source declaration when adding package-owned canvas classes; workbench input controls are owned by UI; `@origamix/ui/styles.css` scans its own sources.
 - Conversation/editor share one page context. The editor already loads and mutates Working Schema; keep that authority in the service-backed editor session rather than duplicating it in Workspace state.
 - Revision history is page-scoped and loaded on demand. Listing returns metadata; viewing fetches one immutable snapshot, while restoring copies it into Working as an unsaved draft. History actions never auto-save or auto-apply.
 - Editor fills the work area; overlay navigation must not resize the canvas. When editable state returns, flush pending edits before page/mode switches and preview, block transitions on save failure and safely clear invalid selections after Schema changes.

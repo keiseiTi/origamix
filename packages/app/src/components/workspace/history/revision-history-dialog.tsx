@@ -1,13 +1,13 @@
 import { CodeEditor } from '@/components/editor/mods/code-editor';
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Spinner } from '@/components/ui/spinner';
+} from '@origamix/ui/dialog';
+import { Spinner } from '@origamix/ui/spinner';
 import { schemaService } from '@/services/schema';
 import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';

@@ -1,17 +1,11 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
 import type { EventTarget } from '../../flow-editor/model';
-import { Checkbox } from '@/components/ui/checkbox';
-import { FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@origamix/ui/checkbox';
+import { FieldLabel } from '@origamix/ui/field';
+import { Input } from '@origamix/ui/input';
+import { RadioGroup, RadioGroupItem } from '@origamix/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@origamix/ui/select';
+import { Switch } from '@origamix/ui/switch';
 import { ChevronRight } from 'lucide-react';
 import { SchemaUtils } from '@tangramino/engine';
 import {

@@ -1,0 +1,30 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: {
+    index: 'src/components/index.ts',
+    badge: 'src/components/badge.tsx',
+    button: 'src/components/button.tsx',
+    card: 'src/components/card.tsx',
+    checkbox: 'src/components/checkbox.tsx',
+    dialog: 'src/components/dialog.tsx',
+    'dropdown-menu': 'src/components/dropdown-menu.tsx',
+    field: 'src/components/field.tsx',
+    input: 'src/components/input.tsx',
+    label: 'src/components/label.tsx',
+    'radio-group': 'src/components/radio-group.tsx',
+    select: 'src/components/select.tsx',
+    separator: 'src/components/separator.tsx',
+    spinner: 'src/components/spinner.tsx',
+    switch: 'src/components/switch.tsx',
+    textarea: 'src/components/textarea.tsx',
+    tooltip: 'src/components/tooltip.tsx',
+    utils: 'src/lib/utils.ts',
+  },
+  format: ['esm'],
+  dts: true,
+  clean: true,
+  splitting: false,
+  sourcemap: true,
+  external: ['react', 'react-dom', 'react/jsx-runtime'],
+});

@@ -15,7 +15,8 @@
     "./protocol/project-manifest": "./src/protocol/project-manifest.ts",
     "./protocol/schema": "./src/protocol/schema.ts",
     "./protocol/validation": "./src/protocol/validation.ts",
-    "./protocol/flow-node": "./src/protocol/flow-node.ts"
+    "./protocol/flow-node": "./src/protocol/flow-node.ts",
+    "./protocol/material-manifest": "./src/protocol/material-manifest.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -59,6 +60,10 @@
       "./protocol/flow-node": {
         "types": "./dist/protocol/flow-node.d.mts",
         "import": "./dist/protocol/flow-node.js"
+      },
+      "./protocol/material-manifest": {
+        "types": "./dist/protocol/material-manifest.d.mts",
+        "import": "./dist/protocol/material-manifest.js"
       }
     }
   },

@@ -14,6 +14,9 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - `antd/*/material-config.ts`: stable material metadata, defaults, context and editor controls.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.
 
+- Build-only Shared imports are inlined in both JavaScript and declarations. The DTS build resolves the declared Shared export dynamically because tsup’s legacy resolver does not handle subpath export maps; do not replace it with a hardcoded cross-package source path. Verify packed runtime entries remain standalone.
+- Manifest format types now live in `@origamix/shared/protocol/material-manifest`; `src/material-manifest.ts` re-exports them for compatibility and retains conversion helpers. Concrete catalogs remain material-owned. Target entry isolation and migration scope are recorded in [architecture](../architecture.md).
+
 ## Material rules
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.

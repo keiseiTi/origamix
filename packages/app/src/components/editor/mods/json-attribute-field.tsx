@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@origamix/ui/button';
+import { Textarea } from '@origamix/ui/textarea';
 
 interface Props {
   label: string;

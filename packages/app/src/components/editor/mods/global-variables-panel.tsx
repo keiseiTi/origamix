@@ -1,14 +1,8 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@origamix/ui/button';
+import { Input } from '@origamix/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@origamix/ui/select';
+import { Switch } from '@origamix/ui/switch';
+import { Textarea } from '@origamix/ui/textarea';
 import { useEditorCore } from '@tangramino/base-editor';
 import type { GlobalVariable } from '@tangramino/engine';
 import { Plus, Trash2 } from 'lucide-react';

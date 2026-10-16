@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, Save } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@origamix/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui/tooltip';
 
 export type ApplyStatus =
   | 'loading'

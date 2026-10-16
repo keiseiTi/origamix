@@ -1,14 +1,14 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+} from '@origamix/ui/dialog';
+import { Field, FieldLabel } from '@origamix/ui/field';
+import { Input } from '@origamix/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import type { PendingProjectInitialization } from '@/hooks/use-project-actions';

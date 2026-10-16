@@ -12,6 +12,8 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - `src/protocol/validation.ts`: structural and semantic validators.
 - `src/desktop-api.ts`: workbench bridge contracts; `src/page-window.ts`: iframe preview snapshot and diagnostic contracts.
 
+- `src/protocol/material-manifest.ts` owns material Manifest types and format version; concrete material catalogs and conversion helpers stay in Materials. This entry is a format contract, not a new runtime validator.
+
 ## Contract rules
 
 - This is platform-neutral contract code, published as an independent ESM package, not a runtime service or miscellaneous utility bucket. No Node.js, Electron, React, Fastify, browser globals or other workspace-package dependencies.

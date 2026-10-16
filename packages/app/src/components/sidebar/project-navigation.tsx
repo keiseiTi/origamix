@@ -1,6 +1,6 @@
 import { Folder, MessageSquareText, Plus } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import { useWorkspaceStore, type ProjectItem } from '@/store/workspace';
 import { SidebarActionMenu } from './action-menu';
 import type { LifecycleTarget } from './mod/lifecycle-modal';

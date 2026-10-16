@@ -11,6 +11,7 @@ export default defineConfig({
     'protocol/api': 'src/protocol/api.ts',
     'protocol/project-manifest': 'src/protocol/project-manifest.ts',
     'protocol/flow-node': 'src/protocol/flow-node.ts',
+    'protocol/material-manifest': 'src/protocol/material-manifest.ts',
     'protocol/schema': 'src/protocol/schema.ts',
     'protocol/validation': 'src/protocol/validation.ts',
   },

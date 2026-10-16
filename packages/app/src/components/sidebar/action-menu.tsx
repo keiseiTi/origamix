@@ -1,10 +1,10 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@origamix/ui/dropdown-menu';
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 
 interface SidebarActionMenuProps {

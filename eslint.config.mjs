@@ -48,7 +48,13 @@ export default defineConfig([
         'error',
         {
           paths: [...builtinModules, 'electron'],
-          patterns: ['node:*', '@origamix/server', '@origamix/server/*'],
+          patterns: [
+            'node:*',
+            '@origamix/server',
+            '@origamix/server/*',
+            '@base-ui/react',
+            '@base-ui/react/*',
+          ],
         },
       ],
     },
@@ -60,7 +66,61 @@ export default defineConfig([
         'error',
         {
           paths: [...builtinModules, 'electron', 'react', 'react-dom', 'fastify'],
-          patterns: ['node:*', '@origamix/server/*'],
+          patterns: ['node:*', '@origamix/*'],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/editor/src/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...builtinModules, 'electron'],
+          patterns: [
+            'node:*',
+            '@origamix/app',
+            '@origamix/app/**',
+            '@origamix/materials',
+            '@origamix/materials/**',
+            '@origamix/runtime',
+            '@origamix/runtime/**',
+            '@origamix/server',
+            '@origamix/server/**',
+            '@origamix/desktop',
+            '@origamix/desktop/**',
+            '**/app/src/**',
+            '**/materials/**',
+            '**/server/**',
+            '**/desktop/**',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/ui/src/**/*.{ts,tsx}'],
+    extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
+    languageOptions: { globals: globals.browser },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...builtinModules, 'electron'],
+          patterns: [
+            'node:*',
+            '@origamix/*',
+            '!@origamix/ui',
+            '!@origamix/ui/**',
+            '**/app/src/**',
+            '**/editor/src/**',
+            '**/shared/src/**',
+            '**/materials/**',
+            '**/runtime/**',
+            '**/server/**',
+            '**/desktop/**',
+          ],
         },
       ],
     },

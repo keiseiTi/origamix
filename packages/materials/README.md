@@ -9,7 +9,7 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 | `@origamix/materials/antd`          | Runtime/生成页面使用的组件注册表                    |
 | `@origamix/materials/antd/group`    | App 编辑器使用的分组及属性配置                      |
 | `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单                  |
-| `@origamix/materials/manifest`      | 清单类型及通用定义                                  |
+| `@origamix/materials/manifest`      | 兼容重导出 Shared 的清单类型及物料转换辅助          |
 | `@origamix/materials/material`      | `OrigamixMaterial` 定义与 Manifest/编辑配置转换辅助 |
 
 运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
@@ -82,3 +82,5 @@ Checkbox.Group、Select、Radio.Group 的 `options` 编辑控件暂不开放，�
 结构化字段使用 JSON 数据编辑入口：编辑文本后点击“更新…”才进入画布和 Working 流程；语法或基础结构错误会提示并保留输入。表格列需要文本 `title` 与 `dataIndex`，可配置 `key`、数字 `width`、`align`、`fixed`、`ellipsis` 和 `hidden`；表格数据编辑入口支持对象数组，单元格值限于文本、数字、布尔值或 `null`。树节点需要唯一 `key` 和文本 `title`，通过 `children` 嵌套。Tabs 页签需要唯一文本 `key` 与文本 `label`，可配置纯文本 `children`、禁用、关闭与销毁行为；Schema 中拖入 Tabs 的子元素归属第一个页签，不支持按页签分别绑定 Schema 子树。完整候选仍由 Server 的 Manifest 校验后保存。
 
 Modal 支持显示状态、标题、宽度、底部按钮、遮罩、关闭、加载及销毁；Drawer 支持位置、预设/自定义尺寸、顶部辅助文本、底部文本、拖动调整尺寸与嵌套推开行为。Drawer 自定义尺寸使用当前 Ant Design `size` 适配，旧 `width`/`height` 数据保留。编辑模式将浮层限制在组件区域内并停用焦点锁定、遮罩及 Esc 捕获，关闭时仍提供可选中/拖入的占位区域；运行模式使用原生浮层行为。关闭、确定等动作仍由运行时的受控 `open` 与回调处理，属性面板不配置回调或实例方法。浮层占位及展示组件使用所在项目的 Ant Design 主题令牌，不读取工作台的亮暗偏好。
+
+Manifest 格式从 Shared 引用，构建将其代码和声明内联；Shared 是构建依赖，不向独立生成项目增加工作区依赖。

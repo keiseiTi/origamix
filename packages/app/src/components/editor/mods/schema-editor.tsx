@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@origamix/ui/button';
 import { CodeEditor } from './code-editor';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { SchemaUtils, type Schema } from '@tangramino/engine';

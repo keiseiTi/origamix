@@ -1,4 +1,4 @@
-import { Spinner } from '@/components/ui/spinner';
+import { Spinner } from '@origamix/ui/spinner';
 import { RuntimePreview } from '@/preview/runtime-preview';
 import type { PreviewSnapshot } from '@origamix/shared/page-window';
 import { useEffect, useState } from 'react';

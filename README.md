@@ -32,10 +32,14 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 
 ## 包与接口
 
+工作台重构的依赖方向、公开契约与迁移归属见 [架构边界](packages/architecture.md)。Editor 当前提供类型契约，公共 UI 已独立为工作区包。
+
 | 包                                        | 唯一职责                                        | 对外接口                              |
 | ----------------------------------------- | ----------------------------------------------- | ------------------------------------- |
 | [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装 | 命名 IPC 桥与桌面程序                 |
 | [App](packages/app/README.md)             | 工作台交互、HTTP 客户端和窗口内状态             | Renderer 构建产物                     |
+| [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                    | 单控件入口、`utils`、`styles.css`     |
+| [Editor](packages/editor/README.md)       | 编辑器公开类型契约；实现待迁移                  | `contracts`、`extensions`             |
 | [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口        |
 | [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 显式协议子路径                        |
 | [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest |

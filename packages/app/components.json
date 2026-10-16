@@ -14,8 +14,8 @@
   "rtl": false,
   "aliases": {
     "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
+    "utils": "@origamix/ui/utils",
+    "ui": "@origamix/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

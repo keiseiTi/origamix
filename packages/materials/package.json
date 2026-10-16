@@ -70,7 +70,8 @@
     "@types/react": "^19.2.18",
     "antd": "^6.0.0",
     "react": "^19.2.8",
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.0",
+    "@origamix/shared": "workspace:*"
   },
   "peerDependencies": {
     "@heroui/react": "^3.2.4",

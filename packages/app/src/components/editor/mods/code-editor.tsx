@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
-import { cn } from 'cn';
+import { cn } from '@origamix/ui/utils';
 import { usePreferencesStore } from '@/store/preferences';
 import './use-monaco-worker';
 
