@@ -1,5 +1,5 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
-import type { EventTarget } from '../../flow/model';
+import type { EventTarget } from '../flow-editor/model';
 import {
   Checkbox,
   FieldLabel,
@@ -23,8 +23,8 @@ import {
   type AttributeConfig,
 } from '@tangramino/base-editor';
 import { useEffect, useMemo, useState } from 'react';
-import type { JsonAttributeConfig } from '../../extensions';
-import { JsonAttributeField } from '../../components/json-attribute-field';
+import type { JsonAttributeConfig } from '../extensions';
+import { JsonAttributeField } from '../components/json-attribute-field';
 
 interface OptionItem {
   label: string;

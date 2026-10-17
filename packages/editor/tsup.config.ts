@@ -4,9 +4,7 @@ export default defineConfig({
   entry: {
     contracts: 'src/contracts.ts',
     extensions: 'src/extensions.ts',
-    visual: 'src/visual/index.tsx',
-    flow: 'src/flow/index.tsx',
-    'flow/model': 'src/flow/model.ts',
+    index: 'src/index.ts',
     components: 'src/components/index.ts',
     core: 'src/core/index.ts',
   },

@@ -1,17 +1,17 @@
 # Editor
 
-页面编辑实现包，包含可视化编辑器和 FlowEditor。App 负责项目装配、Working 会话、HTTP、Agent、Revision 与 Apply；本包只负责编辑体验、引擎适配和编辑数据转换。
+统一页面编辑实现包，逻辑编辑器是 Editor 内部模块，与画布共享编辑上下文。App 负责项目装配、Working 会话、HTTP、Agent、Revision 与 Apply；本包只负责编辑体验、引擎适配和编辑数据转换。
 
 | 公开入口                      | 内容                                                |
 | ----------------------------- | --------------------------------------------------- |
-| `@origamix/editor/visual`     | `Editor`、`EditorProps`；统一画布和逻辑编辑上下文   |
-| `@origamix/editor/flow`       | 共享引擎上下文内使用的 `FlowEditor`                 |
-| `@origamix/editor/flow/model` | 图数据与声明式 Flow 的转换                          |
+| `@origamix/editor`            | `Editor`、`EditorProps`；统一画布和逻辑编辑上下文   |
 | `@origamix/editor/components` | `CodeEditor`、`JsonAttributeField`                  |
 | `@origamix/editor/core`       | `deriveSchemaOperations`、`createEditorTransaction` |
 | `@origamix/editor/contracts`  | 模式、主题、句柄、页面作用域、事务及物料注册类型    |
 | `@origamix/editor/extensions` | 属性编辑器和结构化字段契约                          |
 | `@origamix/editor/styles.css` | Tailwind 源码扫描入口                               |
+
+`src/index.ts` 是统一入口，`src/editor.tsx` 负责编辑器装配，`src/mods/` 包含画布、面板和内部 `flow-editor/`，不单独公开 visual/flow 入口。
 
 这是私有工作区包，声明出口指向源码以支持 HMR；构建生成 ESM 与类型声明供集成验证。
 

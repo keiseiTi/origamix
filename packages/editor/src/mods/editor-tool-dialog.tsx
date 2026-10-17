@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@origamix/ui';
-import type { EditorTool } from '../../contracts';
+import type { EditorTool } from '../contracts';
 import { GlobalVariablesPanel } from './global-variables-panel';
 import { SchemaEditor } from './schema-editor';
 

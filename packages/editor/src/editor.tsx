@@ -1,5 +1,5 @@
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import { EditorThemeContext, MaterialCatalogContext } from '../core/environment';
+import { EditorThemeContext, MaterialCatalogContext } from './core/environment';
 import {
   DragOverlay,
   EditorProvider,
@@ -23,8 +23,8 @@ import type {
   EditorMode,
   EditorTool,
   EditorHistoryState,
-} from '../contracts';
-export type { EditorHandle, EditorMode, EditorTool, EditorHistoryState } from '../contracts';
+} from './contracts';
+export type { EditorHandle, EditorMode, EditorTool, EditorHistoryState } from './contracts';
 
 export interface EditorProps {
   schema: OrigamixPageSchema;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlowEditor } from '../../flow';
-import type { EditorMode } from '../../contracts';
-import type { EventTarget } from '../../flow/model';
+import { FlowEditor } from '../flow-editor';
+import type { EditorMode } from '../contracts';
+import type { EventTarget } from '../flow-editor/model';
 import { CanvasEditor } from '@tangramino/base-editor';
 import { AttributePanel } from './attribute-panel';
 import { DropIndicator, EditableElement, EditorOverlay } from './canvas-tools';

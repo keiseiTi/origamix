@@ -1,4 +1,4 @@
-import { Editor as EditorView } from '@origamix/editor/visual';
+import { Editor as EditorView } from '@origamix/editor';
 import type {
   EditorHandle,
   EditorMode,
