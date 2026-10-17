@@ -32,15 +32,7 @@ const readSidebarCollapsed = (): boolean => {
   try {
     const stored = sessionStorage.getItem(sidebarStorageKey);
     if (stored !== null) return stored === 'true';
-    // Retain the previous window preference before Workspace rewrites its session.
-    const legacy: unknown = JSON.parse(sessionStorage.getItem('origamix:view-session') ?? 'null');
-    const collapsed =
-      legacy !== null &&
-      typeof legacy === 'object' &&
-      'sidebarCollapsed' in legacy &&
-      legacy.sidebarCollapsed === true;
-    sessionStorage.setItem(sidebarStorageKey, String(collapsed));
-    return collapsed;
+    return false;
   } catch {
     return false;
   }

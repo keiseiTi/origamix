@@ -11,6 +11,7 @@ const manifest = () => ({
   name: '示例项目',
   framework: 'react',
   uiLibrary: 'antd',
+  materialSet: { id: 'official-antd', version: '1.0.0' },
   pageDirectory: 'pages',
   pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
 });
@@ -19,6 +20,8 @@ describe('project manifest protocol', () => {
   it('accepts the supported project and page format', () => {
     expect(isProjectManifest(manifest())).toBe(true);
     expect(resolveProjectStack(manifest())).toEqual(BUILTIN_PROJECT_STACK);
+    expect(isProjectManifest({ ...manifest(), materialSet: undefined })).toBe(false);
+    expect(() => resolveProjectStack({ ...manifest(), materialSet: undefined })).toThrow();
     expect(validateResolvedProjectStack(BUILTIN_PROJECT_STACK)).toEqual(BUILTIN_PROJECT_STACK);
     expect(() =>
       resolveProjectStack({

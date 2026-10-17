@@ -49,36 +49,23 @@ const portal =
 export const logicNodes: LogicNodes = {
   setElementProps: (context) => {
     const { engine, data } = context;
-    if (Array.isArray(data.setters)) {
-      for (const setter of setters(data)) {
-        const id = elementId(context, setter.elementId);
-        if (
-          id &&
-          typeof setter.propName === 'string' &&
-          setter.propName &&
-          safeKey(setter.propName)
-        )
-          engine.setState({ [id]: { [setter.propName]: resolveFlowValue(context, setter.value) } });
-      }
-      return;
+    for (const setter of setters(data)) {
+      const id = elementId(context, setter.elementId);
+      if (id && typeof setter.propName === 'string' && setter.propName && safeKey(setter.propName))
+        engine.setState({ [id]: { [setter.propName]: resolveFlowValue(context, setter.value) } });
     }
-    const id = elementId(context, data.elementId);
-    if (id && data.value && typeof data.value === 'object' && !Array.isArray(data.value))
-      engine.setState({
-        [id]: Object.fromEntries(Object.entries(data.value).filter(([key]) => safeKey(key))),
-      });
   },
   visibleElement: (context) => {
     const { engine, data } = context;
-    const ids = (Array.isArray(data.elementIds) ? data.elementIds : [data.elementId])
+    const ids = (Array.isArray(data.elementIds) ? data.elementIds : [])
       .map((id) => elementId(context, id))
       .filter((id): id is string => Boolean(id));
-    const visible = resolveFlowValue(context, data.value ?? data.visible ?? true);
+    const visible = resolveFlowValue(context, data.value ?? true);
     if (visible === false) engine.hiddenElements(ids);
     else engine.showElements(ids);
   },
   setGlobalVariable: (context) => {
-    const entries = Array.isArray(context.data.setters) ? setters(context.data) : [context.data];
+    const entries = setters(context.data);
     for (const setter of entries)
       if (typeof setter.name === 'string' && setter.name && safeKey(setter.name))
         context.engine.setGlobalVariable(setter.name, resolveFlowValue(context, setter.value));

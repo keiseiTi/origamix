@@ -4,10 +4,7 @@ export const sliderManifest = defineSimpleManifest(
     type: 'slider',
     title: '滑动输入条',
     defaultProps: { min: 0, max: 100, step: 1, range: false, keyboard: true, included: true },
-    context: {
-      ...inputContext,
-      variables: [...inputContext.variables, { name: 'checked', description: '保留旧页面属性' }],
-    },
+    context: inputContext,
   },
   {
     description: '滑动输入条属性配置。',

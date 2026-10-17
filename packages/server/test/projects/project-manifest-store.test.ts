@@ -19,6 +19,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
           name: 'Test',
           framework: 'react',
           uiLibrary: 'antd',
+          materialSet: { id: 'official-antd', version: '1.0.0' },
           pageDirectory: 'pages',
           pages: [first, second],
         }),
@@ -30,31 +31,14 @@ it('retains manifest uniqueness checks after structural validation', async () =>
   }
 });
 
-it('fills only missing manifest fields from the open-project defaults', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'origamix-manifest-defaults-'));
+it('rejects incomplete project manifests without rewriting the file', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-manifest-invalid-'));
+  const path = join(directory, 'origamix.project.json');
+  const source = JSON.stringify({ name: 'Incomplete project', pages: [] });
   try {
-    await writeFile(
-      join(directory, 'origamix.project.json'),
-      JSON.stringify({ name: '已有名称', pages: [] }),
-    );
-    const store = new ProjectManifestStore();
-    await store.completeMissingManifestFields(directory, {
-      name: '表单名称',
-      code: 'opened-project',
-      pageDirectory: 'screens',
-    });
-    expect(
-      JSON.parse(await readFile(join(directory, 'origamix.project.json'), 'utf8')),
-    ).toMatchObject({
-      projectId: expect.stringMatching(/^project_/),
-      name: '已有名称',
-      code: 'opened-project',
-      framework: 'react',
-      uiLibrary: 'antd',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
-      pageDirectory: 'screens',
-      pages: [],
-    });
+    await writeFile(path, source);
+    await expect(new ProjectManifestStore().readManifest(directory)).rejects.toThrow();
+    expect(await readFile(path, 'utf8')).toBe(source);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

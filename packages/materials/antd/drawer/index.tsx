@@ -2,7 +2,8 @@ import React from 'react';
 import { Drawer as AntdDrawer, theme, type DrawerProps } from 'antd';
 import type { RuntimeMaterialProps } from '../../src/runtime-material';
 
-export type IProps = DrawerProps & RuntimeMaterialProps & { customSize?: number };
+export type IProps = Omit<DrawerProps, 'width' | 'height'> &
+  RuntimeMaterialProps & { customSize?: number };
 export const Drawer = ({
   children,
   tg_mode,

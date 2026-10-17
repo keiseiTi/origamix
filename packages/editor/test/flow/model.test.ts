@@ -15,7 +15,7 @@ describe('event graph commit', () => {
           type: 'setElementProps',
           x: 200,
           y: 0,
-          properties: { elementId: 'button', value: { text: '完成' } },
+          properties: { setters: [{ elementId: 'button', propName: 'text', value: '完成' }] },
         },
       ],
       edges: [
@@ -32,7 +32,9 @@ describe('event graph commit', () => {
     const flow = toFlow(graph);
     expect(flow.startId).toBe('start');
     expect(flow.nodes.start?.next).toEqual(['action']);
-    expect(flow.nodes.action?.props).toEqual({ elementId: 'button', value: { text: '完成' } });
+    expect(flow.nodes.action?.props).toEqual({
+      setters: [{ elementId: 'button', propName: 'text', value: '完成' }],
+    });
     const schema: Schema = {
       elements: {},
       layout: { root: 'root', structure: {} },
@@ -44,7 +46,7 @@ describe('event graph commit', () => {
             ...flow.nodes,
             action: {
               ...flow.nodes.action!,
-              props: { elementId: 'button', value: { text: 'Agent 更新' } },
+              props: { setters: [{ elementId: 'button', propName: 'text', value: 'Agent 更新' }] },
             },
           },
         },
@@ -54,7 +56,7 @@ describe('event graph commit', () => {
     expect(
       toFlow(readGraph(schema, { elementId: 'button', event: 'onClick', label: '点击事件' })).nodes
         .action?.props,
-    ).toEqual({ elementId: 'button', value: { text: 'Agent 更新' } });
+    ).toEqual({ setters: [{ elementId: 'button', propName: 'text', value: 'Agent 更新' }] });
     graph.edges.push({
       ...graph.edges[0]!,
       id: 'cycle',

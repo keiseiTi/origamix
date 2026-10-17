@@ -39,9 +39,7 @@ export const resolveProjectStack = (descriptor: unknown): ProjectStack => {
     input.uiLibrary !== BUILTIN_PROJECT_STACK.uiLibrary
   )
     throw new Error('项目技术栈不受支持，当前仅支持 React + Antd');
-  // Only absence in legacy manifests selects the original built-in version.
-  const materialSet =
-    input.materialSet === undefined ? BUILTIN_PROJECT_STACK.materialSet : input.materialSet;
+  const materialSet = input.materialSet;
   if (!Value.Check(VersionedStackReferenceSchema, materialSet))
     throw new Error('项目物料集配置无效');
   if (

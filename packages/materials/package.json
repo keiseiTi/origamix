@@ -6,21 +6,9 @@
     "dist"
   ],
   "exports": {
-    "./antd": {
-      "types": "./antd/index.ts",
-      "import": "./dist/antd/index.js"
-    },
-    "./antd/group": {
-      "types": "./antd/group.ts",
-      "import": "./dist/antd/group.js"
-    },
     "./antd/manifest": {
       "types": "./antd/manifest.ts",
       "import": "./dist/antd/manifest.js"
-    },
-    "./manifest": {
-      "types": "./src/material-manifest.ts",
-      "import": "./dist/src/material-manifest.js"
     },
     "./material": {
       "types": "./src/origamix-material.ts",
@@ -38,21 +26,9 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./antd": {
-        "types": "./dist/antd/index.d.ts",
-        "import": "./dist/antd/index.js"
-      },
-      "./antd/group": {
-        "types": "./dist/antd/group.d.ts",
-        "import": "./dist/antd/group.js"
-      },
       "./antd/manifest": {
         "types": "./dist/antd/manifest.d.ts",
         "import": "./dist/antd/manifest.js"
-      },
-      "./manifest": {
-        "types": "./dist/src/material-manifest.d.ts",
-        "import": "./dist/src/material-manifest.js"
       },
       "./material": {
         "types": "./dist/src/origamix-material.d.ts",

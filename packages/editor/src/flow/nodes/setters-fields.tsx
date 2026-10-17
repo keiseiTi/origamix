@@ -24,20 +24,9 @@ export const SettersFields = ({
   const materials = useEditorCore((state) => state.materials);
   const global = type === 'setGlobalVariable';
   const method = type === 'emitElementAction';
-  // Existing single-target nodes remain editable without rewriting their format on mount.
-  const legacy =
-    global && properties.name
-      ? [{ name: properties.name, value: properties.value }]
-      : !method && properties.elementId
-        ? Object.entries(asRecord(properties.value)).map(([propName, value]) => ({
-            elementId: properties.elementId,
-            propName,
-            value,
-          }))
-        : [];
   const setters: Record<string, unknown>[] = Array.isArray(properties.setters)
     ? properties.setters.map(asRecord)
-    : legacy;
+    : [];
   const [keys, setKeys] = useState(() => setters.map(() => crypto.randomUUID()));
   const patch = (index: number, value: Record<string, unknown>): void =>
     onChange({

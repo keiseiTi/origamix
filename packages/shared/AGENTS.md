@@ -6,7 +6,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/protocol/api.ts`: HTTP shapes and domain records.
 - `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
-- `src/protocol/project-stack.ts`: versioned stack references, the supported built-in stack identity and deterministic legacy resolution. Concrete material catalogs and executable module loaders do not belong here. Only missing legacy materialSet selects the original version; explicit incompatible values must fail.
+- `src/protocol/project-stack.ts`: versioned stack references and strict current-format resolution. Concrete catalogs and executable module loaders do not belong here. materialSet is required; missing or unsupported values fail without fallback or migration.
 - `src/protocol/flow-node.ts`: pure-data logical node Manifest catalog, canonical property schemas, result descriptions and connection constraints. App owns forms/graph layout and Runtime owns execution. Adding this catalog does not enable Server validation or Agent tools automatically.
 - `src/protocol/schema.ts`: page Schema, IDs and typed operation variants.
 - `src/protocol/agent.ts`: unified Page Agent Run, terminal outcome, structured clarification and typed SSE payload contracts; `agent-validation.ts` validates both event envelopes and their type-specific payloads.

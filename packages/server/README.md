@@ -2,7 +2,7 @@
 
 Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Schema 编辑与应用、会话和 Agent 执行。HTTP 只监听 `127.0.0.1`，目录授权和模型凭据由宿主提供。
 
-项目清单中的 `framework`、`uiLibrary` 与 `materialSet` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回匹配的物料集、Runtime 和模板身份/版本；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。显式不支持的版本拒绝写入，旧项目缺少物料集字段时保留原内置版本。
+项目清单中的 `framework`、`uiLibrary` 与 `materialSet` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回匹配的物料集、Runtime 和模板身份/版本；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
 
 ## 从哪里开始
 
@@ -140,7 +140,9 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 独立启动可设置 `ORIGAMIX_SERVER_TOKEN` 后执行 `pnpm --filter @origamix/server dev`。监听地址保持 loopback，客户端同时发送 bearer token 与 `X-Origamix-Service`。开发监督器只清理自己启动的进程。
 
-`test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建真实项目和页面、保存并 Apply，然后独立安装、类型检查和构建。它验证生成路径而不是只构建空模板，需要依赖缓存或 registry 网络。
+`test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建项目和页面，编辑包含按钮的 Working 草稿，重启后端确认恢复，再显式保存并 Apply，最后独立安装、类型检查和构建。它同时确认编辑和保存版本不写目标、Apply 不重写页面入口，并检查生成项目不安装编辑引擎，需要依赖缓存或 registry 网络。
+
+设置 `ORIGAMIX_KEEP_TEMPLATE_SMOKE=1` 可保留本次新建的临时目录，结束时输出项目路径，便于后续浏览器交互验证。默认总会清理；该选项不接受或操作已有用户项目。构建通过不代表页面已经渲染，仍需在生成项目中确认实际运行结果。
 
 模板 README 是生成项目使用说明的唯一来源，创建时只替换标题并附加项目标识。复制白名单只允许两份已准备的 vendor 归档，不能复制任意 vendor 内容。字段形状由 Shared 校验，项目服务保留页面 ID/slug 唯一性检查；HTTP 错误统一由 Fastify 错误处理器转换。
 

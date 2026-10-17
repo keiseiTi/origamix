@@ -35,8 +35,16 @@ export const PagePreviewFrame = ({
   const ready = useRef(false);
   const reported = useRef(new Set<string>());
   const previewUrl = useMemo(() => {
-    const url = new URL('/preview', window.location.origin);
-    url.search = new URLSearchParams({ projectId, pageId }).toString();
+    const url = new URL(window.location.href);
+    const search = new URLSearchParams({ projectId, pageId }).toString();
+    if (url.protocol === 'file:') {
+      url.search = '';
+      url.hash = `/preview?${search}`;
+    } else {
+      url.pathname = '/preview';
+      url.search = search;
+      url.hash = '';
+    }
     return url.toString();
   }, [pageId, projectId]);
 

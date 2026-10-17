@@ -59,12 +59,6 @@ describe('declarative event execution', () => {
     expect(
       resolveFlowValue(context, { $ref: 'result', name: 'request', path: '__proto__.constructor' }),
     ).toBeUndefined();
-    // Preserve existing single-target Working schemas.
-    logicNodes.setElementProps!({
-      ...context,
-      data: { elementId: 'button', value: { text: '旧配置' } },
-    });
-    expect(engine.elements.button?.props.text).toBe('旧配置');
   });
 
   it('keeps custom scripts inert and requests free of implicit host credentials', async () => {

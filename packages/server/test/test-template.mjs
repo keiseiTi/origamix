@@ -11,6 +11,13 @@ import { prepareTemplateArtifact } from '../scripts/prepare-template-artifact.mj
 const directory = await mkdtemp(join(tmpdir(), 'origamix-template-smoke-'));
 const project = join(directory, 'project');
 const template = join(directory, 'template');
+const keepProject = process.env.ORIGAMIX_KEEP_TEMPLATE_SMOKE === '1';
+const backendOptions = {
+  databasePath: join(directory, 'test.db'),
+  templatePath: template,
+  desktopToken: 'template-test-token',
+  serviceInstanceId: 'template-test-instance',
+};
 let backend;
 try {
   await prepareTemplateArtifact({
@@ -19,12 +26,7 @@ try {
     runtimePackage: fileURLToPath(new URL('../../runtime', import.meta.url)),
     materialsPackage: fileURLToPath(new URL('../../materials', import.meta.url)),
   });
-  backend = await startServer({
-    databasePath: join(directory, 'test.db'),
-    templatePath: template,
-    desktopToken: 'template-test-token',
-    serviceInstanceId: 'template-test-instance',
-  });
+  backend = await startServer(backendOptions);
   assert.deepEqual(Object.keys(backend).sort(), ['close', 'port', 'registerGrant']);
   backend.registerGrant('template-test-grant', directory);
   const request = async (path, body = {}) => {
@@ -60,6 +62,10 @@ try {
     name: 'Home',
     slug: 'home',
   });
+  const targetPath = join(project, 'src/pages/home/schema.json');
+  const shellPath = join(project, 'src/pages/home/index.tsx');
+  const originalTarget = await readFile(targetPath, 'utf8');
+  const originalShell = await readFile(shellPath, 'utf8');
   const working = await request('/pages/working-state/get', {
     projectId: created.id,
     pageId: page.id,
@@ -70,22 +76,83 @@ try {
     baseWorkingVersion: working.workingVersion,
     operations: [
       { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
+      {
+        operation: 'addElement',
+        elementId: 'delivery_button',
+        parentId: 'element_root',
+        element: {
+          type: 'button',
+          props: { text: 'Migration delivery verified', type: 'primary' },
+        },
+      },
     ],
   });
+  assert.equal(draft.workingVersion, working.workingVersion + 1);
+  assert.equal(draft.revisionId, working.revisionId);
+  assert.equal(await readFile(targetPath, 'utf8'), originalTarget);
+  await backend.close();
+  backend = await startServer(backendOptions);
+  const resumed = await request('/pages/working-state/get', {
+    projectId: created.id,
+    pageId: page.id,
+  });
+  for (const key of [
+    'schema',
+    'revisionId',
+    'workingVersion',
+    'workingHash',
+    'savedSchemaHash',
+    'baselineHash',
+  ])
+    assert.deepEqual(resumed[key], draft[key]);
+  assert.equal(await readFile(targetPath, 'utf8'), originalTarget);
   const updated = await request('/pages/revisions/save', {
     projectId: created.id,
     pageId: page.id,
-    expectedWorkingVersion: draft.workingVersion,
+    expectedWorkingVersion: resumed.workingVersion,
   });
+  assert.notEqual(updated.revisionId, working.revisionId);
+  assert.equal(await readFile(targetPath, 'utf8'), originalTarget);
+  const scope = { projectId: created.id, pageId: page.id };
+  const history = await request('/pages/revisions/list', scope);
+  const restored = await request('/pages/revisions/restore', {
+    ...scope,
+    revisionId: working.revisionId,
+    expectedWorkingVersion: updated.workingVersion,
+  });
+  assert.deepEqual(restored.schema, working.schema);
+  assert.notEqual(restored.workingHash, restored.savedSchemaHash);
+  assert.equal(await readFile(targetPath, 'utf8'), originalTarget);
+  assert.deepEqual(
+    (
+      await request('/pages/revisions/schema/get', {
+        ...scope,
+        revisionId: updated.revisionId,
+      })
+    ).schema,
+    resumed.schema,
+  );
+  const applicable = await request('/pages/revisions/restore', {
+    ...scope,
+    revisionId: updated.revisionId,
+    expectedWorkingVersion: restored.workingVersion,
+  });
+  assert.equal(applicable.workingHash, applicable.savedSchemaHash);
+  assert.equal(
+    (await request('/pages/revisions/list', scope)).revisions.length,
+    history.revisions.length,
+  );
   await request('/pages/apply', {
     projectId: created.id,
     pageId: page.id,
     expectedRevisionId: updated.revisionId,
-    expectedWorkingVersion: updated.workingVersion,
+    expectedWorkingVersion: applicable.workingVersion,
     clientRequestId: 'template-test-apply',
   });
   const target = JSON.parse(await readFile(join(project, 'src/pages/home/schema.json'), 'utf8'));
   assert.equal(target.elements.element_root.props.height, 321);
+  assert.equal(target.elements.delivery_button.props.text, 'Migration delivery verified');
+  assert.equal(await readFile(shellPath, 'utf8'), originalShell);
   const readme = await readFile(join(project, 'README.md'), 'utf8');
   assert.ok(readme.startsWith('# Template smoke'));
   assert.ok(readme.includes('## 职责与入口'));
@@ -117,9 +184,10 @@ try {
     );
   }
   console.info(
-    'Template smoke passed: project creation, save, Apply, independent installation, typecheck and build.',
+    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, independent installation, typecheck and build.',
   );
 } finally {
   await backend?.close();
-  await rm(directory, { recursive: true, force: true });
+  if (keepProject) console.info(`Template smoke project retained: ${project}`);
+  else await rm(directory, { recursive: true, force: true });
 }

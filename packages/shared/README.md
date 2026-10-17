@@ -19,7 +19,7 @@
 
 出口显式列举，测试和新增内部文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
-`protocol/project-stack` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，匹配 Runtime 与模板均为 `1.0.0`。旧项目仅在缺少 `materialSet` 时使用原内置版本；显式不兼容配置不会回退。具体物料内容和模块加载不在 Shared 中。
+`protocol/project-stack` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，匹配 Runtime 与模板均为 `1.0.0`。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
 
 ## 验证与构建
 
@@ -86,4 +86,4 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 值引用使用 `{ $ref: 'global' | 'result', name, path? }`。`name` 是变量名或返回值来源节点 ID，`path` 是点分隔的数据路径；引用解析整个字段值，不递归求值嵌套 JSON，也不执行字符串表达式。自定义 JS 的 `executable` 为 `false`，仅保存代码配置。
 
-本模块不包含 React、LogicFlow、表单控件或执行函数。本次仅新增共享契约，现有 App 节点定义、Runtime 执行代码、Server 校验和 Agent 工具尚未接入；既有兼容属性由原消费方继续处理，此目录描述新的规范字段。
+本模块不包含 React、LogicFlow、表单控件或执行函数。Editor 与 Runtime 使用当前节点契约，不转换旧节点格式。Server 的物料与写入校验仍由对应服务负责。

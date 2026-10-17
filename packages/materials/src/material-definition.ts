@@ -1,4 +1,5 @@
-import { withCommonMaterialManifest, type MaterialManifest } from './material-manifest';
+import { withCommonMaterialManifest } from './material-manifest';
+import type { MaterialManifest } from '@origamix/shared/protocol/material-manifest';
 import type { Material } from './material';
 
 type ManifestMetadata = Omit<MaterialManifest, 'type' | 'title' | 'defaultProps' | 'context'>;

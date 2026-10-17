@@ -20,6 +20,8 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Runtime boundaries
 
+- Workbench routes use browser paths over HTTP and hash routes for Desktop `file:` documents. Build iframe URLs from the current document in file mode, preserving the compiled index path; never use the opaque file origin as a URL base. The real Desktop smoke checks actual iframe material rendering and the absence of a bridge.
+
 - `src/materials/` owns the literal built-in import allowlist and async editor registration. Resolve stack through `projectsService.stack`, load editor materials only in editing mode, and keep module caches keyed by material-set identity/version. Rejected loads must remain retryable; a previous project's completion must not install a registration into the current project. Delay Working-session readiness until the material registration mounts. Preview receives the resolved stack only in host snapshots and loads runtime separately without credentials or HTTP.
 
 - App bootstrap `src/components/editor/monaco-workers.ts` configures Vite workers. Pass theme to standalone Editor components such as history CodeEditor; Editor cannot read App preferences. The Tangramino editor store is module-scoped: mount canvas UI only for the active editing page. PageEditor remounts its session on page activation and mode changes after the transition flush, so inactive pages and chat/preview never retain canvas portals. Its persistence hook remains available for recovery/flush. Each page owns a separate Working queue; failed drafts remain visible, and typing must not automatically replay a failed/ambiguous write.

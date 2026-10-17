@@ -34,6 +34,8 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 
 工作台重构的依赖方向、公开契约与迁移归属见 [架构边界](packages/architecture.md)。Editor 已承接画布、FlowEditor 与通用编辑组件，公共 UI 已独立为工作区包。
 
+项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd/runtime` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。第五阶段的专属属性编辑器按需延期，现有结构化字段继续使用 JSON 编辑。
+
 | 包                                        | 唯一职责                                        | 对外接口                                     |
 | ----------------------------------------- | ----------------------------------------------- | -------------------------------------------- |
 | [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装 | 命名 IPC 桥与桌面程序                        |
@@ -61,9 +63,11 @@ pnpm build
 
 根 lint 包含跨包接口规则，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
 
+本轮架构迁移的核心链路、真实桌面与独立项目验证结果，以及未验证范围，见 [迁移交付验证](packages/migration-verification.md)。
+
 | 命令                 | 产物/用途                                                |
 | -------------------- | -------------------------------------------------------- |
-| `pnpm build:libs`    | Shared、Runtime、Materials 的独立产物                    |
+| `pnpm build:libs`    | UI、Shared、Editor、Runtime、Materials 构建产物          |
 | `pnpm build:web`     | 上述依赖及 App 的静态资源                                |
 | `pnpm build`         | 库 → App → Server → Desktop 编译和资源组装，不制作安装包 |
 | `pnpm package:dir`   | 构建后生成 `release/` 下未签名应用目录                   |

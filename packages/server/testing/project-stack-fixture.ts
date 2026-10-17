@@ -11,6 +11,7 @@ export const createProjectStackFixture = async () => {
       name: 'Test',
       framework: 'react',
       uiLibrary: 'antd',
+      materialSet: { id: 'official-antd', version: '1.0.0' },
       pageDirectory: 'pages',
       pages: [],
     }),

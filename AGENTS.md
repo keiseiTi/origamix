@@ -18,7 +18,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 | [Editor](packages/editor/AGENTS.md)       | 画布、FlowEditor、编辑公共组件与契约                          | `packages/editor/src/visual/`、`packages/editor/src/flow/`、`packages/editor/src/contracts.ts` |
 | [UI](packages/ui/AGENTS.md)               | 公共基础控件、工具与主题基础                                  | `packages/ui/src/components/`、`packages/ui/src/styles/styles.css`                             |
 | [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`            |
-| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests                | `packages/materials/antd/index.ts`, `packages/materials/antd/group.ts`                         |
+| [Materials](packages/materials/AGENTS.md) | Tangramino page materials and editor manifests                | `packages/materials/README.md`, `packages/materials/antd/`                                     |
 | [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/react.tsx`                                                                   |
 | [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/runtime.ts`, `packages/server/projects/`                                      |
 | [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`                          |

@@ -11,7 +11,6 @@ import {
   resolveProjectStack,
 } from '@origamix/shared/protocol/project-stack';
 import { invalid, notFound } from '../errors';
-import { nanoid } from 'nanoid';
 
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
@@ -34,40 +33,6 @@ export class ProjectManifestStore {
     });
   }
 
-  async completeMissingManifestFields(
-    projectPath: string,
-    defaults: { name: string; code: string; pageDirectory: string },
-  ): Promise<void> {
-    let source: unknown;
-    try {
-      source = JSON.parse(await readFile(join(projectPath, 'origamix.project.json'), 'utf8'));
-    } catch {
-      throw invalid('项目清单不是有效的 JSON');
-    }
-    if (!source || typeof source !== 'object' || Array.isArray(source))
-      throw invalid('项目清单字段无效');
-    const manifest = source as Record<string, unknown>;
-    const completed = {
-      ...manifest,
-      projectId: manifest.projectId ?? `project_${nanoid()}`,
-      name: manifest.name ?? defaults.name,
-      code: manifest.code ?? defaults.code,
-      framework:
-        manifest.framework === undefined ? BUILTIN_PROJECT_STACK.framework : manifest.framework,
-      uiLibrary:
-        manifest.uiLibrary === undefined ? BUILTIN_PROJECT_STACK.uiLibrary : manifest.uiLibrary,
-      pageDirectory: manifest.pageDirectory ?? defaults.pageDirectory,
-      pages: manifest.pages ?? [],
-    };
-    const stack = this.resolveStack(completed);
-    Object.assign(completed, { materialSet: stack.materialSet });
-    if (!isProjectManifest(completed)) throw invalid('项目清单字段无效');
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(completed.code)))
-      throw invalid('项目清单中的项目标识无效');
-    if (JSON.stringify(completed) !== JSON.stringify(source))
-      await this.writeManifest(projectPath, completed);
-  }
-
   async readManifest(projectPath: string): Promise<ProjectManifest> {
     let manifest: unknown;
     try {
@@ -76,9 +41,6 @@ export class ProjectManifestStore {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
         throw invalid('目录尚未初始化为 Origamix 项目');
       throw invalid('项目清单不是有效的 JSON');
-    }
-    if (manifest && typeof manifest === 'object' && !('pageDirectory' in manifest)) {
-      manifest = { ...manifest, pageDirectory: 'pages' };
     }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     const stack = this.resolveStack(manifest);

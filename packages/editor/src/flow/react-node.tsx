@@ -65,7 +65,6 @@ export const createReactNode = (
       const { model } = this.props;
       const title =
         model.properties.title ||
-        model.properties.alias ||
         getNodeDefinition(String(model.type))?.title ||
         String(model.type);
       const properties = model.properties;

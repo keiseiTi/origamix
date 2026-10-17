@@ -87,6 +87,11 @@ app
     const project = await request('/projects/create', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
     await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
     const pages = await request('/pages/list', { projectId: project.id });
+    const working = await request('/pages/working-state/get', { projectId: project.id, pageId: pages[0].id });
+    await request('/pages/working-operations/apply', { projectId: project.id, pageId: pages[0].id, baseWorkingVersion: working.workingVersion, operations: [{
+      operation: 'addElement', elementId: 'preview_button', parentId: 'element_root',
+      element: { type: 'button', props: { text: 'Desktop preview verified' } }
+    }] });
     return { path: project.path, projectId: project.id, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
@@ -137,7 +142,7 @@ app
     await waitFor(() =>
       main.webContents.executeJavaScript(`(() => {
         const frame = document.querySelector('iframe[title="Home 预览"]');
-        return Boolean(frame?.contentDocument?.querySelector('[aria-label="退出预览"]'));
+        return Boolean(frame?.contentDocument?.body.innerText.includes('Desktop preview verified'));
       })()`),
     );
     assert.equal(
@@ -155,12 +160,11 @@ app
       'undefined',
     );
     await main.webContents.executeJavaScript(`(() => {
-      const frame = document.querySelector('iframe[title="Home 预览"]');
-      frame?.contentDocument?.querySelector('[aria-label="退出预览"]')?.click();
+      document.querySelector('button[aria-label="退出预览"]')?.click();
     })()`);
     await waitFor(() =>
       main.webContents.executeJavaScript(
-        `document.querySelector('iframe[title="Home 预览"]')?.parentElement?.classList.contains('hidden') === true`,
+        `Boolean(document.querySelector('iframe[title="Home 预览"]')?.closest('.hidden'))`,
       ),
     );
     await main.webContents.executeJavaScript(`localStorage.setItem('origamix:theme', 'dark')`);

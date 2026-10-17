@@ -36,18 +36,14 @@ export const NodeProperties = ({
   const portalOptions = elementOptions.filter((item) =>
     ['modal', 'drawer'].includes(schema.elements[item.value]?.type ?? ''),
   );
-  const ids = Array.isArray(properties.elementIds)
-    ? properties.elementIds
-    : properties.elementId
-      ? [properties.elementId]
-      : [];
+  const ids = Array.isArray(properties.elementIds) ? properties.elementIds : [];
   return (
     <div className='space-y-3'>
       <div className='space-y-1.5'>
         <FieldLabel htmlFor={`node-title-${node.id}`}>节点别名</FieldLabel>
         <Input
           id={`node-title-${node.id}`}
-          value={String(properties.title ?? properties.alias ?? '')}
+          value={String(properties.title ?? '')}
           placeholder={getNodeDefinition(String(type))?.title}
           onChange={(event) => onChange({ title: event.target.value })}
         />
@@ -92,7 +88,7 @@ export const NodeProperties = ({
           <ValueField
             label='显隐设置'
             literalType='boolean'
-            value={properties.value ?? properties.visible ?? true}
+            value={properties.value ?? true}
             onChange={(value) => onChange({ value })}
           />
           <p className='text-xs text-muted-foreground'>

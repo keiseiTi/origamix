@@ -56,7 +56,7 @@ export const serverBoundaries = {
       }
       if (
         specifier.startsWith('@origamix/materials') &&
-        !/^@origamix\/materials\/(?:manifest|[^/]+\/manifest)$/.test(specifier)
+        !/^@origamix\/materials\/[^/]+\/manifest$/.test(specifier)
       ) {
         report(node, 'Server may import Materials manifests only.');
       }

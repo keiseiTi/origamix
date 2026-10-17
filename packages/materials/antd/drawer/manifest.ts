@@ -79,28 +79,6 @@ export const drawerManifest = defineSimpleManifest(
           type: 'number',
           minimum: 1,
         },
-        width: {
-          anyOf: [
-            {
-              type: 'number',
-              minimum: 1,
-            },
-            {
-              type: 'string',
-            },
-          ],
-        },
-        height: {
-          anyOf: [
-            {
-              type: 'number',
-              minimum: 1,
-            },
-            {
-              type: 'string',
-            },
-          ],
-        },
         resizable: {
           type: 'boolean',
         },

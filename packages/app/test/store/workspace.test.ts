@@ -18,9 +18,13 @@ describe('workspace tab recovery', () => {
   it('restores the active page and its retained draft without trusting stale lifecycle state', () => {
     const session = parseWorkspaceSession(
       JSON.stringify({
-        activePageId: 'page_a',
-        openPageIds: ['page_a', 'page_b'],
-        pageModes: { page_a: 'edit', page_b: 'chat' },
+        activeTabId: 'page_a',
+        openPages: projects[0].pages.map((page) => ({
+          ...page,
+          projectId: 'project_1',
+          mode: page.id === 'page_a' ? 'edit' : 'chat',
+          status: 'in_sync',
+        })),
         pageDrafts: { page_a: 'retained draft', removed: 'stale' },
       }),
     );

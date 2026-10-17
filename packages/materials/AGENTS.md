@@ -4,9 +4,9 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Ownership and entry points
 
-- `antd/runtime.ts`: Ant Design runtime registry; `antd/index.ts` retains compatibility for existing generated pages.
-- `antd/editor.ts`: editor groups, Manifest catalog and property-editor registrations; `antd/group.ts` retains compatibility.
-- `antd/*/manifest.ts`: material-owned, serializable definitions; `antd/manifest.ts` is the pure-data compatibility and aggregation entry point.
+- `antd/runtime.ts`: Ant Design runtime registry.
+- `antd/editor.ts`: editor groups, Manifest catalog and property-editor registrations.
+- `antd/*/manifest.ts`: material-owned, serializable definitions; `antd/manifest.ts` is the pure-data aggregation entry point.
 - `antd/*/definition.ts`: the single serializable source for editor metadata and Manifest data when a material has migrated to `OrigamixMaterial`.
 - `src/material-definition.ts`: pure-data definition/Manifest converters; editor-specific conversion remains in `src/origamix-material.ts`. Keep React rendering helpers out of Server-facing Manifest imports.
 - `antd/manifest-definition.ts`: shared declaration helpers for colocated manifests; it has no React or editor imports.
@@ -16,14 +16,14 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.
 
 - Build-only Shared imports are inlined in both JavaScript and declarations. The DTS build resolves the declared Shared export dynamically because tsup’s legacy resolver does not handle subpath export maps; do not replace it with a hardcoded cross-package source path. Verify packed runtime entries remain standalone.
-- Manifest format types now live in `@origamix/shared/protocol/material-manifest`; `src/material-manifest.ts` re-exports them for compatibility and retains conversion helpers. Concrete catalogs remain material-owned. Target entry isolation and migration scope are recorded in [architecture](../architecture.md).
+- Manifest format types live in `@origamix/shared/protocol/material-manifest`; import them directly. `src/material-manifest.ts` contains only material-owned conversion helpers. No historical exports or data-shape conversions are provided.
 
 ## Material rules
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
 - Workspace type exports resolve to package source so downstream typechecks do not depend on prebuilt `dist`; runtime imports and `publishConfig.exports` resolve to compiled files. Keep both export maps synchronized.
-- A registry key, manifest `type` and persisted Schema type form a compatibility boundary. Renames and removals require a migration plan and coordinated Shared/Server/App/Template changes.
+- Keep registry keys, manifest `type` and Schema types consistent. Renames and removals require coordinated Shared/Server/App/Template changes; do not add historical aliases or format conversions.
 - Common `alias` properties and `init` lifecycle events are composed by `withCommonMaterialManifest`; `toEditorMaterial` derives the matching optional alias field and events. Both editor and runtime registries strip `alias` before rendering, without changing the retained Schema. Keep this contract centralized rather than adding App-only plugins.
 - Runtime adapters should forward supported props and Tangramino context deliberately. Do not leak editor-only props to DOM elements, mutate Schema or add persistence/network side effects.
 - Runtime components use the package-local minimal runtime props contract; do not import editor contracts solely for injected render props. Editor metadata and controls may continue to depend on the editor package through editor-facing entries.

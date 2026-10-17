@@ -334,7 +334,6 @@ export const FlowEditor = ({
             {selected
               ? String(
                   selected.properties?.title ||
-                    selected.properties?.alias ||
                     getNodeDefinition(String(selected.type))?.title ||
                     '开始',
                 )

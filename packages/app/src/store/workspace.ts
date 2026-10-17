@@ -64,11 +64,6 @@ const stringRecord = (value: unknown): Record<string, string> => {
   );
 };
 
-const stringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((id): id is string => typeof id === 'string'))];
-};
-
 export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
   try {
     const value: unknown = JSON.parse(raw ?? 'null');
@@ -99,26 +94,8 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           status: null,
         });
       }
-    } else {
-      // Migrate existing window sessions without retaining stale project metadata.
-      const modes = stringRecord(record.pageModes);
-      for (const id of stringArray(record.openPageIds)) {
-        openPages.push({
-          id,
-          projectId: '',
-          name: '',
-          fileName: '',
-          mode: modes[id] === 'edit' ? 'edit' : 'chat',
-          status: null,
-        });
-      }
     }
-    const activeTabId =
-      typeof record.activeTabId === 'string'
-        ? record.activeTabId
-        : typeof record.activePageId === 'string'
-          ? record.activePageId
-          : null;
+    const activeTabId = typeof record.activeTabId === 'string' ? record.activeTabId : null;
     return {
       activeTabId,
       openPages,

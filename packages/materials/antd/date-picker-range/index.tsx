@@ -6,7 +6,7 @@ import { parseDateValue } from '../date-value';
 
 export type IProps = Omit<RangePickerProps, 'placeholder' | 'minDate' | 'maxDate'> &
   RuntimeMaterialProps & {
-    placeholder?: string | [string, string];
+    placeholder?: [string, string];
     startPlaceholder?: string;
     endPlaceholder?: string;
     defaultStart?: string;
@@ -31,10 +31,7 @@ export const DatePickerRange = ({
   tg_setContextValues,
   ...rest
 }: IProps) => {
-  const placeholders: [string, string] =
-    typeof placeholder === 'string'
-      ? [placeholder, placeholder]
-      : (placeholder ?? ['开始日期', '结束日期']);
+  const placeholders = placeholder ?? ['开始日期', '结束日期'];
   return (
     <AntdDatePicker.RangePicker
       key={`${defaultStart}:${defaultEnd}`}

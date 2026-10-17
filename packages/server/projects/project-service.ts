@@ -150,7 +150,6 @@ export class ProjectService {
         };
       await this.scaffold.initializeDirectoryAsNewProject(path, { name, code, pageDirectory });
     }
-    await this.manifest.completeMissingManifestFields(path, { name, code, pageDirectory });
     this.grants.consumeGrant(input.directoryGrantId);
     return { status: 'opened', project: await this.reconcile(path) };
   }

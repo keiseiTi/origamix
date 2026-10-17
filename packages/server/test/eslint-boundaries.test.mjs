@@ -40,6 +40,7 @@ for (const [file, code] of [
   ['runtime.ts', 'export default {};'],
   ['agent/new-service.ts', "import { evaluate } from '../evaluation/evaluation-harness';"],
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd';"],
+  ['agent/new-service.ts', "import { manifest } from '@origamix/materials/manifest';"],
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd/runtime';"],
   ['agent/new-service.ts', "import { materialGroups } from '@origamix/materials/antd/editor';"],
   ['agent/new-service.ts', "import type { Component } from 'react';"],

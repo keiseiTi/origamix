@@ -78,21 +78,7 @@ export const datePickerRangeManifest = defineSimpleManifest(
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
       },
-      placeholder: {
-        anyOf: [
-          {
-            type: 'string',
-          },
-          {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-            minItems: 2,
-            maxItems: 2,
-          },
-        ],
-      },
+      placeholder: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 2 },
       showNow: {
         type: 'boolean',
       },

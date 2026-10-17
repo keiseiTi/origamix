@@ -9,10 +9,9 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 | `@origamix/materials/antd/runtime`  | Runtime/生成页面使用的组件注册表                    |
 | `@origamix/materials/antd/editor`   | App 编辑器使用的分组、清单与扩展注册                |
 | `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单                  |
-| `@origamix/materials/manifest`      | 兼容重导出 Shared 的清单类型及物料转换辅助          |
 | `@origamix/materials/material`      | `OrigamixMaterial` 定义与 Manifest/编辑配置转换辅助 |
 
-旧 `antd` 与 `antd/group` 入口保留兼容。新增消费者使用上述三个入口。`editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器在后续阶段接入。
+运行、编辑和清单使用上述三个入口，不提供旧入口别名；格式类型直接从 Shared 导入。`editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器按需延期。
 
 `runtime` 同时导出轻量的 `materialSet` 身份/版本，供按需加载时核对安装包；它与 Manifest 引用同一份包内声明，不会因此加载编辑配置。
 
@@ -20,7 +19,7 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 
 消费页面需要 Ant Design 样式及 Tailwind；Tailwind v4 应通过 `@source` 显式扫描已安装的 `@origamix/materials/dist`。App 与生成项目模板已配置各自的源码/安装包路径。
 
-物料注册键和已保存 Schema 的 `type` 是兼容性边界。删除物料或改名需要数据迁移，不能因为某个示例页面没用到就移除。
+物料注册键、Manifest 和 Schema 的 `type` 必须一致。删除物料或改名时同步更新相关契约与调用方，不保留历史别名或旧格式转换。
 
 ## 开发与发布
 
@@ -71,9 +70,9 @@ Checkbox.Group、Select、Radio.Group 的 `options` 编辑控件暂不开放，�
 
 日期、时间、日期范围、级联、树选择、上传和滑块同样使用单一属性面板。日期初始值/日期上下限保存为 `YYYY-MM-DD` 字符串（也可使用 `YYYY-MM-DD HH:mm:ss`）；时间初始值使用 `HH:mm:ss` 或 `HH:mm`，组件在渲染时转换为 Day.js 对象，不把日期对象持久化到 Schema。非法字符串不传入 Ant Design 日期组件，应按字段标明的格式填写。
 
-范围日期分别配置初始开始/结束、占位符与允许为空，运行时转换为 Ant Design 的成对属性，保留旧 `placeholder` 数据。滑块支持单值和范围模式、独立初始上下限、范围拖动和提示设置，模式相关字段通过 `linkageShow` 声明。
+范围日期分别配置初始开始/结束、占位符与允许为空，运行时转换为 Ant Design 的成对属性；`placeholder` 只接受两个字符串组成的数组。滑块支持单值和范围模式、独立初始上下限、范围拖动和提示设置，模式相关字段通过 `linkageShow` 声明。
 
-上传提供默认文件选择入口，`drag` 切换为 Dragger。没有 `action` 时只选择文件，不发起上传；配置上传地址后由组件执行普通上传请求，不使用桌面凭据。请求头、额外参数、文件列表和自定义回调不在本轮新增编辑控件范围内；已有对象属性仍保留兼容。上传地址沿用 Server 的安全 URL 校验。
+上传提供默认文件选择入口，`drag` 切换为 Dragger。没有 `action` 时只选择文件，不发起上传；配置上传地址后由组件执行普通上传请求，不使用桌面凭据。请求头、额外参数、文件列表和自定义回调不在本轮新增编辑控件范围内；对象属性通过当前 Manifest 校验。上传地址沿用 Server 的安全 URL 校验。
 
 级联 `options` 与树选择 `treeData` 的结构化编辑器本轮暂缓；已有层级数据可继续渲染与保存，Manifest 校验递归节点结构。函数型禁用日期/时间、异步加载节点、自定义渲染和高级刻度数据编辑仍不作为普通属性开放。
 
@@ -85,6 +84,6 @@ Checkbox.Group、Select、Radio.Group 的 `options` 编辑控件暂不开放，�
 
 结构化字段使用 JSON 数据编辑入口：编辑文本后点击“更新…”才进入画布和 Working 流程；语法或基础结构错误会提示并保留输入。表格列需要文本 `title` 与 `dataIndex`，可配置 `key`、数字 `width`、`align`、`fixed`、`ellipsis` 和 `hidden`；表格数据编辑入口支持对象数组，单元格值限于文本、数字、布尔值或 `null`。树节点需要唯一 `key` 和文本 `title`，通过 `children` 嵌套。Tabs 页签需要唯一文本 `key` 与文本 `label`，可配置纯文本 `children`、禁用、关闭与销毁行为；Schema 中拖入 Tabs 的子元素归属第一个页签，不支持按页签分别绑定 Schema 子树。完整候选仍由 Server 的 Manifest 校验后保存。
 
-Modal 支持显示状态、标题、宽度、底部按钮、遮罩、关闭、加载及销毁；Drawer 支持位置、预设/自定义尺寸、顶部辅助文本、底部文本、拖动调整尺寸与嵌套推开行为。Drawer 自定义尺寸使用当前 Ant Design `size` 适配，旧 `width`/`height` 数据保留。编辑模式将浮层限制在组件区域内并停用焦点锁定、遮罩及 Esc 捕获，关闭时仍提供可选中/拖入的占位区域；运行模式使用原生浮层行为。关闭、确定等动作仍由运行时的受控 `open` 与回调处理，属性面板不配置回调或实例方法。浮层占位及展示组件使用所在项目的 Ant Design 主题令牌，不读取工作台的亮暗偏好。
+Modal 支持显示状态、标题、宽度、底部按钮、遮罩、关闭、加载及销毁；Drawer 支持位置、预设/自定义尺寸、顶部辅助文本、底部文本、拖动调整尺寸与嵌套推开行为。Drawer 自定义尺寸使用当前 Ant Design `size` 适配，不提供 `width`/`height` 旧字段。编辑模式将浮层限制在组件区域内并停用焦点锁定、遮罩及 Esc 捕获，关闭时仍提供可选中/拖入的占位区域；运行模式使用原生浮层行为。关闭、确定等动作仍由运行时的受控 `open` 与回调处理，属性面板不配置回调或实例方法。浮层占位及展示组件使用所在项目的 Ant Design 主题令牌，不读取工作台的亮暗偏好。
 
 Manifest 格式从 Shared 引用，构建将其代码和声明内联；Shared 是构建依赖，不向独立生成项目增加工作区依赖。

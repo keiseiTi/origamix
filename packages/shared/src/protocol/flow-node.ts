@@ -39,7 +39,6 @@ const props = <T extends TProperties>(properties: T) =>
   Type.Object(
     {
       title: Type.Optional(Type.String({ description: '逻辑节点的显示名称。' })),
-      alias: Type.Optional(Type.String({ description: '兼容已有逻辑节点的显示别名。' })),
       ...properties,
     },
     { additionalProperties: false },

@@ -1,5 +1,3 @@
-// Compatibility entry: the platform-neutral format is owned by Shared.
-export * from '@origamix/shared/protocol/material-manifest';
 import type {
   AgentMaterialSummary,
   JsonSchema,

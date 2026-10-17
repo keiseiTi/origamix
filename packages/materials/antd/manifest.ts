@@ -1,10 +1,9 @@
-import { materialSet } from './material-set';
 import {
   MATERIAL_MANIFEST_FORMAT_VERSION,
-  toAgentMaterialSummary,
-  toValidationMaterialManifest,
   type MaterialManifestCatalog,
-} from '../src/material-manifest';
+} from '@origamix/shared/protocol/material-manifest';
+import { materialSet } from './material-set';
+import { toAgentMaterialSummary, toValidationMaterialManifest } from '../src/material-manifest';
 import { buttonManifest } from './button/manifest';
 import { cascaderManifest } from './cascader/manifest';
 import { checkboxManifest } from './checkbox/manifest';
