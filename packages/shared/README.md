@@ -72,6 +72,8 @@ Shared 校验结构、根节点和布局引用/循环；Server 另行验证物�
 
 `@origamix/shared/protocol/flow-node` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `FlowValueReferenceSchema` / `FlowValueReference`。
 
+`FlowNodeProps<T>` 从节点属性 Schema 派生参数类型；`RuntimeFlowNodeType` 排除由引擎处理的 `start`，供 Runtime 完整声明实现表。`isFlowNodeProps(type, data)` 校验节点参数并提供类型收窄，只验证结构，不替代页面归属、物料能力或请求授权检查。
+
 目录包含开始、接口请求、自定义 JS、设置元素属性、触发元素方法、显隐元素、条件判断、设置全局变量、打开和关闭弹窗抽屉。每个节点声明 `type`、中文 `title`、`description`、`executable`、`defaultProps`、`propsSchema`、连接规则和使用约束；有返回值的可执行节点同时声明 `returnsSchema`。
 
 ```ts

@@ -5,5 +5,6 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   clean: true,
+  noExternal: ['@origamix/shared'],
   external: ['react', 'react/jsx-runtime'],
 });

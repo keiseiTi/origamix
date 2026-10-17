@@ -1,5 +1,6 @@
 import { createEngine, type Schema } from '@tangramino/engine';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared/protocol/flow-node';
 import { logicNodes, resolveFlowValue } from '../logic-nodes';
 
 const schema: Schema = {
@@ -18,7 +19,20 @@ describe('declarative event execution', () => {
   // Runtime owns execution: Server cannot prove that preview actions use values
   // and targets from the current page instead of evaluating project code.
   it('executes the configured property, variable, method and portal actions with scoped data references', async () => {
+    expect(Object.keys(logicNodes).sort()).toEqual(
+      flowNodeManifests
+        .filter((node) => node.type !== 'start')
+        .map((node) => node.type)
+        .sort(),
+    );
     const engine = createEngine(schema);
+    expect(() =>
+      logicNodes.setElementProps!({
+        engine,
+        data: { elementId: 'button', value: { text: 'invalid' } },
+      }),
+    ).toThrow('Invalid flow node properties');
+    expect(engine.elements.button?.props.text).toBeUndefined();
     const context = { engine, data: {}, lastReturnedVal: { request: { data: { text: '完成' } } } };
     logicNodes.setGlobalVariable!({
       ...context,
@@ -38,7 +52,13 @@ describe('declarative event execution', () => {
     });
     expect(engine.elements.button?.props.text).toBe('完成');
     expect(
-      logicNodes.condition!({ ...context, data: { judgment: { $ref: 'global', name: 'show' } } }),
+      logicNodes.condition!({
+        ...context,
+        data: {
+          ...getFlowNodeManifest('condition')!.defaultProps,
+          judgment: { $ref: 'global', name: 'show' },
+        },
+      }),
     ).toBe(false);
     const method = vi.fn();
     engine.setContextValue('form', { resetFields: method });
@@ -69,7 +89,12 @@ describe('declarative event execution', () => {
     vi.stubGlobal('fetch', request);
     const result = await logicNodes.interfaceRequest!({
       engine,
-      data: { url: 'https://example.test/data', method: 'post', bodyParams: { test: true } },
+      data: {
+        ...getFlowNodeManifest('interfaceRequest')!.defaultProps,
+        url: 'https://example.test/data',
+        method: 'post',
+        bodyParams: { test: true },
+      },
     });
     expect(result).toMatchObject({ ok: true, status: 200, data: { value: 1 } });
     expect(request.mock.calls[0]?.[1]).toMatchObject({
@@ -79,7 +104,13 @@ describe('declarative event execution', () => {
     });
     expect((request.mock.calls[0]?.[1].headers as Headers).has('authorization')).toBe(false);
     expect(
-      await logicNodes.interfaceRequest!({ engine, data: { url: 'javascript:alert(1)' } }),
+      await logicNodes.interfaceRequest!({
+        engine,
+        data: {
+          ...getFlowNodeManifest('interfaceRequest')!.defaultProps,
+          url: 'javascript:alert(1)',
+        },
+      }),
     ).toMatchObject({ ok: false, status: 0 });
     expect(request).toHaveBeenCalledTimes(1);
     const execute = vi.fn();

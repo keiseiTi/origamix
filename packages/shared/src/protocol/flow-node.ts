@@ -1,3 +1,4 @@
+import { Check } from '@sinclair/typebox/value';
 import { Type, type Static, type TProperties, type TSchema } from '@sinclair/typebox';
 
 export const FLOW_NODE_MANIFEST_VERSION = '1.0' as const;
@@ -33,7 +34,7 @@ const value = (description: string) =>
   Type.Unknown({
     description: `${description} 支持 JSON 值，或完整的 global/result 数据引用；不执行表达式。`,
   });
-const withReference = (schema: TSchema, description: string) =>
+const withReference = <T extends TSchema>(schema: T, description: string) =>
   Type.Union([schema, FlowValueReferenceSchema], { description });
 const props = <T extends TProperties>(properties: T) =>
   Type.Object(
@@ -77,7 +78,7 @@ export const flowNodeManifests = [
         '请求地址或数据引用；解析后必须为不含用户名或密码的 HTTP(S) 绝对地址。',
       ),
       method: Type.Union(
-        ['get', 'post', 'put', 'patch', 'delete'].map((method) => Type.Literal(method)),
+        (['get', 'post', 'put', 'patch', 'delete'] as const).map((method) => Type.Literal(method)),
         { description: 'HTTP 请求方法。' },
       ),
       headers: withReference(
@@ -193,7 +194,7 @@ export const flowNodeManifests = [
     propsSchema: props({
       judgment: value('判断值。'),
       operator: Type.Union(
-        ['truthy', 'equals', 'notEquals', 'greater', 'less'].map((operator) =>
+        (['truthy', 'equals', 'notEquals', 'greater', 'less'] as const).map((operator) =>
           Type.Literal(operator),
         ),
         {
@@ -240,7 +241,7 @@ export const flowNodeManifests = [
     type,
     title: type === 'openModalDrawer' ? '打开弹窗抽屉' : '关闭弹窗抽屉',
     description: type === 'openModalDrawer' ? '打开页面中的弹窗或抽屉' : '关闭页面中的弹窗或抽屉',
-    executable: true,
+    executable: true as const,
     defaultProps: { elementId: '' },
     propsSchema: props({ elementId: target() }),
     connections: sequence,
@@ -257,3 +258,19 @@ export const flowNodeManifestCatalog = {
 
 export const getFlowNodeManifest = (type: string): FlowNodeManifest | undefined =>
   flowNodeManifests.find((node) => node.type === type);
+
+/** Node-specific data comes from the same schemas used by editing and validation. */
+export type FlowNodeProps<T extends FlowNodeType> = Static<
+  { [N in (typeof flowNodeManifests)[number] as N['type']]: N['propsSchema'] }[T]
+>;
+
+/** Start is engine-owned; customJS has an explicit unsupported Runtime handler. */
+export type RuntimeFlowNodeType = Exclude<FlowNodeType, 'start'>;
+
+export const isFlowNodeProps = <T extends FlowNodeType>(
+  type: T,
+  data: unknown,
+): data is FlowNodeProps<T> => {
+  const manifest = getFlowNodeManifest(type);
+  return manifest !== undefined && Check(manifest.propsSchema, data);
+};

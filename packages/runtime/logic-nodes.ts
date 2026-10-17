@@ -1,6 +1,17 @@
 import type { FlowExecuteContext, LogicNodes } from '@tangramino/engine';
+import {
+  isFlowNodeProps,
+  type FlowNodeProps,
+  type RuntimeFlowNodeType,
+} from '@origamix/shared/protocol/flow-node';
 
 type Context = FlowExecuteContext<Record<string, unknown>>;
+type NodeContext<T extends RuntimeFlowNodeType> = Omit<Context, 'data'> & {
+  data: FlowNodeProps<T>;
+};
+type NodeHandlers = {
+  [T in RuntimeFlowNodeType]: (context: NodeContext<T>) => unknown;
+};
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -31,25 +42,23 @@ export const resolveFlowValue = (context: Context, value: unknown): unknown => {
   }
   return resolved;
 };
-const setters = (data: Record<string, unknown>): Record<string, unknown>[] =>
-  Array.isArray(data.setters) ? data.setters.map(record) : [];
 const elementId = (context: Context, value: unknown): string | undefined =>
   typeof value === 'string' && safeKey(value) && Object.hasOwn(context.engine.elements, value)
     ? value
     : undefined;
 const portal =
   (open: boolean) =>
-  (context: Context): void => {
+  (context: NodeContext<'openModalDrawer' | 'closeModalDrawer'>): void => {
     const id = elementId(context, context.data.elementId);
     if (id && ['modal', 'drawer'].includes(context.engine.elements[id]!.type))
       context.engine.setState({ [id]: { open } });
   };
 
 /** Declarative actions shared by preview and generated projects. */
-export const logicNodes: LogicNodes = {
+const handlers: NodeHandlers = {
   setElementProps: (context) => {
     const { engine, data } = context;
-    for (const setter of setters(data)) {
+    for (const setter of data.setters) {
       const id = elementId(context, setter.elementId);
       if (id && typeof setter.propName === 'string' && setter.propName && safeKey(setter.propName))
         engine.setState({ [id]: { [setter.propName]: resolveFlowValue(context, setter.value) } });
@@ -57,7 +66,7 @@ export const logicNodes: LogicNodes = {
   },
   visibleElement: (context) => {
     const { engine, data } = context;
-    const ids = (Array.isArray(data.elementIds) ? data.elementIds : [])
+    const ids = data.elementIds
       .map((id) => elementId(context, id))
       .filter((id): id is string => Boolean(id));
     const visible = resolveFlowValue(context, data.value ?? true);
@@ -65,14 +74,14 @@ export const logicNodes: LogicNodes = {
     else engine.showElements(ids);
   },
   setGlobalVariable: (context) => {
-    const entries = setters(context.data);
+    const entries = context.data.setters;
     for (const setter of entries)
       if (typeof setter.name === 'string' && setter.name && safeKey(setter.name))
         context.engine.setGlobalVariable(setter.name, resolveFlowValue(context, setter.value));
   },
   emitElementAction: (context) => {
     const results: unknown[] = [];
-    for (const setter of setters(context.data)) {
+    for (const setter of context.data.setters) {
       const id = elementId(context, setter.elementId);
       if (!id || typeof setter.methodName !== 'string' || !safeKey(setter.methodName)) continue;
       const values = context.engine.getContextValue(id);
@@ -156,3 +165,16 @@ export const logicNodes: LogicNodes = {
   // Configuration is retained, but project-provided scripts are deliberately inert.
   customJS: () => ({ supported: false, error: '自定义 JS 当前仅保存配置，暂不执行' }),
 };
+
+// The Engine accepts untyped data. Validate it before entering a typed handler.
+const registerNode =
+  <T extends RuntimeFlowNodeType>(type: T) =>
+  (context: Context): unknown => {
+    const data = context.data;
+    if (!isFlowNodeProps(type, data)) throw new Error(`Invalid flow node properties: ${type}`);
+    return handlers[type]({ ...context, data });
+  };
+
+export const logicNodes: LogicNodes = Object.fromEntries(
+  (Object.keys(handlers) as RuntimeFlowNodeType[]).map((type) => [type, registerNode(type)]),
+);

@@ -244,6 +244,9 @@ importers:
         specifier: ^0.1.3
         version: 0.1.3(react@19.2.8)
     devDependencies:
+      '@origamix/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18

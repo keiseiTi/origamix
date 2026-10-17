@@ -16,7 +16,9 @@ import { OrigamixPage } from '@origamix/runtime/react';
 
 ## 事件逻辑
 
-[logic-nodes.ts](logic-nodes.ts) 注册 `interfaceRequest`、`setElementProps`、`emitElementAction`、`visibleElement`、`condition`、`setGlobalVariable`、`openModalDrawer` 和 `closeModalDrawer`。属性、变量和方法节点的 `setters` 数组支持多条设置；现有单目标属性、显隐和变量配置仍可执行。弹窗操作只接受 `modal` / `drawer` 元素。
+[logic-nodes.ts](logic-nodes.ts) 注册 `interfaceRequest`、`setElementProps`、`emitElementAction`、`visibleElement`、`condition`、`setGlobalVariable`、`openModalDrawer` 和 `closeModalDrawer`。属性、变量和方法节点使用 `setters` 数组，显隐节点使用 `elementIds`；弹窗操作只接受 `modal` / `drawer` 元素。
+
+节点名称和参数类型由 Shared 的 `protocol/flow-node` 契约派生，实现表必须覆盖除引擎自带 `start` 外的所有节点。引擎传入的参数先按同一契约校验，失败会抛出错误并阻止该节点动作。`customJS` 保留明确的“不支持执行”实现。Shared 作为构建依赖内联到发布产物，独立项目无需额外安装 Shared。
 
 值使用 JSON，或显式引用 `{ "$ref": "global", "name": "变量名", "path": "data.id" }` / `{ "$ref": "result", "name": "节点ID", "path": "data.id" }`。省略 `path` 可读取整个值；原型链路径会被拒绝，不执行字符串表达式。
 
