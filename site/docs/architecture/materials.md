@@ -11,7 +11,7 @@ description: Materials：页面物料的职责、使用与开发说明
 
 ## 关键入口
 
-`antd/index.ts` 导出运行注册表；`antd/group.ts` 导出编辑分组；`antd/manifest.ts` 汇总纯数据清单；各组件目录包含运行组件、定义与编辑配置。
+`src/index.ts` 作为包根入口导出物料定义/转换 API；`antd/editor.ts` 导出编辑分组与配置；`antd/runtime.ts` 导出运行注册表；`antd/manifest.ts` 汇总纯数据清单；各组件目录包含运行组件、定义与编辑配置。
 
 ## 协作边界
 

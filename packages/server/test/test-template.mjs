@@ -171,11 +171,15 @@ try {
   );
   assert.equal(installed.dependencies?.['@tangramino/base-editor'], undefined);
   assert.equal(installed.peerDependenciesMeta?.['@tangramino/base-editor']?.optional, true);
+  assert.equal(installed.peerDependencies?.['@heroui/react'], undefined);
+  assert.equal(installed.dependencies?.['@origamix/ui'], undefined);
+  assert.equal(installed.peerDependenciesMeta?.['@origamix/ui']?.optional, true);
   const lockfile = await readFile(join(project, 'pnpm-lock.yaml'), 'utf8');
   for (const forbidden of [
     '@tangramino/base-editor',
     '@logicflow/',
     '@origamix/editor',
+    '@origamix/ui',
     'monaco-editor',
   ]) {
     assert.ok(

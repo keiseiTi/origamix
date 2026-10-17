@@ -5,15 +5,7 @@ import type {
   PanelConfig as BasicPanelConfig,
   EditorConfig as BasicEditorConfig,
 } from '@tangramino/base-editor';
-import type {
-  InputProps,
-  SelectProps,
-  CheckboxProps,
-  SwitchProps,
-  RadioProps,
-  NumberFieldProps,
-  ColorPickerProps,
-} from '@heroui/react';
+import type { Input, Select, Checkbox, Switch, RadioGroupItem } from '@origamix/ui';
 
 export type OptionItem = {
   label: string;
@@ -26,17 +18,17 @@ export type TextAttributeConfig = BasicAttributeConfig & {
 
 export type InputAttributeConfig = BasicAttributeConfig & {
   uiType: 'input';
-  props?: InputProps;
+  props?: React.ComponentProps<typeof Input>;
 };
 
 export type NumberAttributeConfig = BasicAttributeConfig & {
   uiType: 'number';
-  props?: NumberFieldProps;
+  props?: React.ComponentProps<typeof Input>;
 };
 
 export type RadioAttributeConfig = BasicAttributeConfig & {
   uiType: 'radio';
-  props?: Omit<RadioProps, 'value'> & {
+  props?: Omit<React.ComponentProps<typeof RadioGroupItem>, 'value'> & {
     options?: OptionItem[];
     value?: string;
   };
@@ -44,26 +36,26 @@ export type RadioAttributeConfig = BasicAttributeConfig & {
 
 export type CheckboxAttributeConfig = BasicAttributeConfig & {
   uiType: 'checkbox';
-  props?: CheckboxProps & {
+  props?: React.ComponentProps<typeof Checkbox> & {
     options?: OptionItem[];
   };
 };
 
 export type SelectAttributeConfig = BasicAttributeConfig & {
   uiType: 'select';
-  props?: SelectProps<object> & {
+  props?: React.ComponentProps<typeof Select> & {
     options?: OptionItem[];
   };
 };
 
 export type SwitchAttributeConfig = BasicAttributeConfig & {
   uiType: 'switch';
-  props?: SwitchProps;
+  props?: React.ComponentProps<typeof Switch>;
 };
 
 export type ColorAttributeConfig = BasicAttributeConfig & {
   uiType: 'color';
-  props?: ColorPickerProps;
+  props?: React.ComponentProps<typeof Input>;
 };
 
 export type CustomAttributeConfig = BasicAttributeConfig & {

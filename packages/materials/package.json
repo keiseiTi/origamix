@@ -10,13 +10,13 @@
       "types": "./antd/manifest.ts",
       "import": "./dist/antd/manifest.js"
     },
-    "./material": {
-      "types": "./src/origamix-material.ts",
-      "import": "./dist/src/origamix-material.js"
-    },
     "./antd/runtime": {
       "types": "./antd/runtime.ts",
       "import": "./dist/antd/runtime.js"
+    },
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
     },
     "./antd/editor": {
       "types": "./antd/editor.ts",
@@ -30,13 +30,13 @@
         "types": "./dist/antd/manifest.d.ts",
         "import": "./dist/antd/manifest.js"
       },
-      "./material": {
-        "types": "./dist/src/origamix-material.d.ts",
-        "import": "./dist/src/origamix-material.js"
-      },
       "./antd/runtime": {
         "types": "./dist/antd/runtime.d.ts",
         "import": "./dist/antd/runtime.js"
+      },
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
       },
       "./antd/editor": {
         "types": "./dist/antd/editor.d.ts",
@@ -57,25 +57,25 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@heroui/react": "^3.2.4",
     "@types/react": "^19.2.18",
     "antd": "^6.0.0",
     "react": "^19.2.8",
     "tsup": "^8.5.0",
     "@origamix/shared": "workspace:*",
-    "@tangramino/base-editor": "^0.1.3"
+    "@tangramino/base-editor": "^0.1.3",
+    "@origamix/ui": "workspace:*"
   },
   "peerDependencies": {
-    "@heroui/react": "^3.2.4",
     "antd": "^6",
     "react": "^19",
-    "@tangramino/base-editor": "^0.1.3"
+    "@tangramino/base-editor": "^0.1.3",
+    "@origamix/ui": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@heroui/react": {
+    "@tangramino/base-editor": {
       "optional": true
     },
-    "@tangramino/base-editor": {
+    "@origamix/ui": {
       "optional": true
     }
   }

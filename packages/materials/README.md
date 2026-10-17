@@ -4,18 +4,18 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 
 ## 公开接口
 
-| 入口                                | 消费方与用途                                        |
-| ----------------------------------- | --------------------------------------------------- |
-| `@origamix/materials/antd/runtime`  | Runtime/生成页面使用的组件注册表                    |
-| `@origamix/materials/antd/editor`   | App 编辑器使用的分组、清单与扩展注册                |
-| `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单                  |
-| `@origamix/materials/material`      | `OrigamixMaterial` 定义与 Manifest/编辑配置转换辅助 |
+| 入口                                | 消费方与用途                       |
+| ----------------------------------- | ---------------------------------- |
+| `@origamix/materials/antd/runtime`  | Runtime/生成页面使用的组件注册表   |
+| `@origamix/materials/antd/editor`   | 编辑器使用的分组、清单与扩展注册   |
+| `@origamix/materials`               | `src/` 的公共类型与辅助函数        |
+| `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单 |
 
-运行、编辑和清单使用上述三个入口，不提供旧入口别名；格式类型直接从 Shared 导入。`editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器按需延期。
+运行、编辑和清单使用各自的 Ant Design 子入口，物料编写 API 使用根入口，不提供旧入口别名；格式类型直接从 Shared 导入。`antd/editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器按需延期。
 
 `runtime` 同时导出轻量的 `materialSet` 身份/版本，供按需加载时核对安装包；它与 Manifest 引用同一份包内声明，不会因此加载编辑配置。
 
-运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
+根入口显式导出 `src/` 下全部公共 API：物料与属性配置类型、物料定义/转换、Manifest 辅助、运行属性适配、值类型、参数类型及 `cn`。根入口不汇总具体物料或编辑分组；包内模块仍直接引用内部实现，避免反向依赖根入口。运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
 
 消费页面需要 Ant Design 样式及 Tailwind；Tailwind v4 应通过 `@source` 显式扫描已安装的 `@origamix/materials/dist`。App 与生成项目模板已配置各自的源码/安装包路径。
 
@@ -32,7 +32,7 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials build
 ```
 
-tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区类型指向源码，发布类型指向声明文件，两套出口需要同步。React、Ant Design 为运行 peer dependencies；HeroUI 和 Tangramino base-editor 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
+tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区类型指向源码，发布类型指向声明文件，两套出口需要同步。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 和 Tangramino base-editor 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -49,11 +49,7 @@ tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作
 转换辅助的公开导入方式：
 
 ```ts
-import {
-  defineOrigamixMaterial,
-  toMaterialManifest,
-  toEditorMaterial,
-} from '@origamix/materials/material';
+import { defineOrigamixMaterial, toMaterialManifest, toEditorMaterial } from '@origamix/materials';
 ```
 
 Server 仅消费 Manifest，不能让清单入口通过组件或编辑配置间接加载 React。新增类型可以扩展注册表；重命名或删除已有类型必须同时考虑保留的 Working、历史 Revision 和生成项目。

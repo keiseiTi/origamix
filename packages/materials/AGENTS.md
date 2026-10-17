@@ -5,7 +5,8 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `antd/runtime.ts`: Ant Design runtime registry.
-- `antd/editor.ts`: editor groups, Manifest catalog and property-editor registrations.
+- `src/index.ts`: public root explicitly exporting every public type and helper from `src/`, including material contracts, definitions, Manifest conversion, runtime props, value types and class-name utilities; replaces the former `/material` subpath; never aggregate concrete Ant Design materials here.
+- `antd/editor.ts`: public `/antd/editor` entry for editor groups, Manifest catalog and property-editor registrations. Runtime and Manifest retain their separate public subpaths; Server must never load the root or editor entry.
 - `antd/*/manifest.ts`: material-owned, serializable definitions; `antd/manifest.ts` is the pure-data aggregation entry point.
 - `antd/*/definition.ts`: the single serializable source for editor metadata and Manifest data when a material has migrated to `OrigamixMaterial`.
 - `src/material-definition.ts`: pure-data definition/Manifest converters; editor-specific conversion remains in `src/origamix-material.ts`. Keep React rendering helpers out of Server-facing Manifest imports.
@@ -31,7 +32,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - Structured attribute editors use `uiType: 'json'` with an editor-only `validateValue` guard. Keep that callable outside Manifest entries; Editor owns its input UI and App passes accepted data through the existing Working pipeline. Do not enable the deferred option editors as a side effect.
 - Prefer `OrigamixMaterial` definitions for simple materials: derive their Manifest with `toMaterialManifest` and attach the runtime component with `toEditorMaterial`. Keep component references and custom render controls outside definitions so Server-facing imports remain pure data.
 - Declare every imported library directly. React and Ant Design remain peer dependencies for consumers; local dependency entries support workspace development and verification.
-- HeroUI and Tangramino base-editor are optional editor-only peers. Runtime and Manifest JavaScript/declarations must not import them. Editing hosts install those peers explicitly; standalone template smoke rejects installed editor engines.
+- UI (`@origamix/ui`) and Tangramino base-editor are optional editor-only peers. Attribute control props derive from UI components; numeric and color fields use Input props. Runtime and Manifest JavaScript/declarations must not import them. Editing hosts install those peers explicitly; standalone template smoke rejects installed editor engines.
 - Use Ant Design controls for material implementations and `lucide-react` for any additional icons. Do not hand-write SVG icons.
 - New or changed visual materials need accessible labels/states where applicable and interaction checks in both light and dark themes.
 

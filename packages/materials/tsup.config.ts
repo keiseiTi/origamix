@@ -5,10 +5,9 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     'antd/runtime': 'antd/runtime.ts',
+    index: 'src/index.ts',
     'antd/editor': 'antd/editor.ts',
     'antd/manifest': 'antd/manifest.ts',
-    'src/material-manifest': 'src/material-manifest.ts',
-    'src/origamix-material': 'src/origamix-material.ts',
   },
   format: ['esm'],
   // Resolve through the declared export; tsup's legacy DTS resolver ignores export maps.
@@ -23,5 +22,5 @@ export default defineConfig({
   clean: true,
   splitting: false,
   sourcemap: true,
-  external: ['@heroui/react', '@tangramino/base-editor', 'antd', 'react', 'react/jsx-runtime'],
+  external: ['@origamix/ui', '@tangramino/base-editor', 'antd', 'react', 'react/jsx-runtime'],
 });
