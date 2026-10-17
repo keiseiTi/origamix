@@ -1,4 +1,4 @@
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared';
 
 const same = (left: unknown, right: unknown): boolean =>
   JSON.stringify(left) === JSON.stringify(right);

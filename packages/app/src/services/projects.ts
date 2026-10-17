@@ -1,13 +1,12 @@
-import type {
-  OpenProjectResult,
-  PageRecord,
-  ProjectRecord,
-  ProjectWithPages,
-} from '@origamix/shared/protocol/api';
 import {
+  type OpenProjectResult,
+  type PageRecord,
+  type ProjectRecord,
+  type ProjectWithPages,
   validateResolvedProjectStack,
   type ProjectStack,
-} from '@origamix/shared/protocol/project-stack';
+} from '@origamix/shared';
+
 import { request } from './request';
 
 export const projectsService = {

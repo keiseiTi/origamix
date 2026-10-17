@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { AgentRunKind, MessageContent, RunBudget } from '@origamix/shared/protocol/agent';
+import type { AgentRunKind, MessageContent, RunBudget } from '@origamix/shared';
 import type { ApplicationDatabase } from '../database/database';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from '../agent/run-repository';

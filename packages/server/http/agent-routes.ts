@@ -3,10 +3,11 @@ import {
   ClarificationResultSchema,
   type AgentRun,
   CreateAgentRunRequestSchema,
-} from '@origamix/shared/protocol/agent';
+  ConversationIdSchema,
+} from '@origamix/shared';
 import { Value } from '@sinclair/typebox/value';
 import { Type, type Static } from '@sinclair/typebox';
-import { ConversationIdSchema } from '@origamix/shared/protocol/agent';
+
 import { PageScopeSchema, ProjectIdSchema } from './body-schemas';
 import type { AgentRunRecord } from '../agent/run-repository';
 import { notFound } from '../errors';
@@ -175,7 +176,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       connection: 'keep-alive',
       'x-accel-buffering': 'no',
     });
-    const write = (event: import('@origamix/shared/protocol/agent').AgentEvent): void => {
+    const write = (event: import('@origamix/shared').AgentEvent): void => {
       reply.raw.write(
         `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
       );

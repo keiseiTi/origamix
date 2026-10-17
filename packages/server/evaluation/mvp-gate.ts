@@ -1,4 +1,4 @@
-import type { AgentEvaluationReport } from '@origamix/shared/protocol/agent';
+import type { AgentEvaluationReport } from '@origamix/shared';
 
 export interface MvpGateThresholds {
   minimumSuccessRate: number;

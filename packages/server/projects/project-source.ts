@@ -1,10 +1,7 @@
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  validateResolvedProjectStack,
-  type ProjectStack,
-} from '@origamix/shared/protocol/project-stack';
+import { validateResolvedProjectStack, type ProjectStack } from '@origamix/shared';
 import { copyTemplate } from '../template';
 
 const pageComponentName = (slug: string): string => {

@@ -9,7 +9,7 @@ import {
   type RunBudget,
   type AgentRunKind,
   type PageAgentOutcome,
-} from '@origamix/shared/protocol/agent';
+} from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { agentRuns } from '../database/schema';
 import {

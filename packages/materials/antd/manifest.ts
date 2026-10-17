@@ -1,7 +1,4 @@
-import {
-  MATERIAL_MANIFEST_FORMAT_VERSION,
-  type MaterialManifestCatalog,
-} from '@origamix/shared/protocol/material-manifest';
+import { MATERIAL_MANIFEST_FORMAT_VERSION, type MaterialManifestCatalog } from '@origamix/shared';
 import { materialSet } from './material-set';
 import { toAgentMaterialSummary, toValidationMaterialManifest } from '../src/material-manifest';
 import { buttonManifest } from './button/manifest';

@@ -4,7 +4,7 @@ import type {
   AgentRun,
   AgentRunStatus,
   ClarificationResult,
-} from '@origamix/shared/protocol/agent';
+} from '@origamix/shared';
 
 export interface AgentChatState {
   messages: AgentMessage[];

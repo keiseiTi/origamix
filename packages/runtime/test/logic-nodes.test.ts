@@ -1,6 +1,6 @@
 import { createEngine, type Schema } from '@tangramino/engine';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared/protocol/flow-node';
+import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared';
 import { logicNodes, resolveFlowValue } from '../logic-nodes';
 
 const schema: Schema = {

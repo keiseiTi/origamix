@@ -15,9 +15,7 @@ export default defineConfig({
   dts: {
     compilerOptions: {
       paths: {
-        '@origamix/shared/protocol/material-manifest': [
-          fileURLToPath(import.meta.resolve('@origamix/shared/protocol/material-manifest')),
-        ],
+        '@origamix/shared': [fileURLToPath(import.meta.resolve('@origamix/shared'))],
       },
     },
   },

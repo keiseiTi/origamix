@@ -1,7 +1,7 @@
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
+import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
 import { projectsService } from '@/services/projects';

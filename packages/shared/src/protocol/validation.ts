@@ -1,4 +1,4 @@
-import Ajv, { type ErrorObject } from 'ajv';
+import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import {
   PageSchema,
@@ -7,7 +7,7 @@ import {
   type OrigamixPageSchema,
   type SchemaOperation,
   type SchemaOperationBatch,
-} from './schema';
+} from './schema.ts';
 
 export interface ValidationResult {
   valid: boolean;
@@ -24,14 +24,18 @@ export interface PageValidationResult extends ValidationResult {
   semanticErrors: SemanticError[];
 }
 
-const ajv = new Ajv({ allErrors: true, strict: true });
-addFormats(ajv);
+let ajv: Ajv | undefined;
+const getAjv = (): Ajv => {
+  if (!ajv) {
+    ajv = new Ajv({ allErrors: true, strict: true });
+    addFormats(ajv);
+  }
+  return ajv;
+};
 
-const validatePageSchema = ajv.compile<OrigamixPageSchema>(PageSchema);
-const validateSchemaOperationSchema = ajv.compile<SchemaOperation>(SchemaOperationSchema);
-const validateSchemaOperationBatchSchema = ajv.compile<SchemaOperationBatch>(
-  SchemaOperationBatchSchema,
-);
+let pageValidator: ValidateFunction<OrigamixPageSchema> | undefined;
+let operationValidator: ValidateFunction<SchemaOperation> | undefined;
+let batchValidator: ValidateFunction<SchemaOperationBatch> | undefined;
 
 const result = (errors: ErrorObject[] | null | undefined): ValidationResult => {
   return { valid: !errors, errors: errors ? [...errors] : [] };
@@ -95,6 +99,7 @@ const validatePageSemantics = (page: OrigamixPageSchema): SemanticError[] => {
 };
 
 export const validatePage = (value: unknown): PageValidationResult => {
+  const validatePageSchema = (pageValidator ??= getAjv().compile<OrigamixPageSchema>(PageSchema));
   const structurallyValid = validatePageSchema(value);
   const structuralResult = result(validatePageSchema.errors);
   const semanticErrors = structurallyValid ? validatePageSemantics(value) : [];
@@ -106,11 +111,15 @@ export const validatePage = (value: unknown): PageValidationResult => {
 };
 
 export const validateSchemaOperation = (value: unknown): ValidationResult => {
+  const validateSchemaOperationSchema = (operationValidator ??=
+    getAjv().compile<SchemaOperation>(SchemaOperationSchema));
   validateSchemaOperationSchema(value);
   return result(validateSchemaOperationSchema.errors);
 };
 
 export const validateSchemaOperationBatch = (value: unknown): ValidationResult => {
+  const validateSchemaOperationBatchSchema = (batchValidator ??=
+    getAjv().compile<SchemaOperationBatch>(SchemaOperationBatchSchema));
   validateSchemaOperationBatchSchema(value);
   return result(validateSchemaOperationBatchSchema.errors);
 };

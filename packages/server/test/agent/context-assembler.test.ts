@@ -1,6 +1,6 @@
 import { createProjectStackFixture } from '../../testing/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import type { StoredMessage } from '../../conversations/conversation-repository';
 import { ProductDocsProvider } from '../../agent/product-docs-provider';
 import { ContextAssembler } from '../../agent/context-assembler';

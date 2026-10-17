@@ -3,8 +3,9 @@ import {
   type RuntimeDiagnostic,
   type RuntimeRenderReport,
   type RuntimeReportResult,
-} from '@origamix/shared/protocol/agent';
-import { validateRuntimeRenderReport } from '@origamix/shared/protocol/agent-validation';
+  validateRuntimeRenderReport,
+} from '@origamix/shared';
+
 import { invalid, notFound } from '../errors';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { RuntimeDiagnosticCache } from './diagnostic-cache';

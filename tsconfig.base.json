@@ -4,6 +4,7 @@
     "strict": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force"
   }

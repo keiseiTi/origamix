@@ -1,9 +1,10 @@
-import type {
-  ClarificationResult,
-  CreateAgentRunRequest,
-  RunBudget,
-} from '@origamix/shared/protocol/agent';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import {
+  type ClarificationResult,
+  type CreateAgentRunRequest,
+  type RunBudget,
+  type OrigamixPageSchema,
+} from '@origamix/shared';
+
 import type { AgentEventBroker } from './event-broker';
 import type { RunExecutor, RunResult } from './run-executor';
 import type { AgentRunRepository, AgentRunRecord } from './run-repository';

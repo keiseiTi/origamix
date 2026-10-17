@@ -2,9 +2,13 @@
 
 平台无关的协议包，只提供类型、运行时 Schema 和纯校验，不启动服务，也不持有文件、网络、环境或 UI 状态。
 
-## 公开子路径
+## 唯一公开入口
 
-| `@origamix/shared/` 后缀                      | 用途                                             |
+```ts
+import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
+```
+
+| 内部模块                                      | 用途                                             |
 | --------------------------------------------- | ------------------------------------------------ |
 | `protocol/api`                                | HTTP 请求、结果及项目记录                        |
 | `protocol/flow-node`                          | 逻辑节点 Manifest、属性 Schema 与连接约束        |
@@ -17,7 +21,7 @@
 | `page-window`                                 | 预览输入与诊断契约                               |
 | `credential-gateway`                          | 凭据网关消息校验                                 |
 
-出口显式列举，测试和新增内部文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
+统一从 `@origamix/shared` 导入。`src/index.ts` 显式列举公共值与类型导出；上表中的模块路径只描述内部职责，不是公开子路径。测试和新增内部文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。Ajv 实例和各个校验器在首次调用对应校验函数时初始化并缓存，导入根入口不会编译校验器。内部模块之间直接引用，不反向引用根入口。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
 `protocol/project-stack` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，匹配 Runtime 与模板均为 `1.0.0`。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
 
@@ -70,14 +74,14 @@ Shared 校验结构、根节点和布局引用/循环；Server 另行验证物�
 
 ## 逻辑节点 Manifest
 
-`@origamix/shared/protocol/flow-node` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `FlowValueReferenceSchema` / `FlowValueReference`。
+`@origamix/shared` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `FlowValueReferenceSchema` / `FlowValueReference`。
 
 `FlowNodeProps<T>` 从节点属性 Schema 派生参数类型；`RuntimeFlowNodeType` 排除由引擎处理的 `start`，供 Runtime 完整声明实现表。`isFlowNodeProps(type, data)` 校验节点参数并提供类型收窄，只验证结构，不替代页面归属、物料能力或请求授权检查。
 
 目录包含开始、接口请求、自定义 JS、设置元素属性、触发元素方法、显隐元素、条件判断、设置全局变量、打开和关闭弹窗抽屉。每个节点声明 `type`、中文 `title`、`description`、`executable`、`defaultProps`、`propsSchema`、连接规则和使用约束；有返回值的可执行节点同时声明 `returnsSchema`。
 
 ```ts
-import { getFlowNodeManifest } from '@origamix/shared/protocol/flow-node';
+import { getFlowNodeManifest } from '@origamix/shared';
 
 const requestNode = getFlowNodeManifest('interfaceRequest');
 // 消费方通过自己的接收边界校验 requestNode.propsSchema。

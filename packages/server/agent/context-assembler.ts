@@ -1,5 +1,5 @@
 import { loadProjectMaterials } from '../projects/project-materials';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { conflict } from '../errors';
 import type { StoredMessage } from '../conversations/conversation-repository';
 import type { ProductDocSnippet, ProductDocsProvider } from './product-docs-provider';

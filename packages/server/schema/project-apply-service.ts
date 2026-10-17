@@ -3,8 +3,12 @@ import { hashSchema } from './schema-hash';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { ApplyPageResult, PageApplyState } from '@origamix/shared/protocol/api';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import {
+  type ApplyPageResult,
+  type PageApplyState,
+  type OrigamixPageSchema,
+} from '@origamix/shared';
+
 import type { ProjectRepository } from '../projects/project-repository';
 import { conflict, invalid, notFound } from '../errors';
 import {

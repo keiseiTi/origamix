@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
-import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import { validatePage } from '@origamix/shared/protocol/validation';
+import { type ChangeSource, type OrigamixPageSchema, validatePage } from '@origamix/shared';
+
 import { invalid } from '../errors';
 import { hashSchema } from './schema-hash';
 import type {

@@ -1,7 +1,7 @@
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared';
 
 export interface WorkingSchemaPageRef {
   projectPath: string;

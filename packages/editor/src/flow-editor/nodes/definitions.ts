@@ -1,8 +1,4 @@
-import {
-  flowNodeManifests,
-  getFlowNodeManifest,
-  type FlowNodeManifest,
-} from '@origamix/shared/protocol/flow-node';
+import { flowNodeManifests, getFlowNodeManifest, type FlowNodeManifest } from '@origamix/shared';
 
 export type LogicNodeDefinition = FlowNodeManifest;
 export const startNode = getFlowNodeManifest('start')!;

@@ -6,8 +6,9 @@ import {
 import {
   BUILTIN_PROJECT_STACK,
   validateResolvedProjectStack,
-} from '@origamix/shared/protocol/project-stack';
-import type { ProjectStack } from '@origamix/shared/protocol/project-stack';
+  type ProjectStack,
+} from '@origamix/shared';
+
 import { ProjectManifestStore } from './project-manifest-store';
 import { invalid } from '../errors';
 

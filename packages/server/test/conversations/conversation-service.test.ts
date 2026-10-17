@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { MessageContent, RunBudget } from '@origamix/shared/protocol/agent';
+import type { MessageContent, RunBudget } from '@origamix/shared';
 import { ApplicationDatabase } from '../../database/database';
 import { AgentRunRepository, type AgentRunRecord } from '../../agent/run-repository';
 import { ConversationRepository } from '../../conversations/conversation-repository';

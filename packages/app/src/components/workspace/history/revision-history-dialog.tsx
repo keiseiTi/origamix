@@ -11,8 +11,8 @@ import {
 } from '@origamix/ui';
 
 import { schemaService } from '@/services/schema';
-import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import { type RevisionHistoryItem, type OrigamixPageSchema } from '@origamix/shared';
+
 import { Braces, History, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 

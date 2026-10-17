@@ -1,4 +1,4 @@
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { EditorThemeContext, MaterialCatalogContext } from './core/environment';
 import {
   DragOverlay,

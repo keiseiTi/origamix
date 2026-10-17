@@ -2,10 +2,15 @@ import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { access, lstat, mkdir, readFile, realpath, rename, rm } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative } from 'node:path';
 import { nanoid } from 'nanoid';
-import type { OpenProjectResult, PageRecord, ProjectRecord } from '@origamix/shared/protocol/api';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
-import { resolveProjectStack } from '@origamix/shared/protocol/project-stack';
-import { validatePage } from '@origamix/shared/protocol/validation';
+import {
+  type OpenProjectResult,
+  type PageRecord,
+  type ProjectRecord,
+  type OrigamixPageSchema,
+  resolveProjectStack,
+  validatePage,
+} from '@origamix/shared';
+
 import {
   discardInitializedPageSchema,
   getSchema,

@@ -1,6 +1,10 @@
 import type { Material } from '@tangramino/base-editor';
-import type { MaterialManifestCatalog } from '@origamix/shared/protocol/material-manifest';
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
+import {
+  type MaterialManifestCatalog,
+  type OrigamixPageSchema,
+  type SchemaOperation,
+} from '@origamix/shared';
+
 import type { PropertyEditorRegistration } from './extensions';
 
 export type EditorTheme = 'light' | 'dark';

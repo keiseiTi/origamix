@@ -1,5 +1,9 @@
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
-import { validatePage, validateSchemaOperation } from '@origamix/shared/protocol/validation';
+import {
+  type OrigamixPageSchema,
+  type SchemaOperation,
+  validatePage,
+  validateSchemaOperation,
+} from '@origamix/shared';
 
 export type SchemaOperationErrorCode =
   | 'INVALID_OPERATION'

@@ -1,7 +1,7 @@
 import { loadProjectMaterials } from '../../../projects/project-materials';
 import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { ApiError } from '../../../errors';
 import { createReadOnlyAgentTools } from '../../../agent/tools/read-only-tools';
 

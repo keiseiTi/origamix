@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared/protocol/schema';
+import { getElementLabel } from '@origamix/shared';
 import type LogicFlow from '@logicflow/core';
 import { useEditorCore } from '@tangramino/base-editor';
 import { Checkbox, FieldLabel, Input, Textarea } from '@origamix/ui';

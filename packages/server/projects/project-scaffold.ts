@@ -1,6 +1,6 @@
 import { cp, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { BUILTIN_PROJECT_STACK } from '@origamix/shared/protocol/project-stack';
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import { nanoid } from 'nanoid';
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { ProjectSourceService } from './project-source';

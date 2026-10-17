@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopApi, ModelSettings } from '@origamix/shared/desktop-api';
+import type { DesktopApi, ModelSettings } from '@origamix/shared';
 
 // Custom APIs for renderer
 const api: DesktopApi = {

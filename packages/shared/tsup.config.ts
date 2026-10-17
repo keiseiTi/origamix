@@ -2,20 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   tsconfig: 'tsconfig.json',
-  entry: {
-    'credential-gateway': 'src/credential-gateway.ts',
-    'desktop-api': 'src/desktop-api.ts',
-    'page-window': 'src/page-window.ts',
-    'protocol/agent-validation': 'src/protocol/agent-validation.ts',
-    'protocol/agent': 'src/protocol/agent.ts',
-    'protocol/api': 'src/protocol/api.ts',
-    'protocol/project-stack': 'src/protocol/project-stack.ts',
-    'protocol/project-manifest': 'src/protocol/project-manifest.ts',
-    'protocol/flow-node': 'src/protocol/flow-node.ts',
-    'protocol/material-manifest': 'src/protocol/material-manifest.ts',
-    'protocol/schema': 'src/protocol/schema.ts',
-    'protocol/validation': 'src/protocol/validation.ts',
-  },
+  entry: { index: 'src/index.ts' },
   outDir: 'dist',
   outExtension: () => ({ js: '.js' }),
   format: ['esm'],

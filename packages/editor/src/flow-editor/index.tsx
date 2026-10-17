@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared/protocol/schema';
+import { getElementLabel } from '@origamix/shared';
 import LogicFlow from '@logicflow/core';
 import { SelectionSelect } from '@logicflow/extension';
 import '@logicflow/core/lib/style/index.css';

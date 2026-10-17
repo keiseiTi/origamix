@@ -6,7 +6,7 @@ import type {
   GetAgentRunResponse,
   ListConversationsResponse,
   ListMessagesResponse,
-} from '@origamix/shared/protocol/agent';
+} from '@origamix/shared';
 import { getApiConnection, refreshBackendConnection, request } from './request';
 
 const isAgentEvent = (value: unknown): value is AgentEvent => {

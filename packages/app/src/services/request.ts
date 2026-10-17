@@ -1,4 +1,4 @@
-import { isApiResultEnvelope } from '@origamix/shared/protocol/api';
+import { isApiResultEnvelope } from '@origamix/shared';
 
 export interface ApiConnection {
   baseUrl: string;

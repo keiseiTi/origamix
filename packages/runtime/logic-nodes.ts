@@ -1,9 +1,5 @@
 import type { FlowExecuteContext, LogicNodes } from '@tangramino/engine';
-import {
-  isFlowNodeProps,
-  type FlowNodeProps,
-  type RuntimeFlowNodeType,
-} from '@origamix/shared/protocol/flow-node';
+import { isFlowNodeProps, type FlowNodeProps, type RuntimeFlowNodeType } from '@origamix/shared';
 
 type Context = FlowExecuteContext<Record<string, unknown>>;
 type NodeContext<T extends RuntimeFlowNodeType> = Omit<Context, 'data'> & {

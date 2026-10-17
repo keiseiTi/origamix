@@ -1,4 +1,4 @@
-import type { JsonSchema } from '@origamix/shared/protocol/material-manifest';
+import type { JsonSchema } from '@origamix/shared';
 import { objectSchema } from './manifest-definition';
 
 /** Recursive JSON-only data, without callbacks or component references. */

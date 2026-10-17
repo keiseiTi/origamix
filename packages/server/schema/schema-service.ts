@@ -6,9 +6,13 @@ import {
   type SchemaCommitOptions,
 } from './schema-commit';
 import { hashSchema } from './schema-hash';
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
-import type { RevisionHistory } from '@origamix/shared/protocol/api';
-import { validatePage } from '@origamix/shared/protocol/validation';
+import {
+  type OrigamixPageSchema,
+  type SchemaOperation,
+  type RevisionHistory,
+  validatePage,
+} from '@origamix/shared';
+
 import { conflict, invalid } from '../errors';
 import { validateProjectPageAgainstMaterials } from './material-validation';
 import {

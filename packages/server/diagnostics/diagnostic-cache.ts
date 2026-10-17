@@ -1,4 +1,4 @@
-import type { RuntimeDiagnostic } from '@origamix/shared/protocol/agent';
+import type { RuntimeDiagnostic } from '@origamix/shared';
 
 // Runtime failures are session-only UI feedback, not durable project history.
 export class RuntimeDiagnosticCache {

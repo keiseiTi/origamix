@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { deriveSchemaOperations } from '../../src/core/derive-schema-operations';
 
 const schema = (): OrigamixPageSchema => ({

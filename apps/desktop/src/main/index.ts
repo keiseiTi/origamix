@@ -12,7 +12,7 @@ import {
 import { join } from 'path';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
-import type { BackendConnection, ModelSettings } from '@origamix/shared/desktop-api';
+import type { BackendConnection, ModelSettings } from '@origamix/shared';
 
 const isDevelopment = !app.isPackaged;
 const rendererIndexPath = (): string =>

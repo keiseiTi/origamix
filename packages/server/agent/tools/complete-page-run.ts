@@ -7,8 +7,10 @@ import {
   type CompletePageRunInput,
   type ClarificationCandidate,
   type PageAgentOutcome,
-} from '@origamix/shared/protocol/agent';
-import { getAgentElementLabel, type SchemaOperation } from '@origamix/shared/protocol/schema';
+  getAgentElementLabel,
+  type SchemaOperation,
+} from '@origamix/shared';
+
 import type { AgentRunRepository } from '../run-repository';
 import type { AgentRunService } from '../run-service';
 import type { ProjectRepository } from '../../projects/project-repository';

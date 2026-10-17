@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared/protocol/schema';
+import { getElementLabel } from '@origamix/shared';
 import { useEditorCore } from '@tangramino/base-editor';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';

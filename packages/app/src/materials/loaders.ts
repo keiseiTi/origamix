@@ -1,8 +1,5 @@
 import type { EditorMaterialRegistration } from '@origamix/editor/contracts';
-import {
-  validateResolvedProjectStack,
-  type ProjectStack,
-} from '@origamix/shared/protocol/project-stack';
+import { validateResolvedProjectStack, type ProjectStack } from '@origamix/shared';
 
 // Literal imports are an allowlist, never module paths supplied by project files.
 const builtinLoaders = {

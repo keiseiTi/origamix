@@ -1,4 +1,4 @@
-import type { DesktopApi } from '@origamix/shared/desktop-api';
+import type { DesktopApi } from '@origamix/shared';
 
 declare global {
   interface Window {

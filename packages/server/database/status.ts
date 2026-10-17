@@ -1,4 +1,4 @@
-import type { AgentRunStatus } from '@origamix/shared/protocol/agent';
+import type { AgentRunStatus } from '@origamix/shared';
 
 const createCodec = <T extends string>(values: readonly T[]) => ({
   encode: (value: T): number => {

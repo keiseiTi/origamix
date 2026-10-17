@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { resolveProjectStack } from '@origamix/shared/protocol/project-stack';
+import { resolveProjectStack } from '@origamix/shared';
 import { copyTemplate } from '@origamix/server/template';
 
 const packages = [

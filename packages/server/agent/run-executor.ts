@@ -1,4 +1,4 @@
-import type { MessageContent, PageAgentOutcome } from '@origamix/shared/protocol/agent';
+import type { MessageContent, PageAgentOutcome } from '@origamix/shared';
 import type { AgentRunRepository } from './run-repository';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { AgentRunService } from './run-service';

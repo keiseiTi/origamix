@@ -1,11 +1,13 @@
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared/protocol/schema';
 import {
+  type OrigamixPageSchema,
+  type SchemaOperation,
   isApplyPageResult,
   isPageApplyState,
   type ApplyPageResult,
   type PageApplyState,
   type RevisionHistory,
-} from '@origamix/shared/protocol/api';
+} from '@origamix/shared';
+
 import { request } from './request';
 
 interface SchemaResult {

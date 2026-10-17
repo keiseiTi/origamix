@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateAgentEvaluationReport } from '@origamix/shared/protocol/agent-validation';
+import { validateAgentEvaluationReport } from '@origamix/shared';
 import {
   FIXED_AGENT_EVALUATION_CASES,
   runAgentEvaluation,

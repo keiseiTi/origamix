@@ -5,11 +5,10 @@ import {
   isProjectManifest,
   type ProjectManifest,
   type ProjectPageManifest,
-} from '@origamix/shared/protocol/project-manifest';
-import {
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
-} from '@origamix/shared/protocol/project-stack';
+} from '@origamix/shared';
+
 import { invalid, notFound } from '../errors';
 
 export class ProjectManifestStore {

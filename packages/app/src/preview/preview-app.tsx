@@ -1,6 +1,6 @@
 import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
-import type { PreviewSnapshot } from '@origamix/shared/page-window';
+import type { PreviewSnapshot } from '@origamix/shared';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { isHostToPreviewMessage, type PreviewToHostMessage } from './protocol';

@@ -1,4 +1,4 @@
-import type { RuntimeRenderReport, RuntimeReportResult } from '@origamix/shared/protocol/agent';
+import type { RuntimeRenderReport, RuntimeReportResult } from '@origamix/shared';
 import { request } from './request';
 
 export const runtimeService = {

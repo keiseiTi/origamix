@@ -1,4 +1,4 @@
-import type { AgentRunStatus, PageAgentOutcome } from '@origamix/shared/protocol/agent';
+import type { AgentRunStatus, PageAgentOutcome } from '@origamix/shared';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from './run-repository';
 

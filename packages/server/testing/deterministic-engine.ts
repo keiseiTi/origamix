@@ -1,5 +1,5 @@
 import { FakeAgentEngine } from './fake-agent-engine';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import type { AgentEngine } from '../agent/engine';
 
 export const deterministicSchema = (

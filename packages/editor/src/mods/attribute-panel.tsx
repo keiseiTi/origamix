@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared/protocol/schema';
+import { getElementLabel } from '@origamix/shared';
 import type { EventTarget } from '../flow-editor/model';
 import {
   Checkbox,

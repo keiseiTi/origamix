@@ -1,5 +1,5 @@
 import type { Static } from '@sinclair/typebox';
-import { ApplyPageSchema } from '@origamix/shared/protocol/api';
+import { ApplyPageSchema } from '@origamix/shared';
 import { PageScopeSchema, withPageScope } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 

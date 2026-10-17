@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentEvent, AgentRun } from '@origamix/shared/protocol/agent';
+import type { AgentEvent, AgentRun } from '@origamix/shared';
 import {
   agentChatReducer,
   initialAgentChatState,

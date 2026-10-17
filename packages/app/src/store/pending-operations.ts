@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
+import type { CreateAgentRunRequest } from '@origamix/shared';
 
 export const pageOperationKey = (projectId: string, pageId: string): string =>
   JSON.stringify([projectId, pageId]);

@@ -10,7 +10,7 @@ import { ConversationService } from '../../conversations/conversation-service';
 import { ProjectService } from '../../projects/project-service';
 import type { AgentService } from '../../agent/agent-service';
 import { createHttpServer } from '../../http/server';
-import type { CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
+import type { CreateAgentRunRequest } from '@origamix/shared';
 
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 const auth = { authorization: 'Bearer desktop-token', 'x-origamix-service': 'service-instance' };

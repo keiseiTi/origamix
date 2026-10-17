@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared/protocol/agent';
+import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared';
 import {
   cancelAgentRun,
   createAgentRun,

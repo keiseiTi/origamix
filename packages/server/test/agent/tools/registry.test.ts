@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { describe, expect, it } from 'vitest';
-import type { RunBudget } from '@origamix/shared/protocol/agent';
+import type { RunBudget } from '@origamix/shared';
 import {
   AgentToolRegistry,
   RunBudgetController,

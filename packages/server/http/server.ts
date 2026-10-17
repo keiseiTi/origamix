@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { nanoid } from 'nanoid';
-import type { ApiResult } from '@origamix/shared/protocol/api';
+import type { ApiResult } from '@origamix/shared';
 import { ApiError } from '../errors';
 import { registerAgentRoutes } from './agent-routes';
 import { registerApplyRoutes } from './apply-routes';

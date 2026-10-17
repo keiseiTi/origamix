@@ -3,7 +3,7 @@ import type {
   JsonSchema,
   MaterialManifest,
   ValidationMaterialManifest,
-} from '@origamix/shared/protocol/material-manifest';
+} from '@origamix/shared';
 
 /** Platform properties and lifecycle events shared by all material families. */
 export const withCommonMaterialManifest = (manifest: MaterialManifest): MaterialManifest => ({

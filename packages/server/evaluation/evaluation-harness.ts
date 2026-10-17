@@ -3,7 +3,7 @@ import type {
   AgentEvaluationReport,
   AgentRunStatus,
   PageAgentOutcome,
-} from '@origamix/shared/protocol/agent';
+} from '@origamix/shared';
 
 export interface AgentEvaluationCase {
   id: `eval_${string}`;

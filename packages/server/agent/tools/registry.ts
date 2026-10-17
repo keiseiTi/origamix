@@ -1,4 +1,4 @@
-import type { RunBudget, ToolPolicy } from '@origamix/shared/protocol/agent';
+import type { RunBudget, ToolPolicy } from '@origamix/shared';
 import { createHash } from 'node:crypto';
 import { AgentEngineError, type AgentEngineTool } from '../engine';
 import { ApiError } from '../../errors';

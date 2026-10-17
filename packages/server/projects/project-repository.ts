@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
-import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared/protocol/api';
+import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import {
   agentRuns,

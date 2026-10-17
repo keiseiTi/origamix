@@ -1,7 +1,6 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import { builtinProjectMaterials, loadProjectMaterials } from '../projects/project-materials';
-import type { ValidationMaterialManifest } from '@origamix/shared/protocol/material-manifest';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import { type ValidationMaterialManifest, type OrigamixPageSchema } from '@origamix/shared';
 
 export type MaterialValidationErrorCode =
   | 'MATERIAL_SET_VERSION_MISMATCH'

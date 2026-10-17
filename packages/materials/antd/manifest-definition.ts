@@ -1,5 +1,5 @@
 import { withCommonMaterialManifest } from '../src/material-manifest';
-import type { JsonSchema, MaterialManifest } from '@origamix/shared/protocol/material-manifest';
+import type { JsonSchema, MaterialManifest } from '@origamix/shared';
 
 export const objectSchema = (
   properties: Readonly<Record<string, JsonSchema>>,

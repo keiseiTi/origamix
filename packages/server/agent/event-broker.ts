@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@origamix/shared/protocol/agent';
+import type { AgentEvent } from '@origamix/shared';
 
 type EventInput = Omit<AgentEvent, 'version' | 'eventId' | 'sequence' | 'occurredAt'> & {
   occurredAt?: string;

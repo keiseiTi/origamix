@@ -4,8 +4,9 @@ import {
   RestoreWorkingRevisionSchema,
   SaveWorkingRevisionSchema,
   UpdateWorkingSchemaSchema,
-} from '@origamix/shared/protocol/api';
-import { RevisionIdSchema } from '@origamix/shared/protocol/schema';
+  RevisionIdSchema,
+} from '@origamix/shared';
+
 import {
   applyWorkingSchemaOperations,
   getSchema,

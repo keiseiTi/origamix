@@ -1,5 +1,5 @@
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
-import { SchemaOperationSchema } from './schema';
+import { SchemaOperationSchema } from './schema.ts';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });

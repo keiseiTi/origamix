@@ -1,4 +1,4 @@
-import type { AgentProgressEventPayload, AgentRunStatus } from '@origamix/shared/protocol/agent';
+import type { AgentProgressEventPayload, AgentRunStatus } from '@origamix/shared';
 
 const messages: Partial<Record<AgentRunStatus, string>> = {
   preparing: '正在读取当前页面',

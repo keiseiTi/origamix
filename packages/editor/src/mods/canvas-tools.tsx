@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared/protocol/schema';
+import { getElementLabel } from '@origamix/shared';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
 
 import {

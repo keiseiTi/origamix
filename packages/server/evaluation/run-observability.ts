@@ -1,4 +1,4 @@
-import type { PageAgentOutcome } from '@origamix/shared/protocol/agent';
+import type { PageAgentOutcome } from '@origamix/shared';
 import type { AgentRunRecord } from '../agent/run-repository';
 
 export interface AgentRunObservability {

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 
 export const hashSchema = (schema: OrigamixPageSchema): string => {
   const normalize = (value: unknown): unknown =>

@@ -1,6 +1,6 @@
 import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { ProductDocsProvider } from '../../../agent/product-docs-provider';
 import type { RuntimeDiagnosticService } from '../../../diagnostics/diagnostic-service';
 import { createDomainAgentTools } from '../../../agent/tools/domain-tools';

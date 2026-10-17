@@ -1,7 +1,4 @@
-import type {
-  AgentMaterialSummary,
-  MaterialManifestCatalog,
-} from '@origamix/shared/protocol/material-manifest';
+import type { AgentMaterialSummary, MaterialManifestCatalog } from '@origamix/shared';
 
 export type ProjectMaterialReader = (projectPath: string) => Promise<{
   manifest: MaterialManifestCatalog;

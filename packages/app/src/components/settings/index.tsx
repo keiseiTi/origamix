@@ -13,7 +13,7 @@ import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'luc
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore, type AppTheme } from '@/store/preferences';
-import type { ModelSettings } from '@origamix/shared/desktop-api';
+import type { ModelSettings } from '@origamix/shared';
 
 const modelOptions: Array<{
   value: ModelSettings['model'];

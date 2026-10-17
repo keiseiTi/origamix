@@ -1,5 +1,5 @@
 import { Type, type TObject, type TProperties } from '@sinclair/typebox';
-import { PageIdSchema } from '@origamix/shared/protocol/agent';
+import { PageIdSchema } from '@origamix/shared';
 
 export const ProjectIdSchema = Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' });
 export const ProjectScopeSchema = Type.Object(

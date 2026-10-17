@@ -1,10 +1,6 @@
 import { and, asc, desc, eq, gt, isNull, lt, max, ne, or } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
-import {
-  MessageContentSchema,
-  type AgentMessage,
-  type MessageContent,
-} from '@origamix/shared/protocol/agent';
+import { MessageContentSchema, type AgentMessage, type MessageContent } from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import { conversations, messages, pages, projects } from '../database/schema';
 import {

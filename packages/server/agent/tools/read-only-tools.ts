@@ -1,8 +1,12 @@
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import type { ProjectMaterialReader } from './material-reader';
-import type { MaterialManifestCatalog } from '@origamix/shared/protocol/material-manifest';
-import { getAgentElementLabel, type OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import {
+  type MaterialManifestCatalog,
+  getAgentElementLabel,
+  type OrigamixPageSchema,
+} from '@origamix/shared';
+
 import type { ProjectRepository } from '../../projects/project-repository';
 import { conflict, invalid, notFound } from '../../errors';
 import {

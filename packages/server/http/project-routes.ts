@@ -7,7 +7,7 @@ import {
   OpenProjectSchema,
   RenamePageSchema,
   RenameProjectSchema,
-} from '@origamix/shared/protocol/api';
+} from '@origamix/shared';
 import {
   EmptyBodySchema,
   ProjectScopeSchema,

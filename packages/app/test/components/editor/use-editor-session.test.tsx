@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const schemaMocks = vi.hoisted(() => ({

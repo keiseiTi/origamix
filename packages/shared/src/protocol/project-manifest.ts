@@ -1,5 +1,5 @@
 import { Type, type Static } from '@sinclair/typebox';
-import { VersionedStackReferenceSchema } from './project-stack';
+import { VersionedStackReferenceSchema } from './project-stack.ts';
 import { Value } from '@sinclair/typebox/value';
 
 export const ProjectPageManifestSchema = Type.Object({

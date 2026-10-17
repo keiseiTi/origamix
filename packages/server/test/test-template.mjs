@@ -1,4 +1,4 @@
-import { BUILTIN_PROJECT_STACK } from '@origamix/shared/protocol/project-stack';
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';

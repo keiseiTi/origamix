@@ -1,4 +1,4 @@
-import { RuntimeRenderReportSchema } from '@origamix/shared/protocol/agent';
+import { RuntimeRenderReportSchema } from '@origamix/shared';
 import type { Static } from '@sinclair/typebox';
 import { PageScopeSchema } from './body-schemas';
 import type { RouteRegistrationContext } from './types';

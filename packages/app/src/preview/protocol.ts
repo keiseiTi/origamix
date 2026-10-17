@@ -1,4 +1,4 @@
-import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';
+import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared';
 
 export interface PreviewIdentity {
   pageId: string;
@@ -22,8 +22,7 @@ export const isPreviewToHostMessage = (value: unknown): value is PreviewToHostMe
   if (!value || typeof value !== 'object') return false;
   const message = value as Record<string, unknown>;
   return (
-    (message.type === 'origamix.preview.ready' ||
-      message.type === 'origamix.preview.outcome') &&
+    (message.type === 'origamix.preview.ready' || message.type === 'origamix.preview.outcome') &&
     typeof message.projectId === 'string' &&
     typeof message.pageId === 'string'
   );
@@ -33,8 +32,7 @@ export const isHostToPreviewMessage = (value: unknown): value is HostToPreviewMe
   if (!value || typeof value !== 'object') return false;
   const message = value as Record<string, unknown>;
   return (
-    (message.type === 'origamix.preview.snapshot' ||
-      message.type === 'origamix.preview.error') &&
+    (message.type === 'origamix.preview.snapshot' || message.type === 'origamix.preview.error') &&
     typeof message.projectId === 'string' &&
     typeof message.pageId === 'string'
   );

@@ -1,7 +1,7 @@
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { lstat, mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative } from 'node:path';
-import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';
+import type { OrigamixPageSchema } from '@origamix/shared';
 import type { SchemaPageRef } from './schema-service';
 import { invalid } from '../errors';
 

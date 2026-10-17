@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { BUILTIN_PROJECT_STACK } from '@origamix/shared/protocol/project-stack';
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import type { EditorMaterialRegistration } from '@origamix/editor/contracts';
 
 const mocks = vi.hoisted(() => ({ stack: vi.fn(), load: vi.fn() }));
