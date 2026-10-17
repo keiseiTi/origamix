@@ -1,4 +1,4 @@
-import { Button } from '@origamix/ui/button';
+import { Button } from '@origamix/ui';
 import { Plus, Sparkles } from 'lucide-react';
 
 export const EmptyWorkspace = ({

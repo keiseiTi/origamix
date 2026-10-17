@@ -1,6 +1,6 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
-import { Button } from '@origamix/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui/tooltip';
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
+
 import {
   Movable,
   useEditorCore,

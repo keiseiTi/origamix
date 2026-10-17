@@ -1,4 +1,4 @@
-import { Button } from '@origamix/ui/button';
+import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared/page-window';

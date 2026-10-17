@@ -2,7 +2,7 @@ import { useContext, useEffect, useEffectEvent, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
-import { cn } from '@origamix/ui/utils';
+import { cn } from '@origamix/ui';
 import { EditorThemeContext } from '../core/environment';
 import type { EditorTheme } from '../contracts';
 

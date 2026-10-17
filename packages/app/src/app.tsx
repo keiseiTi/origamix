@@ -1,4 +1,4 @@
-import { TooltipProvider } from '@origamix/ui/tooltip';
+import { TooltipProvider } from '@origamix/ui';
 import { useCallback, useRef, useState } from 'react';
 import {
   SidebarNavigation,

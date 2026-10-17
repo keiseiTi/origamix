@@ -1,5 +1,5 @@
-import { Button } from '@origamix/ui/button';
-import { Spinner } from '@origamix/ui/spinner';
+import { Button, Spinner } from '@origamix/ui';
+
 import { useWorkspaceStore } from '@/store/workspace';
 
 export const WorkspaceRecoveryView = (): React.JSX.Element => {

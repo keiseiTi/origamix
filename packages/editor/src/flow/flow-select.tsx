@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@origamix/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@origamix/ui';
 
 export const FlowSelect = ({
   label,

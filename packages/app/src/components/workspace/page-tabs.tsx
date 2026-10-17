@@ -1,4 +1,4 @@
-import { Button } from '@origamix/ui/button';
+import { Button } from '@origamix/ui';
 import { X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';

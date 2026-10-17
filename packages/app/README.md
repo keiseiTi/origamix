@@ -15,7 +15,7 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 
 `src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。编辑会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
 
-基础控件通过 `@origamix/ui/<control>` 引用，`main.css` 显式引入公共样式；`index.html` 的 `origamix-ui` 类启用主题。App 保留主题偏好、状态色和布局，组件生成规则见 [UI README](../ui/README.md)。
+基础控件通过 `@origamix/ui` 引用，`main.css` 显式引入公共样式；`index.html` 的 `origamix-ui` 类启用主题。App 保留主题偏好、状态色和布局，组件生成规则见 [UI README](../ui/README.md)。
 
 ## 开发与验证
 

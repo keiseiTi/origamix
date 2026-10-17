@@ -49,7 +49,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 - `index.html` opts the workbench/preview document into `origamix-ui`; shared palette and foundation styles come from `@origamix/ui/styles.css`. App keeps status colors, scrollbar, layout and theme preference. Keep UI primitives and their generator aliases in the UI package rather than recreating `src/components/ui/`.
 
-- Use the shared shadcn/ui components through `@origamix/ui/<control>`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
+- Use the shared shadcn/ui components through `@origamix/ui`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
 - `src/main.css` explicitly includes Materials' Ant Design source in Tailwind scanning. Keep this source declaration when adding package-owned canvas classes; workbench input controls are owned by UI; `@origamix/ui/styles.css` scans its own sources.
 - Conversation/editor share one page context. The editor already loads and mutates Working Schema; keep that authority in the service-backed editor session rather than duplicating it in Workspace state.
 - Revision history is page-scoped and loaded on demand. Listing returns metadata; viewing fetches one immutable snapshot, while restoring copies it into Working as an unsaved draft. History actions never auto-save or auto-apply.

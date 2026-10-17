@@ -1,4 +1,4 @@
-import { Button } from '@origamix/ui/button';
+import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, Settings, User } from 'lucide-react';
 import { useState } from 'react';
 import { CreatePageModal } from './mod/create-page-modal';

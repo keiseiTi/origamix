@@ -5,8 +5,8 @@ import type {
   EditorTool,
   EditorHistoryState,
 } from '@origamix/editor/contracts';
-import { Spinner } from '@origamix/ui/spinner';
-import { Button } from '@origamix/ui/button';
+import { Spinner, Button } from '@origamix/ui';
+
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';

@@ -1,8 +1,8 @@
-import { Button } from '@origamix/ui/button';
+import { Button, Spinner } from '@origamix/ui';
 import { loadRuntimeMaterials } from '@/materials/loaders';
 import type { ProjectStack } from '@origamix/shared/protocol/project-stack';
 import { useEffect, useMemo, useState } from 'react';
-import { Spinner } from '@origamix/ui/spinner';
+
 import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime/react';
 import type { Schema } from '@tangramino/engine';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';

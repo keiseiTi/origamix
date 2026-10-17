@@ -1,6 +1,5 @@
-import { Button } from '@origamix/ui/button';
-import { Spinner } from '@origamix/ui/spinner';
-import { Textarea } from '@origamix/ui/textarea';
+import { Button, Spinner, Textarea } from '@origamix/ui';
+
 import {
   ChevronDown,
   ChevronUp,

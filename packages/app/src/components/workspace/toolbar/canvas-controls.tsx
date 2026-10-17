@@ -1,6 +1,6 @@
 import { Monitor, Redo2, Smartphone, Undo2 } from 'lucide-react';
-import { Button } from '@origamix/ui/button';
-import { Input } from '@origamix/ui/input';
+import { Button, Input } from '@origamix/ui';
+
 import type { EditorHistoryState } from '@origamix/editor/contracts';
 
 interface CanvasControlsProps {

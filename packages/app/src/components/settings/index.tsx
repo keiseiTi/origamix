@@ -1,9 +1,14 @@
-import { Badge } from '@origamix/ui/badge';
-import { Button } from '@origamix/ui/button';
-import { Card } from '@origamix/ui/card';
-import { Dialog, DialogContent } from '@origamix/ui/dialog';
-import { Input } from '@origamix/ui/input';
-import { RadioGroup, RadioGroupItem } from '@origamix/ui/radio-group';
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
+} from '@origamix/ui';
+
 import { Bot, Check, Eye, EyeOff, KeyRound, Moon, Save, Sun, User, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';

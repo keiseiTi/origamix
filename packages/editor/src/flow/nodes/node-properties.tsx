@@ -1,10 +1,8 @@
 import { getElementLabel } from '@origamix/shared/protocol/schema';
 import type LogicFlow from '@logicflow/core';
 import { useEditorCore } from '@tangramino/base-editor';
-import { Checkbox } from '@origamix/ui/checkbox';
-import { FieldLabel } from '@origamix/ui/field';
-import { Input } from '@origamix/ui/input';
-import { Textarea } from '@origamix/ui/textarea';
+import { Checkbox, FieldLabel, Input, Textarea } from '@origamix/ui';
+
 import { FlowSelect } from '../flow-select';
 import { getNodeDefinition, getNodePropertyChoices, getNodePropertySchema } from './definitions';
 import { SettersFields } from './setters-fields';

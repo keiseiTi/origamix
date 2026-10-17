@@ -1,11 +1,14 @@
-import { Button } from '@origamix/ui/button';
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@origamix/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui/tooltip';
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@origamix/ui';
+
 import { useState } from 'react';
 import {
   Braces,

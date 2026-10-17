@@ -2,8 +2,8 @@ import { getElementLabel } from '@origamix/shared/protocol/schema';
 import { useEditorCore } from '@tangramino/base-editor';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@origamix/ui/button';
-import { FieldLabel } from '@origamix/ui/field';
+import { Button, FieldLabel } from '@origamix/ui';
+
 import { FlowSelect } from '../flow-select';
 import { ValueField } from './value-field';
 import { asRecord } from './values';

@@ -1,14 +1,15 @@
 import { CodeEditor } from '@origamix/editor/components';
 import { usePreferencesStore } from '@/store/preferences';
-import { Button } from '@origamix/ui/button';
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@origamix/ui/dialog';
-import { Spinner } from '@origamix/ui/spinner';
+  Spinner,
+} from '@origamix/ui';
+
 import { schemaService } from '@/services/schema';
 import type { RevisionHistoryItem } from '@origamix/shared/protocol/api';
 import type { OrigamixPageSchema } from '@origamix/shared/protocol/schema';

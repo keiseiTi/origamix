@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useEditorCore } from '@tangramino/base-editor';
 import { SchemaUtils } from '@tangramino/engine';
 import { Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
-import { Button } from '@origamix/ui/button';
+import { Button } from '@origamix/ui';
 import { nodeKinds, readGraph, toFlow, type EventTarget } from './model';
 import { createReactNode } from './react-node';
 import './style.css';

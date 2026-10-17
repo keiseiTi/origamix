@@ -14,3 +14,4 @@ export * from './spinner';
 export * from './switch';
 export * from './textarea';
 export * from './tooltip';
+export { cn } from '../lib/utils';
