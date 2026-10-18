@@ -18,7 +18,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 ## Contract rules
 
 - This is platform-neutral contract code, published as an independent ESM package, not a runtime service or miscellaneous utility bucket. No Node.js, Electron, React, Fastify, browser globals or other workspace-package dependencies.
-- Keep external behavior deterministic and side-effect-free: no filesystem/network calls, environment reads, credentials or process startup.
+- Keep external behavior deterministic and side-effect-free: no filesystem/network calls, environment reads, credentials or process startup. `package.json` declares `sideEffects: false` so consumers can omit unused contract/validator modules; do not add import-time global registration or initialization side effects.
 - Define runtime schemas alongside transport shapes and derive TypeScript types where practical. A cast cannot validate untrusted input; receiving boundaries must actually validate it.
 - `getElementLabel` in `protocol/schema.ts` resolves editor labels to a nonblank `props.alias`, otherwise the supplied localized material title (falling back to `type`); `getAgentElementLabel` uses the alias or `elementId（localized material title）` for Agent references. It never changes the stable identity used by mutations or clarification selection.
 - Preserve stable IDs, schemaVersion, operation discrimination, Working-version concurrency and error/result semantics. Breaking persisted formats need explicit version/migration strategy, not silently relaxed validation.

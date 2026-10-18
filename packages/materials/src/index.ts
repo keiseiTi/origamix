@@ -14,14 +14,6 @@ export type {
 } from './hyper-value';
 
 export {
-  defineOrigamixMaterial,
-  fromMaterialManifest,
-  toMaterialManifest,
-} from './material-definition';
-
-export type { OrigamixMaterial } from './material-definition';
-
-export {
   withCommonMaterialManifest,
   toAgentMaterialSummary,
   toValidationMaterialManifest,
@@ -44,8 +36,10 @@ export type {
   Material,
 } from './material';
 
-export { toEditorMaterial, isOrigamixEditorMaterial } from './origamix-material';
-
-export { withRuntimeMaterialProps } from './runtime-material';
+export {
+  defineMaterial,
+  isOrigamixEditorMaterial,
+  type MaterialDefinition,
+} from './origamix-material';
 
 export type { RuntimeMaterialProps } from './runtime-material';

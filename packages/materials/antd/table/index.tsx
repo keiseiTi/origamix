@@ -1,6 +1,6 @@
 import React from 'react';
 import { Table as AntdTable, theme, type TableProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = TableProps<Record<string, unknown>> &
   RuntimeMaterialProps & {

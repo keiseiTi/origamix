@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { InputNumber as AntdInputNumber, type InputNumberProps } from 'antd';
-import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export type IProps = InputNumberProps & MaterialComponentProps;
 

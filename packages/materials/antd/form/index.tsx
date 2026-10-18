@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Form as AntdForm, theme, type FormProps } from 'antd';
-import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export interface IProps extends FormProps, MaterialComponentProps {
   children?: React.ReactNode;

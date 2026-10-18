@@ -1,5 +1,5 @@
 import React from 'react';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 import { Cascader as AntdCascader, type CascaderProps } from 'antd';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

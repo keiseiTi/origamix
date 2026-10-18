@@ -10,10 +10,13 @@ export default defineConfig({
     'antd/manifest': 'antd/manifest.ts',
   },
   format: ['esm'],
-  // Resolve through the declared export; tsup's legacy DTS resolver ignores export maps.
   dts: {
+    resolve: ['@origamix/shared'],
     compilerOptions: {
       paths: {
+        '@': [fileURLToPath(new URL('./src/index.ts', import.meta.url))],
+        '@/*': [fileURLToPath(new URL('./src/*', import.meta.url))],
+        // Resolve the declared Shared entry for tsup's declaration bundler.
         '@origamix/shared': [fileURLToPath(import.meta.resolve('@origamix/shared'))],
       },
     },

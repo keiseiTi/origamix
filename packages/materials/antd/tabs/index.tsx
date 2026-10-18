@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs as AntdTabs, theme, type TabsProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = TabsProps & RuntimeMaterialProps;
 export const Tabs = ({

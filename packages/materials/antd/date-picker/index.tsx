@@ -1,7 +1,7 @@
 import React from 'react';
 import { DatePicker as AntdDatePicker, type DatePickerProps } from 'antd';
 import type { Dayjs } from 'dayjs';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 import { parseDateValue } from '../date-value';
 
 export type IProps = Omit<DatePickerProps, 'value' | 'defaultValue' | 'minDate' | 'maxDate'> &

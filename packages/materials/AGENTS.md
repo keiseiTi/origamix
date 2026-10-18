@@ -5,17 +5,18 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `antd/runtime.ts`: Ant Design runtime registry.
-- `src/index.ts`: public root explicitly exporting every public type and helper from `src/`, including material contracts, definitions, Manifest conversion, runtime props, value types and class-name utilities; replaces the former `/material` subpath; never aggregate concrete Ant Design materials here.
+- `src/index.ts`: public root explicitly exporting every public type and helper from `src/`, including material contracts, editor assembly, Manifest helpers, runtime props, value types and class-name utilities; replaces the former `/material` subpath; never aggregate concrete Ant Design materials here.
 - `antd/editor.ts`: public `/antd/editor` entry for editor groups, Manifest catalog and property-editor registrations. Runtime and Manifest retain their separate public subpaths; Server must never load the root or editor entry.
 - `antd/*/manifest.ts`: material-owned, serializable definitions; `antd/manifest.ts` is the pure-data aggregation entry point.
-- `antd/*/definition.ts`: the single serializable source for editor metadata and Manifest data when a material has migrated to `OrigamixMaterial`.
-- `src/material-definition.ts`: pure-data definition/Manifest converters; editor-specific conversion remains in `src/origamix-material.ts`. Keep React rendering helpers out of Server-facing Manifest imports.
-- `antd/manifest-definition.ts`: shared declaration helpers for colocated manifests; it has no React or editor imports.
+- `antd/*/manifest.ts` is the source of truth for each built-in material; `material-config.ts` provides only the component, editor controls and explicit container behavior. Do not duplicate manifest fields or introduce intermediate definition files.
+- `src/origamix-material.ts`: the single `defineMaterial({ manifest, Component, editorConfig, isContainer })` assembly path. `Material` is its output type, not a hand-written parallel definition. Keep React rendering helpers out of Server-facing Manifest imports.
+- `antd/manifest-definition.ts`: the single `defineManifest({ ... })` helper injects the version from `antd/material-set.ts` and common metadata. Component definitions must not declare or override versions. It has no React or editor imports.
 - `antd/material-set.ts`: installed material-set identity shared by Manifest and runtime; runtime exports it so lazy consumers can check the installed version without loading editor metadata.
 - `antd/*/index.tsx`: thin Tangramino-compatible component adapters.
 - `antd/*/material-config.ts`: stable material metadata, defaults, context and editor controls.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.
 
+- `tsconfig.json` and `tsup.config.ts` DTS paths must both retain `@` → `src/index.ts` and `@/*` → `src/*`; DTS path overrides replace rather than merge the package tsconfig mappings. Built JavaScript/declarations must not retain these private aliases.
 - Build-only Shared imports are inlined in both JavaScript and declarations. The DTS build resolves the declared Shared export dynamically because tsup’s legacy resolver does not handle package export maps; do not replace it with a hardcoded cross-package source path. Verify packed runtime entries remain standalone.
 - Manifest format types live in `@origamix/shared`; import them directly. `src/material-manifest.ts` contains only material-owned conversion helpers. No historical exports or data-shape conversions are provided.
 
@@ -23,14 +24,14 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
-- Workspace type exports resolve to package source so downstream typechecks do not depend on prebuilt `dist`; runtime imports and `publishConfig.exports` resolve to compiled files. Keep both export maps synchronized.
+- Workspace and published exports both resolve JavaScript and types to `dist`; do not expose source aliases to consumers. Root `pnpm typecheck` builds Materials first. Before isolated App/Server typechecks, build Materials explicitly. Keep both export maps synchronized.
 - Keep registry keys, manifest `type` and Schema types consistent. Renames and removals require coordinated Shared/Server/App/Template changes; do not add historical aliases or format conversions.
-- Common `alias` properties and `init` lifecycle events are composed by `withCommonMaterialManifest`; `toEditorMaterial` derives the matching optional alias field and events. Both editor and runtime registries strip `alias` before rendering, without changing the retained Schema. Keep this contract centralized rather than adding App-only plugins.
-- Runtime adapters should forward supported props and Tangramino context deliberately. Do not leak editor-only props to DOM elements, mutate Schema or add persistence/network side effects.
+- Common `alias` properties and `init` lifecycle events are composed by `withCommonMaterialManifest`; `defineMaterial` derives the matching optional alias field and events. Both editor and runtime registries reference the original component directly; `alias` may pass through with other Schema props. Keep this contract centralized rather than adding App-only plugins.
+- Runtime adapters should forward supported props and Tangramino context deliberately. Keep engine callbacks out of DOM props; do not mutate Schema or add persistence/network side effects.
 - Runtime components use the package-local minimal runtime props contract; do not import editor contracts solely for injected render props. Editor metadata and controls may continue to depend on the editor package through editor-facing entries.
 - Keep manifests serializable except for documented component/render references used by the editor. Defaults must be deterministic and safe to render without project data.
 - Structured attribute editors use `uiType: 'json'` with an editor-only `validateValue` guard. Keep that callable outside Manifest entries; Editor owns its input UI and App passes accepted data through the existing Working pipeline. Do not enable the deferred option editors as a side effect.
-- Prefer `OrigamixMaterial` definitions for simple materials: derive their Manifest with `toMaterialManifest` and attach the runtime component with `toEditorMaterial`. Keep component references and custom render controls outside definitions so Server-facing imports remain pure data.
+- Define all built-in manifests with `defineManifest` and pass them directly to `defineMaterial` with component/editor configuration. Keep component references and custom render controls outside manifests so Server-facing imports remain pure data. Preserve explicit `isContainer` behavior; do not assume it is interchangeable with Manifest `acceptsChildren`.
 - Declare every imported library directly. React and Ant Design remain peer dependencies for consumers; local dependency entries support workspace development and verification.
 - UI (`@origamix/ui`) and Tangramino base-editor are optional editor-only peers. Attribute control props derive from UI components; numeric and color fields use Input props. Runtime and Manifest JavaScript/declarations must not import them. Editing hosts install those peers explicitly; standalone template smoke rejects installed editor engines.
 - Use Ant Design controls for material implementations and `lucide-react` for any additional icons. Do not hand-write SVG icons.

@@ -64,6 +64,7 @@ From the repository root:
 
 ```sh
 pnpm --filter @origamix/app lint
+pnpm --filter @origamix/materials build
 pnpm --filter @origamix/app typecheck
 pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build

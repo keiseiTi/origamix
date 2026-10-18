@@ -32,7 +32,7 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials build
 ```
 
-tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区类型指向源码，发布类型指向声明文件，两套出口需要同步。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 和 Tangramino base-editor 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
+tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区和发布包统一消费 `dist` 中的 JavaScript 与类型声明，两套出口保持一致。根 `pnpm typecheck` 会先构建 Materials；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials build`。Shared 的代码与类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 和 Tangramino base-editor 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -41,15 +41,15 @@ tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作
 以已经迁移的按钮物料为参考，按以下顺序维护同一份类型和默认值：
 
 1. 在 `antd/<material>/index.tsx` 编写 Ant Design 适配组件，参考 [按钮组件](antd/button/index.tsx)。使用包内运行属性契约，剥离引擎注入属性，避免传入 DOM。
-2. 在 `definition.ts` 使用 `defineOrigamixMaterial` 定义稳定的 `type`、默认值、上下文、属性 Schema 和编辑配置，参考 [按钮定义](antd/button/definition.ts)。组件和自定义渲染函数留在定义之外。
-3. 在 `manifest.ts` 使用 `toMaterialManifest` 导出纯数据清单；在 `material-config.ts` 使用 `toEditorMaterial` 绑定组件，参考 [清单](antd/button/manifest.ts) 和 [编辑配置](antd/button/material-config.ts)。
+2. 在 `manifest.ts` 使用 `defineManifest({ ... })` 定义稳定的 `type`、默认值、上下文和属性 Schema，参考 [按钮清单](antd/button/manifest.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)，每个组件不单独声明版本。
+3. 在 `material-config.ts` 使用 `defineMaterial({ manifest, Component, editorConfig, isContainer })` 一次装配，参考 [按钮编辑配置](antd/button/material-config.ts)。无需中间定义或转换；标题、类型、默认值和上下文直接来自 Manifest。组件和自定义渲染函数不进入 Manifest。
 4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)，清单加入 [antd/manifest.ts](antd/manifest.ts)。三处类型必须一致；已有但未向编辑器开放的类型不应顺手移除。
 5. 运行包检查与根检查，在编辑器、预览和生成项目中验证属性、上下文及亮暗主题。自动测试只补已有清单一致性场景中的必要约束。
 
 转换辅助的公开导入方式：
 
 ```ts
-import { defineOrigamixMaterial, toMaterialManifest, toEditorMaterial } from '@origamix/materials';
+import { defineMaterial } from '@origamix/materials';
 ```
 
 Server 仅消费 Manifest，不能让清单入口通过组件或编辑配置间接加载 React。新增类型可以扩展注册表；重命名或删除已有类型必须同时考虑保留的 Working、历史 Revision 和生成项目。

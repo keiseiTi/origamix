@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal as AntdModal, theme, type ModalProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = ModalProps &
   RuntimeMaterialProps & {

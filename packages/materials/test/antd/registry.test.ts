@@ -1,6 +1,6 @@
 import { materialGroups } from '../../antd/editor';
 import { describe, expect, it } from 'vitest';
-import materialComponents from '../../antd/runtime';
+import materialComponents, { materialSet } from '../../antd/runtime';
 import { antdMaterialManifest, antdValidationMaterialRegistry } from '../../antd/manifest';
 
 describe('material boundary used by editing and preview', () => {
@@ -11,7 +11,9 @@ describe('material boundary used by editing and preview', () => {
       expect(antdValidationMaterialRegistry[material.type]).toBeDefined();
       expect(material.type in materialComponents).toBe(true);
     }
+    expect(antdMaterialManifest.materialSet).toEqual(materialSet);
     for (const material of antdMaterialManifest.materials) {
+      expect(material.version).toBe(materialSet.version);
       expect(material.type in materialComponents).toBe(true);
       expect(material.propsSchema.additionalProperties).toBe(false);
       expect(material.propsSchema.properties).toMatchObject({ alias: { type: 'string' } });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Upload as AntdUpload, type UploadProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = UploadProps & RuntimeMaterialProps & { drag?: boolean; text?: string };
 export const Upload = ({

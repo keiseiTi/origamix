@@ -1,17 +1,11 @@
 import { lazy } from 'react';
-import type { Material } from '../../src/material';
-import { fromMaterialManifest, toEditorMaterial } from '../../src/origamix-material';
+import { defineMaterial } from '@';
 import { basicPageManifest } from './manifest';
 
-const BasicPageMaterial: Material = {
-  title: '页面',
-  type: 'basicPage',
+const BasicPageMaterial = defineMaterial({
+  manifest: basicPageManifest,
   isContainer: true,
   Component: lazy(() => import('./index')),
-  defaultProps: {
-    display: 'flow',
-    flexDirection: 'column',
-  },
   editorConfig: {
     panels: [
       {
@@ -70,12 +64,6 @@ const BasicPageMaterial: Material = {
       },
     ],
   },
-};
+});
 
-export default toEditorMaterial(
-  fromMaterialManifest(basicPageManifest, {
-    editorConfig: BasicPageMaterial.editorConfig,
-    isContainer: BasicPageMaterial.isContainer,
-  }),
-  BasicPageMaterial.Component,
-);
+export default BasicPageMaterial;

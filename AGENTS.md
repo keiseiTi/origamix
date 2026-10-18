@@ -98,7 +98,7 @@ pnpm test
 pnpm build
 ```
 
-- Use package-filtered checks while iterating, then root gates before handoff. Add relevant integration checks from package guides for changed boundaries. Packaging is required only for packaging changes or explicit requests.
+- Root `pnpm typecheck` first builds Materials because consumers resolve its compiled declarations; isolated consumer checks must build Materials first. Use package-filtered checks while iterating, then root gates before handoff. Add relevant integration checks from package guides for changed boundaries. Packaging is required only for packaging changes or explicit requests.
 - Keep tests within the automated-test scope above. Exercise the required rejection and recovery behavior, not only the successful path; use temporary directories and fake credentials.
 - UI changes need actual interaction checks in both themes. Build/unit success is not visual verification; report unavailable graphical checks.
 - Documentation-only changes require checking referenced paths, commands, scope and Markdown formatting. Do not claim application tests were run when they were not.

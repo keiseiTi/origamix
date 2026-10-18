@@ -1,7 +1,7 @@
 import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -174,6 +174,12 @@ try {
   assert.equal(installed.peerDependencies?.['@heroui/react'], undefined);
   assert.equal(installed.dependencies?.['@origamix/ui'], undefined);
   assert.equal(installed.peerDependenciesMeta?.['@origamix/ui']?.optional, true);
+  const materialDist = join(project, 'node_modules/@origamix/materials/dist');
+  for (const file of await readdir(materialDist, { recursive: true })) {
+    if (!file.endsWith('.d.ts')) continue;
+    const declaration = await readFile(join(materialDist, file), 'utf8');
+    assert.ok(!declaration.includes('@origamix/shared'), `Unbundled Shared type in ${file}`);
+  }
   const lockfile = await readFile(join(project, 'pnpm-lock.yaml'), 'utf8');
   for (const forbidden of [
     '@tangramino/base-editor',

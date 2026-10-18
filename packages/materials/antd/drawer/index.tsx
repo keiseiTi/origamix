@@ -1,6 +1,6 @@
 import React from 'react';
 import { Drawer as AntdDrawer, theme, type DrawerProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = Omit<DrawerProps, 'width' | 'height'> &
   RuntimeMaterialProps & { customSize?: number };

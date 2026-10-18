@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimePicker as AntdTimePicker, type TimePickerProps } from 'antd';
 import type { Dayjs } from 'dayjs';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 import { parseTimeValue } from '../date-value';
 
 export type IProps = Omit<TimePickerProps, 'value' | 'defaultValue'> &

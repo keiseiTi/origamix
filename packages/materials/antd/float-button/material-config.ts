@@ -1,14 +1,10 @@
 import { lazy } from 'react';
-import type { Material } from '../../src/material';
+import { defineMaterial } from '@';
+import { floatButtonManifest } from './manifest';
 
-const FloatButtonMaterial: Material = {
+const FloatButtonMaterial = defineMaterial({
+  manifest: floatButtonManifest,
   Component: lazy(() => import('./index')),
-  title: '悬浮按钮',
-  type: 'floatButton',
-  defaultProps: {
-    type: 'default',
-    shape: 'circle',
-  },
   editorConfig: {
     panels: [
       {
@@ -79,6 +75,6 @@ const FloatButtonMaterial: Material = {
       },
     ],
   },
-};
+});
 
 export default FloatButtonMaterial;

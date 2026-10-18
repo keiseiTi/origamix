@@ -1,7 +1,7 @@
 import React from 'react';
 import { DatePicker as AntdDatePicker } from 'antd';
 import type { RangePickerProps } from 'antd/es/date-picker';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 import { parseDateValue } from '../date-value';
 
 export type IProps = Omit<RangePickerProps, 'placeholder' | 'minDate' | 'maxDate'> &

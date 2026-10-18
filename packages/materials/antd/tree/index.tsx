@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tree as AntdTree, type TreeProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = TreeProps & RuntimeMaterialProps;
 export const Tree = ({ tg_setContextValues, tg_mode, ...rest }: IProps) => (

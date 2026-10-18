@@ -16,7 +16,7 @@
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter @origamix/materials build && pnpm -r typecheck",
     "test": "pnpm -r test",
     "gate:internal": "pnpm --filter @origamix/server gate:agent",
     "package:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",

@@ -1,5 +1,4 @@
 export { materialSet } from './material-set';
-import { withRuntimeMaterialProps } from '../src/runtime-material';
 import { Button } from './button';
 import { Input } from './input';
 import { Select } from './select';
@@ -26,30 +25,30 @@ import { DatePickerRange } from './date-picker-range';
 import { Slider } from './slider';
 
 export const materialComponents = {
-  button: withRuntimeMaterialProps(Button),
-  input: withRuntimeMaterialProps(Input),
-  select: withRuntimeMaterialProps(Select),
-  checkbox: withRuntimeMaterialProps(Checkbox),
-  radio: withRuntimeMaterialProps(Radio),
-  switch: withRuntimeMaterialProps(Switch),
-  textarea: withRuntimeMaterialProps(Textarea),
-  form: withRuntimeMaterialProps(Form),
-  table: withRuntimeMaterialProps(Table),
-  tabs: withRuntimeMaterialProps(Tabs),
-  modal: withRuntimeMaterialProps(Modal),
-  drawer: withRuntimeMaterialProps(Drawer),
-  upload: withRuntimeMaterialProps(Upload),
-  datePicker: withRuntimeMaterialProps(DatePicker),
-  datePickerRange: withRuntimeMaterialProps(DatePickerRange),
-  timePicker: withRuntimeMaterialProps(TimePicker),
-  tree: withRuntimeMaterialProps(Tree),
-  treeSelect: withRuntimeMaterialProps(TreeSelect),
-  cascader: withRuntimeMaterialProps(Cascader),
-  number: withRuntimeMaterialProps(Number),
-  basicPage: withRuntimeMaterialProps(BasicPage),
-  container: withRuntimeMaterialProps(Container),
-  text: withRuntimeMaterialProps(Text),
-  slider: withRuntimeMaterialProps(Slider),
+  button: Button,
+  input: Input,
+  select: Select,
+  checkbox: Checkbox,
+  radio: Radio,
+  switch: Switch,
+  textarea: Textarea,
+  form: Form,
+  table: Table,
+  tabs: Tabs,
+  modal: Modal,
+  drawer: Drawer,
+  upload: Upload,
+  datePicker: DatePicker,
+  datePickerRange: DatePickerRange,
+  timePicker: TimePicker,
+  tree: Tree,
+  treeSelect: TreeSelect,
+  cascader: Cascader,
+  number: Number,
+  basicPage: BasicPage,
+  container: Container,
+  text: Text,
+  slider: Slider,
 };
 
 export default materialComponents;

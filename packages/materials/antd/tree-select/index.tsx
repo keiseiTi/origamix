@@ -1,5 +1,5 @@
 import React from 'react';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 import { TreeSelect as AntdTreeSelect, type TreeSelectProps } from 'antd';
 
 export type IProps = TreeSelectProps & RuntimeMaterialProps;

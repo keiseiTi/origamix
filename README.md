@@ -61,7 +61,7 @@ pnpm test
 pnpm build
 ```
 
-根 lint 包含跨包接口规则，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
+根 lint 包含跨包接口规则，根 typecheck 会先构建 Materials 的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
 
 本轮架构迁移的核心链路、真实桌面与独立项目验证结果，以及未验证范围，见 [迁移交付验证](packages/migration-verification.md)。
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Radio as AntdRadio, type RadioGroupProps } from 'antd';
-import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export interface IProps extends RadioGroupProps, MaterialComponentProps {
   label?: string;

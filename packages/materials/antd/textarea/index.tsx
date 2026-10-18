@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Input as AntdInput } from 'antd';
 import type { TextAreaProps } from 'antd/es/input/TextArea';
-import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export type IProps = TextAreaProps &
   MaterialComponentProps & {

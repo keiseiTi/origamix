@@ -1,6 +1,6 @@
 import React from 'react';
 import { Select as AntdSelect, type SelectProps } from 'antd';
-import type { RuntimeMaterialProps as MaterialComponentProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export type IProps = SelectProps & MaterialComponentProps & {};
 

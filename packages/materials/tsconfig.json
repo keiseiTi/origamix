@@ -8,6 +8,7 @@
     "noEmit": true,
     "ignoreDeprecations": "6.0",
     "paths": {
+      "@": ["./src/index.ts"],
       "@/*": ["./src/*"]
     }
   },

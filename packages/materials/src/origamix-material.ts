@@ -1,22 +1,22 @@
-import { withRuntimeMaterialProps } from './runtime-material';
 import type { Material, PanelConfig, InputAttributeConfig, AttributeConfig } from './material';
-import { toMaterialManifest, type OrigamixMaterial } from './material-definition';
-export {
-  defineOrigamixMaterial,
-  fromMaterialManifest,
-  toMaterialManifest,
-  type OrigamixMaterial,
-} from './material-definition';
-export type { JsonAttributeConfig } from './material';
+import type { MaterialManifest } from '@origamix/shared';
+import { withCommonMaterialManifest } from './material-manifest';
+
+export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig' | 'isContainer'> & {
+  manifest: MaterialManifest;
+};
 
 const editorMaterials = new WeakSet<object>();
 
-export const toEditorMaterial = (
-  material: OrigamixMaterial,
-  Component: Material['Component'],
-): Material => {
-  const manifest = toMaterialManifest(material);
-  const panels = (material.editorConfig?.panels ?? []) as PanelConfig[];
+/** Assemble editor metadata from a Manifest, including context mapping and the alias control. */
+export const defineMaterial = ({
+  manifest: inputManifest,
+  Component,
+  editorConfig,
+  isContainer,
+}: MaterialDefinition): Material => {
+  const manifest = withCommonMaterialManifest(inputManifest);
+  const panels = (editorConfig?.panels ?? []) as PanelConfig[];
   const aliasConfig: InputAttributeConfig = {
     label: '别名',
     field: 'alias',
@@ -24,23 +24,21 @@ export const toEditorMaterial = (
     required: false,
   };
   const editorMaterial: Material = {
-    Component: withRuntimeMaterialProps(Component),
-    title: material.title,
-    type: material.type,
-    defaultProps: material.defaultProps,
-    ...(material.metadata.allowedParentTypes
-      ? { dropTypes: [...material.metadata.allowedParentTypes] }
-      : {}),
+    Component,
+    title: manifest.title,
+    type: manifest.type,
+    defaultProps: manifest.defaultProps,
+    ...(manifest.allowedParentTypes ? { dropTypes: [...manifest.allowedParentTypes] } : {}),
     contextConfig: {
-      variables: [...material.context.variables],
-      contextValues: [...material.context.values],
+      variables: [...manifest.context.variables],
+      contextValues: [...manifest.context.values],
       methods: manifest.context.methods.map((method) => ({
         ...method,
         params: method.params?.map((param) => ({ description: param.description ?? '' })),
       })),
     },
     editorConfig: {
-      ...material.editorConfig,
+      ...editorConfig,
       panels: panels.some((panel) => panel.title === '属性')
         ? panels.map((panel) =>
             panel.title === '属性'
@@ -57,7 +55,7 @@ export const toEditorMaterial = (
           )
         : [{ title: '属性', configs: [aliasConfig] }, ...panels],
     },
-    isContainer: material.isContainer,
+    isContainer,
   };
   editorMaterials.add(editorMaterial);
   return editorMaterial;

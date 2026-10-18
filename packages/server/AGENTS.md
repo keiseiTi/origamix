@@ -53,7 +53,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Mechanical boundaries
 
-- Typechecking enables JSX parsing only to follow source-exported dependency types (Materials editor metadata references UI component props). Server does not render JSX or load UI components; runtime imports remain restricted to the pure-data Manifest entry.
+- Materials exposes compiled declarations in the workspace and published package; build it before isolated Server typechecks. Runtime imports remain restricted to the pure-data Manifest entry.
 
 - `scripts/eslint-boundaries.mjs` is loaded by the root ESLint configuration for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
 - `http/types.ts` exposes only repository reads and the required service methods; tools receive narrow repository/diagnostic interfaces. Keep these capabilities narrow when adding routes/tools.
@@ -66,6 +66,7 @@ From the repository root:
 
 ```sh
 pnpm --filter @origamix/server lint
+pnpm --filter @origamix/materials build
 pnpm --filter @origamix/server typecheck
 pnpm --filter @origamix/server test
 pnpm --filter @origamix/server build

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Slider as AntdSlider, type SliderSingleProps, type SliderRangeProps } from 'antd';
-import type { RuntimeMaterialProps } from '../../src/runtime-material';
+import type { RuntimeMaterialProps } from '@';
 
 export type IProps = (SliderSingleProps | SliderRangeProps) &
   RuntimeMaterialProps & {

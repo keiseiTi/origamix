@@ -7,19 +7,19 @@
   ],
   "exports": {
     "./antd/manifest": {
-      "types": "./antd/manifest.ts",
+      "types": "./dist/antd/manifest.d.ts",
       "import": "./dist/antd/manifest.js"
     },
     "./antd/runtime": {
-      "types": "./antd/runtime.ts",
+      "types": "./dist/antd/runtime.d.ts",
       "import": "./dist/antd/runtime.js"
     },
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
     "./antd/editor": {
-      "types": "./antd/editor.ts",
+      "types": "./dist/antd/editor.d.ts",
       "import": "./dist/antd/editor.js"
     }
   },
