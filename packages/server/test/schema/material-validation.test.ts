@@ -42,6 +42,24 @@ const codes = (
 describe('Manifest-driven Schema validation', () => {
   it('accepts declared props, hierarchy, event, binding and safe URL', () => {
     const schema = page();
+    schema.flows!.flow_save = {
+      startId: 'node_start',
+      nodes: {
+        node_start: { id: 'node_start', type: 'start', props: {}, prev: [], next: ['script'] },
+        script: {
+          id: 'script',
+          type: 'customJS',
+          prev: ['node_start'],
+          next: [],
+          props: {
+            value: {
+              type: 'function',
+              value: { params: [], body: 'throw new Error("must not run on Server");' },
+            },
+          },
+        },
+      },
+    };
     schema.elements.button_save!.props = {
       text: '保存',
       href: '/saved',

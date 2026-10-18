@@ -1,18 +1,9 @@
 import { Check } from '@sinclair/typebox/value';
 import { Type, type Static, type TProperties, type TSchema } from '@sinclair/typebox';
 
-export const FLOW_NODE_MANIFEST_VERSION = '1.0' as const;
+import { HyperValueSchema, FunctionValueSchema } from './hyper-value.ts';
 
-/** References resolve the whole configured value; nested JSON strings are never evaluated. */
-export const FlowValueReferenceSchema = Type.Object(
-  {
-    $ref: Type.Union([Type.Literal('global'), Type.Literal('result')]),
-    name: Type.String({ minLength: 1, description: '全局变量名称，或返回值来源节点的 ID。' }),
-    path: Type.Optional(Type.String({ description: '点分隔的数据路径，例如 data.items。' })),
-  },
-  { additionalProperties: false },
-);
-export type FlowValueReference = Static<typeof FlowValueReferenceSchema>;
+export const FLOW_NODE_MANIFEST_VERSION = '1.0' as const;
 
 export interface FlowNodeManifest {
   type: string;
@@ -30,12 +21,10 @@ export interface FlowNodeManifest {
   constraints: readonly string[];
 }
 
-const value = (description: string) =>
-  Type.Unknown({
-    description: `${description} 支持 JSON 值，或完整的 global/result 数据引用；不执行表达式。`,
-  });
-const withReference = <T extends TSchema>(schema: T, description: string) =>
-  Type.Union([schema, FlowValueReferenceSchema], { description });
+const value = (description: string): typeof HyperValueSchema => ({
+  ...HyperValueSchema,
+  description,
+});
 const props = <T extends TProperties>(properties: T) =>
   Type.Object(
     {
@@ -65,32 +54,21 @@ export const flowNodeManifests = [
     description: '发送 HTTP 请求并返回响应数据',
     executable: true,
     defaultProps: {
-      url: '',
+      url: { type: 'string', value: '' },
       method: 'get',
-      headers: {},
-      queryParams: {},
-      bodyParams: null,
-      timeout: 10000,
+      headers: { type: 'function', value: { params: [], body: 'return {};' } },
+      queryParams: { type: 'function', value: { params: [], body: 'return {};' } },
+      bodyParams: { type: 'function', value: { params: [], body: 'return null;' } },
     },
     propsSchema: props({
-      url: withReference(
-        Type.String(),
-        '请求地址或数据引用；解析后必须为不含用户名或密码的 HTTP(S) 绝对地址。',
-      ),
+      url: value('HTTP(S) URL, resolved through HyperValue.'),
       method: Type.Union(
         (['get', 'post', 'put', 'patch', 'delete'] as const).map((method) => Type.Literal(method)),
         { description: 'HTTP 请求方法。' },
       ),
-      headers: withReference(
-        Type.Record(Type.String(), Type.String()),
-        '请求头对象或数据引用，各项值为字符串。',
-      ),
-      queryParams: withReference(
-        Type.Record(Type.String(), Type.Unknown()),
-        'URL 查询参数对象或数据引用。',
-      ),
-      bodyParams: value('JSON 请求体；GET 请求不发送请求体。'),
-      timeout: Type.Number({ minimum: 100, maximum: 60000, description: '超时时间，单位毫秒。' }),
+      headers: FunctionValueSchema,
+      queryParams: FunctionValueSchema,
+      bodyParams: FunctionValueSchema,
     }),
     returnsSchema: Type.Object(
       {
@@ -110,19 +88,21 @@ export const flowNodeManifests = [
   {
     type: 'customJS',
     title: '自定义 JS',
-    description: '保存自定义代码；当前暂不执行',
-    executable: false,
-    defaultProps: { code: '' },
-    propsSchema: props({ code: Type.String({ description: '仅保存的代码配置，不执行。' }) }),
+    description: '执行函数并返回结果',
+    executable: true,
+    defaultProps: { value: { type: 'function', value: { params: [], body: '' } } },
+    propsSchema: props({ value: FunctionValueSchema }),
     connections: sequence,
-    constraints: ['不能用于实现实际业务行为，也不能向用户声称代码已执行。'],
+    constraints: ['Function executes in the page environment, without a workbench bridge.'],
   },
   {
     type: 'setElementProps',
     title: '设置元素属性',
     description: '批量设置组件属性',
     executable: true,
-    defaultProps: { setters: [{ elementId: '', propName: '', value: null }] },
+    defaultProps: {
+      setters: [{ elementId: '', propName: '', value: { type: 'null', value: null } }],
+    },
     propsSchema: props({
       setters: Type.Array(
         Type.Object(
@@ -145,7 +125,9 @@ export const flowNodeManifests = [
     title: '触发元素方法',
     description: '调用物料公开的方法',
     executable: true,
-    defaultProps: { setters: [{ elementId: '', methodName: '', value: [] }] },
+    defaultProps: {
+      setters: [{ elementId: '', methodName: '', value: { type: 'null', value: null } }],
+    },
     propsSchema: props({
       setters: Type.Array(
         Type.Object(
@@ -154,7 +136,7 @@ export const flowNodeManifests = [
             methodName: Type.String({
               description: '物料公开的上下文方法名，不是 onClick 等事件名。',
             }),
-            value: value('调用参数；数组按位置展开，其他值作为单个参数。'),
+            value: value('求值结果作为一个方法参数，数组不展开。'),
           },
           { additionalProperties: false },
         ),
@@ -174,13 +156,10 @@ export const flowNodeManifests = [
     title: '显隐元素',
     description: '显示或隐藏多个页面组件',
     executable: true,
-    defaultProps: { elementIds: [], value: true },
+    defaultProps: { elementIds: [], value: { type: 'boolean', value: true } },
     propsSchema: props({
       elementIds: Type.Array(target()),
-      value: withReference(
-        Type.Boolean(),
-        '是否显示或数据引用；解析结果为 false 时隐藏，否则显示。',
-      ),
+      value: value('Resolve false to hide, otherwise show.'),
     }),
     connections: sequence,
     constraints: ['目标必须属于当前页面。'],
@@ -190,19 +169,11 @@ export const flowNodeManifests = [
     title: '条件判断',
     description: '根据条件分别执行真、假分支',
     executable: true,
-    defaultProps: { judgment: true, operator: 'truthy', compareValue: null },
+    defaultProps: {
+      judgment: { type: 'expression', value: 'true' },
+    },
     propsSchema: props({
-      judgment: value('判断值。'),
-      operator: Type.Union(
-        (['truthy', 'equals', 'notEquals', 'greater', 'less'] as const).map((operator) =>
-          Type.Literal(operator),
-        ),
-        {
-          description:
-            'truthy 判断真假；equals/notEquals 按 JSON 序列化结果比较；greater/less 只比较数字。',
-        },
-      ),
-      compareValue: value('比较值，truthy 模式下忽略。'),
+      judgment: value('判断表达式或函数的返回值。'),
       condition: Type.Optional(
         Type.Array(
           Type.Object(
@@ -222,7 +193,7 @@ export const flowNodeManifests = [
     title: '设置全局变量',
     description: '批量更新页面中的全局变量',
     executable: true,
-    defaultProps: { setters: [{ name: '', value: null }] },
+    defaultProps: { setters: [{ name: '', value: { type: 'null', value: null } }] },
     propsSchema: props({
       setters: Type.Array(
         Type.Object(
@@ -264,7 +235,7 @@ export type FlowNodeProps<T extends FlowNodeType> = Static<
   { [N in (typeof flowNodeManifests)[number] as N['type']]: N['propsSchema'] }[T]
 >;
 
-/** Start is engine-owned; customJS has an explicit unsupported Runtime handler. */
+/** Start is engine-owned; every other node requires a Runtime implementation. */
 export type RuntimeFlowNodeType = Exclude<FlowNodeType, 'start'>;
 
 export const isFlowNodeProps = <T extends FlowNodeType>(

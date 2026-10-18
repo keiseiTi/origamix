@@ -18,13 +18,13 @@ import { OrigamixPage } from '@origamix/runtime/react';
 
 [logic-nodes.ts](logic-nodes.ts) 注册 `interfaceRequest`、`setElementProps`、`emitElementAction`、`visibleElement`、`condition`、`setGlobalVariable`、`openModalDrawer` 和 `closeModalDrawer`。属性、变量和方法节点使用 `setters` 数组，显隐节点使用 `elementIds`；弹窗操作只接受 `modal` / `drawer` 元素。
 
-节点名称和参数类型由 Shared 的 `protocol/flow-node` 契约派生，实现表必须覆盖除引擎自带 `start` 外的所有节点。引擎传入的参数先按同一契约校验，失败会抛出错误并阻止该节点动作。`customJS` 保留明确的“不支持执行”实现。Shared 作为构建依赖内联到发布产物，独立项目无需额外安装 Shared。
+节点名称和参数类型由 Shared 的 `protocol/flow-node` 契约派生，实现表必须覆盖除引擎自带 `start` 外的所有节点。引擎传入的参数先按同一契约校验，失败会抛出错误并阻止该节点动作。`customJS` 通过统一求值器执行函数。Shared 作为构建依赖内联到发布产物，独立项目无需额外安装 Shared。
 
-值使用 JSON，或显式引用 `{ "$ref": "global", "name": "变量名", "path": "data.id" }` / `{ "$ref": "result", "name": "节点ID", "path": "data.id" }`。省略 `path` 可读取整个值；原型链路径会被拒绝，不执行字符串表达式。
+取值字段统一使用 Shared 的 `HyperValue`：`{ type, value }`。字面值类型为 `string`、`number`、`boolean` 和 `null`；`contextValue` 读取 `state.elementId.property`、`global.name` 或 `result.nodeId.path`。函数参数也可绑定 `method.elementId.methodName`。上下文读取拒绝原型链路径。
 
-条件节点由 `judgment`、`operator` 和可选 `compareValue` 计算布尔值，`condition` 数组中的 `{ value, nextNode }` 决定真/假后继。请求节点接收 URL、method、headers、queryParams、bodyParams 和 timeout，返回 `{ ok, status, data, error }`；仅接受绝对 HTTP(S) 地址，不隐式发送环境凭据，也不跟随重定向。
+[execute.ts](execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败显示执行错误、停止本次事件后续动作，下一次触发可重新执行。
 
-`customJS` 仅保留 `code` 配置，当前不执行；返回“不支持执行”的结果。生成项目和工作台预览遵守相同规则。
+项目 JavaScript 在页面环境中执行，求值器本身不是沙箱。工作台预览继续使用既有的 sandbox iframe，不接收后端凭据或 Desktop bridge；生成页面在自身宿主环境中运行。Editor 和 Server 不执行项目代码。节点契约 1.0 不接受原来的原始值和 `$ref` 格式。
 
 ## 验证与构建
 
@@ -67,3 +67,5 @@ export default Page;
 调用项目需要直接声明 Runtime、Materials 及其 peer dependencies，并启用 TypeScript JSON 导入；Schema 示例见 [Shared README](../shared/README.md)。样式由调用者导入，生成项目的 [index.css](../template/src/index.css) 包含 Tailwind 与 HeroUI 样式入口，Runtime 不会注入工作台主题。
 
 `onOutcome` 可以接收 `UNKNOWN_MATERIAL` 或 `RENDER_ERROR` 诊断。未知物料由 Runtime 显示提示；`renderError` 自定义的是渲染异常界面，不替换未知物料提示。`resetKey` 变化或点击重试可重置错误边界，但仍需先修正造成错误的 Schema/组件。成功诊断不证明所有交互、样式或服务端校验已通过。
+
+请求头、查询参数和请求体通过函数返回值配置；条件节点直接按表达式或函数结果判断真假，不维护额外比较操作符。请求保留 10 秒超时与无宿主凭据的执行约束。

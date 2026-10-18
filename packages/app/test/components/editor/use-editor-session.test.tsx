@@ -60,9 +60,9 @@ describe('useEditorSession', () => {
     hook.rerender({ ready: true });
     await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
 
-    act(() => hook.result.current.onChange(next));
+    act(() => hook.result.current.onChange(next, { immediate: true }));
     expect(onWorkingCommitted).not.toHaveBeenCalled();
-    await act(async () => hook.result.current.flush());
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
 
     expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledWith('project_one', 'page_one', 4, [
       { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 24 } },
@@ -91,7 +91,7 @@ describe('useEditorSession', () => {
       await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
     });
     expect(hook.result.current.error).toBe('连接中断');
-    act(() => hook.result.current.onChange(next));
+    act(() => hook.result.current.onChange(next, { immediate: true }));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });

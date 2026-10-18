@@ -5,7 +5,7 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership
 
 - `src/index.ts` exports the unified Editor; `src/editor.tsx` and `src/mods/` own the shared EditorProvider, canvas, panels, selection, history and generic target-selection markers. App owns Agent lifecycle and maps clarification state to the generic target-selection contract.
-- `src/flow-editor/` is an internal Editor module that owns LogicFlow, React nodes, event tree, node forms and graph translation. Both views share the same engine and edit session. The module reads only its internal session contract; `src/mods/flow-editor-view.tsx` adapts the engine store, supplies schema/materials/catalog/onChange and loads the view dynamically with loading and retry states. Flow node contracts come from Shared; execution belongs to Runtime. Custom JS remains inert configuration.
+- `src/flow-editor/` is an internal Editor module that owns LogicFlow, React nodes, event tree, node forms and graph translation. Both views share the same engine and edit session. The module reads only its internal session contract; `src/mods/flow-editor-view.tsx` adapts the engine store, supplies schema/materials/catalog/onChange and loads the view dynamically with loading and retry states. Flow node contracts come from Shared; execution belongs to Runtime. HyperInput edits Shared HyperValue envelopes, including context bindings, expressions and functions. Editor never evaluates code; Runtime owns execution.
 - `src/core/` owns snapshot-to-operation translation, engine adapters and injected theme/material context. `src/components/` exports CodeEditor and JsonAttributeField; primitive controls belong to UI.
 - `src/contracts.ts` and `src/extensions.ts` own public editing/extension contracts. `src/styles.css` registers Editor-owned Tailwind sources. The dynamically loaded FlowEditor loads its LogicFlow styles; the host composes Tailwind and UI foundations.
 
@@ -29,3 +29,5 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 Run `pnpm --filter @origamix/editor lint`, `typecheck`, `test`, `build` and all four root gates. Existing snapshot-operation and graph safety tests live in `test/core/` and `test/flow/`; App owns persistence-session failures and stale-response checks. Do not add presentation tests for this migration.
 
 UI verification must exercise actual visual/flow switching, event selection, history, code-editor workers, preview and both themes. Successful HTTP is not rendering evidence.
+
+- Flow forms follow the reference value kinds without a JSON kind or separate comparison operators. Requests edit headers/query/body through functions; conditions use expressions/functions. Coalesce LogicFlow model events until the mutation completes, then send the full executable flow and layout through the shared engine change callback with `immediate: true` in logic mode. Do not add panel-owned persistence.

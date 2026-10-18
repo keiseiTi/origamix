@@ -19,7 +19,9 @@ describe('event graph commit', () => {
           properties: {
             width: 148,
             height: 48,
-            setters: [{ elementId: 'button', propName: 'text', value: '完成' }],
+            setters: [
+              { elementId: 'button', propName: 'text', value: { type: 'string', value: '完成' } },
+            ],
           },
         },
       ],
@@ -38,7 +40,9 @@ describe('event graph commit', () => {
     expect(flow.startId).toBe('start');
     expect(flow.nodes.start?.next).toEqual(['action']);
     expect(flow.nodes.action?.props).toEqual({
-      setters: [{ elementId: 'button', propName: 'text', value: '完成' }],
+      setters: [
+        { elementId: 'button', propName: 'text', value: { type: 'string', value: '完成' } },
+      ],
     });
     expect(isFlowNodeProps('setElementProps', flow.nodes.action?.props)).toBe(true);
     expect(graph.nodes[1]?.properties?.width).toBe(148);
@@ -53,7 +57,15 @@ describe('event graph commit', () => {
             ...flow.nodes,
             action: {
               ...flow.nodes.action!,
-              props: { setters: [{ elementId: 'button', propName: 'text', value: 'Agent 更新' }] },
+              props: {
+                setters: [
+                  {
+                    elementId: 'button',
+                    propName: 'text',
+                    value: { type: 'string', value: 'Agent 更新' },
+                  },
+                ],
+              },
             },
           },
         },
@@ -63,7 +75,11 @@ describe('event graph commit', () => {
     expect(
       toFlow(readGraph(schema, { elementId: 'button', event: 'onClick', label: '点击事件' })).nodes
         .action?.props,
-    ).toEqual({ setters: [{ elementId: 'button', propName: 'text', value: 'Agent 更新' }] });
+    ).toEqual({
+      setters: [
+        { elementId: 'button', propName: 'text', value: { type: 'string', value: 'Agent 更新' } },
+      ],
+    });
     graph.edges.push({
       ...graph.edges[0]!,
       id: 'cycle',

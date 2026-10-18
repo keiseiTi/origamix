@@ -1,6 +1,8 @@
 import type { FlowExecuteContext, LogicNodes } from '@tangramino/engine';
 import { isFlowNodeProps, type FlowNodeProps, type RuntimeFlowNodeType } from '@origamix/shared';
 
+import { executeHyperValue } from './execute';
+
 type Context = FlowExecuteContext<Record<string, unknown>>;
 type NodeContext<T extends RuntimeFlowNodeType> = Omit<Context, 'data'> & {
   data: FlowNodeProps<T>;
@@ -12,32 +14,14 @@ const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+const requestRecord = (value: unknown, field: string): Record<string, unknown> => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    throw new Error(`${field} must resolve to an object`);
+  return record(value);
+};
 const safeKey = (value: string): boolean =>
   !['__proto__', 'prototype', 'constructor'].includes(value);
 
-/** Only explicit data references are resolved; project strings are never evaluated. */
-export const resolveFlowValue = (context: Context, value: unknown): unknown => {
-  const reference = record(value);
-  if (reference.$ref !== 'global' && reference.$ref !== 'result') return value;
-  if (typeof reference.name !== 'string' || !safeKey(reference.name)) return undefined;
-  let resolved =
-    reference.$ref === 'global'
-      ? context.engine.getGlobalVariable(reference.name)
-      : context.lastReturnedVal?.[reference.name];
-  for (const part of String(reference.path ?? '')
-    .split('.')
-    .filter(Boolean)) {
-    if (
-      !safeKey(part) ||
-      resolved === null ||
-      typeof resolved !== 'object' ||
-      !Object.hasOwn(resolved, part)
-    )
-      return undefined;
-    resolved = (resolved as Record<string, unknown>)[part];
-  }
-  return resolved;
-};
 const elementId = (context: Context, value: unknown): string | undefined =>
   typeof value === 'string' && safeKey(value) && Object.hasOwn(context.engine.elements, value)
     ? value
@@ -52,30 +36,37 @@ const portal =
 
 /** Declarative actions shared by preview and generated projects. */
 const handlers: NodeHandlers = {
-  setElementProps: (context) => {
+  setElementProps: async (context) => {
     const { engine, data } = context;
+    const changes: Record<string, Record<string, unknown>> = {};
     for (const setter of data.setters) {
       const id = elementId(context, setter.elementId);
       if (id && typeof setter.propName === 'string' && setter.propName && safeKey(setter.propName))
-        engine.setState({ [id]: { [setter.propName]: resolveFlowValue(context, setter.value) } });
+        changes[id] = {
+          ...changes[id],
+          [setter.propName]: await executeHyperValue(context, setter.value),
+        };
     }
+    engine.setState(changes);
   },
-  visibleElement: (context) => {
+  visibleElement: async (context) => {
     const { engine, data } = context;
     const ids = data.elementIds
       .map((id) => elementId(context, id))
       .filter((id): id is string => Boolean(id));
-    const visible = resolveFlowValue(context, data.value ?? true);
+    const visible = await executeHyperValue(context, data.value);
     if (visible === false) engine.hiddenElements(ids);
     else engine.showElements(ids);
   },
-  setGlobalVariable: (context) => {
+  setGlobalVariable: async (context) => {
     const entries = context.data.setters;
+    const changes: [string, unknown][] = [];
     for (const setter of entries)
       if (typeof setter.name === 'string' && setter.name && safeKey(setter.name))
-        context.engine.setGlobalVariable(setter.name, resolveFlowValue(context, setter.value));
+        changes.push([setter.name, await executeHyperValue(context, setter.value)]);
+    for (const [name, value] of changes) context.engine.setGlobalVariable(name, value);
   },
-  emitElementAction: (context) => {
+  emitElementAction: async (context) => {
     const results: unknown[] = [];
     for (const setter of context.data.setters) {
       const id = elementId(context, setter.elementId);
@@ -84,46 +75,35 @@ const handlers: NodeHandlers = {
       if (!values || !Object.hasOwn(values, setter.methodName)) continue;
       const method = values[setter.methodName];
       if (typeof method !== 'function') continue;
-      const value = resolveFlowValue(context, setter.value);
-      results.push(method(...(Array.isArray(value) ? value : [value])));
+      const value = await executeHyperValue(context, setter.value);
+      results.push(Promise.resolve().then(() => method(value)));
     }
     return Promise.allSettled(results);
   },
   openModalDrawer: portal(true),
   closeModalDrawer: portal(false),
-  condition: (context) => {
-    const left = resolveFlowValue(context, context.data.judgment);
-    const right = resolveFlowValue(context, context.data.compareValue);
-    switch (context.data.operator) {
-      case 'equals':
-        return JSON.stringify(left) === JSON.stringify(right);
-      case 'notEquals':
-        return JSON.stringify(left) !== JSON.stringify(right);
-      case 'greater':
-        return typeof left === 'number' && typeof right === 'number' && left > right;
-      case 'less':
-        return typeof left === 'number' && typeof right === 'number' && left < right;
-      default:
-        return Boolean(left);
-    }
-  },
+  condition: async (context) => Boolean(await executeHyperValue(context, context.data.judgment)),
   interfaceRequest: async (context) => {
     try {
       const { data } = context;
-      const url = new URL(String(resolveFlowValue(context, data.url)));
+      const url = new URL(String(await executeHyperValue(context, data.url)));
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
         throw new Error('请求地址必须使用 HTTP 或 HTTPS');
       const method = String(data.method ?? 'get').toUpperCase();
       if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method))
         throw new Error('不支持的请求方法');
       for (const [key, value] of Object.entries(
-        record(resolveFlowValue(context, data.queryParams)),
+        requestRecord(await executeHyperValue(context, data.queryParams), 'queryParams'),
       ))
         url.searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value));
       const headers = new Headers();
-      for (const [key, value] of Object.entries(record(resolveFlowValue(context, data.headers))))
-        if (typeof value === 'string') headers.set(key, value);
-      const body = resolveFlowValue(context, data.bodyParams);
+      for (const [key, value] of Object.entries(
+        requestRecord(await executeHyperValue(context, data.headers), 'headers'),
+      )) {
+        if (typeof value !== 'string') throw new Error('Header values must be strings');
+        headers.set(key, value);
+      }
+      const body = await executeHyperValue(context, data.bodyParams);
       if (method !== 'GET' && body !== null && body !== undefined && !headers.has('content-type'))
         headers.set('content-type', 'application/json');
       const response = await fetch(url, {
@@ -131,7 +111,7 @@ const handlers: NodeHandlers = {
         headers,
         credentials: 'omit',
         redirect: 'error',
-        signal: AbortSignal.timeout(Math.max(100, Math.min(60000, Number(data.timeout) || 10000))),
+        signal: AbortSignal.timeout(10000),
         ...(method !== 'GET' && body !== null && body !== undefined
           ? { body: JSON.stringify(body) }
           : {}),
@@ -158,8 +138,7 @@ const handlers: NodeHandlers = {
       };
     }
   },
-  // Configuration is retained, but project-provided scripts are deliberately inert.
-  customJS: () => ({ supported: false, error: '自定义 JS 当前仅保存配置，暂不执行' }),
+  customJS: (context) => executeHyperValue(context, context.data.value),
 };
 
 // The Engine accepts untyped data. Validate it before entering a typed handler.
@@ -174,3 +153,24 @@ const registerNode =
 export const logicNodes: LogicNodes = Object.fromEntries(
   (Object.keys(handlers) as RuntimeFlowNodeType[]).map((type) => [type, registerNode(type)]),
 );
+
+/** Engine does not catch rejected actions. Stop this invocation and report its failure. */
+export const createLogicNodes = (onError: (error: unknown) => void): LogicNodes => {
+  const stopped = new WeakSet<object>();
+  return Object.fromEntries(
+    Object.entries(logicNodes).map(([type, handler]) => [
+      type,
+      async (context: Context) => {
+        const run = context.lastReturnedVal;
+        if (run && stopped.has(run)) return;
+        try {
+          return await handler(context);
+        } catch (error) {
+          if (run) stopped.add(run);
+          onError(error);
+          return undefined;
+        }
+      },
+    ]),
+  );
+};

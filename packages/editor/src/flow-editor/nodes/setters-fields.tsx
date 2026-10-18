@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button, FieldLabel } from '@origamix/ui';
 
 import { FlowSelect } from '../flow-select';
-import { ValueField } from './value-field';
+import { HyperInput } from './hyper-input';
 import { asRecord } from './values';
 import { defaultNodeProps } from './definitions';
 
@@ -130,8 +130,8 @@ export const SettersFields = ({
                 )}
               </>
             )}
-            <ValueField
-              label={method ? '方法参数（JSON 数组）' : '设置值'}
+            <HyperInput
+              label={method ? '方法参数' : '设置值'}
               value={setter.value}
               onChange={(value) => patch(index, { value })}
             />

@@ -2,17 +2,20 @@ import {
   Component,
   useEffect,
   useMemo,
+  useState,
+  useRef,
+  useLayoutEffect,
   type ComponentProps,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { logicNodes } from './logic-nodes';
+import { createLogicNodes } from './logic-nodes';
 import { createEngine, withFlowEngine, type Schema } from '@tangramino/engine';
 import { ReactView } from '@tangramino/react';
 
 export interface RuntimeDiagnostic {
-  code: 'UNKNOWN_MATERIAL' | 'RENDER_ERROR';
-  stage: 'material' | 'render';
+  code: 'UNKNOWN_MATERIAL' | 'RENDER_ERROR' | 'FLOW_EXECUTION_ERROR';
+  stage: 'material' | 'render' | 'event';
   safeMessage: string;
   materialType?: string;
 }
@@ -77,6 +80,15 @@ const RuntimeCanvas = ({
   materials: NonNullable<ComponentProps<typeof ReactView>['components']>;
   onOutcome?: (outcome: RuntimeOutcome) => void;
 }): React.JSX.Element => {
+  const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
+  const activeSchema = useRef<Schema | null>(schema);
+  useLayoutEffect(() => {
+    activeSchema.current = schema;
+    return () => {
+      activeSchema.current = null;
+    };
+  }, [schema]);
+  const executionError = flowError?.schema === schema ? flowError.message : null;
   const engine = useMemo(() => {
     const instance = createEngine(schema);
     // Engine's legacy object-variable initializer evaluates JavaScript. Initialize
@@ -95,7 +107,13 @@ const RuntimeCanvas = ({
     withFlowEngine({
       engine: instance,
       schema: { ...schema, context: { globalVariables: [] } },
-      logicNodes,
+      logicNodes: createLogicNodes((error) => {
+        if (activeSchema.current !== schema) return;
+        setFlowError({
+          schema,
+          message: (error instanceof Error ? error.message : '流程执行失败').slice(0, 1800),
+        });
+      }),
     });
     return instance;
   }, [schema]);
@@ -105,21 +123,33 @@ const RuntimeCanvas = ({
   );
   useEffect(() => {
     onOutcome?.(
-      unknownTypes.length
+      executionError
         ? {
             outcome: 'failed',
-            diagnostics: unknownTypes.map((materialType) => ({
-              code: 'UNKNOWN_MATERIAL',
-              stage: 'material',
-              materialType,
-              safeMessage: `未知物料：${materialType}`,
-            })),
+            diagnostics: [
+              { code: 'FLOW_EXECUTION_ERROR', stage: 'event', safeMessage: executionError },
+            ],
           }
-        : { outcome: 'success', diagnostics: [] },
+        : unknownTypes.length
+          ? {
+              outcome: 'failed',
+              diagnostics: unknownTypes.map((materialType) => ({
+                code: 'UNKNOWN_MATERIAL',
+                stage: 'material',
+                materialType,
+                safeMessage: `未知物料：${materialType}`,
+              })),
+            }
+          : { outcome: 'success', diagnostics: [] },
     );
-  }, [onOutcome, unknownTypes]);
+  }, [onOutcome, unknownTypes, executionError]);
   if (unknownTypes.length) return <main role='alert'>未知物料：{unknownTypes.join('、')}</main>;
-  return <ReactView engine={engine} components={materials} />;
+  return (
+    <>
+      {executionError && <p role='alert'>流程执行失败：{executionError}</p>}
+      <ReactView engine={engine} components={materials} />
+    </>
+  );
 };
 
 export const OrigamixPage = ({

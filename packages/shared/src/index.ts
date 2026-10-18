@@ -244,7 +244,6 @@ export type {
 
 export {
   FLOW_NODE_MANIFEST_VERSION,
-  FlowValueReferenceSchema,
   flowNodeManifests,
   flowNodeManifestCatalog,
   getFlowNodeManifest,
@@ -252,7 +251,6 @@ export {
 } from './protocol/flow-node.ts';
 
 export type {
-  FlowValueReference,
   FlowNodeManifest,
   FlowNodeType,
   FlowNodeProps,
@@ -280,3 +278,6 @@ export {
 } from './protocol/project-stack.ts';
 
 export type { ProjectStack } from './protocol/project-stack.ts';
+
+export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './protocol/hyper-value.ts';
+export type { HyperValue, FunctionValue } from './protocol/hyper-value.ts';

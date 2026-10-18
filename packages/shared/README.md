@@ -74,7 +74,7 @@ Shared 校验结构、根节点和布局引用/循环；Server 另行验证物�
 
 ## 逻辑节点 Manifest
 
-`@origamix/shared` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `FlowValueReferenceSchema` / `FlowValueReference`。
+`@origamix/shared` 导出 `flowNodeManifests`、带版本的 `flowNodeManifestCatalog`、`getFlowNodeManifest(type)`、`FlowNodeManifest` / `FlowNodeType`，以及显式数据引用的 `HyperValueSchema` / `HyperValue` / `FunctionValueSchema` / `FunctionValue`。
 
 `FlowNodeProps<T>` 从节点属性 Schema 派生参数类型；`RuntimeFlowNodeType` 排除由引擎处理的 `start`，供 Runtime 完整声明实现表。`isFlowNodeProps(type, data)` 校验节点参数并提供类型收窄，只验证结构，不替代页面归属、物料能力或请求授权检查。
 
@@ -90,6 +90,6 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 `defaultProps` 是编辑器的初始草稿，可能包含空 URL、空目标 ID 或空属性名；它不是已配置完成的示例。`propsSchema` 描述规范字段和基础类型；元素是否存在、属性/方法是否由物料公开、变量是否声明、分支和连线是否一致、是否存在循环等，需要消费方结合当前页面做语义校验。属性 Schema 接受通用 JSON 数据的字段仍需消费方执行既有安全检查，不能用 TypeScript 类型断言替代验证。
 
-值引用使用 `{ $ref: 'global' | 'result', name, path? }`。`name` 是变量名或返回值来源节点 ID，`path` 是点分隔的数据路径；引用解析整个字段值，不递归求值嵌套 JSON，也不执行字符串表达式。自定义 JS 的 `executable` 为 `false`，仅保存代码配置。
+节点契约 1.0 的取值字段统一使用 `{ type, value }` HyperValue，支持 string、number、boolean、null、contextValue、expression 和 function。上下文路径为 `state.elementId.property`、`global.name`、`result.nodeId.path`，函数参数还可绑定 `method.elementId.methodName`。函数值包含 `{ params: [{ name, value: contextPath }], body }`。Shared 只校验配置，由 Runtime 执行表达式、函数和自定义 JS，不提供原始值或 `$ref` 格式转换。
 
 本模块不包含 React、LogicFlow、表单控件或执行函数。Editor 与 Runtime 使用当前节点契约，不转换旧节点格式。Server 的物料与写入校验仍由对应服务负责。

@@ -162,14 +162,17 @@ export const useEditorSession = (
     }
   }, [readOnly, sessionRef]);
 
-  const onChange = (schema: OrigamixPageSchema): void => {
+  const onChange = (schema: OrigamixPageSchema, options?: { immediate: boolean }): void => {
     if (!sessionRef.current.active || !sessionRef.current.ready || readOnly) return;
     sessionRef.current.draft = schema;
     if (JSON.stringify(schema) === sessionRef.current.savedHash) return;
     if (sessionRef.current.timer !== null) window.clearTimeout(sessionRef.current.timer);
     // A failed/ambiguous write needs an explicit flush; typing does not replay it.
     if (!sessionRef.current.failed)
-      sessionRef.current.timer = window.setTimeout(() => void flush().catch(() => undefined), 700);
+      sessionRef.current.timer = window.setTimeout(
+        () => void flush().catch(() => undefined),
+        options?.immediate ? 0 : 700,
+      );
   };
 
   const current = loaded?.sessionRef === sessionRef ? loaded : null;

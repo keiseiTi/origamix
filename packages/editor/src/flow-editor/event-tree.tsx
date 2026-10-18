@@ -29,7 +29,6 @@ const EventTreeItem = ({
         className='flex h-7 w-full items-center gap-1 rounded px-1 text-left text-xs text-zinc-700 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-ring dark:text-zinc-300 dark:hover:bg-zinc-900'
         aria-expanded={hasChildren ? expanded : undefined}
         onClick={() => setExpanded(!expanded)}
-        title={node.id}
       >
         {hasChildren ? (
           expanded ? (

@@ -31,7 +31,7 @@ export interface EditorProps {
   sessionKey: string;
   registration: EditorMaterialRegistration;
   theme: EditorTheme;
-  onChange: (schema: OrigamixPageSchema) => void;
+  onChange: (schema: OrigamixPageSchema, options?: { immediate: boolean }) => void;
   onFlush: () => Promise<void>;
   readOnly?: boolean;
   readOnlyMessage?: string;
@@ -137,9 +137,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
     }, [onChange]);
     const onEngineChange = useCallback(
       (next: Schema): void => {
-        if (!readOnly) onChangeRef.current(next as OrigamixPageSchema);
+        if (!readOnly)
+          onChangeRef.current(next as OrigamixPageSchema, { immediate: mode === 'logic' });
       },
-      [readOnly],
+      [readOnly, mode],
     );
 
     useImperativeHandle(

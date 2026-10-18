@@ -6,7 +6,7 @@ import '@logicflow/extension/lib/style/index.css';
 import { useEffect, useRef, useState } from 'react';
 import { useFlowEditorSession } from './session';
 import { SchemaUtils } from '@tangramino/engine';
-import { Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
+import { Maximize, Minus, Plus, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@origamix/ui';
 import { nodeKinds, readGraph, toFlow, type EventTarget } from './model';
 import { createReactNode } from './react-node';
@@ -38,6 +38,7 @@ export const FlowEditor = ({
     const lf = lfRef.current;
     if (!lf || !target) return;
     const graph = lf.getGraphRawData();
+    if (JSON.stringify(graph) === lastGraph.current) return;
     try {
       const flow = toFlow(graph);
       const binding = schema.bindElements?.find(
@@ -100,6 +101,19 @@ export const FlowEditor = ({
     });
     lf.render(initialGraph.current);
     lastGraph.current = JSON.stringify(lf.getGraphRawData());
+    // LogicFlow may emit several events inside one model mutation (e.g. deleting
+    // a node also deletes edges). Read the completed graph after that mutation.
+    let scheduled = false;
+    let active = true;
+    const scheduleCommit = (): void => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        if (!active) return;
+        scheduled = false;
+        commit();
+      });
+    };
     // Canvas-scoped shortcuts must commit through the same Working pipeline.
     // Keep the previously unavailable clipboard shortcuts disabled.
     lf.keyboard.off(['cmd+c', 'ctrl+c', 'cmd+v', 'ctrl+v']);
@@ -140,13 +154,15 @@ export const FlowEditor = ({
       setHistoryState({ undoAble: data.undoAble, redoAble: data.redoAble }),
     );
     lf.on(
-      'node:add,node:dnd-add,node:delete,node:drop,node:properties-change,edge:add,edge:delete,edge:adjust',
-      () => commit(),
+      'node:add,node:dnd-add,node:delete,node:drop,node:properties-change,edge:add,edge:delete,edge:adjust,edge:exchange-node',
+      scheduleCommit,
     );
     lf.setDefaultEdgeType('polyline');
     const observer = new ResizeObserver(() => lf.resize());
     observer.observe(container.current);
     return () => {
+      if (scheduled) commit();
+      active = false;
       observer.disconnect();
       lfRef.current = null;
       lf.destroy();
@@ -340,26 +356,12 @@ export const FlowEditor = ({
           {!selected ? (
             <p className='text-xs text-muted-foreground'>请从左侧画布中选中节点</p>
           ) : (
-            <>
-              <NodeProperties
-                key={selected.id}
-                node={selected}
-                onChange={update}
-                eventLabel={target?.label}
-              />
-              {selected.type !== 'start' && (
-                <Button
-                  variant='outline'
-                  onClick={() => {
-                    lfRef.current?.deleteNode(selected.id);
-                    setSelected(null);
-                  }}
-                >
-                  <Trash2 size={14} />
-                  删除节点
-                </Button>
-              )}
-            </>
+            <NodeProperties
+              key={selected.id}
+              node={selected}
+              onChange={update}
+              eventLabel={target?.label}
+            />
           )}
         </aside>
       </div>

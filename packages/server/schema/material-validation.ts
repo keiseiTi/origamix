@@ -1,6 +1,12 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import { builtinProjectMaterials, loadProjectMaterials } from '../projects/project-materials';
-import { type ValidationMaterialManifest, type OrigamixPageSchema } from '@origamix/shared';
+import {
+  isHyperValue,
+  isFlowNodeProps,
+  type FlowNodeType,
+  type ValidationMaterialManifest,
+  type OrigamixPageSchema,
+} from '@origamix/shared';
 
 export type MaterialValidationErrorCode =
   | 'MATERIAL_SET_VERSION_MISMATCH'
@@ -10,6 +16,7 @@ export type MaterialValidationErrorCode =
   | 'INVALID_PARENT'
   | 'UNKNOWN_EVENT'
   | 'INVALID_BINDING'
+  | 'INVALID_FLOW_PROPS'
   | 'UNSAFE_EXPRESSION'
   | 'UNSAFE_URL';
 
@@ -33,6 +40,8 @@ export interface MaterialValidationRuntime {
 
 const ajv = new Ajv({ allErrors: true, strict: true });
 const validatorCache = new WeakMap<object, ValidateFunction>();
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 const safeUrlPattern = /^(?:(?:https?):\/\/|(?:mailto|tel):|\/(?!\/)|\.{1,2}\/|#)/i;
 const unsafeExpressionPattern =
   /(?:\b(?:eval|Function|import|require|process|globalThis|window|document|fetch|XMLHttpRequest)\b|__proto__|prototype|constructor|=>|;|(?<![=!<>])=(?!=))/;
@@ -72,10 +81,19 @@ const inspectSafeValues = (
   elementId: string,
   materialType: string,
   errors: MaterialValidationError[],
+  allowHyperValues = false,
 ): void => {
+  if (allowHyperValues && isHyperValue(value)) return;
   if (Array.isArray(value)) {
     value.forEach((item, index) =>
-      inspectSafeValues(item, `${path}/${index}`, elementId, materialType, errors),
+      inspectSafeValues(
+        item,
+        `${path}/${index}`,
+        elementId,
+        materialType,
+        errors,
+        allowHyperValues,
+      ),
     );
     return;
   }
@@ -124,7 +142,7 @@ const inspectSafeValues = (
         error('UNSAFE_URL', `${path}/${key}`, 'URL scheme is not allowed', elementId, materialType),
       );
     }
-    inspectSafeValues(child, `${path}/${key}`, elementId, materialType, errors);
+    inspectSafeValues(child, `${path}/${key}`, elementId, materialType, errors, allowHyperValues);
   }
 };
 
@@ -293,13 +311,39 @@ export const validatePageAgainstMaterials = (
       );
     }
   }
-  inspectSafeValues(
-    schema.flows,
-    '/flows',
-    schema.layout.root,
-    schema.elements[schema.layout.root]?.type ?? 'basicPage',
-    errors,
-  );
+  for (const [flowId, flow] of Object.entries(schema.flows ?? {})) {
+    if (!isRecord(flow) || !isRecord(flow.nodes)) {
+      errors.push(
+        error('INVALID_FLOW_PROPS', `/flows/${flowId}`, 'Flow must contain a nodes object'),
+      );
+      continue;
+    }
+    for (const [nodeId, node] of Object.entries(flow.nodes)) {
+      const path = `/flows/${flowId}/nodes/${nodeId}/props`;
+      if (!isRecord(node)) {
+        errors.push(error('INVALID_FLOW_PROPS', path, 'Flow node must be an object'));
+        continue;
+      }
+      const valid =
+        typeof node.type === 'string' && isFlowNodeProps(node.type as FlowNodeType, node.props);
+      if (!valid)
+        errors.push(
+          error(
+            'INVALID_FLOW_PROPS',
+            path,
+            'Flow node parameters do not match the Shared contract',
+          ),
+        );
+      inspectSafeValues(
+        node.props,
+        path,
+        schema.layout.root,
+        schema.elements[schema.layout.root]?.type ?? 'basicPage',
+        errors,
+        valid,
+      );
+    }
+  }
   return { valid: errors.length === 0, errors };
 };
 

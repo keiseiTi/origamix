@@ -1,12 +1,12 @@
 import { getElementLabel } from '@origamix/shared';
 import type LogicFlow from '@logicflow/core';
 import { useFlowEditorSession } from '../session';
-import { Checkbox, FieldLabel, Input, Textarea } from '@origamix/ui';
+import { Checkbox, FieldLabel, Input } from '@origamix/ui';
 
 import { FlowSelect } from '../flow-select';
-import { getNodeDefinition, getNodePropertyChoices, getNodePropertySchema } from './definitions';
+import { getNodeDefinition, getNodePropertyChoices } from './definitions';
 import { SettersFields } from './setters-fields';
-import { ValueField } from './value-field';
+import { HyperInput } from './hyper-input';
 
 export const NodeProperties = ({
   node,
@@ -21,7 +21,6 @@ export const NodeProperties = ({
   const properties = node.properties ?? {};
   const type = node.type;
   const definition = getNodeDefinition(String(type));
-  const timeoutSchema = getNodePropertySchema(String(type), 'timeout');
   const elementOptions = Object.entries(schema.elements).map(([id, item]) => ({
     value: id,
     label: getElementLabel(
@@ -45,9 +44,6 @@ export const NodeProperties = ({
           onChange={(event) => onChange({ title: event.target.value })}
         />
       </div>
-      <p className='break-all text-[11px] text-muted-foreground'>
-        类型：{type} · ID：{node.id}
-      </p>
       {definition && <p className='text-xs text-muted-foreground'>{definition.description}</p>}
       {type === 'start' && (
         <p className='text-xs text-muted-foreground'>
@@ -82,9 +78,9 @@ export const NodeProperties = ({
               </label>
             ))}
           </div>
-          <ValueField
+          <HyperInput
             label='显隐设置'
-            literalType='boolean'
+            showTypes={['boolean', 'expression', 'function']}
             value={properties.value ?? true}
             onChange={(value) => onChange({ value })}
           />
@@ -109,9 +105,9 @@ export const NodeProperties = ({
       )}
       {type === 'interfaceRequest' && (
         <>
-          <ValueField
+          <HyperInput
             label='请求 URL'
-            literalType='string'
+            showTypes={['string', 'expression', 'function']}
             value={properties.url ?? ''}
             onChange={(url) => onChange({ url })}
           />
@@ -125,58 +121,37 @@ export const NodeProperties = ({
             }))}
             onChange={(method) => onChange({ method })}
           />
-          <ValueField
+          <HyperInput
             label='请求头参数'
-            objectOnly
-            literalType='stringRecord'
+            showTypes={['function']}
             value={properties.headers ?? {}}
             onChange={(headers) => onChange({ headers })}
           />
-          <ValueField
+          <HyperInput
             label='查询参数'
-            objectOnly
+            showTypes={['function']}
             value={properties.queryParams ?? {}}
             onChange={(queryParams) => onChange({ queryParams })}
           />
-          <ValueField
+          <HyperInput
             label='请求体参数'
+            showTypes={['function']}
             value={properties.bodyParams}
             onChange={(bodyParams) => onChange({ bodyParams })}
           />
-          <div className='space-y-1.5'>
-            <FieldLabel htmlFor={`timeout-${node.id}`}>超时时间（毫秒）</FieldLabel>
-            <Input
-              id={`timeout-${node.id}`}
-              type='number'
-              min={Number(timeoutSchema.minimum)}
-              max={Number(timeoutSchema.maximum)}
-              value={Number(properties.timeout ?? 10000)}
-              onChange={(event) =>
-                onChange({
-                  timeout: Math.max(
-                    Number(timeoutSchema.minimum),
-                    Math.min(Number(timeoutSchema.maximum), Number(event.target.value) || 10000),
-                  ),
-                })
-              }
-            />
-          </div>
           <p className='text-xs text-muted-foreground'>
-            返回值包含 ok、status、data 和 error，后续节点可通过节点 ID 引用。请求不携带工作台凭据。
+            返回值包含 ok、status、data 和
+            error，后续节点可通过上下文选择节点结果。请求不携带工作台凭据。
           </p>
         </>
       )}
       {type === 'customJS' && (
-        <>
-          <FieldLabel htmlFor={`code-${node.id}`}>自定义代码</FieldLabel>
-          <Textarea
-            id={`code-${node.id}`}
-            className='min-h-52 font-mono text-xs'
-            value={String(properties.code ?? properties.value ?? '')}
-            onChange={(event) => onChange({ code: event.target.value })}
-            spellCheck={false}
-          />
-        </>
+        <HyperInput
+          label='自定义 JS'
+          showTypes={['function']}
+          value={properties.value}
+          onChange={(value) => onChange({ value })}
+        />
       )}
       {definition?.executable === false && (
         <p
@@ -188,37 +163,12 @@ export const NodeProperties = ({
       )}
       {type === 'condition' && (
         <>
-          <ValueField
-            label='判断值'
+          <HyperInput
+            label='条件判断'
+            showTypes={['expression', 'function']}
             value={properties.judgment ?? true}
             onChange={(judgment) => onChange({ judgment })}
           />
-          <FieldLabel>比较方式</FieldLabel>
-          <FlowSelect
-            label='比较方式'
-            value={String(properties.operator ?? 'truthy')}
-            options={getNodePropertyChoices('condition', 'operator').map((value) => ({
-              value,
-              label:
-                (
-                  {
-                    truthy: '是否为真',
-                    equals: '等于',
-                    notEquals: '不等于',
-                    greater: '大于',
-                    less: '小于',
-                  } as Record<string, string>
-                )[value] ?? value,
-            }))}
-            onChange={(operator) => onChange({ operator })}
-          />
-          {properties.operator && properties.operator !== 'truthy' && (
-            <ValueField
-              label='比较值'
-              value={properties.compareValue}
-              onChange={(compareValue) => onChange({ compareValue })}
-            />
-          )}
           <p className='text-xs text-muted-foreground'>
             右上锚点为“真”，右下锚点为“假”。拖动锚点连接对应分支，每个分支只能连接一个节点。
           </p>

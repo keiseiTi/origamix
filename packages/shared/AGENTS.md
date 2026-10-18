@@ -7,6 +7,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - `src/protocol/api.ts`: HTTP shapes and domain records.
 - `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
 - `src/protocol/project-stack.ts`: versioned stack references and strict current-format resolution. Concrete catalogs and executable module loaders do not belong here. materialSet is required; missing or unsupported values fail without fallback or migration.
+- `src/protocol/hyper-value.ts` owns the serializable HyperValue/FunctionValue contract; only Runtime evaluates expressions/functions. Flow-node manifest version 1.0 uses these envelopes with no legacy conversion.
 - `src/protocol/flow-node.ts`: pure-data logical node Manifest catalog, canonical property schemas, derived node parameter types, result descriptions and connection constraints. Editor owns forms/graph layout; Runtime derives its implementation keys and parameters here and validates Engine data before execution. Adding this catalog does not enable Server validation or Agent tools automatically.
 - `src/protocol/schema.ts`: page Schema, IDs and typed operation variants.
 - `src/protocol/agent.ts`: unified Page Agent Run, terminal outcome, structured clarification and typed SSE payload contracts; `agent-validation.ts` validates both event envelopes and their type-specific payloads.

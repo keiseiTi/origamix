@@ -1,29 +1,40 @@
 import { describe, expect, it } from 'vitest';
+import { HyperValueSchema } from '../../src/protocol/hyper-value';
 import { Value } from '@sinclair/typebox/value';
-import { FlowValueReferenceSchema, getFlowNodeManifest } from '../../src/protocol/flow-node';
+import { getFlowNodeManifest } from '../../src/protocol/flow-node';
 
 describe('flow node configuration contract', () => {
-  it('accepts request configuration and rejects unsupported methods, bounds and fields', () => {
+  it('accepts request configuration and rejects unsupported methods and fields', () => {
     const manifest = getFlowNodeManifest('interfaceRequest')!;
-    const request = { ...manifest.defaultProps, url: 'https://example.com/items' };
+    const request = {
+      ...manifest.defaultProps,
+      url: { type: 'string', value: 'https://example.com/items' },
+    };
     expect(Value.Check(manifest.propsSchema, request)).toBe(true);
     expect(Value.Check(manifest.propsSchema, { ...request, method: 'trace' })).toBe(false);
     expect(Value.Check(manifest.propsSchema, { ...request, url: 123 })).toBe(false);
-    expect(Value.Check(manifest.propsSchema, { ...request, timeout: 99 })).toBe(false);
+    expect(
+      Value.Check(manifest.propsSchema, { ...request, headers: { type: 'json', value: {} } }),
+    ).toBe(false);
     expect(Value.Check(manifest.propsSchema, { ...request, credentials: 'include' })).toBe(false);
   });
 
-  it('accepts explicit node-result references and rejects ambiguous reference shapes', () => {
+  it('accepts typed values and function bindings and rejects invalid envelopes', () => {
     expect(
-      Value.Check(FlowValueReferenceSchema, {
-        $ref: 'result',
-        name: 'request_orders',
-        path: 'data.items',
+      Value.Check(HyperValueSchema, { type: 'contextValue', value: 'result.request.data.items' }),
+    ).toBe(true);
+    expect(
+      Value.Check(HyperValueSchema, {
+        type: 'function',
+        value: { params: [{ name: 'items', value: 'global.items' }], body: 'return items.length;' },
       }),
     ).toBe(true);
-    expect(Value.Check(FlowValueReferenceSchema, { $ref: 'result', path: 'data.items' })).toBe(
-      false,
-    );
-    expect(Value.Check(FlowValueReferenceSchema, { $ref: 'expression', name: 'eval' })).toBe(false);
+    expect(Value.Check(HyperValueSchema, { type: 'number', value: '123' })).toBe(false);
+    expect(
+      Value.Check(HyperValueSchema, { type: 'function', value: { params: [], body: 123 } }),
+    ).toBe(false);
+    expect(
+      Value.Check(HyperValueSchema, { type: 'expression', value: '1 + 2', credentials: 'host' }),
+    ).toBe(false);
   });
 });
