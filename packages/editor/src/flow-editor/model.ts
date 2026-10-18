@@ -74,16 +74,20 @@ export const toFlow = (graph: LogicFlow.GraphData): Flow => {
   if (!start || graph.nodes.filter((node) => node.type === 'start').length !== 1)
     throw new Error('流程必须保留一个开始节点');
   const nodes: Flow['nodes'] = Object.fromEntries(
-    graph.nodes.map((node) => [
-      node.id,
-      {
-        id: node.id,
-        type: node.type,
-        props: node.properties ?? {},
-        prev: [],
-        next: [],
-      },
-    ]),
+    graph.nodes.map((node) => {
+      // LogicFlow adds presentation dimensions to properties; keep them only in flowGraph.
+      const { width: _width, height: _height, ...properties } = node.properties ?? {};
+      return [
+        node.id,
+        {
+          id: node.id,
+          type: node.type,
+          props: properties,
+          prev: [],
+          next: [],
+        },
+      ];
+    }),
   );
   for (const node of Object.values(nodes)) {
     if (node.type === 'condition') node.props = { ...node.props, condition: [] };

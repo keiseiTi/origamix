@@ -1,4 +1,4 @@
-import type { EditorMaterialRegistration } from '@origamix/editor/contracts';
+import type { EditorMaterialRegistration } from '@origamix/editor';
 import { validateResolvedProjectStack, type ProjectStack } from '@origamix/shared';
 
 // Literal imports are an allowlist, never module paths supplied by project files.

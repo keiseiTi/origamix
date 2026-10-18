@@ -1,6 +1,6 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorTransaction } from '@origamix/editor/contracts';
-import { createEditorTransaction } from '@origamix/editor/core';
+import type { EditorTransaction } from '@origamix/editor';
+import { createEditorTransaction } from '@origamix/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
 

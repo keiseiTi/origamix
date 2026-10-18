@@ -1,5 +1,5 @@
 import { getElementLabel } from '@origamix/shared';
-import { useEditorCore } from '@tangramino/base-editor';
+import { useFlowEditorSession } from '../session';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button, FieldLabel } from '@origamix/ui';
@@ -7,7 +7,6 @@ import { Button, FieldLabel } from '@origamix/ui';
 import { FlowSelect } from '../flow-select';
 import { ValueField } from './value-field';
 import { asRecord } from './values';
-import { useMaterialCatalog } from '../../core/environment';
 import { defaultNodeProps } from './definitions';
 
 export const SettersFields = ({
@@ -19,9 +18,7 @@ export const SettersFields = ({
   properties: Record<string, unknown>;
   onChange: (patch: Record<string, unknown>) => void;
 }): React.JSX.Element => {
-  const catalog = useMaterialCatalog();
-  const schema = useEditorCore((state) => state.schema);
-  const materials = useEditorCore((state) => state.materials);
+  const { schema, materials, catalog } = useFlowEditorSession();
   const global = type === 'setGlobalVariable';
   const method = type === 'emitElementAction';
   const setters: Record<string, unknown>[] = Array.isArray(properties.setters)

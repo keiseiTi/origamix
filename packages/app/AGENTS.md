@@ -16,7 +16,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - `src/components/editor/`: App-owned PageEditor composition, concrete material registration and HTTP-backed Working session; editing implementation lives in `@origamix/editor`; `src/preview/` and `src/components/workspace/preview/page-preview-frame.tsx`: reusable runtime rendering and the retained iframe preview surface.
 - `dev-server.ts`, `vite.config.ts`, `scripts/`: Node-side Web development tooling, not Renderer code.
 
-- Editor 的公开模式、工具、历史和命令句柄类型由 `@origamix/editor/contracts` 提供；画布、面板和 FlowEditor 已迁入 Editor 包。迁移边界见 [架构说明](../architecture.md)，HTTP/Working 会话继续归 App。
+- Editor 的公开模式、工具、历史和命令句柄类型由 `@origamix/editor` 提供；画布、面板和 FlowEditor 已迁入 Editor 包。迁移边界见 [架构说明](../architecture.md)，HTTP/Working 会话继续归 App。
 
 ## Runtime boundaries
 
@@ -56,7 +56,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Editor fills the work area; overlay navigation must not resize the canvas. When editable state returns, flush pending edits before page/mode switches and preview, block transitions on save failure and safely clear invalid selections after Schema changes.
 - Include keyboard operation, overlay focus restoration, Esc dismissal, loading/empty/error states and save feedback. Keep the fixed composer and overlays usable at narrow widths.
 - Verify affected surfaces in light and dark themes, including preview and disabled/error states. Avoid hard-coded light-only colors.
-- These are acceptance constraints for relevant changes, not claims that all planned editor/Agent features exist. Do not add AI implementation unless requested. Event flow node definitions and forms live in `packages/editor/src/mods/flow-editor/nodes/`. Match the reference node types for requests, properties, methods, visibility, conditions, variables and portal actions; values use JSON or explicit global/result references. Custom JS is stored as inert configuration and visibly marked as not executed. Do not introduce script evaluation.
+- These are acceptance constraints for relevant changes, not claims that all planned editor/Agent features exist. Do not add AI implementation unless requested. Event flow node definitions and forms live in `packages/editor/src/flow-editor/nodes/`. Match the reference node types for requests, properties, methods, visibility, conditions, variables and portal actions; values use JSON or explicit global/result references. Custom JS is stored as inert configuration and visibly marked as not executed. Do not introduce script evaluation.
 
 ## Verification
 
@@ -75,3 +75,5 @@ pnpm --filter @origamix/app build
 - Web host/proxy changes: `pnpm --filter @origamix/app test:web`. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
 - Use `pnpm dev:web` for browser interaction checks. Directory pickers, settings and independent windows need `pnpm dev` and Desktop smoke checks, not only browser screenshots.
 - Run root gates before handoff and report both-theme interaction evidence. Existing unit/smoke tests are not complete visual coverage.
+
+- Map Agent clarification candidates and expiry to Editor `targetSelection` in the page host; keep all Run/clarification business decisions here. Supply the specific read-only reason rather than making Editor infer Agent state.

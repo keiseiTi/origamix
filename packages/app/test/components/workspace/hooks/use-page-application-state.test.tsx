@@ -3,7 +3,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EditorHandle } from '@origamix/editor/contracts';
+import type { EditorHandle } from '@origamix/editor';
 
 const schemaMocks = vi.hoisted(() => ({
   applyState: vi.fn(),

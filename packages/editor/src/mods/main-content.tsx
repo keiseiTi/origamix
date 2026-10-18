@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlowEditor } from '../flow-editor';
-import type { EditorMode } from '../contracts';
+import { FlowEditorView } from './flow-editor-view';
+import type { EditorMode } from '../interface';
 import type { EventTarget } from '../flow-editor/model';
 import { CanvasEditor } from '@tangramino/base-editor';
 import { AttributePanel } from './attribute-panel';
@@ -39,7 +39,7 @@ export const MainContent = ({
         </p>
       )}
       {mode === 'logic' ? (
-        <FlowEditor
+        <FlowEditorView
           key={eventTarget ? `${eventTarget.elementId}:${eventTarget.event}` : 'empty'}
           target={eventTarget}
           onTargetChange={setEventTarget}

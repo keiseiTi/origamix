@@ -1,5 +1,5 @@
 import { getElementLabel } from '@origamix/shared';
-import { useEditorCore } from '@tangramino/base-editor';
+import { useFlowEditorSession } from './session';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
 import type { EventTarget } from './model';
@@ -75,8 +75,7 @@ export const EventTree = ({
   selected: EventTarget | null;
   onSelect: (target: EventTarget) => void;
 }): React.JSX.Element => {
-  const schema = useEditorCore((state) => state.schema);
-  const materials = useEditorCore((state) => state.materials);
+  const { schema, materials } = useFlowEditorSession();
   const build = (id: string, ancestors: Set<string>): EventTreeNode | null => {
     const element = schema.elements[id];
     if (!element || ancestors.has(id)) return null;

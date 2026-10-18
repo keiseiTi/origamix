@@ -51,3 +51,11 @@ export type EditorMaterialRegistration = Readonly<{
   groups: readonly Readonly<{ title: string; children: readonly Material[] }>[];
   propertyEditors: readonly PropertyEditorRegistration[];
 }>;
+
+/** Host-controlled element picking for search, annotations or clarification. */
+export type EditorTargetSelection = Readonly<{
+  candidates: readonly Readonly<{ elementId: string; label: string }>[];
+  highlightedElementId?: string | null;
+  disabled?: boolean;
+  onSelect: (elementId: string) => void;
+}>;

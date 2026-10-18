@@ -1,4 +1,4 @@
-import { useEditorCore } from '@tangramino/base-editor';
+import { useFlowEditorSession } from '../session';
 import { FieldLabel, Input } from '@origamix/ui';
 
 import { JsonAttributeField } from '../../components/json-attribute-field';
@@ -19,7 +19,7 @@ export const ValueField = ({
   objectOnly?: boolean;
   literalType?: 'string' | 'boolean' | 'stringRecord';
 }): React.JSX.Element => {
-  const schema = useEditorCore((state) => state.schema);
+  const { schema } = useFlowEditorSession();
   const record = asRecord(value);
   const source = record.$ref === 'global' || record.$ref === 'result' ? record.$ref : 'literal';
   return (

@@ -1,6 +1,6 @@
 import { getElementLabel } from '@origamix/shared';
 import type LogicFlow from '@logicflow/core';
-import { useEditorCore } from '@tangramino/base-editor';
+import { useFlowEditorSession } from '../session';
 import { Checkbox, FieldLabel, Input, Textarea } from '@origamix/ui';
 
 import { FlowSelect } from '../flow-select';
@@ -17,8 +17,7 @@ export const NodeProperties = ({
   onChange: (patch: Record<string, unknown>) => void;
   eventLabel?: string;
 }): React.JSX.Element => {
-  const schema = useEditorCore((state) => state.schema);
-  const materials = useEditorCore((state) => state.materials);
+  const { schema, materials } = useFlowEditorSession();
   const properties = node.properties ?? {};
   const type = node.type;
   const definition = getNodeDefinition(String(type));

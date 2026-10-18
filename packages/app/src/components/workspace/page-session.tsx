@@ -4,12 +4,7 @@ import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { PageEditor } from '@/components/editor';
-import type {
-  EditorHandle,
-  EditorMode,
-  EditorHistoryState,
-  EditorTool,
-} from '@origamix/editor/contracts';
+import type { EditorHandle, EditorMode, EditorHistoryState, EditorTool } from '@origamix/editor';
 import { PageToolbar, type WorkspaceMode } from './page-toolbar';
 import { usePageSession } from './hooks/use-page-session';
 import { PagePreviewFrame } from './preview/page-preview-frame';
@@ -186,14 +181,19 @@ const PageSessionContent = ({
             onWorkingCommitted={onWorkingCommitted}
             readOnly={!capabilities.canEdit}
             readOnlyMessage={
-              capabilities.agentChecking ? '正在确认页面运行状态，请稍候' : undefined
+              capabilities.agentChecking
+                ? '正在确认页面运行状态，请稍候'
+                : 'AI 正在修改，编辑暂时锁定'
             }
-            clarificationCandidates={agent.state.run?.clarification?.candidates}
-            clarificationHighlightedElementId={clarificationHighlight}
-            clarificationExpired={agent.clarificationExpired}
-            onClarificationSelect={(elementId) =>
-              void agent.selectClarification(elementId).catch(() => undefined)
-            }
+            targetSelection={{
+              candidates: agent.clarificationExpired
+                ? []
+                : (agent.state.run?.clarification?.candidates ?? []),
+              highlightedElementId: clarificationHighlight,
+              disabled: agent.clarificationExpired,
+              onSelect: (elementId) =>
+                void agent.selectClarification(elementId).catch(() => undefined),
+            }}
           />
         </div>
         <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>

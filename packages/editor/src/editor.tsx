@@ -14,7 +14,7 @@ import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MainContent } from './mods/main-content';
 import type { MaterialGroup } from './mods/material-panel';
 import { EditorToolDialog } from './mods/editor-tool-dialog';
-import { ClarificationHighlightContext } from './clarification-highlight';
+import { TargetSelectionContext } from './target-selection';
 
 import type {
   EditorMaterialRegistration,
@@ -23,8 +23,8 @@ import type {
   EditorMode,
   EditorTool,
   EditorHistoryState,
-} from './contracts';
-export type { EditorHandle, EditorMode, EditorTool, EditorHistoryState } from './contracts';
+  EditorTargetSelection,
+} from './interface';
 
 export interface EditorProps {
   schema: OrigamixPageSchema;
@@ -41,10 +41,7 @@ export interface EditorProps {
   tool: Exclude<EditorTool, 'history'> | null;
   onCloseTool: () => void;
   onHistoryStateChange: (state: EditorHistoryState) => void;
-  clarificationCandidates?: readonly { elementId: string; label: string }[];
-  clarificationHighlightedElementId?: string | null;
-  clarificationExpired?: boolean;
-  onClarificationSelect?: (elementId: string) => void;
+  targetSelection?: EditorTargetSelection;
 }
 
 const HistoryBridge = ({
@@ -115,10 +112,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       tool,
       onCloseTool,
       onHistoryStateChange,
-      clarificationCandidates = [],
-      clarificationHighlightedElementId = null,
-      clarificationExpired = false,
-      onClarificationSelect,
+      targetSelection,
     },
     ref,
   ): React.JSX.Element => {
@@ -162,14 +156,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       <div className='relative border-t flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
         <EditorThemeContext.Provider value={theme}>
           <MaterialCatalogContext.Provider value={registration.catalog.materials}>
-            <ClarificationHighlightContext.Provider
-              value={{
-                candidates: clarificationCandidates,
-                highlightedElementId: clarificationHighlightedElementId,
-                expired: clarificationExpired,
-                onSelect: onClarificationSelect,
-              }}
-            >
+            <TargetSelectionContext.Provider value={targetSelection}>
               <EditorProvider
                 key={sessionKey}
                 materials={materials}
@@ -186,7 +173,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
                 />
                 <EditorToolDialog tool={tool} onClose={onCloseTool} />
               </EditorProvider>
-            </ClarificationHighlightContext.Provider>
+            </TargetSelectionContext.Provider>
           </MaterialCatalogContext.Provider>
         </EditorThemeContext.Provider>
         {readOnly && (
@@ -195,7 +182,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
             role='status'
           >
             <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
-              {readOnlyMessage ?? 'AI 正在修改，编辑暂时锁定'}
+              {readOnlyMessage ?? '当前不可编辑'}
             </span>
           </div>
         )}

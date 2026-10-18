@@ -4,7 +4,7 @@ import { SelectionSelect } from '@logicflow/extension';
 import '@logicflow/core/lib/style/index.css';
 import '@logicflow/extension/lib/style/index.css';
 import { useEffect, useRef, useState } from 'react';
-import { useEditorCore } from '@tangramino/base-editor';
+import { useFlowEditorSession } from './session';
 import { SchemaUtils } from '@tangramino/engine';
 import { Maximize, Minus, Plus, Trash2, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@origamix/ui';
@@ -22,9 +22,7 @@ export const FlowEditor = ({
   target: EventTarget | null;
   onTargetChange: (target: EventTarget) => void;
 }): React.JSX.Element => {
-  const schema = useEditorCore((state) => state.schema);
-  const materials = useEditorCore((state) => state.materials);
-  const setSchema = useEditorCore((state) => state.setSchema);
+  const { schema, materials, onChange } = useFlowEditorSession();
   const container = useRef<HTMLDivElement>(null);
   const lfRef = useRef<LogicFlow | null>(null);
   const lastGraph = useRef('');
@@ -59,7 +57,7 @@ export const FlowEditor = ({
         graph,
       );
       schemaRef.current = candidate;
-      setSchema(candidate);
+      onChange(candidate);
       setError(null);
     } catch (reason) {
       lf.render(JSON.parse(lastGraph.current) as LogicFlow.GraphData);

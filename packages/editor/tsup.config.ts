@@ -1,13 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: {
-    contracts: 'src/contracts.ts',
-    extensions: 'src/extensions.ts',
-    index: 'src/index.ts',
-    components: 'src/components/index.ts',
-    core: 'src/core/index.ts',
-  },
+  entry: { index: 'src/index.ts' },
   format: ['esm'],
   dts: true,
   clean: true,

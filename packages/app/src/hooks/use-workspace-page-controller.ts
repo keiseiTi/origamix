@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { EditorHandle } from '@origamix/editor/contracts';
+import type { EditorHandle } from '@origamix/editor';
 import { useWorkspaceStore, type PageItem, type WorkspaceMode } from '@/store/workspace';
 import { useWorkspaceTransitions } from './use-workspace-transitions';
 

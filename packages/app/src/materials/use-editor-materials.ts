@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { EditorMaterialRegistration } from '@origamix/editor/contracts';
+import type { EditorMaterialRegistration } from '@origamix/editor';
 import { projectsService } from '@/services/projects';
 import { loadEditorMaterials } from './loaders';
 

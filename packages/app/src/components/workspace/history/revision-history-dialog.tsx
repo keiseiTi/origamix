@@ -1,4 +1,4 @@
-import { CodeEditor } from '@origamix/editor/components';
+import { CodeEditor } from '@origamix/editor';
 import { usePreferencesStore } from '@/store/preferences';
 import {
   Button,

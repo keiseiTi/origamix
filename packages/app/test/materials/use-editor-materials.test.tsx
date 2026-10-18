@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
-import type { EditorMaterialRegistration } from '@origamix/editor/contracts';
+import type { EditorMaterialRegistration } from '@origamix/editor';
 
 const mocks = vi.hoisted(() => ({ stack: vi.fn(), load: vi.fn() }));
 vi.mock('../../src/services/projects', () => ({ projectsService: { stack: mocks.stack } }));

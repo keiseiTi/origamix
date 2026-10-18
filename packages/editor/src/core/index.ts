@@ -1,5 +1,5 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorTransaction, EditorWorkingState } from '../contracts';
+import type { EditorTransaction, EditorWorkingState } from '../interface';
 import { deriveSchemaOperations } from './derive-schema-operations';
 
 export { deriveSchemaOperations } from './derive-schema-operations';

@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { MaterialManifest } from '@origamix/shared';
-import type { EditorTheme } from '../contracts';
+import type { EditorTheme } from '../interface';
 
 export const EditorThemeContext = createContext<EditorTheme>('light');
 export const MaterialCatalogContext = createContext<readonly MaterialManifest[]>([]);

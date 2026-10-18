@@ -4,17 +4,21 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Ownership
 
-- `src/index.ts` exports the unified Editor; `src/editor.tsx` and `src/mods/` own the shared EditorProvider, canvas, panels, selection, history and Agent clarification marker presentation. App supplies marker data and callbacks; Agent lifecycle remains in App.
-- `src/mods/flow-editor/` is an internal Editor module that owns LogicFlow, React nodes, event tree, node forms and graph translation. Both views share the same engine and edit session. Flow node contracts come from Shared; execution belongs to Runtime. Custom JS remains inert configuration.
+- `src/index.ts` exports the unified Editor; `src/editor.tsx` and `src/mods/` own the shared EditorProvider, canvas, panels, selection, history and generic target-selection markers. App owns Agent lifecycle and maps clarification state to the generic target-selection contract.
+- `src/flow-editor/` is an internal Editor module that owns LogicFlow, React nodes, event tree, node forms and graph translation. Both views share the same engine and edit session. The module reads only its internal session contract; `src/mods/flow-editor-view.tsx` adapts the engine store, supplies schema/materials/catalog/onChange and loads the view dynamically with loading and retry states. Flow node contracts come from Shared; execution belongs to Runtime. Custom JS remains inert configuration.
 - `src/core/` owns snapshot-to-operation translation, engine adapters and injected theme/material context. `src/components/` exports CodeEditor and JsonAttributeField; primitive controls belong to UI.
-- `src/contracts.ts` and `src/extensions.ts` own public editing/extension contracts. `src/styles.css` registers Editor-owned Tailwind sources. The internal FlowEditor loads its LogicFlow styles; the host composes Tailwind and UI foundations.
+- `src/contracts.ts` and `src/extensions.ts` own public editing/extension contracts. `src/styles.css` registers Editor-owned Tailwind sources. The dynamically loaded FlowEditor loads its LogicFlow styles; the host composes Tailwind and UI foundations.
 
 ## Boundaries
 
+- Components, transaction helpers and public types are exported only from `@origamix/editor`; `styles.css` is the sole separate entry. Keep internal imports relative and FlowEditor dynamically loaded. New public exports update `src/index.ts`, not package subpaths or additional build entries. Preserve CSS side effects.
+
 - Never import App, Materials, Runtime, Server, Desktop, Node.js or Electron. App provides the concrete catalog and material groups; FlowEditor reads the injected catalog rather than Antd imports.
+- Editor does not interpret AI Runs or clarification expiry. `targetSelection` receives host-owned candidates, highlight, disabled state and a selection callback. Read-only defaults are generic; App supplies business-specific messages.
 - No HTTP, Working recovery, Revision, Apply, App Store or host credential ownership here. The unified Editor receives a loaded schema, stable sessionKey, registration, explicit theme and change/flush callbacks.
 - The schema prop is the initial projection for one sessionKey, not a second authoritative store. Ordinary saves do not replace it or reset history; an explicit new sessionKey remounts the engine. App retains in-flight drafts and advances the committed Working version only after Server success.
 - Each flush translates against the last acknowledged Working snapshot through `createEditorTransaction`. Typed operations are preferred; the internal candidate fallback is only for operation protocol gaps. Prop edits and Flow edits use the same host queue.
+- `flow-editor/model.ts` keeps LogicFlow presentation dimensions in `extensions.flowGraph`, stripping `width`/`height` from executable node props so Runtime can validate them against Shared without allowing layout fields in the execution contract.
 - Preserve scoped async results, failed drafts and flush rejection before page/mode/preview transitions. Readonly view changes must not reach the host; never add a separate save path to a panel or flow node.
 - CodeEditor receives theme explicitly or from the Editor context. App configures Monaco workers in its Vite bootstrap; this package must not import Vite worker queries or App preferences.
 - Materials owns its Tangramino/HeroUI panel configuration types behind its editor entry. `JsonAttributeConfig` is the editor-owned structured-field shape; no imports back into Materials are allowed. Custom property editor activation is deferred until requested; existing JSON attribute fields remain available.

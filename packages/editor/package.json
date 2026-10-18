@@ -8,10 +8,6 @@
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./contracts": "./src/contracts.ts",
-    "./extensions": "./src/extensions.ts",
-    "./components": "./src/components/index.ts",
-    "./core": "./src/core/index.ts",
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
@@ -44,5 +40,8 @@
     "react-dom": "^19.2.8",
     "@types/react-dom": "^19.2.4",
     "@types/react-copy-to-clipboard": "^5.0.7"
-  }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }

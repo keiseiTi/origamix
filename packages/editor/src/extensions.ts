@@ -1,6 +1,6 @@
 import type { AttributeConfig } from '@tangramino/base-editor';
 import type { ComponentType } from 'react';
-import type { EditorPageScope } from './contracts';
+import type { EditorPageScope } from './interface';
 
 /** A property editor can change only the selected element's props, atomically. */
 export type ElementPropsChange = Readonly<{

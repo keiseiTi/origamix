@@ -4,7 +4,8 @@ import type {
   EditorMode,
   EditorTool,
   EditorHistoryState,
-} from '@origamix/editor/contracts';
+  EditorTargetSelection,
+} from '@origamix/editor';
 import { Spinner, Button } from '@origamix/ui';
 
 import { forwardRef, useImperativeHandle, useRef } from 'react';
@@ -25,10 +26,7 @@ interface EditorProps {
   onCloseTool: () => void;
   onHistoryStateChange: (state: EditorHistoryState) => void;
   onWorkingCommitted?: () => void;
-  clarificationCandidates?: readonly { elementId: string; label: string }[];
-  clarificationHighlightedElementId?: string | null;
-  clarificationExpired?: boolean;
-  onClarificationSelect?: (elementId: string) => void;
+  targetSelection?: EditorTargetSelection;
 }
 
 export const PageEditor = forwardRef<EditorHandle, EditorProps>(

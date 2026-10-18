@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type LogicFlow from '@logicflow/core';
 import type { Schema } from '@tangramino/engine';
+import { isFlowNodeProps } from '@origamix/shared';
 import { readGraph, toFlow } from '../../src/flow-editor/model';
 
 // Server cannot check the canvas-to-engine translation or prevent recursive
@@ -15,7 +16,11 @@ describe('event graph commit', () => {
           type: 'setElementProps',
           x: 200,
           y: 0,
-          properties: { setters: [{ elementId: 'button', propName: 'text', value: '完成' }] },
+          properties: {
+            width: 148,
+            height: 48,
+            setters: [{ elementId: 'button', propName: 'text', value: '完成' }],
+          },
         },
       ],
       edges: [
@@ -35,6 +40,8 @@ describe('event graph commit', () => {
     expect(flow.nodes.action?.props).toEqual({
       setters: [{ elementId: 'button', propName: 'text', value: '完成' }],
     });
+    expect(isFlowNodeProps('setElementProps', flow.nodes.action?.props)).toBe(true);
+    expect(graph.nodes[1]?.properties?.width).toBe(148);
     const schema: Schema = {
       elements: {},
       layout: { root: 'root', structure: {} },
