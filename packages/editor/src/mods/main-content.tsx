@@ -31,6 +31,17 @@ export const MainContent = ({
     button?.focus();
     restoreEvent.current = null;
   }, [mode]);
+  const editEvent = (target: EventTarget): void => {
+    setError(null);
+    void onModeChange('logic')
+      .then(() => {
+        restoreEvent.current = target.event;
+        setEventTarget(target);
+      })
+      .catch((reason: unknown) =>
+        setError(reason instanceof Error ? reason.message : '切换失败，编辑内容已保留'),
+      );
+  };
   return (
     <div className='relative flex min-h-0 flex-1 flex-col'>
       {error && (
@@ -49,7 +60,7 @@ export const MainContent = ({
           ref={view}
           className='relative flex size-full min-h-0 min-w-0 bg-zinc-50 dark:bg-zinc-900'
         >
-          <LeftPanel groups={groups} />
+          <LeftPanel groups={groups} onEditEvent={editEvent} />
           <main className='min-w-0 flex-1 overflow-hidden p-3' aria-label='页面画布'>
             <div
               className='mx-auto h-full min-h-full overflow-hidden border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-950'
@@ -63,19 +74,7 @@ export const MainContent = ({
               />
             </div>
           </main>
-          <AttributePanel
-            onEditEvent={(target) => {
-              setError(null);
-              void onModeChange('logic')
-                .then(() => {
-                  restoreEvent.current = target.event;
-                  setEventTarget(target);
-                })
-                .catch((reason: unknown) =>
-                  setError(reason instanceof Error ? reason.message : '切换失败，编辑内容已保留'),
-                );
-            }}
-          />
+          <AttributePanel onEditEvent={editEvent} />
         </div>
       )}
     </div>
