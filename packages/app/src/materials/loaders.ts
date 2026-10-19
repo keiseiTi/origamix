@@ -53,7 +53,7 @@ export const loadRuntimeMaterials = async (stack: ProjectStack) => {
       module.materialSet.version !== resolved.materialSet.version
     )
       throw new Error('运行物料与项目要求的版本不一致');
-    return module.default;
+    return { components: module.default, Provider: module.RuntimeProvider };
   } catch (reason) {
     if (runtimeLoads.get(key) === pending) runtimeLoads.delete(key);
     throw reason;

@@ -79,3 +79,4 @@ pnpm --filter @origamix/app build
 - Map Agent clarification candidates and expiry to Editor `targetSelection` in the page host; keep all Run/clarification business decisions here. Supply the specific read-only reason rather than making Editor infer Agent state.
 
 - Editor logic-mode changes request immediate Working queue admission via the change callback; retain the same version checks, serial queue, failed-draft retention and explicit retry behavior as visual edits. Node position, properties, node/edge insertion/deletion and edge adjustment are draft changes, never Revision requests.
+- Runtime material loading returns components and the material-family Provider together; preview passes the snapshot theme to that Provider so Ant Design text, controls and portals match the host theme.

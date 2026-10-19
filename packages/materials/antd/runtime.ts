@@ -1,3 +1,4 @@
+export { RuntimeProvider } from './runtime-provider';
 export { materialSet } from './material-set';
 import { Button } from './button';
 import { Input } from './input';

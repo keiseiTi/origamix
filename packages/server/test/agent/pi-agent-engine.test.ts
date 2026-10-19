@@ -190,6 +190,9 @@ describe('PiAgentEngine', () => {
     });
     expect(result.text).toBe('recovered');
     expect(events).toContainEqual(expect.objectContaining({ type: 'tool_end', isError: true }));
+    expect(events.find((event) => event.type === 'tool_end' && event.isError)).toMatchObject({
+      result: { content: [{ type: 'text', text: 'private tool failure' }] },
+    });
   });
 
   it('settles as cancelled when aborted', async () => {

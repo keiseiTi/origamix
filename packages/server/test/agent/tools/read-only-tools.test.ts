@@ -1,7 +1,7 @@
 import { loadProjectMaterials } from '../../../projects/project-materials';
 import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared';
+import { getFlowNodeManifest, type OrigamixPageSchema } from '@origamix/shared';
 import { ApiError } from '../../../errors';
 import { createReadOnlyAgentTools } from '../../../agent/tools/read-only-tools';
 
@@ -83,6 +83,101 @@ const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVers
 const scope = {};
 
 describe('read-only Agent tools', () => {
+  it('reads exact flow code, shared bindings, variables and node schemas without compacting nested data', async () => {
+    const draft = structuredClone(schema);
+    const body = `return ${JSON.stringify('保留原始代码\n"\\'.repeat(300))};`;
+    draft.flows.flow_shared = {
+      startId: 'start',
+      nodes: {
+        start: { id: 'start', type: 'start', props: {}, prev: [], next: ['script'] },
+        script: {
+          id: 'script',
+          type: 'customJS',
+          props: { value: { type: 'function', value: { params: [], body } } },
+          prev: ['start'],
+          next: [],
+        },
+      },
+    };
+    draft.bindElements = [
+      { id: 'form-main', event: 'init', flowId: 'flow_shared' },
+      { id: 'input-name', event: 'init', flowId: 'flow_shared' },
+    ];
+    draft.context.globalVariables = [{ name: 'payload', type: 'string', defaultValue: body }];
+    const { execute } = setup(
+      vi.fn(async () => ({ schema: draft, revisionId, workingVersion: 1 })),
+    );
+    const readAll = async (name: string, selector: Record<string, unknown>) => {
+      let json = '';
+      let offset = 0;
+      while (true) {
+        const result = (await execute(name, { ...selector, offset, maxChars: 1024 })) as {
+          complete: boolean;
+          data?: unknown;
+          json?: string;
+          offset: number;
+          totalChars: number;
+          nextOffset: number | null;
+          workingVersion: number;
+        };
+        expect(result.workingVersion).toBe(1);
+        expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(24 * 1024);
+        if (result.complete) return result.data;
+        expect(result.offset).toBe(offset);
+        json += result.json;
+        if (result.nextOffset === null) {
+          expect(json.length).toBe(result.totalChars);
+          return JSON.parse(json) as unknown;
+        }
+        expect(result.nextOffset).toBeGreaterThan(offset);
+        offset = result.nextOffset;
+      }
+    };
+    expect(await readAll('get_event_flow', { elementId: 'form-main', event: 'init' })).toEqual({
+      flowId: 'flow_shared',
+      flow: draft.flows.flow_shared,
+      bindings: draft.bindElements,
+    });
+    expect(await readAll('get_page_logic_context', {})).toMatchObject({
+      bindings: draft.bindElements,
+      globalVariables: draft.context.globalVariables,
+    });
+    expect(await readAll('get_flow_node_manifest', { type: 'interfaceRequest' })).toEqual({
+      formatVersion: '1.0',
+      manifest: JSON.parse(JSON.stringify(getFlowNodeManifest('interfaceRequest'))),
+    });
+    const material = (await readAll('get_material_manifest', { type: 'datePicker' })) as {
+      manifest: { propsSchema: unknown };
+    };
+    expect(material.manifest.propsSchema).toMatchObject({
+      properties: { showTime: { type: 'boolean' } },
+    });
+  });
+
+  it('keeps logic reads scoped to the Run page and starting Working version', async () => {
+    const { execute, tools } = setup();
+    await expect(execute('get_event_flow', { flowId: 'foreign' })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    await expect(
+      execute('get_event_flow', { elementId: 'foreign', event: 'init' }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      execute('get_event_flow', { elementId: 'form-main', event: 'unknown' }),
+    ).rejects.toMatchObject({ statusCode: 422 });
+    await expect(execute('get_page_logic_context', { pageId: 'foreign' })).rejects.toMatchObject({
+      statusCode: 422,
+    });
+    const stale = setup(vi.fn(async () => ({ schema, revisionId, workingVersion: 2 })));
+    await expect(
+      stale.execute('get_flow_node_manifest', { type: 'customJS' }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    await expect(
+      tools
+        .find((tool) => tool.name === 'get_page_logic_context')!
+        .execute({}, AbortSignal.abort()),
+    ).rejects.toThrow();
+  });
   it('loads one revision once per Run and returns compact page context and outline', async () => {
     const { execute, readSchema } = setup();
     await expect(execute('get_page_context', scope)).resolves.toMatchObject({
@@ -144,7 +239,7 @@ describe('read-only Agent tools', () => {
       matches: expect.arrayContaining([expect.objectContaining({ type: 'form' })]),
     });
     await expect(execute('get_material_manifest', { type: 'input' })).resolves.toMatchObject({
-      manifest: { type: 'input', version: '1.0.0' },
+      data: { manifest: { type: 'input', version: '1.0.0' } },
     });
     await expect(execute('get_material_manifest', { type: 'unknown' })).rejects.toMatchObject({
       statusCode: 404,

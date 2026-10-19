@@ -41,6 +41,10 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 可视化编辑通常通过 `http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
 
+流程数据与事件绑定使用 Shared 的当前类型契约。Shared 检查图结构安全及绑定唯一性；[flow-validation.ts](schema/flow-validation.ts) 检查物料目标、可写属性（含公开运行时变量）、可调用方法、变量和显式上下文引用。Server 不编译或执行表达式/函数体，也不静态推断任意 JS 的行为。
+
+可视化草稿允许未连接节点、空目标和未填写的函数体。Agent commit 对本次显式提交或新增绑定涉及的流程要求可执行完整性：节点可达、目标非空、函数参数有效、字面量请求地址有效，且 `result.*` 引用来自同一流程中所有路径都先经过的非开始节点。重复提交相同流程也不能跳过检查。该规则不会阻止保留其他事件的未完成草稿；提交失败不改变 Working、Revision 或目标文件。事件级 `setElementEventBinding` / `removeElementEventBinding` 仅修改指定元素事件，重新绑定不会隐式删除旧流程。
+
 版本历史由 `POST /api/v1/pages/revisions/list` 返回轻量元数据，完整快照通过 `POST /api/v1/pages/revisions/schema/get` 按需读取。恢复历史只把所选快照复制到 Working，并将其标记为未保存草稿；不会创建 Revision 或写入目标项目。
 
 自动保留草稿、显式保存版本和历史恢复只更新 Working Schema / Revision，不会隐式写入真实项目的目标 Schema。
@@ -56,6 +60,12 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 `http/agent-routes.ts` → `agent/agent-service.ts#start` → 路由意图并由 ConversationService 创建消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
 
 Agent 仅通过终态工具 `agent/tools/complete-page-run.ts` 提交完整的版本化 Operation Batch，并原子更新 Working Schema，不自动创建 Revision。`agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
+
+事件逻辑与组件生成共用一个 Run 和一个 Operation Batch。上下文包含 Shared 节点能力摘要、当前事件/变量摘要和 [生成规则](agent/flow-guidance.ts)。摘要可能省略内容；精确读取由 [逻辑只读工具](agent/tools/logic-tools.ts) 提供：`get_page_logic_context` 读取绑定与变量，`get_event_flow` 按流程 ID 或元素事件读取完整流程及全部引用方，`get_flow_node_manifest` 读取节点完整参数与连接约束。这些工具固定当前 Run 的页面和起始 Working，不接受调用方传入其他页面权限。
+
+精确读取返回 `complete: true` 和 `data`，或 `complete: false` 的 `json_text_chunk`（`offset`、`totalChars`、`nextOffset`、`json`）。大结果必须按 `nextOffset` 读取至 `null`，核对 Working 版本并按偏移拼接 JSON 后使用；不会截断函数体或丢弃深层参数。工具调用仍受 Run 预算约束，不能完整读取时应保留现有流程。共享流程仅修改一个事件时，生成规则要求复制流程并使用局部绑定。
+
+终态校验失败向模型返回 `page_run_validation` JSON：包含基线版本、`retryable`、错误 `code/path` 和可定位的 `operationIndex`。修复须针对同一基线提交完整操作批次；执行器重新调用模型时会携带上一份有界提交。只有写入前的校验失败进入修复，版本冲突和写入结果不明确均不能自动重放。成功仅表示 Working 更新，运行时行为还需在预览中实际验证。新 Run 的 prompt/toolset 版本分别为 3/2。
 
 Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origamix/pages/<pageId>/agent-commits/` 目录。回执在 Working 替换前准备、替换后确认；启动恢复仅核对 Run、页面、Operation 摘要、Working Version 与 Hash，不会重新执行 Operation。回执作为审计与恢复证据随页面长期保留，并在页面删除时随页面目录一并删除。
 
@@ -198,3 +208,5 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 `pi-agent-core` 与 `pi-ai` 的精确版本以 [package.json](package.json) 和锁文件为准，两者同步升级。当前适配使用 `finishTurn` 在 `complete_page_run` 成功后结束正常回合；错误和取消保持 pi 的退出语义。
 
 升级时对照 [模型注册](agent/pi-runtime.ts)、[引擎适配](agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；配置 `DEEPSEEK_API_KEY` 后运行 `pnpm --filter @origamix/server probe:deepseek` 可验证默认模型的文本流和工具调用，会产生真实 API 请求。未配置 Key 时该脚本跳过探测，不能算探测通过。
+
+事件生成默认预算为 24 次工具调用；系统提示包含剩余预算并要求为提交和修复保留调用。物料 Manifest 与逻辑工具共用精确分页格式，保留大小写类型和深层属性定义。工具异常保留原始文本错误内容，避免空 `details` 遮蔽修复信息。

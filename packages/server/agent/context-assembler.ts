@@ -1,5 +1,6 @@
 import { loadProjectMaterials } from '../projects/project-materials';
-import type { OrigamixPageSchema } from '@origamix/shared';
+import { flowNodeManifests, type OrigamixPageSchema } from '@origamix/shared';
+import { FLOW_GENERATION_GUIDE } from './flow-guidance';
 import { conflict } from '../errors';
 import type { StoredMessage } from '../conversations/conversation-repository';
 import type { ProductDocSnippet, ProductDocsProvider } from './product-docs-provider';
@@ -50,6 +51,9 @@ export interface AssembledAgentContext {
   }>[];
   summarySlot?: string;
   materialCatalog: string;
+  flowNodeCatalog: string;
+  logicSummary: string;
+  flowGuide: string;
   schemaOutline: string;
   schemaFragment: string;
   productDocs: readonly ProductDocSnippet[];
@@ -83,6 +87,7 @@ const SYSTEM_POLICY = [
   '用户要求“默认”物料或未指定属性时，直接使用 materialCatalog 中该物料的 defaultProps，不要再次追问字段。',
   '用户要求重置或清空页面时，使用 schemaOutline 中的 rootChildIds；若 rootChildCount 大于所列数量，先调用 get_schema_outline 核实子元素。保留 layout.root 指向的根元素，对每个直接子元素执行 removeElement（removeDescendants: true）。提交 apply_changes 时必须填写 response，不得删除或替换根元素。',
   '调用工具时严格遵守其参数 Schema：不要添加未声明字段；需要精确物料约束时先调用 get_material_manifest。',
+  '支持同时生成组件与事件逻辑；遵守 flowGuide，逻辑能力以 Shared 节点 Manifest 和物料 Manifest 为准。修改前完整读取目标流程，保留无关事件。',
 ].join('\n');
 
 const cap = (value: string, maxChars: number): { value: string; truncated: boolean } => {
@@ -159,6 +164,32 @@ const docsSize = (docs: readonly ProductDocSnippet[]): number => {
   return docs.reduce((total, doc) => total + doc.snippet.length + doc.title.length, 0);
 };
 
+const logicSummary = (schema: OrigamixPageSchema): string => {
+  const summary = {
+    flowCount: Object.keys(schema.flows).length,
+    bindingCount: schema.bindElements.length,
+    variableCount: schema.context.globalVariables.length,
+    bindings: schema.bindElements.slice(0, 8),
+    globalVariableNames: schema.context.globalVariables
+      .slice(0, 8)
+      .map((value) =>
+        value && typeof value === 'object' && 'name' in value && typeof value.name === 'string'
+          ? value.name
+          : null,
+      ),
+    truncated: schema.bindElements.length > 8 || schema.context.globalVariables.length > 8,
+  };
+  const json = JSON.stringify(summary);
+  return json.length <= 2_000
+    ? json
+    : JSON.stringify({
+        ...summary,
+        bindings: [],
+        globalVariableNames: [],
+        truncated: true,
+      });
+};
+
 const totalSize = (context: Omit<AssembledAgentContext, 'sizeChars'>): number => {
   return JSON.stringify(context).length;
 };
@@ -216,6 +247,16 @@ export class ContextAssembler {
       history: historyResult.selected,
       ...(summary ? { summarySlot: summary.value } : {}),
       materialCatalog,
+      flowNodeCatalog: JSON.stringify(
+        flowNodeManifests.map(({ type, title, description, connections }) => ({
+          type,
+          title,
+          description,
+          connections,
+        })),
+      ),
+      logicSummary: logicSummary(current.schema),
+      flowGuide: FLOW_GENERATION_GUIDE,
       schemaOutline: outline(current.schema),
       schemaFragment: schema.value,
       productDocs: docs,
@@ -243,6 +284,15 @@ export class ContextAssembler {
         ...context,
         summarySlot: undefined,
         truncated: { ...context.truncated, summary: true },
+      };
+    }
+    if (totalSize(context) > this.budget.maxChars) {
+      context = {
+        ...context,
+        flowNodeCatalog: '{"truncated":true}',
+        logicSummary: '{"truncated":true}',
+        flowGuide:
+          '先读取 get_page_logic_context、get_flow_node_manifest 和完整 get_event_flow；使用局部绑定，保留无关逻辑。',
       };
     }
     if (totalSize(context) > this.budget.maxChars) {

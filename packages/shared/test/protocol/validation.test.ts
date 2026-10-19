@@ -92,6 +92,44 @@ describe('page protocol validation', () => {
     ).toBe(false);
   });
 
+  it('requires typed flows and event bindings in pages and operations', () => {
+    const flow = {
+      startId: 'start',
+      nodes: { start: { id: 'start', type: 'start', props: {}, prev: [], next: [] } },
+    };
+    const binding = { id: 'element_root', event: 'init', flowId: 'flow_init' };
+    expect(
+      validatePage({ ...emptyPage, flows: { flow_init: flow }, bindElements: [binding] }).valid,
+    ).toBe(true);
+    expect(validateSchemaOperation({ operation: 'addFlow', flowId: 'flow_init', flow }).valid).toBe(
+      true,
+    );
+    expect(
+      validateSchemaOperation({ operation: 'addFlow', flowId: 'flow_init', flow: { nodes: [] } })
+        .valid,
+    ).toBe(false);
+    expect(
+      validatePage({ ...emptyPage, bindElements: [{ ...binding, elementId: 'element_root' }] })
+        .valid,
+    ).toBe(false);
+    expect(validatePage({ ...emptyPage, flows: { constructor: flow } }).valid).toBe(false);
+    expect(
+      validateSchemaOperation({
+        operation: 'setElementEventBinding',
+        elementId: 'element_root',
+        event: 'init',
+        flowId: 'flow_init',
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateSchemaOperation({
+        operation: 'removeElementEventBinding',
+        elementId: 'element_root',
+        event: '',
+      }).valid,
+    ).toBe(false);
+  });
+
   it('requires a bounded, page-scoped operation batch', () => {
     const batch = {
       version: '1',

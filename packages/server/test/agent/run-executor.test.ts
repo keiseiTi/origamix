@@ -279,15 +279,20 @@ describe('Agent execution through AgentService', () => {
     const fixture = setup(async (request, call) => {
       const tool = request.tools!.find(({ name }) => name === 'complete_page_run')!;
       if (call === 1) {
+        const submission = {
+          outcome: 'apply_changes',
+          response: 'invalid',
+          operations: [{ operation: 'removeElement', elementId: 'button_target' }],
+        };
         await request.onEvent?.({
           type: 'tool_start',
           toolCallId: 'invalid',
           toolName: tool.name,
-          input: {},
+          input: submission,
         });
         let error: unknown;
         try {
-          await tool.execute({ outcome: 'apply_changes', response: 'invalid' }, request.signal!);
+          await tool.execute(submission, request.signal!);
         } catch (caught) {
           error = caught;
         }
@@ -301,6 +306,8 @@ describe('Agent execution through AgentService', () => {
       } else {
         expect(request.prompt).toContain('第 19 个 Operation');
         expect(request.prompt).toContain('原始 base Working Version');
+        expect(request.prompt).toContain('"previousSubmission":{"outcome":"apply_changes"');
+        expect(request.prompt).toContain('"elementId":"button_target"');
         await complete(request, { outcome: 'apply_changes', response: '修复后已提交。' });
       }
       return { text: '', usage };
@@ -314,6 +321,48 @@ describe('Agent execution through AgentService', () => {
     expect(fixture.calls()).toBe(2);
     fixture.database.close();
   });
+
+  it.each(['WORKING_VERSION_CONFLICT', 'WORKING_COMMIT_UNCONFIRMED'])(
+    'does not replay after %s feedback',
+    async (code) => {
+      const fixture = setup(async (request) => {
+        await request.onEvent?.({
+          type: 'tool_start',
+          toolName: 'complete_page_run',
+          toolCallId: 'unsafe',
+          input: { outcome: 'apply_changes', operations: [] },
+        });
+        const run = fixture.runs.listActive()[0]!;
+        fixture.runService.transition(run.id, 'deciding');
+        fixture.runService.transition(run.id, 'validating');
+        await request.onEvent?.({
+          type: 'tool_end',
+          toolName: 'complete_page_run',
+          toolCallId: 'unsafe',
+          isError: true,
+          result: {
+            message: JSON.stringify({
+              kind: 'page_run_validation',
+              retryable: false,
+              errors: [{ code }],
+            }),
+          },
+        });
+        return { text: '', usage };
+      });
+      try {
+        const result = await fixture.run(fixture.input('修改流程'));
+        expect(result.status).toBe('failed');
+        expect(fixture.calls()).toBe(1);
+        expect(fixture.runs.get(result.runId)).toMatchObject({
+          errorCode: code === 'WORKING_VERSION_CONFLICT' ? code : 'TOOL_ERROR',
+          failureStage: 'validating',
+        });
+      } finally {
+        fixture.database.close();
+      }
+    },
+  );
 
   it('keeps a committed Working update successful when the model fails afterward', async () => {
     const fixture = setup(async (request) => {

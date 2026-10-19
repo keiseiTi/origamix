@@ -13,7 +13,7 @@ import {
   validatePage,
 } from '@origamix/shared';
 
-import { conflict, invalid } from '../errors';
+import { ApiError, conflict, invalid } from '../errors';
 import { validateProjectPageAgainstMaterials } from './material-validation';
 import {
   WorkingSchemaStore,
@@ -21,7 +21,20 @@ import {
   type WorkingSchemaFile,
   type WorkingSchemaPageRef,
 } from './working-schema-store';
-import { applySchemaOperationBatch } from './schema-operation-engine';
+import { applySchemaOperationBatch, SchemaOperationError } from './schema-operation-engine';
+
+export interface SchemaValidationIssue {
+  code: string;
+  path: string;
+  message: string;
+  operationIndex?: number;
+}
+
+export class SchemaValidationError extends ApiError {
+  constructor(readonly issue: SchemaValidationIssue) {
+    super(`${issue.code} at ${issue.path}: ${issue.message}`, 422);
+  }
+}
 
 export interface SchemaWriteOptions extends SchemaCommitOptions {
   /** Re-check cancellation or authority after queueing, before the first durable write. */
@@ -84,18 +97,33 @@ export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void>
   withSchemaPageQueue(page, () => store.removePage(page));
 
 const validationMessage = (result: ReturnType<typeof validatePage>): string => {
-  return result.semanticErrors[0]?.message ?? result.errors[0]?.message ?? 'Schema 校验失败';
+  const semantic = result.semanticErrors[0];
+  if (semantic) return `${semantic.code} at ${semantic.path}: ${semantic.message}`;
+  return result.errors[0]?.message ?? 'Schema 校验失败';
 };
 const validateWritableSchema = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
+  executableFlowIds?: ReadonlySet<string>,
 ): Promise<void> => {
   const structural = validatePage(schema);
-  if (!structural.valid) throw invalid(validationMessage(structural));
-  const material = await validateProjectPageAgainstMaterials(page.projectPath, schema);
+  if (!structural.valid) {
+    const semantic = structural.semanticErrors[0];
+    throw new SchemaValidationError({
+      code: semantic?.code ?? 'INVALID_PAGE_SCHEMA',
+      path: semantic?.path ?? structural.errors[0]?.instancePath ?? '/',
+      message: validationMessage(structural),
+    });
+  }
+  const material = await validateProjectPageAgainstMaterials(
+    page.projectPath,
+    schema,
+    undefined,
+    executableFlowIds,
+  );
   if (!material.valid) {
     const first = material.errors[0]!;
-    throw invalid(`${first.code} at ${first.path}: ${first.message}`);
+    throw new SchemaValidationError({ code: first.code, path: first.path, message: first.message });
   }
 };
 const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
@@ -343,8 +371,39 @@ export const applyWorkingSchemaOperations = async (
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== input.baseWorkingVersion)
       throw conflict('页面草稿已更新，请重新加载后再提交');
-    const candidate = applySchemaOperationBatch(current.schema, input.operations).schema;
-    await validateWritableSchema(page, candidate);
+    let candidate: OrigamixPageSchema;
+    try {
+      candidate = applySchemaOperationBatch(current.schema, input.operations).schema;
+    } catch (error) {
+      if (error instanceof SchemaOperationError)
+        throw new SchemaValidationError({
+          code: error.code,
+          path: error.path ?? `/operations/${error.operationIndex}`,
+          message: error.message,
+          ...(error.path ? {} : { operationIndex: error.operationIndex }),
+        });
+      throw error;
+    }
+    // Agent completion must produce executable changes, while unrelated editor drafts survive.
+    const executableFlowIds = options.agentCommit
+      ? new Set(
+          input.operations.flatMap((operation) =>
+            operation.operation === 'addFlow' ||
+            operation.operation === 'updateFlow' ||
+            operation.operation === 'setElementEventBinding'
+              ? [operation.flowId]
+              : [],
+          ),
+        )
+      : undefined;
+    if (executableFlowIds) {
+      const bindingKey = (binding: OrigamixPageSchema['bindElements'][number]): string =>
+        JSON.stringify([binding.id, binding.event, binding.flowId]);
+      const previousBindings = new Set(current.schema.bindElements.map(bindingKey));
+      for (const binding of candidate.bindElements)
+        if (!previousBindings.has(bindingKey(binding))) executableFlowIds.add(binding.flowId);
+    }
+    await validateWritableSchema(page, candidate, executableFlowIds);
     await options.beforeWrite?.();
     return writeWorkingDraft(page, current, candidate, options);
   });

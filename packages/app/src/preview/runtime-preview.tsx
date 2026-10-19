@@ -25,11 +25,13 @@ export const RuntimePreview = ({
   schema,
   stack,
   revisionId,
+  theme,
   onOutcome,
 }: {
   schema: OrigamixPageSchema;
   stack: ProjectStack;
   revisionId: string;
+  theme: 'light' | 'dark';
   onOutcome?: (outcome: RenderOutcome) => void;
 }): React.JSX.Element => {
   const key = JSON.stringify(stack ?? null);
@@ -76,26 +78,29 @@ export const RuntimePreview = ({
         <Spinner aria-label='加载运行物料' />
       </div>
     );
+  const Provider = current.materials.Provider;
   return (
-    <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
-      <OrigamixPage
-        schema={schema as Schema}
-        materials={current.materials}
-        resetKey={revisionId}
-        onOutcome={(outcome) => onOutcome?.(toPreviewOutcome(outcome))}
-        renderError={(error, retry) => (
-          <div
-            role='alert'
-            className='m-auto max-w-lg rounded-xl border border-danger/30 bg-danger/10 p-5 text-sm text-danger'
-          >
-            <strong className='block'>页面渲染失败</strong>
-            <span className='mt-1 block'>{error.message}</span>
-            <Button className='mt-4' size='sm' variant='secondary' onClick={retry}>
-              重试渲染
-            </Button>
-          </div>
-        )}
-      />
-    </div>
+    <Provider mode={theme}>
+      <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
+        <OrigamixPage
+          schema={schema as Schema}
+          materials={current.materials.components}
+          resetKey={revisionId}
+          onOutcome={(outcome) => onOutcome?.(toPreviewOutcome(outcome))}
+          renderError={(error, retry) => (
+            <div
+              role='alert'
+              className='m-auto max-w-lg rounded-xl border border-danger/30 bg-danger/10 p-5 text-sm text-danger'
+            >
+              <strong className='block'>页面渲染失败</strong>
+              <span className='mt-1 block'>{error.message}</span>
+              <Button className='mt-4' size='sm' variant='secondary' onClick={retry}>
+                重试渲染
+              </Button>
+            </div>
+          )}
+        />
+      </div>
+    </Provider>
   );
 };

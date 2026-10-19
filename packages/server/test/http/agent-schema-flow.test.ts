@@ -4,6 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, it, vi } from 'vitest';
+import { createModels } from '@earendil-works/pi-ai';
+import {
+  fauxAssistantMessage,
+  fauxProvider,
+  fauxToolCall,
+} from '@earendil-works/pi-ai/providers/faux';
+import type { PageFlow, SchemaOperation } from '@origamix/shared';
 import { ApplicationDatabase } from '../../database/database';
 import { ProjectRepository } from '../../projects/project-repository';
 import { ProjectService } from '../../projects/project-service';
@@ -20,7 +27,8 @@ import { ConversationRepository } from '../../conversations/conversation-reposit
 import { ConversationService } from '../../conversations/conversation-service';
 import { createDefaultAgentToolEntries } from '../../agent/tools/registry';
 import { createCompletePageRunTool } from '../../agent/tools/complete-page-run';
-import { createDeterministicFakeAgentEngine } from '../../testing/deterministic-engine';
+import { PiAgentEngine } from '../../agent/pi-agent-engine';
+import { createReadOnlyAgentTools } from '../../agent/tools/read-only-tools';
 import { createHttpServer } from '../../http/server';
 
 it('reports the invalid terminal field so a rejected reset can be repaired', async () => {
@@ -88,7 +96,72 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const conversationRecords = new ConversationRepository(database);
     const conversations = new ConversationService(database, projects, conversationRecords, runs);
     const events = new AgentEventBroker();
-    const engine = createDeterministicFakeAgentEngine();
+    const flow: PageFlow = {
+      startId: 'start',
+      nodes: {
+        start: { id: 'start', type: 'start', props: {}, prev: [], next: ['action'] },
+        action: {
+          id: 'action',
+          type: 'visibleElement',
+          prev: ['start'],
+          next: [],
+          props: { elementIds: ['button_agent'], value: { type: 'boolean', value: false } },
+        },
+      },
+    };
+    const operations: SchemaOperation[] = [
+      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 16 } },
+      {
+        operation: 'addElement',
+        elementId: 'button_agent',
+        element: { type: 'button', props: { text: '隐藏' } },
+        parentId: 'element_root',
+      },
+      { operation: 'addFlow', flowId: 'flow_agent', flow },
+      {
+        operation: 'setElementEventBinding',
+        elementId: 'button_agent',
+        event: 'onClick',
+        flowId: 'flow_agent',
+      },
+    ];
+    const rejected = structuredClone(operations);
+    if (rejected[2]?.operation === 'addFlow')
+      rejected[2].flow.nodes.action!.props.elementIds = ['missing'];
+    const faux = fauxProvider({ provider: 'deepseek', tokensPerSecond: 100_000 });
+    faux.setResponses([
+      fauxAssistantMessage(fauxToolCall('get_page_logic_context', {}), { stopReason: 'toolUse' }),
+      fauxAssistantMessage(fauxToolCall('get_flow_node_manifest', { type: 'visibleElement' }), {
+        stopReason: 'toolUse',
+      }),
+      fauxAssistantMessage(
+        fauxToolCall('complete_page_run', {
+          outcome: 'apply_changes',
+          operations: JSON.parse(JSON.stringify(rejected)),
+          response: '已生成',
+        }),
+        { stopReason: 'toolUse' },
+      ),
+      fauxAssistantMessage(
+        fauxToolCall('complete_page_run', {
+          outcome: 'apply_changes',
+          operations: JSON.parse(JSON.stringify(operations)),
+          response: '已生成隐藏按钮的点击逻辑',
+        }),
+        { stopReason: 'toolUse' },
+      ),
+    ]);
+    const models = createModels();
+    models.setProvider(faux.provider);
+    const providerInputs: string[] = [];
+    const engine = new PiAgentEngine({
+      resolveModel: () => faux.getModel(),
+      getCredential: async () => 'fake-secret',
+      stream: (model, context, options) => {
+        providerInputs.push(JSON.stringify(context));
+        return models.streamSimple(model, context, options);
+      },
+    });
     const modelCall = vi.spyOn(engine, 'run');
     const executor = new RunExecutor({
       projects,
@@ -103,6 +176,15 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       ),
       createTools: (scope) =>
         createDefaultAgentToolEntries([
+          ...createReadOnlyAgentTools(
+            {
+              runId: scope.runId,
+              projectId: scope.projectId,
+              pageId: scope.pageId,
+              workingVersion: scope.baseWorkingVersion,
+            },
+            { projects, loadMaterials: loadProjectMaterials },
+          ),
           createCompletePageRunTool(
             { projects, runs, runService, loadMaterials: loadProjectMaterials },
             { ...scope, maxSchemaBytes: 256 * 1024 },
@@ -137,7 +219,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       pageId: page.id,
       baseWorkingVersion: (await getWorkingSchemaState(pageRef)).workingVersion,
       clientRequestId: 'agent-edit',
-      content: { version: '1', blocks: [{ type: 'text', text: '创建客户表单和表格' }] },
+      content: { version: '1', blocks: [{ type: 'text', text: '创建一个按钮，点击后隐藏自己' }] },
     };
     const response = await server.inject({
       method: 'POST',
@@ -158,6 +240,32 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
     const edited = await getSchema(pageRef);
     expect(edited.revisionId).toBe(before.revisionId);
     expect(edited.schema.elements.element_root.props.padding).toEqual(expect.any(Number));
+    expect(edited.schema.flows.flow_agent).toEqual(flow);
+    expect(edited.schema.bindElements).toEqual([
+      { id: 'button_agent', event: 'onClick', flowId: 'flow_agent' },
+    ]);
+    expect((await getWorkingSchemaState(pageRef)).workingVersion).toBe(
+      request.baseWorkingVersion + 1,
+    );
+    const feedbackContext = JSON.parse(providerInputs.at(-1)!) as {
+      messages: { role: string; isError?: boolean; content: { type: string; text?: string }[] }[];
+    };
+    const failure = feedbackContext.messages.find(
+      (message) => message.role === 'toolResult' && message.isError,
+    );
+    const feedback = JSON.parse(failure!.content[0]!.text!);
+    expect(feedback).toMatchObject({
+      kind: 'page_run_validation',
+      baseWorkingVersion: request.baseWorkingVersion,
+      retryable: true,
+      errors: [
+        {
+          code: 'INVALID_FLOW_REFERENCE',
+          operationIndex: 2,
+          path: '/flows/flow_agent/nodes/action/props/elementIds/0',
+        },
+      ],
+    });
     expect(await readFile(target, 'utf8')).toBe(originalTarget);
     expect(runs.get(started.run.id)?.resultWorkingVersion).toBe(
       (await getWorkingSchemaState(pageRef)).workingVersion,

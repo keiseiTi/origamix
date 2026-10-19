@@ -15,8 +15,12 @@ import type { AgentRunRepository } from '../run-repository';
 import type { AgentRunService } from '../run-service';
 import type { ProjectRepository } from '../../projects/project-repository';
 import { ApiError, conflict, invalid, notFound } from '../../errors';
-import { applyWorkingSchemaOperations, getWorkingSchemaState } from '../../schema/schema-service';
-import { AgentEngineError, type AgentEngineTool } from '../engine';
+import {
+  applyWorkingSchemaOperations,
+  getWorkingSchemaState,
+  SchemaValidationError,
+} from '../../schema/schema-service';
+import { AgentEngineError, AgentToolValidationError, type AgentEngineTool } from '../engine';
 
 export interface CompletePageRunToolScope {
   runId: string;
@@ -88,7 +92,17 @@ export const createCompletePageRunTool = (
           .slice(0, 3)
           .map((error) => `${error.path || '/'}: ${error.message}`)
           .join('；');
-        throw invalid(`complete_page_run 参数无效${detail ? `：${detail}` : ''}`);
+        throw new AgentToolValidationError({
+          kind: 'page_run_validation',
+          baseWorkingVersion: scope.baseWorkingVersion,
+          retryable: true,
+          errors: errors.slice(0, 3).map((error) => ({
+            code: 'INVALID_TOOL_INPUT',
+            path: error.path || '/',
+            message: error.message,
+          })),
+          instruction: `complete_page_run 参数无效${detail ? `：${detail}` : ''}；保留其他操作，针对原始 baseWorkingVersion 重新提交完整 operations。`,
+        });
       }
       assertNotCancelled(signal);
       const input = raw as CompletePageRunInput;
@@ -205,12 +219,72 @@ export const createCompletePageRunTool = (
         const current = dependencies.runs.get(scope.runId);
         const isWorkingConflict = error instanceof ApiError && error.statusCode === 409;
         const isCancelled = signal.aborted;
-        if (current?.status === 'validating' && !isWorkingConflict && !isCancelled) {
+        if (
+          current?.status === 'validating' &&
+          error instanceof SchemaValidationError &&
+          !isWorkingConflict &&
+          !isCancelled
+        ) {
           dependencies.runService.transition(scope.runId, 'repairing', {
             repairAttempts: current.repairAttempts + 1,
           });
         }
-        throw error;
+        if (isWorkingConflict)
+          throw new AgentToolValidationError({
+            kind: 'page_run_validation',
+            baseWorkingVersion: scope.baseWorkingVersion,
+            retryable: false,
+            errors: [
+              {
+                code: 'WORKING_VERSION_CONFLICT',
+                path: '/baseWorkingVersion',
+                message: '页面草稿已变化，本次批次不能重试。',
+              },
+            ],
+            instruction: '停止修改；重新读取页面后由用户发起新请求，不重放本次操作。',
+          });
+        if (error instanceof SchemaValidationError) {
+          const canRepair =
+            !isCancelled &&
+            (dependencies.runs.get(scope.runId)?.repairAttempts ?? 0) <= scope.maxRepairAttempts;
+          const flowId = error.issue.path.startsWith('/flows/')
+            ? error.issue.path.split('/')[2]!.replaceAll('~1', '/').replaceAll('~0', '~')
+            : undefined;
+          let operationIndex = error.issue.operationIndex;
+          if (flowId) {
+            for (let index = operations.length - 1; index >= 0; index -= 1) {
+              const operation = operations[index]!;
+              if ('flowId' in operation && operation.flowId === flowId) {
+                if (operation.operation === 'addFlow' || operation.operation === 'updateFlow') {
+                  operationIndex = index;
+                  break;
+                }
+                if (operationIndex === undefined) operationIndex = index;
+              }
+            }
+          }
+          throw new AgentToolValidationError({
+            kind: 'page_run_validation',
+            baseWorkingVersion: scope.baseWorkingVersion,
+            retryable: canRepair,
+            errors: [
+              { ...error.issue, ...(operationIndex !== undefined ? { operationIndex } : {}) },
+            ],
+            instruction: canRepair
+              ? 'Working 未改变。按 code/path/operationIndex 修复原批次，保留其他操作，针对原始 baseWorkingVersion 重新提交完整 operations；需要时读取节点 Manifest。'
+              : 'Working 未改变。修复次数已用尽或 Run 已取消，停止提交并保留草稿。',
+          });
+        }
+        if (isCancelled) throw error;
+        throw new AgentToolValidationError({
+          kind: 'page_run_validation',
+          baseWorkingVersion: scope.baseWorkingVersion,
+          retryable: false,
+          errors: [
+            { code: 'WORKING_COMMIT_UNCONFIRMED', path: '/', message: '草稿提交结果尚未确认。' },
+          ],
+          instruction: '停止修改并恢复页面状态，不能自动重放本次批次。',
+        });
       }
       dependencies.runService.recordWorkingCommit(
         scope.runId,

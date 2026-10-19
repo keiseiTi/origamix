@@ -25,7 +25,12 @@ const page = (): OrigamixPageSchema => {
         button_save: [],
       },
     },
-    flows: { flow_save: { startId: 'node_start', nodes: {} } },
+    flows: {
+      flow_save: {
+        startId: 'node_start',
+        nodes: { node_start: { id: 'node_start', type: 'start', props: {}, prev: [], next: [] } },
+      },
+    },
     bindElements: [{ id: 'button_save', event: 'onClick', flowId: 'flow_save' }],
     context: { globalVariables: [] },
     extensions: { origamix: { schemaVersion: '1.0' } },
@@ -197,7 +202,13 @@ describe('Manifest-driven Schema validation', () => {
     schema.flows.flow_save = {
       startId: 'node_start',
       nodes: {
-        node_start: { props: { condition: { type: 'expression', value: 'window.location' } } },
+        node_start: {
+          id: 'node_start',
+          type: 'start',
+          prev: [],
+          next: [],
+          props: { condition: { type: 'expression', value: 'window.location' } },
+        },
       },
     };
     expect(codes(schema)).toEqual(expect.arrayContaining(['UNSAFE_EXPRESSION', 'UNSAFE_URL']));

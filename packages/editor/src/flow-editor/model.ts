@@ -10,7 +10,40 @@ export interface EventTarget {
 
 export { nodeKinds } from './nodes/definitions';
 
-export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphData => {
+interface EventGraph {
+  nodes: LogicFlow.NodeData[];
+  edges: (LogicFlow.EdgeConfig & { id: string; type: string })[];
+}
+
+// Agent flows carry executable edges, not canvas coordinates. Arrange their DAG by depth.
+const flowPositions = (flow: Flow): Map<string, { x: number; y: number }> => {
+  const depths = new Map(Object.keys(flow.nodes).map((id) => [id, 0]));
+  const incoming = new Map(Object.keys(flow.nodes).map((id) => [id, 0]));
+  for (const node of Object.values(flow.nodes))
+    for (const next of node.next)
+      if (incoming.has(next)) incoming.set(next, incoming.get(next)! + 1);
+  const ready = [...incoming].filter(([, count]) => !count).map(([id]) => id);
+  for (let index = 0; index < ready.length; index += 1) {
+    const id = ready[index]!;
+    for (const next of flow.nodes[id]!.next) {
+      if (!incoming.has(next)) continue;
+      depths.set(next, Math.max(depths.get(next)!, depths.get(id)! + 1));
+      incoming.set(next, incoming.get(next)! - 1);
+      if (!incoming.get(next)) ready.push(next);
+    }
+  }
+  const rows = new Map<number, number>();
+  return new Map(
+    Object.keys(flow.nodes).map((id) => {
+      const depth = depths.get(id)!;
+      const row = rows.get(depth) ?? 0;
+      rows.set(depth, row + 1);
+      return [id, { x: 220 + depth * 240, y: 180 + row * 140 }];
+    }),
+  );
+};
+
+export const readGraph = (schema: Schema, target: EventTarget): EventGraph => {
   const graphs = schema.extensions.flowGraph as Record<string, LogicFlow.GraphData> | undefined;
   const retained = graphs?.[`${target.elementId}::${target.event}`];
   const binding = schema.bindElements?.find(
@@ -28,13 +61,14 @@ export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphD
       /* Reconstruct from the executable flow below. */
     }
   }
-  if (flow)
+  if (flow) {
+    const positions = flowPositions(flow);
     return {
-      nodes: Object.values(flow.nodes).map((node, index) => ({
+      nodes: Object.values(flow.nodes).map((node) => ({
         id: node.id,
         type: node.type,
-        x: retained?.nodes?.find((item) => item.id === node.id)?.x ?? 220 + index * 260,
-        y: retained?.nodes?.find((item) => item.id === node.id)?.y ?? 180,
+        x: retained?.nodes?.find((item) => item.id === node.id)?.x ?? positions.get(node.id)!.x,
+        y: retained?.nodes?.find((item) => item.id === node.id)?.y ?? positions.get(node.id)!.y,
         properties: node.props,
       })),
       edges: Object.values(flow.nodes).flatMap((node) =>
@@ -57,11 +91,10 @@ export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphD
                 return { sourceAnchorId: `${node.id}_${branch}`, properties: { branch } };
               })()
             : {}),
-          startPoint: { x: 0, y: 0 },
-          endPoint: { x: 0, y: 0 },
         })),
       ),
     };
+  }
   return {
     nodes: [{ id: 'start', type: 'start', x: 200, y: 180, properties: { title: target.label } }],
     edges: [],
@@ -69,7 +102,7 @@ export const readGraph = (schema: Schema, target: EventTarget): LogicFlow.GraphD
 };
 
 // Engine traverses recursively: reject cycles before committing a graph.
-export const toFlow = (graph: LogicFlow.GraphData): Flow => {
+export const toFlow = (graph: EventGraph): Flow => {
   const start = graph.nodes.find((node) => node.type === 'start');
   if (!start || graph.nodes.filter((node) => node.type === 'start').length !== 1)
     throw new Error('流程必须保留一个开始节点');

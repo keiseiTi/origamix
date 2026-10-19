@@ -1,4 +1,5 @@
 import { Type, type Static } from '@sinclair/typebox';
+import { ElementEventBindingSchema, FlowIdSchema, PageFlowSchema } from './flow.ts';
 
 // Tangramino prefixes generated IDs with the material type (for example,
 // `button-Ab12_cd3`), while Origamix's initialized root remains `element_root`.
@@ -16,8 +17,8 @@ export const PageSchema = Type.Object({
     root: ElementIdSchema,
     structure: Type.Record(ElementIdSchema, Type.Array(ElementIdSchema)),
   }),
-  flows: Type.Record(Type.String(), Type.Unknown()),
-  bindElements: Type.Array(Type.Unknown()),
+  flows: Type.Record(Type.String(), PageFlowSchema, { propertyNames: FlowIdSchema }),
+  bindElements: Type.Array(ElementEventBindingSchema),
   context: Type.Object({ globalVariables: Type.Array(Type.Unknown()) }),
   extensions: Type.Object({
     origamix: Type.Object({ schemaVersion: Type.Literal('1.0') }),
@@ -98,15 +99,13 @@ export const ReplaceElementOperationSchema = Type.Object(
   { additionalProperties: false },
 );
 
-const FlowIdSchema = Type.String({ minLength: 1 });
-
 export const AddFlowOperationSchema = Type.Object(
-  { operation: Type.Literal('addFlow'), flowId: FlowIdSchema, flow: Type.Unknown() },
+  { operation: Type.Literal('addFlow'), flowId: FlowIdSchema, flow: PageFlowSchema },
   { additionalProperties: false },
 );
 
 export const UpdateFlowOperationSchema = Type.Object(
-  { operation: Type.Literal('updateFlow'), flowId: FlowIdSchema, flow: Type.Unknown() },
+  { operation: Type.Literal('updateFlow'), flowId: FlowIdSchema, flow: PageFlowSchema },
   { additionalProperties: false },
 );
 
@@ -116,7 +115,29 @@ export const RemoveFlowOperationSchema = Type.Object(
 );
 
 export const SetElementBindingsOperationSchema = Type.Object(
-  { operation: Type.Literal('setElementBindings'), bindings: Type.Array(Type.Unknown()) },
+  {
+    operation: Type.Literal('setElementBindings'),
+    bindings: Type.Array(ElementEventBindingSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const SetElementEventBindingOperationSchema = Type.Object(
+  {
+    operation: Type.Literal('setElementEventBinding'),
+    elementId: ElementIdSchema,
+    event: Type.String({ minLength: 1 }),
+    flowId: FlowIdSchema,
+  },
+  { additionalProperties: false },
+);
+
+export const RemoveElementEventBindingOperationSchema = Type.Object(
+  {
+    operation: Type.Literal('removeElementEventBinding'),
+    elementId: ElementIdSchema,
+    event: Type.String({ minLength: 1 }),
+  },
   { additionalProperties: false },
 );
 
@@ -139,6 +160,8 @@ export const SchemaOperationSchema = Type.Union([
   UpdateFlowOperationSchema,
   RemoveFlowOperationSchema,
   SetElementBindingsOperationSchema,
+  SetElementEventBindingOperationSchema,
+  RemoveElementEventBindingOperationSchema,
   UpdatePageContextOperationSchema,
 ]);
 

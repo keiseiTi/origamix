@@ -1,5 +1,6 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
+import { flowPointer, validateFlowSemantics, type FlowSemanticError } from './flow-validation.ts';
 import {
   PageSchema,
   SchemaOperationBatchSchema,
@@ -14,11 +15,20 @@ export interface ValidationResult {
   errors: ErrorObject[];
 }
 
-export interface SemanticError {
+export interface LayoutSemanticError {
   code: 'ROOT_NOT_FOUND' | 'LAYOUT_ELEMENT_NOT_FOUND' | 'LAYOUT_CYCLE';
   path: string;
   message: string;
 }
+
+export type SemanticError =
+  | LayoutSemanticError
+  | FlowSemanticError
+  | {
+      code: 'INVALID_BINDING';
+      path: string;
+      message: string;
+    };
 
 export interface PageValidationResult extends ValidationResult {
   semanticErrors: SemanticError[];
@@ -95,6 +105,23 @@ const validatePageSemantics = (page: OrigamixPageSchema): SemanticError[] => {
     visit(elementId);
   }
 
+  for (const [flowId, flow] of Object.entries(page.flows))
+    errors.push(...validateFlowSemantics(flow, `/flows/${flowPointer(flowId)}`));
+  const bindings = new Set<string>();
+  for (const [index, binding] of page.bindElements.entries()) {
+    const key = JSON.stringify([binding.id, binding.event]);
+    if (
+      !elementIds.has(binding.id) ||
+      !Object.hasOwn(page.flows, binding.flowId) ||
+      bindings.has(key)
+    )
+      errors.push({
+        code: 'INVALID_BINDING',
+        path: `/bindElements/${index}`,
+        message: 'Event binding must be unique and reference an existing element and flow',
+      });
+    bindings.add(key);
+  }
   return errors;
 };
 

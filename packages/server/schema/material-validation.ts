@@ -1,4 +1,5 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import { validateFlowReferences } from './flow-validation';
 import { builtinProjectMaterials, loadProjectMaterials } from '../projects/project-materials';
 import {
   isHyperValue,
@@ -17,6 +18,8 @@ export type MaterialValidationErrorCode =
   | 'UNKNOWN_EVENT'
   | 'INVALID_BINDING'
   | 'INVALID_FLOW_PROPS'
+  | 'INVALID_FLOW_REFERENCE'
+  | 'INCOMPLETE_FLOW'
   | 'UNSAFE_EXPRESSION'
   | 'UNSAFE_URL';
 
@@ -150,6 +153,7 @@ export const validatePageAgainstMaterials = (
   schema: OrigamixPageSchema,
   projectMaterialSets: readonly { id: string; version: string }[],
   runtime: MaterialValidationRuntime = defaultMaterialValidationRuntime,
+  executableFlowIds?: ReadonlySet<string>,
 ): MaterialValidationResult => {
   const errors: MaterialValidationError[] = [];
   if (
@@ -312,14 +316,13 @@ export const validatePageAgainstMaterials = (
     }
   }
   for (const [flowId, flow] of Object.entries(schema.flows ?? {})) {
+    const flowPath = `/flows/${flowId.replaceAll('~', '~0').replaceAll('/', '~1')}`;
     if (!isRecord(flow) || !isRecord(flow.nodes)) {
-      errors.push(
-        error('INVALID_FLOW_PROPS', `/flows/${flowId}`, 'Flow must contain a nodes object'),
-      );
+      errors.push(error('INVALID_FLOW_PROPS', flowPath, 'Flow must contain a nodes object'));
       continue;
     }
     for (const [nodeId, node] of Object.entries(flow.nodes)) {
-      const path = `/flows/${flowId}/nodes/${nodeId}/props`;
+      const path = `${flowPath}/nodes/${nodeId.replaceAll('~', '~0').replaceAll('/', '~1')}/props`;
       if (!isRecord(node)) {
         errors.push(error('INVALID_FLOW_PROPS', path, 'Flow node must be an object'));
         continue;
@@ -344,6 +347,7 @@ export const validatePageAgainstMaterials = (
       );
     }
   }
+  errors.push(...validateFlowReferences(schema, runtime.registry, executableFlowIds));
   return { valid: errors.length === 0, errors };
 };
 
@@ -351,11 +355,13 @@ export const validateProjectPageAgainstMaterials = async (
   projectPath: string,
   schema: OrigamixPageSchema,
   runtime?: MaterialValidationRuntime,
+  executableFlowIds?: ReadonlySet<string>,
 ): Promise<MaterialValidationResult> => {
   const materials = await loadProjectMaterials(projectPath);
   return validatePageAgainstMaterials(
     schema,
     [materials.manifest.materialSet],
     runtime ?? materials.validation,
+    executableFlowIds,
   );
 };

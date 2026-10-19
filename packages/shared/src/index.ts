@@ -216,12 +216,22 @@ export {
   UpdateFlowOperationSchema,
   RemoveFlowOperationSchema,
   SetElementBindingsOperationSchema,
+  SetElementEventBindingOperationSchema,
+  RemoveElementEventBindingOperationSchema,
   UpdatePageContextOperationSchema,
   SchemaOperationSchema,
   SchemaOperationBatchSchema,
   getElementLabel,
   getAgentElementLabel,
 } from './protocol/schema.ts';
+
+export {
+  FlowIdSchema,
+  PageFlowSchema,
+  PageFlowNodeSchema,
+  ElementEventBindingSchema,
+} from './protocol/flow.ts';
+export type { PageFlow, PageFlowNode, ElementEventBinding } from './protocol/flow.ts';
 
 export type {
   OrigamixPageSchema,

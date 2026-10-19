@@ -58,3 +58,4 @@ pnpm --filter @origamix/materials build
 - Keep registry/manifest tests focused on serializability and agreement between public catalogs. Prefer extending an existing invariant when types, grouping, defaults or exports change. Do not add component tests; verify material rendering and interaction in the consuming editor/runtime.
 - Run the root gates after source or public-contract changes. A package-only typecheck does not verify App, preview and generated-project integration.
 - UI changes require rendering representative materials in the consuming editor/runtime; report if graphical verification is unavailable.
+- `antd/runtime-provider.tsx` exports the runtime-only Ant Design theme boundary through `/antd/runtime`; preview hosts pass their theme explicitly without importing Ant Design into the generic Runtime adapter.

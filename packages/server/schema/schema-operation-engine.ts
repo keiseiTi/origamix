@@ -23,6 +23,7 @@ export class SchemaOperationError extends Error {
     readonly code: SchemaOperationErrorCode,
     message: string,
     readonly operationIndex: number,
+    readonly path?: string,
   ) {
     super(message);
     this.name = 'SchemaOperationError';
@@ -40,8 +41,13 @@ export interface SchemaOperationBatchResult {
   results: SchemaOperationResult[];
 }
 
-const fail = (code: SchemaOperationErrorCode, message: string, operationIndex: number): never => {
-  throw new SchemaOperationError(code, message, operationIndex);
+const fail = (
+  code: SchemaOperationErrorCode,
+  message: string,
+  operationIndex: number,
+  path?: string,
+): never => {
+  throw new SchemaOperationError(code, message, operationIndex, path);
 };
 
 const assertElement = (
@@ -89,20 +95,6 @@ const collectDescendants = (
     collectDescendants(schema, childId, result);
   }
   return result;
-};
-
-const bindingReferencesElement = (binding: unknown, elementIds: Set<string>): boolean => {
-  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false;
-  const record = binding as Record<string, unknown>;
-  return (
-    (typeof record.id === 'string' && elementIds.has(record.id)) ||
-    (typeof record.elementId === 'string' && elementIds.has(record.elementId))
-  );
-};
-
-const bindingReferencesFlow = (binding: unknown, flowId: string): boolean => {
-  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false;
-  return (binding as Record<string, unknown>).flowId === flowId;
 };
 
 const assertConnectedSubtree = (
@@ -202,9 +194,7 @@ const executeOperation = (
       delete schema.elements[elementId];
       delete schema.layout.structure[elementId];
     }
-    schema.bindElements = schema.bindElements.filter(
-      (binding) => !bindingReferencesElement(binding, removed),
-    );
+    schema.bindElements = schema.bindElements.filter((binding) => !removed.has(binding.id));
     return `删除元素 ${operation.elementId}`;
   }
 
@@ -256,7 +246,7 @@ const executeOperation = (
       fail('FLOW_NOT_FOUND', `流程不存在：${operation.flowId}`, operationIndex);
     delete schema.flows[operation.flowId];
     schema.bindElements = schema.bindElements.filter(
-      (binding) => !bindingReferencesFlow(binding, operation.flowId),
+      (binding) => binding.flowId !== operation.flowId,
     );
     return `删除流程 ${operation.flowId}`;
   }
@@ -264,6 +254,26 @@ const executeOperation = (
   if (operation.operation === 'setElementBindings') {
     schema.bindElements = structuredClone(operation.bindings);
     return '更新元素绑定';
+  }
+
+  if (
+    operation.operation === 'setElementEventBinding' ||
+    operation.operation === 'removeElementEventBinding'
+  ) {
+    assertElement(schema, operation.elementId, operationIndex);
+    const matches = (binding: OrigamixPageSchema['bindElements'][number]): boolean =>
+      binding.id === operation.elementId && binding.event === operation.event;
+    if (operation.operation === 'removeElementEventBinding') {
+      schema.bindElements = schema.bindElements.filter((binding) => !matches(binding));
+      return `移除事件绑定 ${operation.elementId}.${operation.event}`;
+    }
+    if (!Object.hasOwn(schema.flows, operation.flowId))
+      fail('FLOW_NOT_FOUND', `流程不存在：${operation.flowId}`, operationIndex);
+    const binding = { id: operation.elementId, event: operation.event, flowId: operation.flowId };
+    const index = schema.bindElements.findIndex(matches);
+    if (index < 0) schema.bindElements.push(binding);
+    else schema.bindElements[index] = binding;
+    return `设置事件绑定 ${operation.elementId}.${operation.event}`;
   }
 
   schema.context.globalVariables = structuredClone(operation.globalVariables);
@@ -288,11 +298,17 @@ export const applySchemaOperationBatch = (
   }
   const validation = validatePage(schema);
   if (!validation.valid) {
+    const semantic = validation.semanticErrors[0];
     const message =
-      validation.semanticErrors[0]?.message ??
+      (semantic ? `${semantic.code} at ${semantic.path}: ${semantic.message}` : undefined) ??
       validation.errors[0]?.message ??
       '批量操作生成了无效页面';
-    fail('INVALID_RESULT', message, Math.max(0, operations.length - 1));
+    fail(
+      'INVALID_RESULT',
+      message,
+      Math.max(0, operations.length - 1),
+      semantic?.path ?? validation.errors[0]?.instancePath,
+    );
   }
   return { schema, results };
 };

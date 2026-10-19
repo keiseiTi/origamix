@@ -163,7 +163,7 @@ export class PiAgentEngine implements AgentEngine {
               type: 'tool_end',
               toolCallId: event.toolCallId,
               toolName: event.toolName,
-              result: event.result?.details ?? event.result,
+              result: event.isError ? event.result : (event.result?.details ?? event.result),
               isError: event.isError,
             });
           } else if (event.type === 'message_end' && event.message.role === 'assistant') {

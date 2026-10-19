@@ -19,7 +19,12 @@ const createPage = (): OrigamixPageSchema => ({
       button_submit: [],
     },
   },
-  flows: { flow_submit: { startId: 'node_start', nodes: {} } },
+  flows: {
+    flow_submit: {
+      startId: 'node_start',
+      nodes: { node_start: { id: 'node_start', type: 'start', props: {}, prev: [], next: [] } },
+    },
+  },
   bindElements: [{ id: 'button_submit', event: 'onClick', flowId: 'flow_submit' }],
   context: { globalVariables: [] },
   extensions: { origamix: { schemaVersion: '1.0' } },

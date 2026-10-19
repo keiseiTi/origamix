@@ -15,6 +15,7 @@ import {
   type WorkingSchemaReadResult,
 } from '../../schema/schema-service';
 import type { AgentEngineTool } from '../engine';
+import { createLogicReadTools, exactReadPagination, exactReadResult } from './logic-tools';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
@@ -30,7 +31,8 @@ const SearchMaterialsInputSchema = strictObject({
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 8 })),
 });
 const MaterialManifestInputSchema = strictObject({
-  type: Type.String({ pattern: '^[a-z][a-z0-9-]*$', maxLength: 80 }),
+  type: Type.String({ minLength: 1, maxLength: 80 }),
+  ...exactReadPagination,
 });
 
 type PageScopeInput = Static<typeof PageScopeInputSchema>;
@@ -149,6 +151,7 @@ export const createReadOnlyAgentTools = (
       relativePath: page.relativePath,
     });
     const current = await schemaPromise;
+    assertNotAborted(signal);
     if (current.workingVersion !== scope.workingVersion) throw conflict('页面草稿已变化');
     return current;
   };
@@ -167,6 +170,10 @@ export const createReadOnlyAgentTools = (
   };
 
   return [
+    ...createLogicReadTools(async (signal) => {
+      const current = await load({}, signal);
+      return { ...current, materials: materialManifest };
+    }),
     {
       name: 'get_page_context',
       description: '读取当前页面的精简上下文、Revision 和物料使用统计。',
@@ -294,19 +301,27 @@ export const createReadOnlyAgentTools = (
     },
     {
       name: 'get_material_manifest',
-      description: '按准确 type 读取当前项目的单个纯数据 Material Manifest。',
+      description:
+        '按准确 type 读取当前项目的完整 Material Manifest（含 basicPage/datePicker 等大小写名称）。不省略参数、事件、方法。complete=false 时按 nextOffset 连续读取至 null，按 offset 拼接 json 后解析。',
       parameters: MaterialManifestInputSchema,
       execute: async (raw, signal) => {
         assertNotAborted(signal);
         const input = assertInput<MaterialManifestInput>(MaterialManifestInputSchema, raw);
-        await load(input, signal);
-        return cached(`material-manifest:${input.type}`, async () => {
-          const manifest = materialManifest.materials.find(
-            (material) => material.type === input.type,
-          );
-          if (!manifest) throw notFound('物料类型不存在于当前 Material Set');
-          return boundedResult({ materialSet: materialManifest.materialSet, manifest });
-        });
+        const current = await load(input, signal);
+        return cached(
+          `material-manifest:${input.type}:${input.offset ?? 0}:${input.maxChars ?? 8000}`,
+          async () => {
+            const manifest = materialManifest.materials.find(
+              (material) => material.type === input.type,
+            );
+            if (!manifest) throw notFound('物料类型不存在于当前 Material Set');
+            return exactReadResult(
+              { materialSet: materialManifest.materialSet, manifest },
+              current.workingVersion,
+              input,
+            );
+          },
+        );
       },
     },
   ];

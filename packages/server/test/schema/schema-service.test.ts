@@ -2,7 +2,12 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { OrigamixPageSchema } from '@origamix/shared';
+import {
+  getFlowNodeManifest,
+  type OrigamixPageSchema,
+  type PageFlow,
+  type PageFlowNode,
+} from '@origamix/shared';
 import {
   applyWorkingSchemaOperations,
   getSchema,
@@ -24,6 +29,39 @@ const schema: OrigamixPageSchema = {
   context: { globalVariables: [] },
   extensions: { origamix: { schemaVersion: '1.0' } },
 };
+
+const logicFlow = (): PageFlow => ({
+  startId: 'start',
+  nodes: {
+    start: { id: 'start', type: 'start', props: {}, prev: [], next: ['action'] },
+    action: {
+      id: 'action',
+      type: 'customJS',
+      props: { value: { type: 'function', value: { params: [], body: 'return 1;' } } },
+      prev: ['start'],
+      next: [],
+    },
+  },
+});
+
+const logicSchema = (): OrigamixPageSchema => ({
+  ...structuredClone(schema),
+  elements: {
+    ...schema.elements,
+    button_one: { type: 'button', props: { text: '一' } },
+    button_two: { type: 'button', props: { text: '二' } },
+    form_main: { type: 'form', props: {} },
+  },
+  layout: {
+    root: 'element_root',
+    structure: { element_root: ['button_one', 'button_two', 'form_main'] },
+  },
+  flows: { flow_one: logicFlow(), flow_two: logicFlow() },
+  bindElements: [
+    { id: 'button_one', event: 'onClick', flowId: 'flow_one' },
+    { id: 'button_two', event: 'onClick', flowId: 'flow_two' },
+  ],
+});
 
 const createPageFixture = async (): Promise<{
   projectPath: string;
@@ -57,6 +95,398 @@ afterEach(async () => {
 });
 
 describe('Schema Service', () => {
+  it('retains incomplete visual flows and completes local Agent bindings without changing unrelated events', async () => {
+    const page = await createPageFixture();
+    const initialSchema = logicSchema();
+    // An unrelated visual draft may have disconnected nodes and empty targets.
+    initialSchema.flows.flow_two.nodes.draft = {
+      id: 'draft',
+      type: 'setElementProps',
+      prev: [],
+      next: [],
+      props: structuredClone(getFlowNodeManifest('setElementProps')!.defaultProps),
+    };
+    await initializePageSchema(page, initialSchema);
+    const initial = await getWorkingSchemaState(page);
+    const target = await readFile(
+      join(page.projectPath, 'src/pages', page.slug, 'schema.json'),
+      'utf8',
+    );
+    const flow = logicFlow();
+    flow.nodes.action = {
+      ...flow.nodes.action!,
+      type: 'setElementProps',
+      // Runtime variables exposed by a material are writable even when absent from propsSchema.
+      props: {
+        setters: [
+          { elementId: 'form_main', propName: 'value', value: { type: 'null', value: null } },
+        ],
+      },
+    };
+    const draft = await applyWorkingSchemaOperations(
+      page,
+      {
+        baseWorkingVersion: initial.workingVersion,
+        operations: [
+          { operation: 'addFlow', flowId: 'flow_new', flow },
+          {
+            operation: 'setElementEventBinding',
+            elementId: 'button_one',
+            event: 'onClick',
+            flowId: 'flow_new',
+          },
+          {
+            operation: 'setElementEventBinding',
+            elementId: 'button_one',
+            event: 'init',
+            flowId: 'flow_new',
+          },
+          { operation: 'removeElementEventBinding', elementId: 'button_one', event: 'init' },
+          { operation: 'removeElementEventBinding', elementId: 'button_one', event: 'init' },
+        ],
+      },
+      {
+        agentCommit: {
+          runId: 'run_logic',
+          projectId: 'project_test',
+          operationDigest: 'logic_digest',
+        },
+      },
+    );
+    expect(draft.schema.bindElements).toEqual([
+      { id: 'button_one', event: 'onClick', flowId: 'flow_new' },
+      initialSchema.bindElements[1],
+    ]);
+    expect(draft.schema.flows.flow_two).toEqual(initialSchema.flows.flow_two);
+    expect(draft.schema.flows.flow_one).toEqual(initialSchema.flows.flow_one);
+    expect(draft.workingVersion).toBe(initial.workingVersion + 1);
+    expect(draft.revisionId).toBe(initial.revisionId);
+    expect((await listRevisionHistory(page)).revisions).toHaveLength(1);
+    expect(
+      await readFile(join(page.projectPath, 'src/pages', page.slug, 'schema.json'), 'utf8'),
+    ).toBe(target);
+
+    await expect(
+      applyWorkingSchemaOperations(page, {
+        baseWorkingVersion: initial.workingVersion,
+        operations: [
+          { operation: 'removeElementEventBinding', elementId: 'button_two', event: 'onClick' },
+        ],
+      }),
+    ).rejects.toThrow('页面草稿已更新');
+    expect((await getWorkingSchemaState(page)).workingHash).toBe(draft.workingHash);
+  });
+
+  // These cases protect the sole Working write boundary, including the editor candidate fallback.
+  it.each<{
+    name: string;
+    mutate: (flow: PageFlow, candidate: OrigamixPageSchema) => void;
+  }>([
+    {
+      name: 'missing start',
+      mutate: (flow) => {
+        flow.startId = 'missing';
+      },
+    },
+    {
+      name: 'node identity mismatch',
+      mutate: (flow) => {
+        flow.nodes.action!.id = 'other';
+      },
+    },
+    {
+      name: 'dangling edge',
+      mutate: (flow) => {
+        flow.nodes.action!.next = ['missing'];
+      },
+    },
+    {
+      name: 'inconsistent reverse edge',
+      mutate: (flow) => {
+        flow.nodes.action!.prev = [];
+      },
+    },
+    {
+      name: 'cycle',
+      mutate: (flow) => {
+        flow.nodes.action!.next = ['action'];
+        flow.nodes.action!.prev.push('action');
+      },
+    },
+    {
+      name: 'duplicate condition branch',
+      mutate: (flow) => {
+        flow.nodes.start!.next = ['condition'];
+        flow.nodes.action!.prev = ['condition', 'condition'];
+        flow.nodes.condition = {
+          id: 'condition',
+          type: 'condition',
+          prev: ['start'],
+          next: ['action', 'action'],
+          props: {
+            judgment: { type: 'expression', value: 'true' },
+            condition: [
+              { value: true, nextNode: 'action' },
+              { value: true, nextNode: 'action' },
+            ],
+          },
+        };
+      },
+    },
+    {
+      name: 'unknown material event',
+      mutate: (_flow, candidate) => {
+        candidate.bindElements[0]!.event = 'unknown';
+      },
+    },
+    {
+      name: 'duplicate event binding',
+      mutate: (_flow, candidate) => {
+        candidate.bindElements.push({ ...candidate.bindElements[0]! });
+      },
+    },
+    {
+      name: 'missing node target',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'visibleElement';
+        flow.nodes.action!.props = {
+          elementIds: ['missing'],
+          value: { type: 'boolean', value: true },
+        };
+      },
+    },
+    {
+      name: 'undeclared property',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'setElementProps';
+        flow.nodes.action!.props = {
+          setters: [
+            { elementId: 'button_one', propName: 'unknown', value: { type: 'null', value: null } },
+          ],
+        };
+      },
+    },
+    {
+      name: 'event used as method',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'emitElementAction';
+        flow.nodes.action!.props = {
+          setters: [
+            {
+              elementId: 'button_one',
+              methodName: 'onClick',
+              value: { type: 'null', value: null },
+            },
+          ],
+        };
+      },
+    },
+    {
+      name: 'non-portal target',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'openModalDrawer';
+        flow.nodes.action!.props = { elementId: 'button_one' };
+      },
+    },
+    {
+      name: 'undeclared variable',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'setGlobalVariable';
+        flow.nodes.action!.props = {
+          setters: [{ name: 'missing', value: { type: 'null', value: null } }],
+        };
+      },
+    },
+    {
+      name: 'cross-flow result reference',
+      mutate: (flow) => {
+        flow.nodes.action!.props = {
+          value: {
+            type: 'function',
+            value: { params: [{ name: 'data', value: 'result.other' }], body: 'return data;' },
+          },
+        };
+      },
+    },
+  ])('rejects $name atomically through operations and candidate writes', async ({ mutate }) => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, logicSchema());
+    const current = await getWorkingSchemaState(page);
+    const candidate = structuredClone(current.schema);
+    mutate(candidate.flows.flow_one!, candidate);
+    await expect(
+      updateWorkingSchema(page, { baseWorkingVersion: current.workingVersion, schema: candidate }),
+    ).rejects.toThrow();
+    await expect(
+      applyWorkingSchemaOperations(page, {
+        baseWorkingVersion: current.workingVersion,
+        operations: [
+          {
+            operation: 'updateElementProps',
+            elementId: 'button_one',
+            set: { text: 'must not persist' },
+          },
+          { operation: 'updateFlow', flowId: 'flow_one', flow: candidate.flows.flow_one! },
+          { operation: 'setElementBindings', bindings: candidate.bindElements },
+        ],
+      }),
+    ).rejects.toThrow();
+    expect(await getWorkingSchemaState(page)).toEqual(current);
+    expect((await listRevisionHistory(page)).revisions).toHaveLength(1);
+  });
+
+  it('requires Agent flow completeness while allowing a visual draft of the same nodes', async () => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, logicSchema());
+    const current = await getWorkingSchemaState(page);
+    const flow = logicFlow();
+    const action = flow.nodes.action!;
+    const invalidActions: PageFlowNode[] = [
+      { ...action, prev: [], props: action.props },
+      {
+        ...action,
+        type: 'setElementProps',
+        props: structuredClone(getFlowNodeManifest('setElementProps')!.defaultProps),
+      },
+      { ...action, props: { value: { type: 'function', value: { params: [], body: '' } } } },
+    ];
+    for (const invalidAction of invalidActions) {
+      const candidate = logicFlow();
+      candidate.nodes.action = invalidAction;
+      if (!invalidAction.prev.length) candidate.nodes.start!.next = [];
+      const visual = await updateWorkingSchema(page, {
+        baseWorkingVersion: (await getWorkingSchemaState(page)).workingVersion,
+        schema: { ...current.schema, flows: { ...current.schema.flows, flow_one: candidate } },
+      });
+      // Explicitly submitting the same unfinished flow cannot bypass Agent completion checks.
+      await expect(
+        applyWorkingSchemaOperations(
+          page,
+          {
+            baseWorkingVersion: visual.workingVersion,
+            operations: [{ operation: 'updateFlow', flowId: 'flow_one', flow: candidate }],
+          },
+          {
+            agentCommit: {
+              runId: 'run_same_flow',
+              projectId: 'project_test',
+              operationDigest: 'same_flow_digest',
+            },
+          },
+        ),
+      ).rejects.toThrow();
+      // Rebinding an existing draft also requires completeness, even if its nodes are unchanged.
+      await expect(
+        applyWorkingSchemaOperations(
+          page,
+          {
+            baseWorkingVersion: visual.workingVersion,
+            operations: [
+              {
+                operation: 'setElementEventBinding',
+                elementId: 'button_two',
+                event: 'init',
+                flowId: 'flow_one',
+              },
+            ],
+          },
+          {
+            agentCommit: {
+              runId: 'run_incomplete',
+              projectId: 'project_test',
+              operationDigest: 'incomplete_digest',
+            },
+          },
+        ),
+      ).rejects.toThrow();
+      expect((await getWorkingSchemaState(page)).workingHash).toBe(visual.workingHash);
+    }
+  });
+
+  it('accepts bound context parameters and rejects a result that exists only on another branch', async () => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, logicSchema());
+    const current = await getWorkingSchemaState(page);
+    const flow = logicFlow();
+    flow.nodes.action!.next = ['condition'];
+    flow.nodes.condition = {
+      id: 'condition',
+      type: 'condition',
+      prev: ['action'],
+      next: ['branch', 'done'],
+      props: {
+        judgment: { type: 'contextValue', value: 'result.action' },
+        condition: [
+          { value: true, nextNode: 'branch' },
+          { value: false, nextNode: 'done' },
+        ],
+      },
+    };
+    flow.nodes.branch = {
+      ...structuredClone(flow.nodes.action!),
+      id: 'branch',
+      prev: ['condition'],
+      next: ['done'],
+    };
+    flow.nodes.done = {
+      id: 'done',
+      type: 'customJS',
+      prev: ['condition', 'branch'],
+      next: [],
+      props: {
+        value: {
+          type: 'function',
+          value: {
+            params: [
+              { name: 'result', value: 'result.action' },
+              { name: 'state', value: 'state.form_main.value' },
+              { name: 'method', value: 'method.form_main.validateFields' },
+            ],
+            body: 'throw new Error("Server must never execute project functions");',
+          },
+        },
+      },
+    };
+    const accepted = await applyWorkingSchemaOperations(
+      page,
+      {
+        baseWorkingVersion: current.workingVersion,
+        operations: [{ operation: 'updateFlow', flowId: 'flow_one', flow }],
+      },
+      {
+        agentCommit: {
+          runId: 'run_context',
+          projectId: 'project_test',
+          operationDigest: 'context_digest',
+        },
+      },
+    );
+    const invalid = structuredClone(flow);
+    invalid.nodes.done!.props = {
+      value: {
+        type: 'function',
+        value: { params: [{ name: 'result', value: 'result.branch' }], body: 'return result;' },
+      },
+    };
+    await expect(
+      applyWorkingSchemaOperations(
+        page,
+        {
+          baseWorkingVersion: accepted.workingVersion,
+          operations: [{ operation: 'updateFlow', flowId: 'flow_one', flow: invalid }],
+        },
+        {
+          agentCommit: {
+            runId: 'run_branch',
+            projectId: 'project_test',
+            operationDigest: 'branch_digest',
+          },
+        },
+      ),
+    ).rejects.toThrow('Result node must execute before this node on every path');
+    expect((await getWorkingSchemaState(page)).workingHash).toBe(accepted.workingHash);
+  });
+
   it('updates the Working draft without creating a Revision', async () => {
     const page = await createPageFixture();
     const initialRevisionId = await initializePageSchema(page, schema);

@@ -1,6 +1,6 @@
 import type { RunBudget, ToolPolicy } from '@origamix/shared';
 import { createHash } from 'node:crypto';
-import { AgentEngineError, type AgentEngineTool } from '../engine';
+import { AgentEngineError, AgentToolValidationError, type AgentEngineTool } from '../engine';
 import { ApiError } from '../../errors';
 
 export interface ToolAuditEvent {
@@ -37,6 +37,12 @@ const operationEvidence = (toolName: string, args: unknown) => {
 };
 
 const safeToolErrorCode = (error: unknown): string => {
+  if (error instanceof AgentToolValidationError)
+    return error.feedback.errors[0]?.code === 'WORKING_VERSION_CONFLICT'
+      ? 'WORKING_VERSION_CONFLICT'
+      : error.feedback.errors[0]?.code === 'WORKING_COMMIT_UNCONFIRMED'
+        ? 'WORKING_COMMIT_UNCONFIRMED'
+        : 'INVALID_TOOL_INPUT';
   if (error instanceof AgentEngineError) return error.code;
   if (error instanceof ApiError) {
     if (error.statusCode === 409) return 'WORKING_VERSION_CONFLICT';
@@ -57,6 +63,9 @@ const READ_TOOL_NAMES = new Set([
   'get_schema_fragment',
   'search_materials',
   'get_material_manifest',
+  'get_flow_node_manifest',
+  'get_event_flow',
+  'get_page_logic_context',
   'search_product_docs',
   'validate_page_schema',
   'get_page_diagnostics',

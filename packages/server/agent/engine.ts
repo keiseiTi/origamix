@@ -93,6 +93,22 @@ export interface AgentEngineTool {
   execute: (input: unknown, signal: AbortSignal) => Promise<unknown>;
 }
 
+export interface PageRunRepairFeedback {
+  kind: 'page_run_validation';
+  baseWorkingVersion: number;
+  retryable: boolean;
+  errors: readonly { code: string; path: string; message: string; operationIndex?: number }[];
+  instruction: string;
+}
+
+/** JSON survives provider tool-error adaptation; the full batch stays in Run memory only. */
+export class AgentToolValidationError extends Error {
+  constructor(readonly feedback: PageRunRepairFeedback) {
+    super(JSON.stringify(feedback));
+    this.name = 'AgentToolValidationError';
+  }
+}
+
 export type AgentEngineEvent =
   | { type: 'text_delta'; delta: string }
   | { type: 'tool_start'; toolCallId: string; toolName: string; input: unknown }
