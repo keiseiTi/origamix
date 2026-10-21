@@ -32,6 +32,8 @@ pnpm test
 pnpm build
 ```
 
+根 `pnpm typecheck` 会先构建 Materials；单独检查 App、Server 等消费包之前也需要先构建 Materials 的声明。
+
 `pnpm build` 编译库、工作台、后端并组装桌面资源，不制作安装包。单包检查入口见各包 README；影响生成项目时还需 Server 的 `test:template`，需要依赖缓存或网络。
 
 界面变更还应在浅色、深色及窄屏下实际操作验证，自动检查不能证明页面显示正确。

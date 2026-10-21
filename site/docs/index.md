@@ -40,28 +40,36 @@ pnpm dev
 
 ## 从想法到项目
 
-| 步骤    | 操作                       | 结果                       |
-| ------- | -------------------------- | -------------------------- |
-| 01 打开 | 选择项目与页面             | 恢复已有草稿或创建新页面   |
-| 02 编辑 | 对话修改、可视化调整、预览 | 自动保留 Working 草稿      |
-| 03 保存 | 明确保存版本               | 创建不可变 Revision        |
-| 04 应用 | 应用到项目                 | 更新目标页面的 schema.json |
+| 步骤    | 操作                               | 结果                       |
+| ------- | ---------------------------------- | -------------------------- |
+| 01 打开 | 选择项目与页面                     | 恢复已有草稿或创建新页面   |
+| 02 编辑 | 对话修改、可视化与逻辑流调整、预览 | 自动保留 Working 草稿      |
+| 03 保存 | 明确保存版本                       | 创建不可变 Revision        |
+| 04 应用 | 应用到项目                         | 更新目标页面的 schema.json |
 
 [了解完整工作方式 →](/intro/workflow)
 
-## 认识仓库里的七个包
+## 认识仓库里的九个主要职责包
 
 | 包                                   | 作用                                   |
 | ------------------------------------ | -------------------------------------- |
 | [Desktop](/architecture/desktop)     | 桌面窗口、目录授权、凭据与后端生命周期 |
-| [App](/architecture/app)             | React 工作台、编辑器、会话与预览       |
+| [App](/architecture/app)             | React 工作台、编辑会话与预览装配       |
+| [Editor](/architecture/editor)       | 页面画布、属性面板、大纲树与逻辑流     |
+| [UI](/architecture/ui)               | 公共控件、工具与主题基础               |
 | [Server](/architecture/server)       | 本地服务、草稿、版本与显式应用         |
 | [Shared](/architecture/shared)       | 公共数据契约与校验                     |
 | [Materials](/architecture/materials) | Ant Design 页面物料与编辑配置          |
-| [Runtime](/architecture/runtime)     | Schema 的独立渲染                      |
+| [Runtime](/architecture/runtime)     | Schema 的独立渲染与事件执行            |
 | [Template](/architecture/template)   | 生成项目的运行与部署骨架               |
 
 [查看整体架构 →](/architecture/index) · [开发与验证 →](/architecture/development)
+
+## 配置页面交互
+
+在大纲树展开元素，从“初始化”“点击事件”等子项进入逻辑流。添加请求、条件、属性设置等节点，并通过函数参数选择页面属性。图编排与参数修改自动保留为 Working 草稿，执行结果在预览中检查。
+
+[逻辑流与函数配置 →](/guide/flow-editor)
 
 ## 继续探索
 

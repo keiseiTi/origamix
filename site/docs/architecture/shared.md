@@ -13,6 +13,10 @@ description: Shared：公共契约的职责、使用与开发说明
 
 `src/index.ts` 显式汇总公共导出，内部仍按领域分模块。`src/protocol/api.ts` 定义 HTTP 契约；`schema.ts` 定义页面与操作；`agent.ts` 定义 Run 与事件；`src/desktop-api.ts` 定义桌面桥；`src/page-window.ts` 定义预览消息。
 
+`project-stack.ts` 定义当前项目技术栈与严格解析；`material-manifest.ts` 定义物料 Manifest 格式；`flow-node.ts` 定义内置流程节点身份、默认参数、连接限制与参数校验；`hyper-value.ts` 定义可序列化值及函数配置。
+
+Shared 不保存具体 Ant Design 物料清单，也不执行项目函数。当前节点契约为 `1.0`，内置物料集、Runtime 与模板使用初始 `1.0.0`，没有旧节点值、旧入口或物料版本的自动转换。
+
 ## 协作边界
 
 不依赖其他工作区包，也不读取文件、网络或凭据。消费者统一从唯一根入口 `@origamix/shared` 导入；接收边界执行实际校验。

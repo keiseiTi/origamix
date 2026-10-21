@@ -15,6 +15,16 @@
     "type": "file"
   },
   {
+    "name": "editor",
+    "label": "Editor：统一编辑器",
+    "type": "file"
+  },
+  {
+    "name": "ui",
+    "label": "UI：公共基础控件",
+    "type": "file"
+  },
+  {
     "name": "server",
     "label": "Server：本地后端",
     "type": "file"

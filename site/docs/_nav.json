@@ -59,6 +59,10 @@
         "link": "/guide/editor"
       },
       {
+        "text": "逻辑流与函数配置",
+        "link": "/guide/flow-editor"
+      },
+      {
         "text": "页面预览",
         "link": "/guide/preview"
       },
@@ -92,6 +96,14 @@
       {
         "text": "App：编辑工作台",
         "link": "/architecture/app"
+      },
+      {
+        "text": "Editor：统一编辑器",
+        "link": "/architecture/editor"
+      },
+      {
+        "text": "UI：公共基础控件",
+        "link": "/architecture/ui"
       },
       {
         "text": "Server：本地后端",

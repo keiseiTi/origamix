@@ -15,7 +15,11 @@ description: Materials：页面物料的职责、使用与开发说明
 
 ## 协作边界
 
-App 使用编辑配置，Runtime 与生成项目使用组件注册表，Server 只读取纯数据清单。注册键与 Schema 的 type 必须一致，改名或删除需考虑保留的页面与历史。
+App 从 `@origamix/materials/antd/editor` 加载编辑注册并注入 Editor；Runtime 与生成项目使用 `@origamix/materials/antd/runtime`；Server 只读取 `@origamix/materials/antd/manifest`。根入口提供物料编写类型和辅助函数，不汇总具体物料组件。注册键与 Schema 的 type 必须一致，改名或删除需考虑保留的页面与历史。
+
+项目当前固定 React + Antd，物料集为 `official-antd@1.0.0`，缺失或不受支持的配置会报错，不静默回退。第二套 React 物料、Vue 和物料市场尚未接入；`propertyEditors` 注册目前为空，专属属性编辑扩展未启用。
+
+运行、编辑、Manifest 三个入口隔离依赖。生成项目不安装 Editor；React 和 Ant Design 是运行 peer dependencies，UI 和 Tangramino base-editor 仅用于可选的编辑消费方。页面材料与工作台基础控件职责不同。
 
 ## 开发与验证
 

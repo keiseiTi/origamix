@@ -7,7 +7,7 @@ description: App：编辑工作台的职责、使用与开发说明
 
 ## 职责
 
-React 工作台承载项目导航、页面编辑、Agent 会话、版本操作与预览。
+React 工作台承载项目导航、Agent 会话、版本操作与预览，并装配统一 Editor。画布、属性面板和逻辑流的实现归 Editor，App 保留业务编排与持久化会话。
 
 ## 关键入口
 
@@ -15,7 +15,7 @@ React 工作台承载项目导航、页面编辑、Agent 会话、版本操作�
 
 ## 协作边界
 
-使用 Shared 契约、Materials 编辑配置和 Runtime 渲染。浏览器源码不导入 Desktop 或 Server；Node 开发宿主通过 Server 的公开入口启动后端。
+使用 Shared 契约、Editor、UI、Materials 编辑配置和 Runtime 渲染。App 按 Server 解析的项目技术栈按需加载编辑物料，预览独立加载运行物料；加载失败显示重试，不自动更换物料集。浏览器源码不导入 Desktop 或 Server；Node 开发宿主通过 Server 的公开入口启动后端。
 
 ## 开发与验证
 
@@ -23,6 +23,7 @@ React 工作台承载项目导航、页面编辑、Agent 会话、版本操作�
 
 ```sh
 pnpm --filter @origamix/app lint
+pnpm --filter @origamix/materials build
 pnpm --filter @origamix/app typecheck
 pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build
