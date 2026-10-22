@@ -18,8 +18,8 @@
     "build:assemble": "node scripts/build.mjs",
     "package": "pnpm --filter @origamix/app build && pnpm build && pnpm package:assemble",
     "package:dir": "pnpm --filter @origamix/app build && pnpm build && pnpm package:dir:assemble",
-    "package:dir:assemble": "electron-builder --config electron-builder.yml --dir --config.mac.identity=null",
-    "package:assemble": "electron-builder --config electron-builder.yml"
+    "package:dir:assemble": "electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
+    "package:assemble": "electron-builder --config electron-builder.yml --mac --arm64 --publish never"
   },
   "dependencies": {
     "@origamix/server": "workspace:*",

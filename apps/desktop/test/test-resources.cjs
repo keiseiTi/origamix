@@ -44,6 +44,7 @@ app.whenReady().then(async () => {
     try {
       ipcMain.handle('backend:get-connection', () => ({ baseUrl: `http://127.0.0.1:${message.port}/api/v1`, token, serviceInstanceId }));
       ipcMain.handle('settings:profile:get', () => ({ name: 'Smoke Test', iconBackground: '#2563eb' }));
+      ipcMain.handle('settings:model:get', () => ({ provider: 'deepseek', model: 'deepseek-flash', hasApiKey: false }));
       window = new BrowserWindow({ show: false, webPreferences: {
         preload: join(desktopDist, 'preload', 'index.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true
       } });

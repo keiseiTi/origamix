@@ -70,12 +70,15 @@ pnpm build
 | `pnpm build:libs`    | UI、Shared、Editor、Runtime、Materials 构建产物          |
 | `pnpm build:web`     | 上述依赖及 App 的静态资源                                |
 | `pnpm build`         | 库 → App → Server → Desktop 编译和资源组装，不制作安装包 |
-| `pnpm package:dir`   | 构建后生成 `release/` 下未签名应用目录                   |
-| `pnpm package`       | 四项检查后制作发行包；发行签名另行配置                   |
+| `pnpm package:dir`   | 构建后生成 macOS arm64 应用目录，使用本地 ad-hoc 签名    |
+| `pnpm package:mac`   | 四项检查后制作 macOS arm64 DMG 和 ZIP 本地试用包         |
+| `pnpm package`       | 执行 `package:mac`，当前仅交付 macOS                     |
 | `pnpm package:npm`   | 库构建与本地 npm tarball，不发布到 registry              |
 | `pnpm gate:internal` | 固定评测数据与门槛计算检查，不证明真实模型质量           |
 
 包内 `build:assemble` 只消费已准备好的输入；根构建统一排序，避免在每一层重复构建依赖。单包 `build` 保留准备依赖的职责，以支持独立调用。
+
+桌面构建包当前仅面向 macOS 13+ 的 Apple Silicon（arm64）。`release/` 中的 `origamix-<version>-macOS-arm64.dmg` 用于拖入 Applications，ZIP 提供同一应用的归档；`release/mac-arm64/origamix.app` 为解包目录。本地 ad-hoc 签名不等于 Developer ID 签名或 Apple 公证，当前构建属于本地试用交付；官网尚未提供公开下载。详细验证与限制见 [Desktop README](apps/desktop/README.md#macos-构建包)。
 
 真实页面质量验收见 [Desktop 的验收说明](apps/desktop/README.md#真实-agent-页面质量验收)：先构建并在桌面设置配置模型，再运行 `pnpm --filter @origamix/desktop evaluate:agent`。该命令会调用真实模型并产生费用，使用临时项目，记录实际预览、恢复、保存／Apply 和独立运行结果。
 

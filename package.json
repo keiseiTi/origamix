@@ -21,7 +21,8 @@
     "gate:internal": "pnpm --filter @origamix/server gate:agent",
     "package:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
     "package:dir": "pnpm build && pnpm --filter @origamix/desktop package:dir:assemble",
-    "package": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
+    "package": "pnpm package:mac",
+    "package:mac": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:assemble"
   },
   "keywords": [
     "lowCode",

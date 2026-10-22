@@ -23,6 +23,7 @@ pnpm --filter @origamix/desktop test
 pnpm build
 pnpm --filter @origamix/desktop test:main
 pnpm package:dir
+pnpm package:mac
 ```
 
 开发脚本启动 Server 编译器、Vite 和 Electron，前端 HMR、宿主重编译后重启。`test:main` 使用真实 Main/IPC/SQLite、临时项目及替代目录选择器，需要图形会话和已构建产物。
@@ -30,10 +31,10 @@ pnpm package:dir
 macOS 打包后资源检查：
 
 ```sh
-pnpm --filter @origamix/desktop test:resources /absolute/path/to/Origamix.app/Contents/Resources
+pnpm --filter @origamix/desktop test:resources /absolute/path/to/origamix.app/Contents/Resources
 ```
 
-资源检查不等同于签名安装器启动。安装包与签名范围见下文；`package:dir` 禁用自动 macOS 证书发现。维护约束见 [AGENTS.md](AGENTS.md)。
+资源检查不等同于签名安装器启动。安装包与签名范围见下文；本地构建使用显式 ad-hoc 签名，不依赖本机发行证书。维护约束见 [AGENTS.md](AGENTS.md)。
 
 ## 模型与本地数据
 
@@ -72,8 +73,33 @@ pnpm --filter @origamix/desktop evaluate:agent --case customer-form --model deep
 
 缺少凭据、执行失败或样本未完成均不会报告通过，并返回非零退出码。全部自动检查通过后，报告状态仍为 `awaiting-visual-review`，`modelQualityAccepted` 保持 `false`：需要另行检查截图布局、真实需求准确性与人工编辑体验。局部样本通过也不代表三项完整套件或模型普遍质量通过。报告保留每轮失败，修复后应产生新的一轮证据，不覆盖旧结果。
 
-## 打包与签名范围
+## macOS 构建包
 
-资源和平台选项由 [electron-builder.yml](electron-builder.yml) 管理，图标和 macOS 权限文件位于根目录 [build](../../build)。`pnpm package:dir` 显式禁用 macOS 签名身份，适合本地资源检查；`pnpm package` 不代表已有发行证书或公证配置。
+当前交付仅覆盖 macOS 13+、Apple Silicon（arm64）。资源和平台选项由 [electron-builder.yml](electron-builder.yml) 管理，图标和 macOS 权限文件位于根目录 [build](../../build)。打包命令显式使用 `--mac --arm64 --publish never`，不会选择当前宿主的其他平台或自动发布。请在 macOS 上执行：
 
-当前 macOS 配置为 `notarize: false`，仓库没有完成证书分发、公证或发布流水线。准备正式发行时需配置相应平台的签名与发布流程，并验证安装器实际启动；`test:resources` 只验证资源结构。签名配置属于发行工作，不能从开发构建成功推断已完成。
+```sh
+pnpm package:mac
+# 等价入口：pnpm package
+```
+
+该命令依次运行根 lint、typecheck、test、build，再生成以下产物：
+
+| 产物                                         | 用途                                    |
+| -------------------------------------------- | --------------------------------------- |
+| `release/origamix-<version>-macOS-arm64.dmg` | 打开后将 origamix.app 拖入 Applications |
+| `release/origamix-<version>-macOS-arm64.zip` | 同一应用的 ZIP 归档                     |
+| `release/mac-arm64/origamix.app`             | 解包的应用目录，供本地资源验证          |
+
+`pnpm package:dir` 构建同一 macOS arm64 应用目录，不制作 DMG／ZIP。内部 `package:assemble`、`package:dir:assemble` 只消费已构建资源。暂不交付 Intel、Windows 或 Linux 安装包。
+
+本轮采用 `identity: '-'` 的本地 ad-hoc 签名、`hardenedRuntime: false` 和 `notarize: false`。该配置确保 Apple Silicon 本地试用包具有完整代码签名，但不证明开发者身份，也不是经过 Gatekeeper 公证的公开发行包；从浏览器下载或跨机器传递后，系统可能阻止打开。正式发行需要单独配置 Developer ID、启用并复核 hardened runtime／entitlements、完成公证，再验证下载、安装与首次启动；不要通过全局关闭 Gatekeeper 处理问题。
+
+打包后核对代码签名、资源和磁盘映像：
+
+```sh
+codesign --verify --deep --strict release/mac-arm64/origamix.app
+pnpm --filter @origamix/desktop test:resources "$PWD/release/mac-arm64/origamix.app/Contents/Resources"
+hdiutil verify release/origamix-1.0.0-macOS-arm64.dmg
+```
+
+版本号来自 Desktop `package.json`，命令中的 `1.0.0` 应与实际产物一致。资源检查不等同于真实安装包的 Main 启动，更不等同于 Developer ID／公证验收。SHA-256 和本轮验证范围应随构建交付记录一起保留。

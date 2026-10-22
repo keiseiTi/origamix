@@ -14,14 +14,19 @@ extraResources:
   - from: dist/template
     to: template
 mac:
-  icon: icon-origamix.png
+  icon: icon.icns
+  category: public.app-category.developer-tools
+  minimumSystemVersion: '13.0'
+  artifactName: '${productName}-${version}-macOS-${arch}.${ext}'
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+  # Local trial builds: explicit ad-hoc signing, without certificate discovery.
+  identity: '-'
+  hardenedRuntime: false
+  entitlements: ../../build/entitlements.mac.plist
   entitlementsInherit: ../../build/entitlements.mac.plist
   notarize: false
-win:
-  icon: icon-origamix.png
-  executableName: origamix
-linux:
-  icon: icon-origamix.png
-  target: [AppImage, snap, deb]
-  category: Utility
 npmRebuild: false
