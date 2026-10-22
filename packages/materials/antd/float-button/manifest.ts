@@ -12,14 +12,10 @@ export const floatButtonManifest = defineManifest({
   propsSchema: objectSchema({
     type: { type: 'string', enum: ['default', 'primary'] },
     shape: { type: 'string', enum: ['circle', 'square'] },
-    placement: {
-      type: 'string',
-      enum: ['bottomRight', 'bottomLeft', 'topRight', 'topLeft'],
-    },
-    description: { type: 'string' },
-    tooltip: { type: 'string' },
     disabled: { type: 'boolean' },
-    danger: { type: 'boolean' },
+    href: { type: 'string' },
+    target: { type: 'string', enum: ['_self', '_blank'] },
+    htmlType: { type: 'string', enum: ['button', 'submit', 'reset'] },
   }),
   usage: '为页面提供悬浮的快捷操作入口。',
   constraints: [],

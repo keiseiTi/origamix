@@ -23,7 +23,11 @@ export const loadEditorMaterials = async (
       )
         throw new Error('编辑物料与项目要求的版本不一致');
       return {
-        catalog: module.antdMaterialManifest,
+        catalog: {
+          ...module.antdMaterialManifest,
+          materials: [...module.antdMaterialManifest.materials, ...module.rootManifests],
+        },
+        rootMaterials: module.rootMaterials,
         groups: module.materialGroups,
         propertyEditors: module.propertyEditors,
       };

@@ -1,8 +1,7 @@
+import { FormValuesEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { formManifest } from './manifest';
-import { validateRecord } from '../structured-data-validation';
-
 const material = defineMaterial({
   manifest: formManifest,
   Component: lazy(() => import('./index')),
@@ -50,7 +49,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -209,9 +208,9 @@ const material = defineMaterial({
           },
           {
             field: 'initialValues',
-            validateValue: validateRecord,
             label: '初始字段值',
-            uiType: 'json',
+            uiType: 'custom',
+            render: FormValuesEditor,
           },
           {
             field: 'clearOnDestroy',

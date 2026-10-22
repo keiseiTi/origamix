@@ -41,7 +41,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 可视化编辑通常通过 `http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
 
-流程数据与事件绑定使用 Shared 的当前类型契约。Shared 检查图结构安全及绑定唯一性；[flow-validation.ts](schema/flow-validation.ts) 检查物料目标、可写属性（含公开运行时变量）、可调用方法、变量和显式上下文引用。Server 不编译或执行表达式/函数体，也不静态推断任意 JS 的行为。
+流程数据与事件绑定使用 Shared 的当前类型契约。Shared 检查图结构安全及绑定唯一性；[flow-validation.ts](schema/flow-validation.ts) 检查物料目标、context.writable 可写属性、context.variables 可读业务属性、可调用方法、变量、event.payload 与显式上下文引用。Server 不编译或执行表达式/函数体，也不静态推断任意 JS 的行为。
 
 可视化草稿允许未连接节点、空目标和未填写的函数体。Agent commit 对本次显式提交或新增绑定涉及的流程要求可执行完整性：节点可达、目标非空、函数参数有效、字面量请求地址有效，且 `result.*` 引用来自同一流程中所有路径都先经过的非开始节点。重复提交相同流程也不能跳过检查。该规则不会阻止保留其他事件的未完成草稿；提交失败不改变 Working、Revision 或目标文件。事件级 `setElementEventBinding` / `removeElementEventBinding` 仅修改指定元素事件，重新绑定不会隐式删除旧流程。
 

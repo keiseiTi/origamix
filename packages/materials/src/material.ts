@@ -60,7 +60,12 @@ export type ColorAttributeConfig = BasicAttributeConfig & {
 
 export type CustomAttributeConfig = BasicAttributeConfig & {
   uiType: 'custom';
-  render: React.ComponentType<{ value?: unknown; onChange?: (value: unknown) => void }>;
+  render: React.ComponentType<{
+    value?: unknown;
+    onChange?: (value: unknown) => void;
+    elementProps?: Readonly<Record<string, unknown>>;
+    fields?: readonly { name: string; label: string }[];
+  }>;
 };
 
 /** Structured JSON editor; guards belong to editor metadata, never to the Manifest. */
@@ -69,7 +74,7 @@ export type JsonAttributeConfig = BasicAttributeConfig & {
   validateValue: (value: unknown) => string | undefined;
 };
 
-export type AttributeConfig =
+type AttributeControlConfig =
   | TextAttributeConfig
   | InputAttributeConfig
   | NumberAttributeConfig
@@ -80,6 +85,8 @@ export type AttributeConfig =
   | ColorAttributeConfig
   | JsonAttributeConfig
   | CustomAttributeConfig;
+
+export type AttributeConfig = AttributeControlConfig & { linkageMode?: 'any' };
 
 export type PanelConfig = BasicPanelConfig & {
   configs?: AttributeConfig[];

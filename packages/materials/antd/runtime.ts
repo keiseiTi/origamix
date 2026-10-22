@@ -1,3 +1,6 @@
+import { registerRuntimeMaterial } from './runtime-state';
+import { antdMaterialManifest } from './manifest';
+import { basicPageManifest } from './basic-page/manifest';
 export { RuntimeProvider } from './runtime-provider';
 export { materialSet } from './material-set';
 import { Button } from './button';
@@ -25,7 +28,7 @@ import { Textarea } from './textarea';
 import { DatePickerRange } from './date-picker-range';
 import { Slider } from './slider';
 
-export const materialComponents = {
+const components = {
   button: Button,
   input: Input,
   select: Select,
@@ -51,5 +54,17 @@ export const materialComponents = {
   text: Text,
   slider: Slider,
 };
+
+export const materialComponents = Object.fromEntries(
+  Object.entries(components).map(([type, Component]) => [
+    type,
+    registerRuntimeMaterial(
+      Component,
+      type === 'basicPage'
+        ? basicPageManifest
+        : antdMaterialManifest.materials.find((material) => material.type === type)!,
+    ),
+  ]),
+);
 
 export default materialComponents;

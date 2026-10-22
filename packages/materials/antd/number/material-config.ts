@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { numberManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: numberManifest,
   Component: lazy(() => import('./index')),
@@ -61,7 +60,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -154,20 +153,9 @@ const material = defineMaterial({
             field: 'decimalSeparator',
             uiType: 'input',
           },
-          {
-            label: '前缀文字',
-            field: 'prefix',
-            uiType: 'input',
-          },
-          {
-            label: '后缀文字',
-            field: 'suffix',
-            uiType: 'input',
-          },
         ],
       },
     ],
   },
 });
-
 export default material;

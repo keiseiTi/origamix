@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { buttonManifest } from './manifest';
-
 const ButtonMaterial = defineMaterial({
   manifest: buttonManifest,
   Component: lazy(() => import('./index')),
@@ -56,7 +55,7 @@ const ButtonMaterial = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -165,5 +164,4 @@ const ButtonMaterial = defineMaterial({
     ],
   },
 });
-
 export default ButtonMaterial;

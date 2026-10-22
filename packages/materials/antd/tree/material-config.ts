@@ -1,8 +1,7 @@
+import { TreeDataEditor, KeysEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { treeManifest } from './manifest';
-import { validateKeys, validateTreeNodes } from '../structured-data-validation';
-
 const material = defineMaterial({
   manifest: treeManifest,
   Component: lazy(() => import('./index')),
@@ -13,9 +12,9 @@ const material = defineMaterial({
         configs: [
           {
             field: 'treeData',
-            validateValue: validateTreeNodes,
             label: '树节点',
-            uiType: 'json',
+            uiType: 'custom',
+            render: TreeDataEditor,
           },
           {
             field: 'checkable',
@@ -73,39 +72,39 @@ const material = defineMaterial({
           },
           {
             field: 'defaultExpandedKeys',
-            validateValue: validateKeys,
             label: '默认展开节点键',
-            uiType: 'json',
             linkageShow: [
               {
                 field: 'defaultExpandAll',
                 value: false,
               },
             ],
+            uiType: 'custom',
+            render: KeysEditor,
           },
           {
             field: 'defaultSelectedKeys',
-            validateValue: validateKeys,
             label: '默认选中节点键',
-            uiType: 'json',
             linkageShow: [
               {
                 field: 'selectable',
                 value: true,
               },
             ],
+            uiType: 'custom',
+            render: KeysEditor,
           },
           {
             field: 'defaultCheckedKeys',
-            validateValue: validateKeys,
             label: '默认勾选节点键',
-            uiType: 'json',
             linkageShow: [
               {
                 field: 'checkable',
                 value: true,
               },
             ],
+            uiType: 'custom',
+            render: KeysEditor,
           },
           {
             field: 'showLine',
@@ -114,20 +113,8 @@ const material = defineMaterial({
             defaultValue: false,
           },
           {
-            field: 'showIcon',
-            label: '显示节点图标',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
             field: 'blockNode',
             label: '节点占满一行',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
-            field: 'draggable',
-            label: '允许拖动',
             uiType: 'checkbox',
             defaultValue: false,
           },

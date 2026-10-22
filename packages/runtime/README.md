@@ -10,7 +10,7 @@ import { OrigamixPage } from '@origamix/runtime/react';
 <OrigamixPage schema={schema} materials={materials} resetKey={revisionId} />;
 ```
 
-调用者提供 Schema 和物料注册表。Runtime 负责 Engine/ReactView 装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。`resetKey` 变化可恢复错误边界。
+调用者提供 Schema 和物料注册表。Runtime 负责 Engine 与按元素订阅的 React 渲染装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。`resetKey` 变化会重建页面会话并恢复错误边界。
 
 该入口也导出 `RuntimeDiagnostic`、`RuntimeOutcome` 和 `findUnknownMaterialTypes`。UI 风格、诊断上传及页面刷新属于调用方；生成项目无需依赖 App、Shared 或 Server。
 
@@ -20,7 +20,7 @@ import { OrigamixPage } from '@origamix/runtime/react';
 
 节点名称和参数类型由 Shared 的 `protocol/flow-node` 契约派生，实现表必须覆盖除引擎自带 `start` 外的所有节点。引擎传入的参数先按同一契约校验，失败会抛出错误并阻止该节点动作。`customJS` 通过统一求值器执行函数。Shared 作为构建依赖内联到发布产物，独立项目无需额外安装 Shared。
 
-取值字段统一使用 Shared 的 `HyperValue`：`{ type, value }`。字面值类型为 `string`、`number`、`boolean` 和 `null`；`contextValue` 读取 `state.elementId.property`、`global.name` 或 `result.nodeId.path`。函数参数也可绑定 `method.elementId.methodName`。上下文读取拒绝原型链路径。
+取值字段统一使用 Shared 的 `HyperValue`：`{ type, value }`。字面值类型为 `string`、`number`、`boolean` 和 `null`；`contextValue` 读取 `state.elementId.property`、`event.payload.path`、`global.name` 或 `result.nodeId.path`。函数参数也可绑定 `method.elementId.methodName`。上下文读取拒绝原型链路径。
 
 [execute.ts](execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败显示执行错误、停止本次事件后续动作，下一次触发可重新执行。
 
@@ -69,3 +69,11 @@ export default Page;
 `onOutcome` 可以接收 `UNKNOWN_MATERIAL` 或 `RENDER_ERROR` 诊断。未知物料由 Runtime 显示提示；`renderError` 自定义的是渲染异常界面，不替换未知物料提示。`resetKey` 变化或点击重试可重置错误边界，但仍需先修正造成错误的 Schema/组件。成功诊断不证明所有交互、样式或服务端校验已通过。
 
 请求头、查询参数和请求体通过函数返回值配置；条件节点直接按表达式或函数结果判断真假，不维护额外比较操作符。请求保留 10 秒超时与无宿主凭据的执行约束。
+
+## 物料能力与业务状态
+
+物料运行注册表携带 origamixRuntime：可序列化 Manifest.context 能力、默认值、初始业务值与事件投影函数。没有把 Server 或 Editor 引入 Runtime。installMaterialState 在当前 Engine 关联暂态读值投影与窄的组件回调；投影随 Engine 释放。它不是另一个 Working Schema。
+
+用户输入先发布到读值投影，再触发事件；setElementProps 对 context.writable 校验后更新投影与目标元素。state 引用只允许 context.variables 的业务路径，method 只允许公开可调用方法。事件参数在 start 捕获为本次调用的独立快照，异步事件不共享一个可变载荷。
+
+React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建正在输入的其他控件。Form 的字段绑定在物料适配器处理；程序写入与字段方法同时维护字段值及整表读值。新增回归见 test/logic-nodes.test.ts，覆盖异步事件隔离、白名单与源 Schema 不变；界面焦点和原生控件转换仍需实际交互验收。

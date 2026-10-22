@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { sliderManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: sliderManifest,
   Component: lazy(() => import('./index')),
@@ -176,6 +175,12 @@ const material = defineMaterial({
                 },
               ],
             },
+            linkageMode: 'any',
+            linkageShow: [
+              { field: 'tooltipMode', value: 'auto' },
+              { field: 'tooltipMode', value: 'always' },
+              { field: 'tooltipMode', value: undefined },
+            ],
           },
         ],
       },

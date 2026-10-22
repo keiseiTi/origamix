@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { modalManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: modalManifest,
   Component: lazy(() => import('./index')),
@@ -11,11 +10,6 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
-          {
-            field: 'title',
-            label: '标题',
-            uiType: 'input',
-          },
           {
             field: 'open',
             label: '显示弹窗',
@@ -77,28 +71,6 @@ const material = defineMaterial({
             label: '显示底部按钮',
             uiType: 'checkbox',
             defaultValue: true,
-          },
-          {
-            field: 'okText',
-            label: '确定文本',
-            uiType: 'input',
-            linkageShow: [
-              {
-                field: 'showFooter',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'cancelText',
-            label: '取消文本',
-            uiType: 'input',
-            linkageShow: [
-              {
-                field: 'showFooter',
-                value: true,
-              },
-            ],
           },
           {
             field: 'okType',

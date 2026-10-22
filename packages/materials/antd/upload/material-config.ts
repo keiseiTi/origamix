@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { uploadManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: uploadManifest,
   Component: lazy(() => import('./index')),

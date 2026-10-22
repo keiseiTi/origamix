@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { floatButtonManifest } from './manifest';
-
 const FloatButtonMaterial = defineMaterial({
   manifest: floatButtonManifest,
   Component: lazy(() => import('./index')),
@@ -33,42 +32,8 @@ const FloatButtonMaterial = defineMaterial({
             },
           },
           {
-            label: '位置',
-            field: 'placement',
-            uiType: 'select',
-            props: {
-              options: [
-                { label: '右下', value: 'bottomRight' },
-                { label: '左下', value: 'bottomLeft' },
-                { label: '右上', value: 'topRight' },
-                { label: '左上', value: 'topLeft' },
-              ],
-            },
-          },
-          {
-            label: '描述',
-            field: 'description',
-            uiType: 'input',
-            props: {
-              placeholder: '请输入描述文本',
-            },
-          },
-          {
-            label: '工具提示',
-            field: 'tooltip',
-            uiType: 'input',
-            props: {
-              placeholder: '请输入工具提示文本',
-            },
-          },
-          {
             label: '禁用',
             field: 'disabled',
-            uiType: 'checkbox',
-          },
-          {
-            label: '危险按钮',
-            field: 'danger',
             uiType: 'checkbox',
           },
         ],
@@ -76,5 +41,4 @@ const FloatButtonMaterial = defineMaterial({
     ],
   },
 });
-
 export default FloatButtonMaterial;

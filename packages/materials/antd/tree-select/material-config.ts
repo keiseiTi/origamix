@@ -1,7 +1,7 @@
+import { TreeSelectDataEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { treeSelectManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: treeSelectManifest,
   Component: lazy(() => import('./index')),
@@ -48,7 +48,13 @@ const material = defineMaterial({
           {
             label: '搜索字段',
             field: 'treeNodeFilterProp',
-            uiType: 'input',
+            uiType: 'select',
+            props: {
+              options: [
+                { label: '标题', value: 'title' },
+                { label: '值', value: 'value' },
+              ],
+            },
           },
           {
             label: '默认展开全部',
@@ -80,6 +86,12 @@ const material = defineMaterial({
           {
             label: '最多展示标签数',
             field: 'maxTagCount',
+            linkageMode: 'any',
+            linkageShow: [
+              { field: 'multiple', value: true },
+              { field: 'treeCheckable', value: true },
+              { field: 'treeCheckStrictly', value: true },
+            ],
             uiType: 'number',
             props: {
               min: 0,
@@ -125,7 +137,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -216,6 +228,12 @@ const material = defineMaterial({
                 },
               ],
             },
+          },
+          {
+            field: 'treeData',
+            label: '节点数据',
+            uiType: 'custom',
+            render: TreeSelectDataEditor,
           },
         ],
       },

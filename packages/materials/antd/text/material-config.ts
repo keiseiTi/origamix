@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { textManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: textManifest,
   Component: lazy(() => import('./index')),
@@ -131,5 +130,4 @@ const material = defineMaterial({
     ],
   },
 });
-
 export default material;

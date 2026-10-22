@@ -79,7 +79,7 @@ const startApplyingRun = async (fixture: Awaited<ReturnType<typeof setup>>, requ
     promptVersion: '1',
     policyVersion: '1',
     toolsetVersion: '1',
-    materialManifestVersion: 'official-antd@1.0.0',
+    materialManifestVersion: 'official-antd@2.0.0',
   });
   const service = new AgentRunService(fixture.runs);
   service.transition(started.run.id, 'preparing');

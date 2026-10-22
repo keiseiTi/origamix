@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { timePickerManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: timePickerManifest,
   Component: lazy(() => import('./index')),
@@ -113,7 +112,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',

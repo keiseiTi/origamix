@@ -4,7 +4,6 @@ export const drawerManifest = defineManifest({
   type: 'drawer',
   title: '抽屉容器',
   defaultProps: {
-    title: '抽屉标题',
     open: false,
     placement: 'right',
     closable: true,
@@ -13,9 +12,43 @@ export const drawerManifest = defineManifest({
     keyboard: true,
   },
   context: {
-    variables: [],
+    variables: [
+      {
+        name: 'open',
+        description: '是否打开',
+      },
+    ],
+    writable: [
+      {
+        name: 'open',
+        description: '是否打开',
+      },
+      {
+        name: 'loading',
+        description: '加载中',
+      },
+    ],
     values: [],
-    methods: [],
+    methods: [
+      {
+        name: 'onClose',
+        description: '关闭请求',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+      {
+        name: 'afterOpenChange',
+        description: '可见状态改变完成',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+    ],
   },
   description: '抽屉容器的结构与展示属性。',
   keywords: ['抽屉容器', 'overlay'],
@@ -25,9 +58,6 @@ export const drawerManifest = defineManifest({
     type: 'object',
     additionalProperties: false,
     properties: {
-      title: {
-        type: 'string',
-      },
       open: {
         type: 'boolean',
       },
@@ -82,16 +112,8 @@ export const drawerManifest = defineManifest({
       push: {
         type: 'boolean',
       },
-      extra: {
-        type: 'string',
-      },
-      footer: {
-        type: 'string',
-      },
-      destroyOnClose: {
-        type: 'boolean',
-      },
     },
+    required: [],
   },
   usage: '配置抽屉容器的属性与展示行为。',
   constraints: ['不将实例或回调写入 Schema。'],

@@ -117,7 +117,7 @@ export const flowNodeManifests = [
     }),
     connections: sequence,
     constraints: [
-      '目标元素必须存在，属性必须由目标物料声明；运行时状态修改不写回 Working Schema。',
+      '目标元素必须存在，属性必须在目标物料 context.writable 声明；context.variables 是独立的读取白名单；运行时状态修改不写回 Working Schema。',
     ],
   },
   {

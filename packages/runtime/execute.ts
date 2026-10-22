@@ -1,3 +1,9 @@
+import {
+  assertRuntimeField,
+  assertRuntimeMethod,
+  runtimeEvent,
+  readRuntimeState,
+} from './material-state';
 import type { HyperValue } from '@origamix/shared';
 import type { FlowExecuteContext } from '@tangramino/engine';
 
@@ -23,13 +29,19 @@ export const resolveHyperContext = (context: Context, reference: string): unknow
       return readPath(context.engine.getGlobalVariable(name), path);
     case 'result':
       return readPath(context.lastReturnedVal?.[name], path);
+    case 'event': {
+      if (name !== 'payload') throw new Error('Unknown event reference');
+      return readPath(runtimeEvent(context), path);
+    }
     case 'state': {
       const element = context.engine.elements[name];
       if (!element) throw new Error('Context element does not exist');
-      return readPath({ ...element.props, ...context.engine.getState(name) }, path);
+      assertRuntimeField(context.engine, name, path.join('.'));
+      return readPath(readRuntimeState(context.engine, name), path);
     }
     case 'method': {
       const [methodName] = path;
+      assertRuntimeMethod(context.engine, name, methodName ?? '');
       const methods = context.engine.getContextValue(name);
       if (
         !context.engine.elements[name] ||

@@ -209,12 +209,7 @@ const CollectionEditor = ({
                       { label: '左侧', value: 'left' },
                       ...(field === 'align' ? [{ label: '居中', value: 'center' }] : []),
                       { label: '右侧', value: 'right' },
-                      ...(field === 'fixed'
-                        ? [
-                            { label: '不固定', value: 'false' },
-                            { label: '固定左侧', value: 'true' },
-                          ]
-                        : []),
+                      ...(field === 'fixed' ? [{ label: '不固定', value: 'false' }] : []),
                     ]}
                     onChange={(next) =>
                       change(
@@ -239,7 +234,7 @@ const CollectionEditor = ({
                 ['ellipsis', '超出省略'],
                 ['hidden', '隐藏列'],
               ]
-            : []
+            : [['disabled', '禁用选项']]
           ).map(([field, label]) => (
             <label key={field} className='flex items-center gap-2 text-xs'>
               <Checkbox
@@ -307,6 +302,16 @@ const CollectionEditor = ({
         }}
       >
         更新{title}
+      </Button>
+      <Button
+        size='sm'
+        variant='outline'
+        onClick={() => {
+          setRows(Array.isArray(value) ? value.map((item) => ({ ...item })) : []);
+          setError(undefined);
+        }}
+      >
+        取消修改
       </Button>
       <p className='text-xs text-muted-foreground'>编辑后点击更新，再保存版本。</p>
     </div>

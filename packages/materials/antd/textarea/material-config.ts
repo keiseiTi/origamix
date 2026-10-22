@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { textareaManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: textareaManifest,
   Component: lazy(() => import('./index')),
@@ -117,10 +116,23 @@ const material = defineMaterial({
               ],
             },
           },
+          {
+            field: 'minRows',
+            label: '最小行数',
+            uiType: 'number',
+            props: { min: 1, step: 1 },
+            linkageShow: [{ field: 'autoSize', value: true }],
+          },
+          {
+            field: 'maxRows',
+            label: '最大行数',
+            uiType: 'number',
+            props: { min: 1, step: 1 },
+            linkageShow: [{ field: 'autoSize', value: true }],
+          },
         ],
       },
     ],
   },
 });
-
 export default material;

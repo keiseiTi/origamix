@@ -1,32 +1,61 @@
-import React from 'react';
 import { DatePicker as AntdDatePicker, type DatePickerProps } from 'antd';
-import type { Dayjs } from 'dayjs';
 import type { RuntimeMaterialProps } from '@';
-import { parseDateValue } from '../date-value';
-
+import { parseDateValue, serializeDateValue } from '../date-value';
+import { useRuntimeValue } from '../runtime-state';
 export type IProps = Omit<DatePickerProps, 'value' | 'defaultValue' | 'minDate' | 'maxDate'> &
   RuntimeMaterialProps & {
-    value?: Dayjs | string | null;
-    defaultValue?: Dayjs | string;
-    minDate?: Dayjs | string;
-    maxDate?: Dayjs | string;
+    value?: string | null;
+    defaultValue?: string;
+    minDate?: string;
+    maxDate?: string;
   };
-
 export const DatePicker = ({
   value,
   defaultValue,
   minDate,
   maxDate,
+  onChange,
+  onOk,
+  fieldName,
+  fieldLabel,
+  tg_setRuntimeState,
   tg_setContextValues,
   ...rest
-}: IProps) => (
-  <AntdDatePicker
-    key={String(defaultValue ?? '')}
-    {...rest}
-    value={value === undefined ? undefined : (parseDateValue(value) ?? null)}
-    defaultValue={parseDateValue(defaultValue)}
-    minDate={parseDateValue(minDate)}
-    maxDate={parseDateValue(maxDate)}
-  />
-);
+}: IProps) => {
+  const [current, change] = useRuntimeValue(
+    'value',
+    value,
+    serializeDateValue(
+      defaultValue,
+      Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+    ),
+    tg_setRuntimeState,
+  );
+  return (
+    <AntdDatePicker
+      {...rest}
+      value={parseDateValue(current) ?? null}
+      minDate={parseDateValue(minDate)}
+      maxDate={parseDateValue(maxDate)}
+      onChange={(...args) => {
+        change(
+          serializeDateValue(
+            args[0],
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+        );
+        onChange?.(...args);
+      }}
+      onOk={(date) => {
+        change(
+          serializeDateValue(
+            date,
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+        );
+        onOk?.(date);
+      }}
+    />
+  );
+};
 export default DatePicker;

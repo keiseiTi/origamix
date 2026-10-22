@@ -4,10 +4,34 @@ import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export type IProps = SelectProps & MaterialComponentProps & {};
 
+import { useRuntimeValue } from '../runtime-state';
 export const Select = (props: IProps) => {
-  const { tg_setContextValues, ...restProps } = props;
-
-  return <AntdSelect {...restProps} />;
+  const {
+    value,
+    defaultValue,
+    onChange,
+    fieldName,
+    fieldRequired,
+    fieldLabel,
+    tg_setRuntimeState,
+    tg_setContextValues,
+    ...rest
+  } = props;
+  const [current, change] = useRuntimeValue(
+    'value',
+    value,
+    (defaultValue ?? props.mode) ? [] : null,
+    tg_setRuntimeState,
+  );
+  return (
+    <AntdSelect
+      {...rest}
+      value={current}
+      onChange={(...args) => {
+        change(args[0] ?? (props.mode ? [] : null));
+        onChange?.(...args);
+      }}
+    />
+  );
 };
-
 export default Select;

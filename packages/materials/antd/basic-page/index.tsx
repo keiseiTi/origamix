@@ -6,7 +6,7 @@ interface BasicPageProps extends MaterialComponentProps {
   children?: React.ReactNode;
   margin?: number | string;
   padding?: number | string;
-  display?: 'stream' | 'flex';
+  display?: 'flow' | 'flex';
   flexDirection?: 'row' | 'column';
 }
 
@@ -17,6 +17,7 @@ export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps
     padding,
     tg_dropPlaceholder,
     tg_setContextValues,
+    tg_setRuntimeState,
     display,
     flexDirection,
     ...rest

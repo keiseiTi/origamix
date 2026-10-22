@@ -1,7 +1,6 @@
-import React from 'react';
 import { Slider as AntdSlider, type SliderSingleProps, type SliderRangeProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
-
+import { useRuntimeValue } from '../runtime-state';
 export type IProps = (SliderSingleProps | SliderRangeProps) &
   RuntimeMaterialProps & {
     defaultStart?: number;
@@ -11,48 +10,65 @@ export type IProps = (SliderSingleProps | SliderRangeProps) &
     tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
   };
 export const Slider = ({
+  value,
+  defaultValue,
   defaultStart,
   defaultEnd,
   draggableTrack,
   tooltipMode,
   tooltipPlacement,
-  tooltip,
+  fieldName,
+  fieldLabel,
+  tg_setRuntimeState,
   tg_setContextValues,
   ...rest
 }: IProps) => {
-  const configuredTooltip = {
-    ...tooltip,
+  const [current, change] = useRuntimeValue<number | number[]>(
+    'value',
+    value,
+    rest.range
+      ? [defaultStart ?? rest.min ?? 0, defaultEnd ?? rest.max ?? 100]
+      : (defaultValue ?? rest.min ?? 0),
+    tg_setRuntimeState,
+  );
+  const tooltip = {
+    ...rest.tooltip,
     ...(tooltipMode ? { open: tooltipMode === 'auto' ? undefined : tooltipMode === 'always' } : {}),
     ...(tooltipPlacement ? { placement: tooltipPlacement } : {}),
   };
-  if (rest.range) {
-    const initial =
-      defaultStart !== undefined || defaultEnd !== undefined
-        ? [defaultStart ?? rest.min ?? 0, defaultEnd ?? rest.max ?? 100]
-        : Array.isArray(rest.defaultValue)
-          ? rest.defaultValue
-          : [rest.min ?? 0, rest.max ?? 100];
+  if (rest.range)
     return (
       <AntdSlider
-        key={`range:${defaultStart}:${defaultEnd}:${JSON.stringify(rest.defaultValue)}`}
-        {...rest}
-        range={{
-          ...(typeof rest.range === 'object' ? rest.range : {}),
-          ...(draggableTrack !== undefined ? { draggableTrack } : {}),
+        {...(rest as SliderRangeProps)}
+        range={{ draggableTrack }}
+        value={current as number[]}
+        tooltip={tooltip}
+        onChange={(next: number[]) => {
+          change(next);
+          (rest.onChange as SliderRangeProps['onChange'])?.(next);
         }}
-        defaultValue={initial}
-        tooltip={configuredTooltip}
-        style={{ ...(rest.vertical ? { height: 160 } : { minWidth: 160 }), ...rest.style }}
+        onChangeComplete={(next: number[]) => {
+          change(next);
+          (rest.onChangeComplete as SliderRangeProps['onChangeComplete'])?.(next);
+        }}
+        style={rest.vertical ? { height: 160 } : { minWidth: 160 }}
       />
     );
-  }
   return (
     <AntdSlider
-      key={`single:${rest.defaultValue}`}
-      {...rest}
+      {...(rest as SliderSingleProps)}
       range={false}
-      tooltip={configuredTooltip}
-      style={{ ...(rest.vertical ? { height: 160 } : { minWidth: 160 }), ...rest.style }}
+      value={current as number}
+      tooltip={tooltip}
+      onChange={(next) => {
+        change(next);
+        (rest.onChange as SliderSingleProps['onChange'])?.(next);
+      }}
+      onChangeComplete={(next) => {
+        change(next);
+        (rest.onChangeComplete as SliderSingleProps['onChangeComplete'])?.(next);
+      }}
+      style={rest.vertical ? { height: 160 } : { minWidth: 160 }}
     />
   );
 };

@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { inputManifest } from './manifest';
-
 const InputMaterial = defineMaterial({
   manifest: inputManifest,
   Component: lazy(() => import('./index')),
@@ -61,7 +60,7 @@ const InputMaterial = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -146,16 +145,6 @@ const InputMaterial = defineMaterial({
             },
           },
           {
-            label: '前缀文字',
-            field: 'prefix',
-            uiType: 'input',
-          },
-          {
-            label: '后缀文字',
-            field: 'suffix',
-            uiType: 'input',
-          },
-          {
             label: '自动填充',
             field: 'autoComplete',
             uiType: 'select',
@@ -181,5 +170,4 @@ const InputMaterial = defineMaterial({
     ],
   },
 });
-
 export default InputMaterial;

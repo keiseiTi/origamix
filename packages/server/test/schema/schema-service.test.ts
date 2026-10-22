@@ -51,10 +51,14 @@ const logicSchema = (): OrigamixPageSchema => ({
     button_one: { type: 'button', props: { text: '一' } },
     button_two: { type: 'button', props: { text: '二' } },
     form_main: { type: 'form', props: {} },
+    input_runtime: { type: 'input', props: {} },
   },
   layout: {
     root: 'element_root',
-    structure: { element_root: ['button_one', 'button_two', 'form_main'] },
+    structure: {
+      element_root: ['button_one', 'button_two', 'form_main'],
+      form_main: ['input_runtime'],
+    },
   },
   flows: { flow_one: logicFlow(), flow_two: logicFlow() },
   bindElements: [
@@ -82,7 +86,7 @@ const createPageFixture = async (): Promise<{
       name: 'Test',
       framework: 'react',
       uiLibrary: 'antd',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
+      materialSet: { id: 'official-antd', version: '2.0.0' },
       pageDirectory: 'pages',
       pages: [{ pageId, name: '测试页面', slug }],
     }),
@@ -116,10 +120,14 @@ describe('Schema Service', () => {
     flow.nodes.action = {
       ...flow.nodes.action!,
       type: 'setElementProps',
-      // Runtime variables exposed by a material are writable even when absent from propsSchema.
+      // Runtime writes require a separate writable declaration, even when absent from design propsSchema.
       props: {
         setters: [
-          { elementId: 'form_main', propName: 'value', value: { type: 'null', value: null } },
+          {
+            elementId: 'input_runtime',
+            propName: 'value',
+            value: { type: 'string', value: '输入' },
+          },
         ],
       },
     };
@@ -256,13 +264,32 @@ describe('Schema Service', () => {
       },
     },
     {
-      name: 'undeclared property',
+      name: 'configured property outside writable whitelist',
       mutate: (flow) => {
         flow.nodes.action!.type = 'setElementProps';
         flow.nodes.action!.props = {
           setters: [
-            { elementId: 'button_one', propName: 'unknown', value: { type: 'null', value: null } },
+            {
+              elementId: 'button_one',
+              propName: 'disabled',
+              value: { type: 'boolean', value: true },
+            },
           ],
+        };
+      },
+    },
+    {
+      name: 'configured property outside readable whitelist',
+      mutate: (flow) => {
+        flow.nodes.action!.type = 'customJS';
+        flow.nodes.action!.props = {
+          value: {
+            type: 'function',
+            value: {
+              params: [{ name: 'value', value: 'state.button_one.disabled' }],
+              body: 'return value;',
+            },
+          },
         };
       },
     },

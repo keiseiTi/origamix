@@ -1,7 +1,7 @@
+import { DrawerSizeEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { drawerManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: drawerManifest,
   Component: lazy(() => import('./index')),
@@ -11,11 +11,6 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
-          {
-            field: 'title',
-            label: '标题',
-            uiType: 'input',
-          },
           {
             field: 'open',
             label: '显示抽屉',
@@ -49,6 +44,7 @@ const material = defineMaterial({
           },
           {
             field: 'size',
+            linkageShow: [{ field: 'customSize', value: undefined }],
             label: '预设尺寸',
             uiType: 'select',
             props: {
@@ -64,14 +60,7 @@ const material = defineMaterial({
               ],
             },
           },
-          {
-            field: 'customSize',
-            label: '自定义尺寸（覆盖预设）',
-            uiType: 'number',
-            props: {
-              min: 1,
-            },
-          },
+          { field: 'customSize', label: '自定义尺寸', uiType: 'custom', render: DrawerSizeEditor },
           {
             field: 'closable',
             label: '显示关闭按钮',
@@ -107,16 +96,6 @@ const material = defineMaterial({
             label: '内容加载中',
             uiType: 'checkbox',
             defaultValue: false,
-          },
-          {
-            field: 'extra',
-            label: '标题右侧文本',
-            uiType: 'input',
-          },
-          {
-            field: 'footer',
-            label: '底部文本',
-            uiType: 'input',
           },
           {
             field: 'resizable',

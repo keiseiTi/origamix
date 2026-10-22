@@ -2,7 +2,6 @@ import { OptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { checkboxManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: checkboxManifest,
   Component: lazy(() => import('./index')),
@@ -27,5 +26,4 @@ const material = defineMaterial({
     ],
   },
 });
-
 export default material;

@@ -17,3 +17,19 @@ export const parseTimeValue = (value: Dayjs | string | null | undefined): Dayjs 
   const parsed = dayjs(value, ['HH:mm:ss', 'HH:mm'], true);
   return parsed.isValid() ? parsed : undefined;
 };
+
+export const serializeDateValue = (value: unknown, withTime = false): string | null => {
+  if (!value) return null;
+  const parsed = dayjs.isDayjs(value) ? value : dayjs(String(value));
+  if (!parsed.isValid()) return null;
+  return parsed.format(
+    withTime || parsed.hour() || parsed.minute() || parsed.second()
+      ? 'YYYY-MM-DDTHH:mm:ss'
+      : 'YYYY-MM-DD',
+  );
+};
+export const serializeTimeValue = (value: unknown): string | null => {
+  if (!value) return null;
+  const parsed = dayjs.isDayjs(value) ? value : parseTimeValue(String(value));
+  return parsed?.isValid() ? parsed.format('HH:mm:ss') : null;
+};

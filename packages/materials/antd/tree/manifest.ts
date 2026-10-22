@@ -33,27 +33,76 @@ export const treeManifest = defineManifest({
   context: {
     variables: [
       {
-        name: 'treeData',
-        description: '树节点数据',
-      },
-      {
         name: 'selectedKeys',
-        description: '选中节点键数组',
+        description: '选中节点',
       },
       {
         name: 'checkedKeys',
-        description: '勾选节点键数组',
+        description: '勾选节点',
+      },
+      {
+        name: 'expandedKeys',
+        description: '展开节点',
+      },
+    ],
+    writable: [
+      {
+        name: 'treeData',
+        description: '节点数据',
+      },
+      {
+        name: 'selectedKeys',
+        description: '选中节点',
+      },
+      {
+        name: 'checkedKeys',
+        description: '勾选节点',
+      },
+      {
+        name: 'expandedKeys',
+        description: '展开节点',
       },
     ],
     values: [],
     methods: [
       {
         name: 'onSelect',
-        description: '节点选中回调',
+        description: '选中节点',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+        linkageShow: [
+          {
+            field: 'selectable',
+            value: true,
+          },
+        ],
       },
       {
         name: 'onCheck',
-        description: '节点勾选回调',
+        description: '勾选节点',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+        linkageShow: [
+          {
+            field: 'checkable',
+            value: true,
+          },
+        ],
+      },
+      {
+        name: 'onExpand',
+        description: '展开或收起',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
       },
     ],
   },
@@ -90,12 +139,6 @@ export const treeManifest = defineManifest({
         type: 'boolean',
       },
       showLine: {
-        type: 'boolean',
-      },
-      showIcon: {
-        type: 'boolean',
-      },
-      draggable: {
         type: 'boolean',
       },
       disabled: {
@@ -197,6 +240,7 @@ export const treeManifest = defineManifest({
         required: ['title', 'key'],
       },
     },
+    required: [],
   },
   usage: '配置树的属性与展示行为。',
   constraints: ['树节点 key 应唯一。'],

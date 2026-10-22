@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import { FormRuntimeContext } from '../runtime-state';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Form as AntdForm, theme, type FormProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
@@ -16,14 +17,35 @@ const FormContent = (props: IProps) => {
     wrapperColVal,
     value,
     onValuesChange: onValuesChangeProp,
+    onFinish,
+    onFinishFailed,
     tg_mode,
     tg_readonly,
     tg_dropPlaceholder,
     tg_setContextValues,
+    tg_setRuntimeState,
     ...restProps
   } = props;
   const [form] = AntdForm.useForm();
   const { token } = theme.useToken();
+  const fieldPublishers = useRef(new Map<string, (value: unknown) => void>());
+  const publish = useCallback(() => {
+    const values = form.getFieldsValue(true);
+    tg_setRuntimeState?.({ value: values });
+    for (const [name, send] of fieldPublishers.current) send(values[name]);
+  }, [form, tg_setRuntimeState]);
+  const fieldContext = useMemo(
+    () => ({
+      sync: publish,
+      register: (name: string, send: (value: unknown) => void) => {
+        fieldPublishers.current.set(name, send);
+        return () => {
+          fieldPublishers.current.delete(name);
+        };
+      },
+    }),
+    [publish],
+  );
 
   useEffect(() => {
     if (value) {
@@ -33,49 +55,68 @@ const FormContent = (props: IProps) => {
     }
   }, [value, form]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     tg_setContextValues?.({
-      setFieldsValue: form.setFieldsValue,
-      validateFields: form.validateFields,
-      resetFields: form.resetFields,
+      setFieldsValue: (fields: Record<string, unknown>) => {
+        form.setFieldsValue(fields);
+        publish();
+      },
+      validateFields: async () => {
+        const result = await form.validateFields();
+        publish();
+        return result;
+      },
+      resetFields: (fields?: string[]) => {
+        form.resetFields(fields);
+        publish();
+      },
     });
-  }, [form, tg_setContextValues]);
+    publish();
+  }, [form, tg_setContextValues, publish]);
 
   const onValuesChange = (_: Record<string, unknown>, allValues: Record<string, unknown>) => {
-    tg_setContextValues?.({
-      value: allValues,
-    });
+    tg_setRuntimeState?.({ value: allValues });
     onValuesChangeProp?.(_, allValues);
   };
 
   return (
-    <AntdForm
-      className='w-full'
-      form={form}
-      onValuesChange={onValuesChange}
-      labelCol={
-        labelColVal !== undefined
-          ? {
-              span: labelColVal,
-            }
-          : undefined
-      }
-      wrapperCol={
-        wrapperColVal !== undefined
-          ? {
-              span: wrapperColVal,
-            }
-          : undefined
-      }
-      {...restProps}
-      style={{
-        backgroundColor: token.colorBgContainer,
-        color: token.colorText,
-        ...restProps.style,
-      }}
-    >
-      {children ?? tg_dropPlaceholder}
-    </AntdForm>
+    <FormRuntimeContext.Provider value={fieldContext}>
+      <AntdForm
+        className='w-full'
+        form={form}
+        onValuesChange={onValuesChange}
+        onFinish={(values) => {
+          tg_setRuntimeState?.({ value: values });
+          onFinish?.(values);
+        }}
+        onFinishFailed={(info) => {
+          tg_setRuntimeState?.({ value: info.values });
+          onFinishFailed?.(info);
+        }}
+        labelCol={
+          labelColVal !== undefined
+            ? {
+                span: labelColVal,
+              }
+            : undefined
+        }
+        wrapperCol={
+          wrapperColVal !== undefined
+            ? {
+                span: wrapperColVal,
+              }
+            : undefined
+        }
+        {...restProps}
+        style={{
+          backgroundColor: token.colorBgContainer,
+          color: token.colorText,
+          ...restProps.style,
+        }}
+      >
+        {children ?? tg_dropPlaceholder}
+      </AntdForm>
+    </FormRuntimeContext.Provider>
   );
 };
 

@@ -1,7 +1,7 @@
+import { CascaderDataEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { cascaderManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: cascaderManifest,
   Component: lazy(() => import('./index')),
@@ -32,6 +32,7 @@ const material = defineMaterial({
             field: 'changeOnSelect',
             uiType: 'checkbox',
             defaultValue: false,
+            linkageShow: [{ field: 'multiple', value: false }],
           },
           {
             label: '展开方式',
@@ -100,7 +101,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -191,6 +192,12 @@ const material = defineMaterial({
                 },
               ],
             },
+          },
+          {
+            field: 'options',
+            label: '级联选项',
+            uiType: 'custom',
+            render: CascaderDataEditor,
           },
         ],
       },

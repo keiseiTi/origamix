@@ -2,7 +2,6 @@ import { SelectOptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { selectManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: selectManifest,
   Component: lazy(() => import('./index')),
@@ -65,7 +64,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -133,6 +132,7 @@ const material = defineMaterial({
               min: 0,
               step: 1,
             },
+            linkageShow: [{ field: 'mode', isNotEmpty: true }],
           },
           {
             label: '弹层高度',
@@ -179,5 +179,4 @@ const material = defineMaterial({
     ],
   },
 });
-
 export default material;

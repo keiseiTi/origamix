@@ -80,3 +80,5 @@ pnpm --filter @origamix/app build
 
 - Editor logic-mode changes request immediate Working queue admission via the change callback; retain the same version checks, serial queue, failed-draft retention and explicit retry behavior as visual edits. Node position, properties, node/edge insertion/deletion and edge adjustment are draft changes, never Revision requests.
 - Runtime material loading returns components and the material-family Provider together; preview passes the snapshot theme to that Provider so Ant Design text, controls and portals match the host theme.
+
+- Material loaders register rootMaterials/rootManifests separately from draggable groups. Keep the root in Editor and validation context without allowing duplicate root insertion; runtime loading still returns the standalone components and Provider together.

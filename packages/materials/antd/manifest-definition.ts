@@ -19,15 +19,14 @@ export const defineManifest = (
 
 export const emptyContext: MaterialManifest['context'] = {
   variables: [],
+  writable: [],
   values: [],
   methods: [],
 };
 
 export const inputContext: MaterialManifest['context'] = {
-  variables: [
-    { name: 'value', description: '当前值' },
-    { name: 'disabled', description: '是否禁用' },
-  ],
+  variables: [{ name: 'value', description: '当前值' }],
+  writable: [{ name: 'value', description: '当前值' }],
   values: [],
   methods: [
     {
@@ -40,7 +39,8 @@ export const inputContext: MaterialManifest['context'] = {
 
 const optionSchema = objectSchema(
   {
-    label: { type: 'string' },
+    label: { type: 'string', minLength: 1 },
+    disabled: { type: 'boolean' },
     value: { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
   },
   ['label', 'value'],

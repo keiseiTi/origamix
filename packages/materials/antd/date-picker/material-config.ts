@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { datePickerManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: datePickerManifest,
   Component: lazy(() => import('./index')),
@@ -69,6 +68,7 @@ const material = defineMaterial({
           {
             label: '显示今天',
             field: 'showNow',
+            linkageShow: [{ field: 'picker', value: 'date' }],
             uiType: 'checkbox',
             defaultValue: true,
           },
@@ -106,7 +106,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',

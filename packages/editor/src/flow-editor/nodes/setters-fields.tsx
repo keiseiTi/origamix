@@ -43,23 +43,13 @@ export const SettersFields = ({
             (panel.configs ?? []).map((field) => [field.field, field.label] as const),
           ),
         );
-        const declaredProps = catalog.find((item) => item.type === element?.type)?.propsSchema
-          .properties as Record<string, { description?: string }> | undefined;
-        const declaredFields = Object.entries(declaredProps ?? {}).map(([name, definition]) => ({
-          name,
-          description:
-            typeof fieldLabels.get(name) === 'string'
-              ? String(fieldLabels.get(name))
-              : (definition.description ?? name),
-        }));
+        const manifest = catalog.find((item) => item.type === element?.type);
         const fields = method
-          ? (material?.contextConfig?.contextValues ?? []).filter((item) => item.isMethod)
-          : [
-              ...declaredFields,
-              ...(material?.contextConfig?.variables ?? []).filter(
-                (field) => !declaredProps?.[field.name],
-              ),
-            ];
+          ? (manifest?.context.values ?? []).filter((item) => item.isMethod)
+          : (manifest?.context.writable ?? []).map((field) => ({
+              ...field,
+              description: String(fieldLabels.get(field.name) || field.description || field.name),
+            }));
         return (
           <div key={keys[index] ?? index} className='space-y-2 rounded-md border border-border p-2'>
             <div className='flex items-center justify-between'>

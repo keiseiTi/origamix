@@ -6,6 +6,7 @@ export interface RuntimeMaterialProps {
   tg_readonly?: boolean;
   tg_mode?: 'design' | 'render';
   tg_dropPlaceholder?: ReactNode;
+  tg_setRuntimeState?: (state: Record<string, unknown>) => void;
   tg_setContextValues?: (contextValues: Record<string, unknown>) => void;
   [key: string]: unknown;
 }

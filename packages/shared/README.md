@@ -23,7 +23,7 @@ import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
 
 统一从 `@origamix/shared` 导入。`src/index.ts` 显式列举公共值与类型导出；上表中的模块路径只描述内部职责，不是公开子路径。测试和新增内部文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。Ajv 实例和各个校验器在首次调用对应校验函数时初始化并缓存，导入根入口不会编译校验器。内部模块之间直接引用，不反向引用根入口。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
-`protocol/project-stack` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，匹配 Runtime 与模板均为 `1.0.0`。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
+`protocol/project-stack` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@2.0.0`，匹配 Runtime 与模板均为 `1.0.0`。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
 
 ## 验证与构建
 
@@ -94,6 +94,8 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 `defaultProps` 是编辑器的初始草稿，可能包含空 URL、空目标 ID 或空属性名；它不是已配置完成的示例。`propsSchema` 描述规范字段和基础类型；元素是否存在、属性/方法是否由物料公开、变量是否声明、分支和连线是否一致、是否存在循环等，需要消费方结合当前页面做语义校验。属性 Schema 接受通用 JSON 数据的字段仍需消费方执行既有安全检查，不能用 TypeScript 类型断言替代验证。
 
-节点契约 1.0 的取值字段统一使用 `{ type, value }` HyperValue，支持 string、number、boolean、null、contextValue、expression 和 function。上下文路径为 `state.elementId.property`、`global.name`、`result.nodeId.path`，函数参数还可绑定 `method.elementId.methodName`。函数值包含 `{ params: [{ name, value: contextPath }], body }`。Shared 只校验配置，由 Runtime 执行表达式、函数和自定义 JS，不提供原始值或 `$ref` 格式转换。
+节点契约 1.0 的取值字段统一使用 `{ type, value }` HyperValue，支持 string、number、boolean、null、contextValue、expression 和 function。上下文路径为 `state.elementId.property`、`event.payload.path`、`global.name`、`result.nodeId.path`，函数参数还可绑定 `method.elementId.methodName`。函数值包含 `{ params: [{ name, value: contextPath }], body }`。Shared 只校验配置，由 Runtime 执行表达式、函数和自定义 JS，不提供原始值或 `$ref` 格式转换。
 
 本模块不包含 React、LogicFlow、表单控件或执行函数。Editor 与 Runtime 使用当前节点契约，不转换旧节点格式。Server 的物料与写入校验仍由对应服务负责。
+
+物料 Manifest.context.variables 只声明可读业务属性，writable 独立声明可写运行状态；values 中 isMethod=true 的项是可调用方法，methods 是可绑定事件。设计期 propsSchema 不自动授予运行时读写能力。可读项可声明精确嵌套路径，例如 pagination.current；事件的 linkageShow 是纯数据显隐元数据。

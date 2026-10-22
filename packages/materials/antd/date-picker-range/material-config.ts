@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { datePickerRangeManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: datePickerRangeManifest,
   Component: lazy(() => import('./index')),
@@ -128,7 +127,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',

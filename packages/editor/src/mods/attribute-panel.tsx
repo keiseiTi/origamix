@@ -39,13 +39,16 @@ const isNotEmpty = (value: unknown): boolean => {
 };
 
 const isVisible = (config: AttributeConfig, values: Record<string, unknown>): boolean => {
-  return (config.linkageShow ?? []).every((rule) => {
+  const matches = (config.linkageShow ?? []).map((rule) => {
     const value = values[rule.field];
     if (rule.isNotEmpty) return isNotEmpty(value);
     return Object.prototype.hasOwnProperty.call(rule, 'value')
       ? value === rule.value
       : isNotEmpty(value);
   });
+  return (config as AttributeConfig & { linkageMode?: 'any' }).linkageMode === 'any'
+    ? matches.some(Boolean)
+    : matches.every(Boolean);
 };
 
 const optionsOf = (config: AttributeConfig): OptionItem[] => {
@@ -64,10 +67,45 @@ export const AttributePanel = ({
   const material = activeElement?.material;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
-  const methods = material?.contextConfig?.methods;
+  const parentTabsId = activeElement
+    ? SchemaUtils.getParents(schema, activeElement.id).find(
+        (id) => schema.elements[id]?.type === 'tabs',
+      )
+    : undefined;
+  const tabItems =
+    parentTabsId && Array.isArray(schema.elements[parentTabsId]?.props?.items)
+      ? (schema.elements[parentTabsId]!.props.items as { key: string; label: string }[])
+      : [];
+  const allMethods = material?.contextConfig?.methods;
+  const methods = allMethods?.filter((method) =>
+    isVisible(method as unknown as AttributeConfig, { ...material?.defaultProps, ...values }),
+  );
+  const hiddenBindings = allMethods?.filter(
+    (method) =>
+      !methods?.includes(method) &&
+      schema.bindElements?.some(
+        (binding) => binding.id === activeElement?.id && binding.event === method.name,
+      ),
+  );
   const panels = [
     ...(material?.editorConfig?.panels ?? []).map((panel) => ({
       ...panel,
+      configs: [
+        ...(panel.configs ?? []),
+        ...(panel.title === '属性' && parentTabsId
+          ? [
+              {
+                field: 'tabKey',
+                required: false,
+                label: '所属页签',
+                uiType: 'select',
+                props: {
+                  options: tabItems.map((item) => ({ label: item.label, value: item.key })),
+                },
+              },
+            ]
+          : []),
+      ],
       kind: 'attributes' as const,
     })),
     ...(methods?.length ? [{ title: '事件', kind: 'events' as const, methods }] : []),
@@ -239,15 +277,42 @@ export const AttributePanel = ({
       case 'custom': {
         const Component = (
           config as unknown as {
-            render?: React.ComponentType<{ value?: unknown; onChange?: (value: unknown) => void }>;
+            render?: React.ComponentType<{
+              value?: unknown;
+              onChange?: (value: unknown) => void;
+              elementProps?: Readonly<Record<string, unknown>>;
+              fields?: readonly { name: string; label: string }[];
+            }>;
           }
         ).render;
         return Component ? (
-          <Component
+          <details
             key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
-            value={value}
-            onChange={(next) => update(config.field, next)}
-          />
+            className='rounded border border-border p-2'
+          >
+            <summary className='cursor-pointer rounded text-xs font-medium outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring'>
+              编辑{label}
+            </summary>
+            <div className='pt-3'>
+              <Component
+                key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
+                value={value}
+                elementProps={values}
+                fields={Object.keys(schema.elements)
+                  .filter((id) => SchemaUtils.getParents(schema, id).includes(activeElement!.id))
+                  .map((id: string) => schema.elements[id])
+                  .filter(
+                    (element) =>
+                      typeof element?.props?.fieldName === 'string' && element.props.fieldName,
+                  )
+                  .map((element) => ({
+                    name: String(element!.props.fieldName),
+                    label: String(element!.props.fieldLabel || element!.props.fieldName),
+                  }))}
+                onChange={(next) => update(config.field, next)}
+              />
+            </div>
+          </details>
         ) : null;
       }
       case 'color':
@@ -336,6 +401,15 @@ export const AttributePanel = ({
                   if (panel.kind === 'events') {
                     return (
                       <div key='events'>
+                        {!!hiddenBindings?.length && (
+                          <p role='status' className='mb-2 text-xs text-muted-foreground'>
+                            当前模式不支持的已有事件绑定：
+                            {hiddenBindings
+                              .map((method) => method.description || method.name)
+                              .join('、')}
+                            。绑定已保留，请调整模式或在逻辑视图处理。
+                          </p>
+                        )}
                         {panel.methods.map((method) => (
                           <div
                             key={method.name}
@@ -349,7 +423,9 @@ export const AttributePanel = ({
                               })
                             }
                           >
-                            <span>{method.description || method.name}</span>
+                            <span>
+                              {method.description || method.name}（{method.name}）
+                            </span>
                           </div>
                         ))}
                       </div>

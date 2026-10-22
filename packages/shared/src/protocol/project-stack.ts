@@ -25,7 +25,7 @@ export type ProjectStack = Static<typeof ProjectStackSchema>;
 export const BUILTIN_PROJECT_STACK = {
   framework: 'react',
   uiLibrary: 'antd',
-  materialSet: { id: 'official-antd', version: '1.0.0' },
+  materialSet: { id: 'official-antd', version: '2.0.0' },
   runtime: { id: 'origamix.react', version: '1.0.0' },
   template: { id: 'origamix.react-antd', version: '1.0.0' },
 } as const satisfies ProjectStack;

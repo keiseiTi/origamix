@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Input as AntdInput, type InputProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
@@ -7,20 +7,34 @@ export type IProps = InputProps &
     value?: string;
   };
 
+import { useRuntimeValue } from '../runtime-state';
 export const Input = (props: IProps) => {
-  const { onChange, value, defaultValue, tg_setContextValues, ...restProps } = props;
-  const [innerValue, setInnerValue] = useState(value ?? defaultValue);
-
-  useEffect(() => {
-    setInnerValue(value ?? defaultValue);
-  }, [value, defaultValue]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInnerValue(e.target.value);
-    onChange?.(e);
-  };
-
-  return <AntdInput value={innerValue} onChange={handleChange} {...restProps} />;
+  const {
+    onChange,
+    onPressEnter,
+    value,
+    defaultValue,
+    fieldName,
+    fieldRequired,
+    fieldLabel,
+    tg_setRuntimeState,
+    tg_setContextValues,
+    ...rest
+  } = props;
+  const [current, change] = useRuntimeValue('value', value, defaultValue ?? '', tg_setRuntimeState);
+  return (
+    <AntdInput
+      {...rest}
+      value={current}
+      onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+        change(event.target.value);
+        onChange?.(event);
+      }}
+      onPressEnter={(event) => {
+        change(event.currentTarget.value);
+        if (!event.nativeEvent.isComposing) onPressEnter?.(event);
+      }}
+    />
+  );
 };
-
 export default Input;

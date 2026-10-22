@@ -19,7 +19,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
           name: 'Test',
           framework: 'react',
           uiLibrary: 'antd',
-          materialSet: { id: 'official-antd', version: '1.0.0' },
+          materialSet: { id: 'official-antd', version: '2.0.0' },
           pageDirectory: 'pages',
           pages: [first, second],
         }),

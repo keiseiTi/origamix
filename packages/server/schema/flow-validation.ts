@@ -84,12 +84,16 @@ export const validateFlowReferences = (
             )
               report(at, 'Context method must be declared by the target material');
           } else if (
-            parts.length &&
-            !Object.hasOwn(manifest.propsSchema['properties'] ?? {}, parts[0]!) &&
-            !manifest.context.variables.some((entry) => entry.name === parts[0])
+            !parts.length ||
+            !manifest.context.variables.some((entry) => {
+              const path = parts.join('.');
+              return path === entry.name || path.startsWith(`${entry.name}.`);
+            })
           ) {
-            report(at, 'State property must be declared by the target material');
+            report(at, 'State property is not readable in target material context.variables');
           }
+        } else if (kind === 'event') {
+          if (name !== 'payload') report(at, 'Only event.payload is available');
         } else if (kind === 'result') {
           if (
             !Object.hasOwn(flow.nodes, name) ||
@@ -155,10 +159,12 @@ export const validateFlowReferences = (
             manifest &&
             (setter.propName || complete) &&
             (!safeKey(setter.propName) ||
-              (!Object.hasOwn(manifest.propsSchema['properties'] ?? {}, setter.propName) &&
-                !manifest.context.variables.some((entry) => entry.name === setter.propName)))
+              !(manifest.context.writable ?? []).some((entry) => entry.name === setter.propName))
           )
-            report(`${at}/propName`, 'Property must be declared by the target material');
+            report(
+              `${at}/propName`,
+              'Property is not writable in target material context.writable',
+            );
           if (complete && !setter.propName)
             report(
               `${at}/propName`,

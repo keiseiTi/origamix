@@ -84,15 +84,12 @@ export const HyperInput = ({
           (panel.configs ?? []).map((field) => [field.field, field.label] as const),
         ),
       );
-      const names = new Set([
-        ...Object.keys(manifest?.propsSchema.properties ?? {}),
-        ...(material?.contextConfig?.variables ?? []).map((item) => item.name),
-      ]);
+      const names = new Set([...(manifest?.context.variables ?? []).map((item) => item.name)]);
       return [
         ...[...names].map((name) => ({
           value: `state.${id}.${name}`,
           name,
-          label: `${title} · ${name}`,
+          label: `${title} · ${String(fieldLabels.get(name) || material?.contextConfig?.variables?.find((field) => field.name === name)?.description || name)}（${name}）`,
           property: String(
             fieldLabels.get(name) ||
               material?.contextConfig?.variables?.find((field) => field.name === name)
@@ -113,6 +110,15 @@ export const HyperInput = ({
       ];
     })
     .concat(
+      [
+        {
+          value: 'event.payload',
+          name: 'payload',
+          label: '当前事件 · 业务参数',
+          property: '业务参数',
+          tags: ['事件'],
+        },
+      ],
       (schema.context?.globalVariables ?? []).map((item) => ({
         value: `global.${item.name}`,
         name: item.name,
@@ -199,7 +205,7 @@ export const HyperInput = ({
           />
           <Input
             aria-label={`${label}上下文路径`}
-            placeholder='state.元素ID.属性 / global.变量 / result.节点ID.data'
+            placeholder='state.元素ID.业务属性 / event.payload / global.变量 / result.节点ID.data'
             value={String(data.value ?? '')}
             onChange={(event) => onChange({ type, value: event.target.value })}
           />

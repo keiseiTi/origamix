@@ -15,30 +15,56 @@ export const formManifest = defineManifest({
     variables: [
       {
         name: 'value',
-        description: '表单值',
-      },
-      {
-        name: 'disabled',
-        description: '是否禁用',
+        description: '当前值',
       },
     ],
+    writable: [],
     values: [
       {
-        name: 'value',
-        description: '表单值',
-      },
-      {
         name: 'validateFields',
-        description: '表单校验',
+        description: '校验字段',
         isMethod: true,
       },
       {
         name: 'resetFields',
-        description: '表单重置',
+        description: '重置字段',
+        isMethod: true,
+      },
+      {
+        name: 'setFieldsValue',
+        description: '设置字段值',
         isMethod: true,
       },
     ],
-    methods: [],
+    methods: [
+      {
+        name: 'onValuesChange',
+        description: '字段值改变',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+      {
+        name: 'onFinish',
+        description: '校验成功提交',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+      {
+        name: 'onFinishFailed',
+        description: '提交校验失败',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+    ],
   },
   description: '表单容器的结构与展示属性。',
   keywords: ['表单容器', 'layout'],
@@ -58,7 +84,7 @@ export const formManifest = defineManifest({
       },
       size: {
         type: 'string',
-        enum: ['large', 'middle', 'small'],
+        enum: ['large', 'medium', 'small'],
       },
       labelAlign: {
         type: 'string',
@@ -115,6 +141,7 @@ export const formManifest = defineManifest({
         type: 'boolean',
       },
     },
+    required: [],
   },
   usage: '配置表单容器的属性与展示行为。',
   constraints: ['不将实例或回调写入 Schema。'],

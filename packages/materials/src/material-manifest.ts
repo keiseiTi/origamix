@@ -13,6 +13,7 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
     properties: {
       ...(manifest.propsSchema.properties as Readonly<Record<string, JsonSchema>>),
       alias: { type: 'string', description: '元素别名，用于说明元素用途。' },
+      tabKey: { type: 'string', description: '父级页签内容归属。' },
     },
     required:
       (manifest.propsSchema.required as readonly string[] | undefined)?.filter(

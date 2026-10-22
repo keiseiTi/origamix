@@ -1,4 +1,9 @@
-import { createEngine, type Schema } from '@tangramino/engine';
+import {
+  installMaterialState,
+  bindMaterialEventPayloads,
+  captureRuntimeEvent,
+} from '../material-state';
+import { createEngine, withFlowEngine, type Schema } from '@tangramino/engine';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared';
 import { createLogicNodes, logicNodes } from '../logic-nodes';
@@ -17,6 +22,101 @@ const schema: Schema = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('declarative event execution', () => {
+  it('isolates asynchronous event payloads and enforces business capabilities without mutating the source Schema', async () => {
+    const source: Schema = {
+      ...structuredClone(schema),
+      flows: {
+        flow: {
+          startId: 'start',
+          nodes: {
+            start: { id: 'start', type: 'start', props: {}, prev: [], next: ['wait'] },
+            wait: {
+              id: 'wait',
+              type: 'customJS',
+              props: {
+                value: {
+                  type: 'function',
+                  value: {
+                    params: [{ name: 'payload', value: 'event.payload' }],
+                    body: 'return new Promise(resolve => setTimeout(resolve, payload.delay));',
+                  },
+                },
+              },
+              prev: ['start'],
+              next: ['capture'],
+            },
+            capture: {
+              id: 'capture',
+              type: 'setGlobalVariable',
+              props: {
+                setters: [
+                  {
+                    name: 'captured',
+                    value: { type: 'contextValue', value: 'event.payload.value' },
+                  },
+                ],
+              },
+              prev: ['wait'],
+              next: [],
+            },
+          },
+        },
+      },
+      bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
+    };
+    const original = JSON.stringify(source);
+    const engine = createEngine(source);
+    const context = { engine, data: {}, lastReturnedVal: {} };
+    installMaterialState(engine, {
+      button: {
+        origamixRuntime: {
+          context: {
+            variables: [{ name: 'text' }, { name: 'loading' }],
+            writable: [{ name: 'text' }, { name: 'loading' }],
+            values: [],
+            methods: [],
+          },
+          defaultProps: {},
+          initialState: () => ({ loading: false }),
+          eventPayload: (_event: string, args: unknown[]) => args[0],
+        },
+      },
+    });
+    withFlowEngine({
+      engine,
+      schema: source,
+      logicNodes: { ...logicNodes, start: captureRuntimeEvent },
+    });
+    bindMaterialEventPayloads(engine);
+    const captured: unknown[] = [];
+    const originalSet = engine.setGlobalVariable.bind(engine);
+    engine.setGlobalVariable = (name, value) => {
+      captured.push(value);
+      originalSet(name, value);
+    };
+    const trigger = engine.injectionCallback.button!.onClick![0]!;
+    trigger({ value: 'first', delay: 20 });
+    trigger({ value: 'second', delay: 1 });
+    await vi.waitFor(() => expect(captured).toEqual(['second', 'first']));
+    expect(() => resolveHyperContext(context, 'state.button.disabled')).toThrow('not readable');
+    await expect(
+      logicNodes.setElementProps!({
+        ...context,
+        data: {
+          setters: [
+            { elementId: 'button', propName: 'disabled', value: { type: 'boolean', value: true } },
+          ],
+        },
+      }),
+    ).rejects.toThrow('not writable');
+    const publish = engine.getState('button')?.tg_setRuntimeState as (
+      patch: Record<string, unknown>,
+    ) => void;
+    publish({ text: 'latest' });
+    expect(resolveHyperContext(context, 'state.button.text')).toBe('latest');
+    expect(JSON.stringify(source)).toBe(original);
+  });
+
   // Runtime owns page execution; Server cannot verify resolved bindings or code results.
   it('executes the configured property, variable, method and portal actions with scoped data references', async () => {
     expect(Object.keys(logicNodes).sort()).toEqual(

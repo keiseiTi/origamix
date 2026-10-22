@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { basicPageManifest } from './manifest';
-
 const BasicPageMaterial = defineMaterial({
   manifest: basicPageManifest,
   isContainer: true,
@@ -10,10 +9,6 @@ const BasicPageMaterial = defineMaterial({
     panels: [
       {
         title: '属性',
-        configs: [],
-      },
-      {
-        title: '样式',
         configs: [
           {
             label: '布局方式',
@@ -44,26 +39,9 @@ const BasicPageMaterial = defineMaterial({
               },
             ],
           },
-          {
-            label: '外边距',
-            field: 'margin',
-            uiType: 'number',
-            props: {
-              suffix: 'px',
-            },
-          },
-          {
-            label: '内边距',
-            field: 'padding',
-            uiType: 'number',
-            props: {
-              suffix: 'px',
-            },
-          },
         ],
       },
     ],
   },
 });
-
 export default BasicPageMaterial;

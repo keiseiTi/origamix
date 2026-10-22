@@ -19,6 +19,7 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
     height,
     tg_dropPlaceholder,
     tg_setContextValues,
+    tg_setRuntimeState,
     ...rest
   } = props;
 

@@ -1,23 +1,67 @@
-import React from 'react';
+import type { Key } from 'react';
 import { Tree as AntdTree, type TreeProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
-
+import { useRuntimeValue } from '../runtime-state';
 export type IProps = TreeProps & RuntimeMaterialProps;
-export const Tree = ({ tg_setContextValues, tg_mode, ...rest }: IProps) => (
-  <AntdTree
-    key={
-      tg_mode === 'design'
-        ? JSON.stringify([
-            rest.treeData,
-            rest.defaultExpandAll,
-            rest.defaultExpandParent,
-            rest.defaultExpandedKeys,
-            rest.defaultSelectedKeys,
-            rest.defaultCheckedKeys,
-          ])
-        : undefined
-    }
-    {...rest}
-  />
-);
+export const Tree = ({
+  selectedKeys,
+  checkedKeys,
+  expandedKeys,
+  defaultSelectedKeys,
+  defaultCheckedKeys,
+  defaultExpandedKeys,
+  onSelect,
+  onCheck,
+  onExpand,
+  tg_setContextValues,
+  tg_setRuntimeState,
+  tg_mode,
+  ...rest
+}: IProps) => {
+  const allKeys: Key[] = [];
+  const visit = (nodes: NonNullable<TreeProps['treeData']>) =>
+    nodes.forEach((node) => {
+      allKeys.push(node.key);
+      if (node.children) visit(node.children);
+    });
+  visit(rest.treeData ?? []);
+  const [selected, select] = useRuntimeValue<Key[]>(
+    'selectedKeys',
+    selectedKeys,
+    defaultSelectedKeys ?? [],
+    tg_setRuntimeState,
+  );
+  const [checked, check] = useRuntimeValue<Key[]>(
+    'checkedKeys',
+    Array.isArray(checkedKeys) ? checkedKeys : checkedKeys?.checked,
+    defaultCheckedKeys ?? [],
+    tg_setRuntimeState,
+  );
+  const [expanded, expand] = useRuntimeValue<Key[]>(
+    'expandedKeys',
+    expandedKeys,
+    rest.defaultExpandAll ? allKeys : (defaultExpandedKeys ?? []),
+    tg_setRuntimeState,
+  );
+  return (
+    <AntdTree
+      {...rest}
+      selectedKeys={selected}
+      checkedKeys={checked}
+      expandedKeys={expanded}
+      onSelect={(next, info) => {
+        select(next);
+        onSelect?.(next, info);
+      }}
+      onCheck={(next, info) => {
+        check(Array.isArray(next) ? next : next.checked);
+        onCheck?.(next, info);
+      }}
+      onExpand={(next, info) => {
+        expand(next);
+        onExpand?.(next, info);
+      }}
+    />
+  );
+};
 export default Tree;

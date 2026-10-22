@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { switchManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: switchManifest,
   Component: lazy(() => import('./index')),
@@ -42,20 +41,9 @@ const material = defineMaterial({
               ],
             },
           },
-          {
-            label: '开启文案',
-            field: 'checkedChildren',
-            uiType: 'input',
-          },
-          {
-            label: '关闭文案',
-            field: 'unCheckedChildren',
-            uiType: 'input',
-          },
         ],
       },
     ],
   },
 });
-
 export default material;

@@ -116,7 +116,7 @@ export class AgentService {
         promptVersion: '3',
         policyVersion: '1',
         toolsetVersion: '2',
-        materialManifestVersion: 'official-antd@1.0.0',
+        materialManifestVersion: 'official-antd@2.0.0',
       });
       if (started.created) {
         this.dependencies.events.publish({

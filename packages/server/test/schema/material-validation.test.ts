@@ -6,7 +6,7 @@ import {
   type MaterialValidationRuntime,
 } from '../../schema/material-validation';
 
-const supportedSet = [{ id: 'official-antd', version: '1.0.0' }] as const;
+const supportedSet = [{ id: 'official-antd', version: '2.0.0' }] as const;
 
 const page = (): OrigamixPageSchema => {
   return {
@@ -84,7 +84,7 @@ describe('Manifest-driven Schema validation', () => {
         buttonStyle: 'solid',
       },
       number: { defaultValue: 2, step: 0.5, controls: false },
-      switch: { defaultChecked: true, checkedChildren: '开', loading: true },
+      switch: { defaultChecked: true, loading: true },
       datePicker: { defaultValue: '2026-10-13', showTime: true, minDate: '2026-01-01' },
       datePickerRange: {
         defaultStart: '2026-10-13',
@@ -123,8 +123,7 @@ describe('Manifest-driven Schema validation', () => {
         rowKey: 'id',
         columns: [{ title: '姓名', dataIndex: 'name', width: 120, fixed: 'left' }],
         dataSource: [{ id: '1', name: '张三' }],
-        enabledPagination: true,
-        pageSize: 5,
+        pagination: { pageSize: 5, current: 1 },
         scrollY: 240,
       },
       tree: {
@@ -137,8 +136,8 @@ describe('Manifest-driven Schema validation', () => {
         tabPlacement: 'start',
         destroyOnHidden: true,
       },
-      modal: { title: '弹窗', open: false, showFooter: false, destroyOnHidden: true },
-      drawer: { title: '抽屉', open: false, placement: 'bottom', customSize: 240, resizable: true },
+      modal: { open: false, showFooter: false, destroyOnHidden: true },
+      drawer: { open: false, placement: 'bottom', customSize: 240, resizable: true },
     };
     for (const [type, props] of Object.entries(displays)) {
       schema.elements[`${type}_test`] = { type, props };
@@ -223,7 +222,7 @@ describe('Manifest-driven Schema validation', () => {
     );
     const mismatchedRuntime: MaterialValidationRuntime = {
       ...defaultMaterialValidationRuntime,
-      materialSet: { id: 'official-antd', version: '2.0.0' },
+      materialSet: { id: 'official-antd', version: '9.0.0' },
     };
     expect(
       validatePageAgainstMaterials(page(), supportedSet, mismatchedRuntime).errors[0],

@@ -124,7 +124,10 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
         })),
       [registration],
     );
-    const materials = useMemo(() => groups.flatMap((group) => group.children), [groups]);
+    const materials = useMemo(
+      () => [...(registration.rootMaterials ?? []), ...groups.flatMap((group) => group.children)],
+      [groups, registration.rootMaterials],
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [sessionKey]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

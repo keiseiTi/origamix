@@ -1,9 +1,8 @@
+import { TableRowsEditor, PaginationEditor } from '../../components/structured-editors';
 import { ColumnsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { tableManifest } from './manifest';
-import { validateRows } from '../structured-data-validation';
-
 const material = defineMaterial({
   manifest: tableManifest,
   Component: lazy(() => import('./index')),
@@ -19,15 +18,15 @@ const material = defineMaterial({
           },
           {
             field: 'columns',
-            render: ColumnsEditor,
             label: '列配置',
             uiType: 'custom',
+            render: ColumnsEditor,
           },
           {
             field: 'dataSource',
-            validateValue: validateRows,
             label: '表格数据',
-            uiType: 'json',
+            uiType: 'custom',
+            render: TableRowsEditor,
           },
           {
             field: 'size',
@@ -41,7 +40,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -113,116 +112,10 @@ const material = defineMaterial({
             uiType: 'input',
           },
           {
-            field: 'enabledPagination',
-            label: '开启分页',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
-            field: 'pageSize',
-            label: '每页条数',
-            uiType: 'number',
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
-            props: {
-              min: 1,
-              step: 1,
-            },
-          },
-          {
-            field: 'paginationPosition',
-            label: '分页位置',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '上左',
-                  value: 'topLeft',
-                },
-                {
-                  label: '上中',
-                  value: 'topCenter',
-                },
-                {
-                  label: '上右',
-                  value: 'topRight',
-                },
-                {
-                  label: '下左',
-                  value: 'bottomLeft',
-                },
-                {
-                  label: '下中',
-                  value: 'bottomCenter',
-                },
-                {
-                  label: '下右',
-                  value: 'bottomRight',
-                },
-                {
-                  label: '隐藏',
-                  value: 'none',
-                },
-              ],
-            },
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'hideOnSinglePage',
-            label: '单页隐藏分页',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'showQuickJumper',
-            label: '快速跳页',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'showSizeChanger',
-            label: '切换每页条数',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'simplePagination',
-            label: '简洁分页',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'enabledPagination',
-                value: true,
-              },
-            ],
+            field: 'pagination',
+            label: '分页',
+            uiType: 'custom',
+            render: PaginationEditor,
           },
         ],
       },

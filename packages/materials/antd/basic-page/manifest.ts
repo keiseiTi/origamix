@@ -11,8 +11,6 @@ export const basicPageManifest = defineManifest({
   propsSchema: objectSchema({
     display: { type: 'string', enum: ['flow', 'flex'] },
     flexDirection: { type: 'string', enum: ['column', 'row'] },
-    margin: { type: 'number' },
-    padding: { type: 'number' },
   }),
   acceptsChildren: true,
   usage: '作为页面 Schema 的根节点承载其他物料。',

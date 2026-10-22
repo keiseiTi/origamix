@@ -184,7 +184,7 @@ describe('read-only Agent tools', () => {
       revisionId,
       elementCount: 3,
       page: { id: 'page_one', slug: 'home' },
-      materialSet: { id: 'official-antd', version: '1.0.0' },
+      materialSet: { id: 'official-antd', version: '2.0.0' },
     });
     await expect(execute('get_schema_outline', scope)).resolves.toMatchObject({
       revisionId,
@@ -239,7 +239,7 @@ describe('read-only Agent tools', () => {
       matches: expect.arrayContaining([expect.objectContaining({ type: 'form' })]),
     });
     await expect(execute('get_material_manifest', { type: 'input' })).resolves.toMatchObject({
-      data: { manifest: { type: 'input', version: '1.0.0' } },
+      data: { manifest: { type: 'input', version: '2.0.0' } },
     });
     await expect(execute('get_material_manifest', { type: 'unknown' })).rejects.toMatchObject({
       statusCode: 404,

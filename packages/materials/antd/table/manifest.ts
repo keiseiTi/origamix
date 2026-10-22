@@ -5,7 +5,7 @@ export const tableManifest = defineManifest({
   title: '表格',
   defaultProps: {
     rowKey: 'id',
-    size: 'middle',
+    size: 'medium',
     columns: [
       {
         title: '列1',
@@ -16,27 +16,59 @@ export const tableManifest = defineManifest({
         dataIndex: 'col2',
       },
     ],
-    enabledPagination: false,
     showHeader: true,
     dataSource: [],
+    pagination: false,
   },
   context: {
     variables: [
       {
         name: 'dataSource',
-        description: '数据源',
+        description: '数据行',
       },
       {
         name: 'loading',
         description: '加载中',
       },
       {
-        name: 'bordered',
-        description: '是否显示边框',
+        name: 'pagination.current',
+        description: '当前页码',
+      },
+      {
+        name: 'pagination.pageSize',
+        description: '每页条数',
+      },
+      {
+        name: 'pagination.total',
+        description: '总条数',
+      },
+    ],
+    writable: [
+      {
+        name: 'dataSource',
+        description: '数据行',
+      },
+      {
+        name: 'loading',
+        description: '加载中',
+      },
+      {
+        name: 'pagination',
+        description: '分页',
       },
     ],
     values: [],
-    methods: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '分页变化',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+    ],
   },
   description: '表格的结构与展示属性。',
   keywords: ['表格', 'display'],
@@ -52,7 +84,7 @@ export const tableManifest = defineManifest({
       },
       size: {
         type: 'string',
-        enum: ['large', 'middle', 'small'],
+        enum: ['large', 'medium', 'small'],
       },
       columns: {
         type: 'array',
@@ -62,12 +94,15 @@ export const tableManifest = defineManifest({
           properties: {
             title: {
               type: 'string',
+              minLength: 1,
             },
             dataIndex: {
               type: 'string',
+              minLength: 1,
             },
             key: {
               type: 'string',
+              minLength: 1,
             },
             width: {
               type: 'number',
@@ -102,15 +137,15 @@ export const tableManifest = defineManifest({
         type: 'array',
         items: {
           type: 'object',
+          additionalProperties: {
+            anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
+          },
         },
-      },
-      enabledPagination: {
-        type: 'boolean',
       },
       pagination: {
         anyOf: [
           {
-            type: 'boolean',
+            const: false,
           },
           {
             type: 'object',
@@ -154,38 +189,11 @@ export const tableManifest = defineManifest({
                     'none',
                   ],
                 },
+                maxItems: 1,
               },
             },
           },
         ],
-      },
-      pageSize: {
-        type: 'integer',
-        minimum: 1,
-      },
-      paginationPosition: {
-        type: 'string',
-        enum: [
-          'topLeft',
-          'topCenter',
-          'topRight',
-          'bottomLeft',
-          'bottomCenter',
-          'bottomRight',
-          'none',
-        ],
-      },
-      hideOnSinglePage: {
-        type: 'boolean',
-      },
-      showQuickJumper: {
-        type: 'boolean',
-      },
-      showSizeChanger: {
-        type: 'boolean',
-      },
-      simplePagination: {
-        type: 'boolean',
       },
       bordered: {
         type: 'boolean',

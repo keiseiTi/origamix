@@ -1,3 +1,4 @@
+import { assertRuntimeField, assertRuntimeMethod, writeRuntimeState } from './material-state';
 import type { FlowExecuteContext, LogicNodes } from '@tangramino/engine';
 import { isFlowNodeProps, type FlowNodeProps, type RuntimeFlowNodeType } from '@origamix/shared';
 
@@ -30,8 +31,10 @@ const portal =
   (open: boolean) =>
   (context: NodeContext<'openModalDrawer' | 'closeModalDrawer'>): void => {
     const id = elementId(context, context.data.elementId);
-    if (id && ['modal', 'drawer'].includes(context.engine.elements[id]!.type))
+    if (id && ['modal', 'drawer'].includes(context.engine.elements[id]!.type)) {
+      writeRuntimeState(context.engine, id, { open });
       context.engine.setState({ [id]: { open } });
+    }
   };
 
 /** Declarative actions shared by preview and generated projects. */
@@ -41,11 +44,24 @@ const handlers: NodeHandlers = {
     const changes: Record<string, Record<string, unknown>> = {};
     for (const setter of data.setters) {
       const id = elementId(context, setter.elementId);
-      if (id && typeof setter.propName === 'string' && setter.propName && safeKey(setter.propName))
+      if (
+        id &&
+        typeof setter.propName === 'string' &&
+        setter.propName &&
+        safeKey(setter.propName)
+      ) {
+        assertRuntimeField(engine, id, setter.propName, true);
         changes[id] = {
           ...changes[id],
           [setter.propName]: await executeHyperValue(context, setter.value),
         };
+      }
+    }
+    for (const [id, patch] of Object.entries(changes)) writeRuntimeState(engine, id, patch);
+    for (const [id, patch] of Object.entries(changes)) {
+      const writeField = engine.getContextValue(id)?.$writeField;
+      const field = engine.elements[id]?.type === 'switch' ? 'checked' : 'value';
+      if (typeof writeField === 'function' && Object.hasOwn(patch, field)) writeField(patch[field]);
     }
     engine.setState(changes);
   },
@@ -71,6 +87,7 @@ const handlers: NodeHandlers = {
     for (const setter of context.data.setters) {
       const id = elementId(context, setter.elementId);
       if (!id || typeof setter.methodName !== 'string' || !safeKey(setter.methodName)) continue;
+      assertRuntimeMethod(context.engine, id, setter.methodName);
       const values = context.engine.getContextValue(id);
       if (!values || !Object.hasOwn(values, setter.methodName)) continue;
       const method = values[setter.methodName];

@@ -20,9 +20,49 @@ export const tabsManifest = defineManifest({
     hideAdd: true,
   },
   context: {
-    variables: [],
+    variables: [
+      {
+        name: 'activeKey',
+        description: '激活页签',
+      },
+    ],
+    writable: [
+      {
+        name: 'activeKey',
+        description: '激活页签',
+      },
+      {
+        name: 'items',
+        description: '页签',
+      },
+    ],
     values: [],
-    methods: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+      {
+        name: 'onEdit',
+        description: '编辑页签',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+        linkageShow: [
+          {
+            field: 'type',
+            value: 'editable-card',
+          },
+        ],
+      },
+    ],
   },
   description: '标签选项卡的结构与展示属性。',
   keywords: ['标签选项卡', 'layout'],
@@ -45,20 +85,13 @@ export const tabsManifest = defineManifest({
       },
       size: {
         type: 'string',
-        enum: ['large', 'middle', 'small'],
-      },
-      tabPosition: {
-        type: 'string',
-        enum: ['top', 'right', 'bottom', 'left'],
+        enum: ['large', 'medium', 'small'],
       },
       tabPlacement: {
         type: 'string',
         enum: ['top', 'end', 'bottom', 'start'],
       },
       centered: {
-        type: 'boolean',
-      },
-      destroyInactiveTabPane: {
         type: 'boolean',
       },
       destroyOnHidden: {
@@ -107,6 +140,7 @@ export const tabsManifest = defineManifest({
         type: 'boolean',
       },
     },
+    required: [],
   },
   usage: '页签项保存纯文本；Schema 子元素显示在第一个页签中。',
   constraints: ['页签 key 应唯一。'],

@@ -1,4 +1,4 @@
-import { defineManifest, objectSchema } from '../manifest-definition';
+import { defineManifest } from '../manifest-definition';
 
 export const switchManifest = defineManifest({
   type: 'switch',
@@ -6,16 +6,27 @@ export const switchManifest = defineManifest({
   defaultProps: {},
   context: {
     variables: [
-      { name: 'checked', description: '是否选中' },
-      { name: 'disabled', description: '是否禁用' },
-      { name: 'loading', description: '加载中的开关' },
+      {
+        name: 'checked',
+        description: '是否选中',
+      },
+    ],
+    writable: [
+      {
+        name: 'checked',
+        description: '是否选中',
+      },
     ],
     values: [],
     methods: [
       {
         name: 'onChange',
-        description: '值改变时的回调',
-        params: [{ description: '事件参数' }],
+        description: '值改变',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
       },
     ],
   },
@@ -24,14 +35,33 @@ export const switchManifest = defineManifest({
   role: 'input',
   acceptsChildren: false,
   allowedParentTypes: ['form'],
-  propsSchema: objectSchema({
-    disabled: { type: 'boolean' },
-    loading: { type: 'boolean' },
-    size: { type: 'string', enum: ['default', 'small'] },
-    checkedChildren: { type: 'string' },
-    unCheckedChildren: { type: 'string' },
-    defaultChecked: { type: 'boolean' },
-  }),
+  propsSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      disabled: {
+        type: 'boolean',
+      },
+      loading: {
+        type: 'boolean',
+      },
+      size: {
+        type: 'string',
+        enum: ['medium', 'small'],
+      },
+      defaultChecked: {
+        type: 'boolean',
+      },
+      fieldName: {
+        type: 'string',
+      },
+      fieldLabel: {
+        type: 'string',
+      },
+      fieldRequired: { type: 'boolean' },
+    },
+    required: [],
+  },
   usage: '用于启用、停用等布尔字段。',
   constraints: ['必须置于 form 中。'],
 });

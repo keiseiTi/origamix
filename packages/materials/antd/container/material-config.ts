@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { containerManifest } from './manifest';
-
 const ContainerMaterial = defineMaterial({
   manifest: containerManifest,
   Component: lazy(() => import('./index')),
@@ -9,10 +8,6 @@ const ContainerMaterial = defineMaterial({
     panels: [
       {
         title: '属性',
-        configs: [],
-      },
-      {
-        title: '样式',
         configs: [
           {
             label: '高度配置',
@@ -35,27 +30,10 @@ const ContainerMaterial = defineMaterial({
             },
             linkageShow: [{ field: 'heightConfig', value: 'fixed' }],
           },
-          {
-            label: '外边距',
-            field: 'margin',
-            uiType: 'number',
-            props: {
-              suffix: 'px',
-            },
-          },
-          {
-            label: '内边距',
-            field: 'padding',
-            uiType: 'number',
-            props: {
-              suffix: 'px',
-            },
-          },
         ],
       },
     ],
   },
   isContainer: true,
 });
-
 export default ContainerMaterial;

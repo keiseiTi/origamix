@@ -4,7 +4,6 @@ export const modalManifest = defineManifest({
   type: 'modal',
   title: '弹窗容器',
   defaultProps: {
-    title: '弹窗标题',
     open: false,
     width: 520,
     showFooter: true,
@@ -14,9 +13,58 @@ export const modalManifest = defineManifest({
     keyboard: true,
   },
   context: {
-    variables: [],
+    variables: [
+      {
+        name: 'open',
+        description: '是否打开',
+      },
+    ],
+    writable: [
+      {
+        name: 'open',
+        description: '是否打开',
+      },
+      {
+        name: 'loading',
+        description: '加载中',
+      },
+    ],
     values: [],
-    methods: [],
+    methods: [
+      {
+        name: 'onOk',
+        description: '确认',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+        linkageShow: [
+          {
+            field: 'showFooter',
+            value: true,
+          },
+        ],
+      },
+      {
+        name: 'onCancel',
+        description: '取消或关闭',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+      {
+        name: 'afterOpenChange',
+        description: '可见状态改变完成',
+        params: [
+          {
+            description: '业务参数（event.payload）',
+          },
+        ],
+      },
+    ],
   },
   description: '弹窗容器的结构与展示属性。',
   keywords: ['弹窗容器', 'overlay'],
@@ -26,9 +74,6 @@ export const modalManifest = defineManifest({
     type: 'object',
     additionalProperties: false,
     properties: {
-      title: {
-        type: 'string',
-      },
       open: {
         type: 'boolean',
       },
@@ -68,12 +113,6 @@ export const modalManifest = defineManifest({
           },
         ],
       },
-      cancelText: {
-        type: 'string',
-      },
-      okText: {
-        type: 'string',
-      },
       okType: {
         type: 'string',
         enum: ['primary', 'default', 'dashed', 'text', 'link'],
@@ -93,10 +132,8 @@ export const modalManifest = defineManifest({
       cancelDisabled: {
         type: 'boolean',
       },
-      destroyOnClose: {
-        type: 'boolean',
-      },
     },
+    required: [],
   },
   usage: '配置弹窗容器的属性与展示行为。',
   constraints: ['不将实例或回调写入 Schema。'],

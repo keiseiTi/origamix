@@ -50,6 +50,7 @@ export type EditorMaterialRegistration = Readonly<{
   catalog: MaterialManifestCatalog;
   groups: readonly Readonly<{ title: string; children: readonly Material[] }>[];
   propertyEditors: readonly PropertyEditorRegistration[];
+  rootMaterials?: readonly Material[];
 }>;
 
 /** Host-controlled element picking for search, annotations or clarification. */

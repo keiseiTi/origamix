@@ -2,7 +2,6 @@ import { OptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { radioManifest } from './manifest';
-
 const material = defineMaterial({
   manifest: radioManifest,
   Component: lazy(() => import('./index')),
@@ -74,7 +73,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
@@ -116,5 +115,4 @@ const material = defineMaterial({
     ],
   },
 });
-
 export default material;

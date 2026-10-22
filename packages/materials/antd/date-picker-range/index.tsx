@@ -1,12 +1,16 @@
-import React from 'react';
 import { DatePicker as AntdDatePicker } from 'antd';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import type { RuntimeMaterialProps } from '@';
-import { parseDateValue } from '../date-value';
-
-export type IProps = Omit<RangePickerProps, 'placeholder' | 'minDate' | 'maxDate'> &
+import { parseDateValue, serializeDateValue } from '../date-value';
+import { useRuntimeValue } from '../runtime-state';
+type Range = [string | null, string | null];
+const EMPTY_RANGE: Range = [null, null];
+export type IProps = Omit<
+  RangePickerProps,
+  'value' | 'defaultValue' | 'placeholder' | 'minDate' | 'maxDate'
+> &
   RuntimeMaterialProps & {
-    placeholder?: [string, string];
+    value?: Range;
     startPlaceholder?: string;
     endPlaceholder?: string;
     defaultStart?: string;
@@ -17,38 +21,72 @@ export type IProps = Omit<RangePickerProps, 'placeholder' | 'minDate' | 'maxDate
     maxDate?: string;
   };
 export const DatePickerRange = ({
-  placeholder,
+  value,
   startPlaceholder,
   endPlaceholder,
   defaultStart,
   defaultEnd,
-  defaultValue,
   allowEmptyStart,
   allowEmptyEnd,
-  allowEmpty,
   minDate,
   maxDate,
+  onChange,
+  onOk,
+  fieldName,
+  fieldLabel,
+  tg_setRuntimeState,
   tg_setContextValues,
   ...rest
 }: IProps) => {
-  const placeholders = placeholder ?? ['开始日期', '结束日期'];
+  const [current, change] = useRuntimeValue<Range>(
+    'value',
+    value === undefined ? undefined : Array.isArray(value) ? value : EMPTY_RANGE,
+    [
+      serializeDateValue(
+        defaultStart,
+        Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+      ),
+      serializeDateValue(
+        defaultEnd,
+        Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+      ),
+    ],
+    tg_setRuntimeState,
+  );
   return (
     <AntdDatePicker.RangePicker
-      key={`${defaultStart}:${defaultEnd}`}
       {...rest}
-      placeholder={[startPlaceholder ?? placeholders[0], endPlaceholder ?? placeholders[1]]}
-      defaultValue={
-        defaultStart || defaultEnd
-          ? [parseDateValue(defaultStart) ?? null, parseDateValue(defaultEnd) ?? null]
-          : defaultValue
-      }
-      allowEmpty={
-        allowEmptyStart !== undefined || allowEmptyEnd !== undefined
-          ? [Boolean(allowEmptyStart), Boolean(allowEmptyEnd)]
-          : allowEmpty
-      }
+      value={[parseDateValue(current[0]) ?? null, parseDateValue(current[1]) ?? null]}
+      placeholder={[startPlaceholder ?? '开始日期', endPlaceholder ?? '结束日期']}
+      allowEmpty={[Boolean(allowEmptyStart), Boolean(allowEmptyEnd)]}
       minDate={parseDateValue(minDate)}
       maxDate={parseDateValue(maxDate)}
+      onChange={(...args) => {
+        change([
+          serializeDateValue(
+            args[0]?.[0],
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+          serializeDateValue(
+            args[0]?.[1],
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+        ]);
+        onChange?.(...args);
+      }}
+      onOk={(dates) => {
+        change([
+          serializeDateValue(
+            dates[0],
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+          serializeDateValue(
+            dates[1],
+            Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
+          ),
+        ]);
+        onOk?.(dates);
+      }}
     />
   );
 };

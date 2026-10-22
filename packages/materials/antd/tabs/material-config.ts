@@ -1,8 +1,7 @@
+import { TabItemsEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { tabsManifest } from './manifest';
-import { validateTabItems } from '../structured-data-validation';
-
 const material = defineMaterial({
   manifest: tabsManifest,
   Component: lazy(() => import('./index')),
@@ -14,9 +13,9 @@ const material = defineMaterial({
         configs: [
           {
             field: 'items',
-            validateValue: validateTabItems,
             label: '页签项',
-            uiType: 'json',
+            uiType: 'custom',
+            render: TabItemsEditor,
           },
           {
             field: 'defaultActiveKey',
@@ -56,7 +55,7 @@ const material = defineMaterial({
                 },
                 {
                   label: '中',
-                  value: 'middle',
+                  value: 'medium',
                 },
                 {
                   label: '小',
