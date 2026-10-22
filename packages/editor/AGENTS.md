@@ -33,3 +33,5 @@ UI verification must exercise actual visual/flow switching, event selection, his
 - Flow forms follow the reference value kinds without a JSON kind or separate comparison operators. Requests edit headers/query/body through functions; conditions use expressions/functions. Coalesce LogicFlow model events until the mutation completes, then send the full executable flow and layout through the shared engine change callback with `immediate: true` in logic mode. Do not add panel-owned persistence.
 
 - Flow read candidates come only from Manifest.context.variables; write candidates only from context.writable; method choices only from context.values with isMethod. Never merge propsSchema into these lists. Keep event.payload separate from durable element state. Root materials are injected separately and must not enter the draggable palette.
+
+- `src/prototype/canvas.tsx` 是隔离可行性实验的公开表面，只有受限命令与快照，不导出 Engine。它复用 CanvasEditor/history/SchemaUtils 与 hooks；没有 HTTP、持久化或正式替换行为。保留未验证交互的事实，不以备用移动算法掩盖原生拖拽缺口。

@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+@import '@origamix/ui/styles.css';
+@import '@origamix/editor/styles.css';
+@source '../../../materials/antd';
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  color-scheme: light;
+}

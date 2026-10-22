@@ -43,3 +43,5 @@ pnpm --filter @origamix/desktop test:main
 - The preview smoke must wait for a material rendered inside the iframe, not a workbench overlay. Preview exit controls belong to the host; file-mode Renderer routing must keep the built index document reachable.
 - For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.
+
+- `test:main` 还验证 `/canvas-prototype` 在 file 模式下实际渲染、opaque origin、无法访问 parent DOM 且没有 Desktop bridge；这仅证明原型资源与权限边界，不代表完整编辑器隔离交付。

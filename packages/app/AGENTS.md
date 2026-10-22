@@ -82,3 +82,5 @@ pnpm --filter @origamix/app build
 - Runtime material loading returns components and the material-family Provider together; preview passes the snapshot theme to that Provider so Ant Design text, controls and portals match the host theme.
 
 - Material loaders register rootMaterials/rootManifests separately from draggable groups. Keep the root in Editor and validation context without allowing duplicate root insertion; runtime loading still returns the standalone components and Provider together.
+
+- `src/canvas-prototype/` 与 `canvas-prototype-plugin.ts` 是 `/canvas-prototype` 独立实验页。仅处理示例内存快照，不接用户项目或新增持久化；不要把它当正式画布协议。画布离线打包进 allow-scripts-only srcdoc，保持无同源、网络、Desktop bridge 权限。原型的 scope/version/command validator 必须拒绝旧实例、错页和未声明能力；正式迁移才将完整契约放入 Shared，并接现有 Working 队列。

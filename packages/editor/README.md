@@ -60,3 +60,7 @@ pnpm --filter @origamix/editor build
 流程节点的取值字段统一使用 Shared 的 HyperValue。HyperInput 提供字符串、数字、布尔值、空值、JSON、上下文、表达式和函数。函数弹窗支持参数绑定、代码编辑、确认、取消和校验；编辑过程不执行代码。请求参数、条件、属性与变量设置、方法参数、显隐和自定义 JS 共用该输入与 Runtime 求值器；元素 ID、事件和连线等结构字段继续使用选择器。节点契约版本保持 1.0，不提供旧格式转换。
 
 逻辑流表单沿用 Tangramino 示例的值类型与字段方式：请求头、查询参数、请求体使用函数；条件判断使用表达式或函数，不提供 JSON 类型或额外比较器。节点属性、增删、连线及编排变化均提交完整图快照，通过 `onChange(schema, { immediate: true })` 通知宿主及时进入 Working 队列。函数弹窗确认后才提交配置，取消保留原值。
+
+## 隔离原型表面
+
+`CanvasPrototypeSurface` 是单独 frame 中的实验画布，拥有自己的 Tangramino Engine 和 history。宿主仅调用受限 `CanvasPrototypeHandle.run`，不取得 Engine。它验证公开 SchemaUtils + 插件 hooks 的属性/插入路径；不持有 Working 或 HTTP 权限，也不替换正式 Editor。正式迁移前必须补齐原生移动、交互和持久化会话验证。

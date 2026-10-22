@@ -176,6 +176,34 @@ app
           `document.documentElement.dataset.theme === 'dark' && document.body.innerText.includes('Smoke Project')`,
         ),
     );
+    // New opaque canvas boundary: packaged file resources must load without a bridge.
+    await main.webContents.executeJavaScript(`location.hash = '/canvas-prototype'`);
+    await waitFor(() =>
+      main.webContents.executeJavaScript(`document.body.innerText.includes('已连接 · 局部版本 0')`),
+    );
+    const canvas = main.webContents.mainFrame.frames.find((frame) => frame.url === 'about:srcdoc');
+    assert.ok(canvas, 'Isolated canvas frame must exist');
+    const boundary = await canvas.executeJavaScript(`(() => {
+      let parentReadable = false;
+      try { parentReadable = Boolean(parent.document); } catch {}
+      return { bridge: typeof globalThis.api, origin: globalThis.origin, parentReadable,
+        rendered: document.body.innerText.includes('选中这个按钮') };
+    })()`);
+    assert.deepEqual(boundary, {
+      bridge: 'undefined',
+      origin: 'null',
+      parentReadable: false,
+      rendered: true,
+    });
+    assert.equal(
+      await main.webContents.executeJavaScript(
+        `document.querySelector('iframe[title="隔离画布原型"]').getAttribute('sandbox')`,
+      ),
+      'allow-scripts',
+    );
+    console.info(
+      'Canvas prototype passed: file resources, opaque origin, rendered materials, no parent DOM or desktop bridge.',
+    );
     passed = true;
     app.quit();
   })

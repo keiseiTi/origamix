@@ -3,3 +3,9 @@ export { CodeEditor, type CodeEditorProps, JsonAttributeField } from './componen
 export { createEditorTransaction, deriveSchemaOperations } from './core';
 export type * from './interface';
 export type * from './extensions';
+export {
+  CanvasPrototypeSurface,
+  type CanvasPrototypeCommand,
+  type CanvasPrototypeHandle,
+  type CanvasPrototypeSnapshot,
+} from './prototype/canvas';
