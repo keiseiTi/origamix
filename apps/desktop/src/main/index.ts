@@ -10,6 +10,8 @@ import {
   type UtilityProcess,
 } from 'electron';
 import { join } from 'path';
+import { pathToFileURL } from 'node:url';
+import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from './workbench-security';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
 import type { BackendConnection, ModelSettings } from '@origamix/shared';
@@ -19,6 +21,11 @@ const rendererIndexPath = (): string =>
   isDevelopment
     ? join(__dirname, '../../../../packages/app/dist/index.html')
     : join(process.resourcesPath, 'app', 'index.html');
+
+const workbenchEntryUrl = (): string =>
+  isDevelopment && process.env['ELECTRON_RENDERER_URL']
+    ? process.env['ELECTRON_RENDERER_URL']
+    : pathToFileURL(rendererIndexPath()).href;
 
 let workbenchWindow: BrowserWindow | undefined;
 
@@ -47,6 +54,8 @@ const createWindow = (): BrowserWindow => {
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       sandbox: false,
+      nodeIntegration: false,
+      contextIsolation: true,
     },
   });
 
@@ -60,8 +69,16 @@ const createWindow = (): BrowserWindow => {
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    const protocol = new URL(details.url).protocol;
+    if (protocol === 'https:' || protocol === 'http:') void shell.openExternal(details.url);
     return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isTrustedWorkbenchUrl(url, workbenchEntryUrl())) event.preventDefault();
+  });
+  mainWindow.webContents.on('will-redirect', (event, url) => {
+    if (!isTrustedWorkbenchUrl(url, workbenchEntryUrl())) event.preventDefault();
   });
 
   if (isDevelopment && process.env['ELECTRON_RENDERER_URL']) {
@@ -320,18 +337,27 @@ app
     app.setAppUserModelId('com.origamix');
 
     await ensureBackend();
-    ipcMain.handle('backend:get-connection', () => ensureBackend());
-    ipcMain.handle('dialog:choose-project-parent', async () => {
+    const handleWorkbench = (
+      channel: string,
+      listener: Parameters<typeof ipcMain.handle>[1],
+    ): void => {
+      ipcMain.handle(channel, (event, ...args) => {
+        assertWorkbenchCaller(event, workbenchWindow?.webContents, workbenchEntryUrl());
+        return listener(event, ...args);
+      });
+    };
+    handleWorkbench('backend:get-connection', () => ensureBackend());
+    handleWorkbench('dialog:choose-project-parent', async () => {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
       });
       return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0]);
     });
-    ipcMain.handle('dialog:choose-existing-project', async () => {
+    handleWorkbench('dialog:choose-existing-project', async () => {
       const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
       return result.canceled || !result.filePaths[0] ? null : grantDirectory(result.filePaths[0]);
     });
-    ipcMain.handle('settings:model:get', async () => {
+    handleWorkbench('settings:model:get', async () => {
       const settings = await readModelSettings();
       return {
         provider: settings.provider,
@@ -339,9 +365,9 @@ app
         hasApiKey: Boolean(settings.encryptedApiKey),
       };
     });
-    ipcMain.handle('settings:model:save', (_event, input) => saveModelSettings(input));
-    ipcMain.handle('settings:profile:get', () => readUserProfile());
-    ipcMain.handle('settings:profile:save', (_event, input) => saveUserProfile(input));
+    handleWorkbench('settings:model:save', (_event, input) => saveModelSettings(input));
+    handleWorkbench('settings:profile:get', () => readUserProfile());
+    handleWorkbench('settings:profile:save', (_event, input) => saveUserProfile(input));
 
     workbenchWindow = createWindow();
 

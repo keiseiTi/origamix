@@ -1,5 +1,5 @@
 import { hashSchema } from '../../schema/schema-hash';
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +63,32 @@ const setup = async () => {
 };
 
 describe('ProjectApplyService', () => {
+  it('rejects an external receipt directory before writing the target', async () => {
+    const { database, project, page, apply } = await setup();
+    try {
+      const ref = { projectPath: project.path, pageId: page.id, slug: page.slug };
+      await savePaddingRevision(ref, 24);
+      const current = await getWorkingSchemaState(ref);
+      const target = join(project.path, page.relativePath, 'schema.json');
+      const before = await readFile(target, 'utf8');
+      const outside = await mkdtemp(join(tmpdir(), 'origamix-receipts-outside-'));
+      directories.push(outside);
+      await symlink(outside, join(project.path, '.origamix', 'apply-receipts'), 'dir');
+      await expect(
+        apply.apply(project.id, page.id, {
+          expectedRevisionId: current.revisionId,
+          expectedWorkingVersion: current.workingVersion,
+          clientRequestId: 'review_receipt',
+        }),
+      ).rejects.toThrow('符号链接');
+      expect(await readFile(target, 'utf8')).toBe(before);
+      expect(await readdir(outside)).toEqual([]);
+      expect(await getWorkingSchemaState(ref)).toEqual(current);
+    } finally {
+      database.close();
+    }
+  });
+
   it('rejects request IDs that could escape the receipt directory', async () => {
     const fixture = await setup();
     const current = await getSchema({

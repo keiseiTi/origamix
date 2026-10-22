@@ -239,23 +239,27 @@ export class ProjectService {
   }
 
   async renameProject(projectId: string, nameInput: string): Promise<ProjectRecord> {
-    const project = this.projects.getProject(projectId);
-    if (!project) throw notFound('项目不存在');
-    const name = nameInput.trim();
-    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
-    await this.manifest.renameProject(project.path, name);
-    return this.reconcile(project.path);
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project) throw notFound('项目不存在');
+      const name = nameInput.trim();
+      if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+      await this.manifest.renameProject(project.path, name);
+      return this.reconcile(project.path);
+    });
   }
 
   async renamePage(projectId: string, pageId: string, nameInput: string): Promise<PageRecord> {
-    const project = this.projects.getProject(projectId);
-    const page = this.projects.getPage(projectId, pageId);
-    if (!project || !page) throw notFound('页面不存在');
-    const name = nameInput.trim();
-    if (!name) throw invalid('页面名称无效');
-    await this.manifest.renamePage(project.path, pageId, name);
-    await this.reconcile(project.path);
-    return this.projects.getPage(projectId, pageId)!;
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      const page = this.projects.getPage(projectId, pageId);
+      if (!project || !page) throw notFound('页面不存在');
+      const name = nameInput.trim();
+      if (!name) throw invalid('页面名称无效');
+      await this.manifest.renamePage(project.path, pageId, name);
+      await this.reconcile(project.path);
+      return this.projects.getPage(projectId, pageId)!;
+    });
   }
 
   async duplicatePage(

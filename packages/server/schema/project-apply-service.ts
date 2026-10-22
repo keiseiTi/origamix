@@ -2,7 +2,8 @@ import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { hashSchema } from './schema-hash';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
+import { metadataPath } from './metadata-path';
 import {
   type ApplyPageResult,
   type PageApplyState,
@@ -130,9 +131,8 @@ export class ProjectApplyService {
         }),
       )
       .digest('hex');
-    const receiptPath = join(
+    const receiptPath = await metadataPath(
       page.projectPath,
-      '.origamix',
       'apply-receipts',
       pageId,
       `${input.clientRequestId}.json`,
@@ -198,6 +198,12 @@ export class ProjectApplyService {
           appliedAt: new Date().toISOString(),
           status: 'applied',
         };
+        await metadataPath(
+          page.projectPath,
+          'apply-receipts',
+          pageId,
+          `${input.clientRequestId}.json`,
+        );
         await mkdir(dirname(receiptPath), { recursive: true });
         await writeJsonAtomically(receiptPath, { ...result, requestHash } satisfies ApplyReceipt);
         await this.options.afterStage?.('receipt');

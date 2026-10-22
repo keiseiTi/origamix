@@ -204,6 +204,33 @@ app
     console.info(
       'Canvas prototype passed: file resources, opaque origin, rendered materials, no parent DOM or desktop bridge.',
     );
+    // A renderer-driven same-window navigation must not replace the trusted document.
+    const trustedUrl = main.webContents.getURL();
+    const blockedNavigation = new Promise((resolve) => {
+      main.webContents.once('will-navigate', (event) => resolve(event.defaultPrevented));
+    });
+    await main.webContents.executeJavaScript(`location.href = 'https://untrusted.example/'`);
+    assert.equal(await blockedNavigation, true);
+    assert.equal(main.webContents.getURL(), trustedUrl);
+    // Even another window loading our document/preload must not receive backend authority.
+    const foreign = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        preload: resolve(__dirname, '../dist/preload/index.cjs'),
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    try {
+      await foreign.loadURL('data:text/html,<title>Untrusted caller</title>');
+      const denied = await foreign.webContents.executeJavaScript(`
+        window.api.backend.getConnection().then(() => false, () => true)
+      `);
+      assert.equal(denied, true);
+    } finally {
+      foreign.destroy();
+    }
     passed = true;
     app.quit();
   })

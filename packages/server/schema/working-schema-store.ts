@@ -1,6 +1,7 @@
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
+import { metadataPath } from './metadata-path';
 import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared';
 
 export interface WorkingSchemaPageRef {
@@ -72,55 +73,48 @@ export class WorkingSchemaStore {
     await writeJsonAtomically(path, value);
   }
 
-  private workingFile(page: WorkingSchemaPageRef): string {
-    return join(page.projectPath, '.origamix', 'pages', page.pageId, 'working.json');
+  private workingFile(page: WorkingSchemaPageRef): Promise<string> {
+    return metadataPath(page.projectPath, 'pages', page.pageId, 'working.json');
   }
 
-  private revisionFile(page: WorkingSchemaPageRef, revisionId: string): string {
-    return join(page.projectPath, '.origamix', 'revisions', page.pageId, `${revisionId}.json`);
+  private revisionFile(page: WorkingSchemaPageRef, revisionId: string): Promise<string> {
+    return metadataPath(page.projectPath, 'revisions', page.pageId, `${revisionId}.json`);
   }
 
-  private journalFile(page: WorkingSchemaPageRef): string {
-    return join(page.projectPath, '.origamix', 'transactions', `${page.pageId}.json`);
+  private journalFile(page: WorkingSchemaPageRef): Promise<string> {
+    return metadataPath(page.projectPath, 'transactions', `${page.pageId}.json`);
   }
 
-  private agentCommitFile(page: WorkingSchemaPageRef, runId: string): string {
+  private agentCommitFile(page: WorkingSchemaPageRef, runId: string): Promise<string> {
     if (!/^run_[A-Za-z0-9_-]+$/.test(runId)) throw new Error('Agent Run ID 无效');
-    return join(
-      page.projectPath,
-      '.origamix',
-      'pages',
-      page.pageId,
-      'agent-commits',
-      `${runId}.json`,
-    );
+    return metadataPath(page.projectPath, 'pages', page.pageId, 'agent-commits', `${runId}.json`);
   }
 
-  readWorking(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile> {
-    return readJson(this.workingFile(page));
+  async readWorking(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile> {
+    return readJson(await this.workingFile(page));
   }
 
-  readWorkingIfPresent(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile | undefined> {
-    return readJsonIfPresent(this.workingFile(page));
+  async readWorkingIfPresent(page: WorkingSchemaPageRef): Promise<WorkingSchemaFile | undefined> {
+    return readJsonIfPresent(await this.workingFile(page));
   }
 
-  writeWorking(page: WorkingSchemaPageRef, value: WorkingSchemaFile): Promise<void> {
-    return this.writeJson(this.workingFile(page), value);
+  async writeWorking(page: WorkingSchemaPageRef, value: WorkingSchemaFile): Promise<void> {
+    return this.writeJson(await this.workingFile(page), value);
   }
 
-  readRevision(page: WorkingSchemaPageRef, revisionId: string): Promise<RevisionSnapshot> {
-    return readJson(this.revisionFile(page, revisionId));
+  async readRevision(page: WorkingSchemaPageRef, revisionId: string): Promise<RevisionSnapshot> {
+    return readJson(await this.revisionFile(page, revisionId));
   }
 
-  readRevisionIfPresent(
+  async readRevisionIfPresent(
     page: WorkingSchemaPageRef,
     revisionId: string,
   ): Promise<RevisionSnapshot | undefined> {
-    return readJsonIfPresent(this.revisionFile(page, revisionId));
+    return readJsonIfPresent(await this.revisionFile(page, revisionId));
   }
 
   async listRevisions(page: WorkingSchemaPageRef): Promise<RevisionSnapshot[]> {
-    const directory = join(page.projectPath, '.origamix', 'revisions', page.pageId);
+    const directory = await metadataPath(page.projectPath, 'revisions', page.pageId);
     let entries: string[];
     try {
       entries = await readdir(directory);
@@ -130,48 +124,54 @@ export class WorkingSchemaStore {
     }
     const revisionFiles = entries.filter((entry) => /^revision_[A-Za-z0-9_-]+\.json$/.test(entry));
     return Promise.all(
-      revisionFiles.map((entry) => readJson<RevisionSnapshot>(join(directory, entry))),
+      revisionFiles.map(async (entry) =>
+        readJson<RevisionSnapshot>(
+          await metadataPath(page.projectPath, 'revisions', page.pageId, entry),
+        ),
+      ),
     );
   }
 
-  writeRevision(page: WorkingSchemaPageRef, snapshot: RevisionSnapshot): Promise<void> {
-    return this.writeJson(this.revisionFile(page, snapshot.revisionId), snapshot);
+  async writeRevision(page: WorkingSchemaPageRef, snapshot: RevisionSnapshot): Promise<void> {
+    return this.writeJson(await this.revisionFile(page, snapshot.revisionId), snapshot);
   }
 
-  readJournal(page: WorkingSchemaPageRef): Promise<CommitJournal | undefined> {
-    return readJsonIfPresent(this.journalFile(page));
+  async readJournal(page: WorkingSchemaPageRef): Promise<CommitJournal | undefined> {
+    return readJsonIfPresent(await this.journalFile(page));
   }
 
-  writeJournal(page: WorkingSchemaPageRef, journal: CommitJournal): Promise<void> {
-    return this.writeJson(this.journalFile(page), journal);
+  async writeJournal(page: WorkingSchemaPageRef, journal: CommitJournal): Promise<void> {
+    return this.writeJson(await this.journalFile(page), journal);
   }
 
-  removeJournal(page: WorkingSchemaPageRef): Promise<void> {
-    return rm(this.journalFile(page), { force: true });
+  async removeJournal(page: WorkingSchemaPageRef): Promise<void> {
+    return rm(await this.journalFile(page), { force: true });
   }
 
-  readAgentCommit(
+  async readAgentCommit(
     page: WorkingSchemaPageRef,
     runId: string,
   ): Promise<AgentWorkingCommitReceipt | undefined> {
-    return readJsonIfPresent(this.agentCommitFile(page, runId));
+    return readJsonIfPresent(await this.agentCommitFile(page, runId));
   }
 
-  writeAgentCommit(page: WorkingSchemaPageRef, receipt: AgentWorkingCommitReceipt): Promise<void> {
-    return this.writeJson(this.agentCommitFile(page, receipt.runId), receipt);
+  async writeAgentCommit(
+    page: WorkingSchemaPageRef,
+    receipt: AgentWorkingCommitReceipt,
+  ): Promise<void> {
+    return this.writeJson(await this.agentCommitFile(page, receipt.runId), receipt);
   }
 
   async removePage(page: WorkingSchemaPageRef): Promise<void> {
+    const [working, revisions, journal] = await Promise.all([
+      metadataPath(page.projectPath, 'pages', page.pageId),
+      metadataPath(page.projectPath, 'revisions', page.pageId),
+      this.journalFile(page),
+    ]);
     await Promise.all([
-      rm(join(page.projectPath, '.origamix', 'pages', page.pageId), {
-        recursive: true,
-        force: true,
-      }),
-      rm(join(page.projectPath, '.origamix', 'revisions', page.pageId), {
-        recursive: true,
-        force: true,
-      }),
-      rm(this.journalFile(page), { force: true }),
+      rm(working, { recursive: true, force: true }),
+      rm(revisions, { recursive: true, force: true }),
+      rm(journal, { force: true }),
     ]);
   }
 }

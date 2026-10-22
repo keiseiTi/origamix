@@ -40,6 +40,18 @@ describe('Project page persistence and recovery', () => {
       ]),
     );
 
+    const page = projects.listPages(project.id)[0]!;
+    await Promise.all([
+      service.renameProject(project.id, '重命名项目'),
+      service.renamePage(project.id, page.id, '重命名页面'),
+    ]);
+    const renamed = JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8'));
+    expect(renamed.name).toBe('重命名项目');
+    expect(renamed.pages.find((item: { pageId: string }) => item.pageId === page.id).name).toBe(
+      '重命名页面',
+    );
+    expect(projects.getPage(project.id, page.id)?.name).toBe('重命名页面');
+
     const manifestPath = join(project.path, 'origamix.project.json');
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
     await writeFile(manifestPath, `${JSON.stringify({ ...manifest, pages: [] }, null, 2)}\n`);

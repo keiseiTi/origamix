@@ -1,4 +1,13 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -99,6 +108,41 @@ afterEach(async () => {
 });
 
 describe('Schema Service', () => {
+  it('rejects metadata symlinks without changing the retained draft or external files', async () => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, schema);
+    const before = await getWorkingSchemaState(page);
+    for (const relative of [
+      '.origamix',
+      '.origamix/pages',
+      '.origamix/revisions',
+      '.origamix/transactions',
+    ]) {
+      const outside = await mkdtemp(join(tmpdir(), 'origamix-outside-'));
+      directories.push(outside);
+      const moved = join(outside, 'metadata');
+      const original = join(page.projectPath, relative);
+      await rename(original, moved);
+      await symlink(moved, original, 'dir');
+      try {
+        await expect(
+          updateWorkingSchema(page, {
+            baseWorkingVersion: before.workingVersion,
+            schema: {
+              ...schema,
+              elements: { element_root: { type: 'container', props: { padding: 99 } } },
+            },
+          }),
+        ).rejects.toThrow('符号链接');
+        await expect(listRevisionHistory(page)).rejects.toThrow('符号链接');
+      } finally {
+        await rm(original);
+        await rename(moved, original);
+      }
+      expect(await getWorkingSchemaState(page)).toEqual(before);
+    }
+  });
+
   it('retains incomplete visual flows and completes local Agent bindings without changing unrelated events', async () => {
     const page = await createPageFixture();
     const initialSchema = logicSchema();
