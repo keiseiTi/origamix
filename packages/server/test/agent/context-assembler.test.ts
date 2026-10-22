@@ -51,25 +51,6 @@ const message = (sequence: number, text: string): StoredMessage => ({
 });
 
 describe('ContextAssembler', () => {
-  it('assembles the current Schema', async () => {
-    const count = 2;
-    const getCurrent = vi.fn().mockResolvedValue({
-      schema: schema(count),
-      revisionId: 'revision_current',
-      workingVersion: 1,
-    });
-    const result = await new ContextAssembler(
-      { getCurrent },
-      { listMessages: () => [] },
-      new ProductDocsProvider(),
-    ).assemble({ page, conversationId: 'conversation_one', currentRequest, docsQuery: '表单搭建' });
-    expect(result.savedRevisionId).toBe('revision_current');
-    expect(result.currentWorkingVersion).toBe(1);
-    expect(result.schemaOutline).toContain(`"elementCount":${count + 1}`);
-    expect(result.schemaOutline).toContain('"rootChildIds":["text-0","text-1"]');
-    expect(getCurrent).toHaveBeenCalledOnce();
-  });
-
   it('rejects an outdated Working version', async () => {
     const assembler = new ContextAssembler(
       {

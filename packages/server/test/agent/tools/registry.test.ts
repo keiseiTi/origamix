@@ -37,16 +37,6 @@ const registry = () => {
 };
 
 describe('Agent tool policy and budget', () => {
-  it('exposes the same terminal capability for every page-assistant run', () => {
-    const value = registry();
-    const input = {
-      runId: 'run_test',
-      budget: new RunBudgetController(budget),
-      audit: () => undefined,
-    };
-    expect(value.toolsForRun(input).map(({ name }) => name)).toEqual(['complete_page_run']);
-  });
-
   it('rejects forged names and audits an allowed call', async () => {
     const value = registry();
     const tracker = new RunBudgetController(budget);

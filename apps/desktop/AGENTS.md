@@ -11,6 +11,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 ## Boundaries
 
 - Main is the desktop host, not a second business backend. Project CRUD, SQL and Schema commits belong to Server; contracts belong to Shared.
+- `src/main/workbench-security.ts` owns trusted-document and IPC caller checks. Register privileged handlers through the Main workbench wrapper, which requires the owned window, its main frame and the configured entry document. Block navigation/redirects to other documents; only HTTP(S) new-window URLs may open externally. Hash routing within the entry document remains supported.
 - Expose only named domain methods through `contextBridge`. Validate payloads and sending window/frame before privileged operations; types alone do not authorize callers.
 - Keep `nodeIntegration: false`, `contextIsolation: true` and preview sandboxing. Restrict navigation, new windows and permissions; load trusted application routes, not Renderer-provided URLs or paths.
 - Directory pickers return grants for Backend use. Keep credentials under Main's safeStorage ownership; previews and logs receive neither secrets nor desktop tokens.

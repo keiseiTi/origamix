@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -19,6 +19,8 @@ describe('server startup Agent recovery', () => {
   it('interrupts an uncommitted active run without invoking a model', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-runtime-agent-'));
     directories.push(directory);
+    const projectPath = join(directory, 'project');
+    await mkdir(projectPath);
     const databasePath = join(directory, 'application.db');
     const database = new ApplicationDatabase(databasePath);
     const timestamp = new Date().toISOString();
@@ -26,7 +28,7 @@ describe('server startup Agent recovery', () => {
       .prepare(
         'INSERT INTO projects (project_id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run('project_a', join(directory, 'missing-project'), 'A', 0, timestamp, timestamp);
+      .run('project_a', projectPath, 'A', 0, timestamp, timestamp);
     database.connection
       .prepare(
         'INSERT INTO pages (page_id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
