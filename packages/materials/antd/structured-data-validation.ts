@@ -26,14 +26,19 @@ export const validateColumns = (value: unknown): string | undefined => {
     if (
       !isRecord(column) ||
       typeof column.title !== 'string' ||
-      typeof column.dataIndex !== 'string'
+      typeof column.dataIndex !== 'string' ||
+      !column.title.trim() ||
+      !column.dataIndex.trim()
     )
       return '每列需要文本 title 和 dataIndex，例如 [{"title":"姓名","dataIndex":"name"}]。';
     const key = column.key ?? column.dataIndex;
     if (typeof key !== 'string' || keys.has(key))
       return '每列的 key（未填写时使用 dataIndex）必须唯一。';
     keys.add(key);
-    if (column.width !== undefined && (typeof column.width !== 'number' || column.width < 1))
+    if (
+      column.width !== undefined &&
+      (typeof column.width !== 'number' || !Number.isFinite(column.width) || column.width < 1)
+    )
       return '列宽 width 应为大于零的数字。';
     if (column.align !== undefined && !['left', 'center', 'right'].includes(String(column.align)))
       return '列对齐 align 可使用 left、center 或 right。';

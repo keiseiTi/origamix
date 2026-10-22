@@ -18,6 +18,7 @@ export type IProps = TableProps<Record<string, unknown>> &
   };
 
 export const Table = ({
+  columns,
   enabledPagination,
   pagination,
   pageSize,
@@ -38,6 +39,16 @@ export const Table = ({
   return (
     <AntdTable
       {...rest}
+      columns={columns?.map((column) => ({
+        ...column,
+        key: column.key ?? ('dataIndex' in column ? String(column.dataIndex) : undefined),
+        ...(!('children' in column) && !column.render
+          ? {
+              render: (value: unknown) =>
+                typeof value === 'boolean' ? String(value) : (value as React.ReactNode),
+            }
+          : {}),
+      }))}
       style={{ backgroundColor: token.colorBgContainer, color: token.colorText, ...rest.style }}
       scroll={{
         ...scroll,

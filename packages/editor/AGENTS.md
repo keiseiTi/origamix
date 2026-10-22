@@ -21,7 +21,7 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 - `flow-editor/model.ts` keeps LogicFlow presentation dimensions in `extensions.flowGraph`, stripping `width`/`height` from executable node props so Runtime can validate them against Shared without allowing layout fields in the execution contract.
 - Preserve scoped async results, failed drafts and flush rejection before page/mode/preview transitions. Readonly view changes must not reach the host; never add a separate save path to a panel or flow node.
 - CodeEditor receives theme explicitly or from the Editor context. App configures Monaco workers in its Vite bootstrap; this package must not import Vite worker queries or App preferences.
-- Materials owns its Tangramino/HeroUI panel configuration types behind its editor entry. `JsonAttributeConfig` is the editor-owned structured-field shape; no imports back into Materials are allowed. Custom property editor activation is deferred until requested; existing JSON attribute fields remain available.
+- Materials owns its Tangramino/HeroUI panel configuration types behind its editor entry. `JsonAttributeConfig` is the editor-owned structured-field shape; no imports back into Materials are allowed. Custom attribute renderers receive only the current field value and an onChange callback; key them by element/field/value so local edits cannot cross selection or external updates. Existing JSON attribute fields remain available.
 - Keep extensions limited to selected-element props. Do not expose raw engine, HTTP, filesystem, App Store or a generic host SDK.
 
 ## Verification

@@ -2,6 +2,8 @@
 
 Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件、物料默认值、编辑配置和可序列化清单，不包含 Origamix 工作台、项目服务或持久化。
 
+属性面板、事件与逻辑流读值的下一步调整，见 [Ant Design 物料配置梳理](antd/CONFIGURATION-PLAN.md)（整理方案，尚未实施）。
+
 ## 公开接口
 
 | 入口                                | 消费方与用途                       |
@@ -11,7 +13,7 @@ Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件�
 | `@origamix/materials`               | `src/` 的公共类型与辅助函数        |
 | `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单 |
 
-运行、编辑和清单使用各自的 Ant Design 子入口，物料编写 API 使用根入口，不提供旧入口别名；格式类型直接从 Shared 导入。`antd/editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；专属编辑器按需延期。
+运行、编辑和清单使用各自的 Ant Design 子入口，物料编写 API 使用根入口，不提供旧入口别名；格式类型直接从 Shared 导入。`antd/editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；列与选项编辑器通过 editor-only custom 属性控件提供。
 
 `runtime` 同时导出轻量的 `materialSet` 身份/版本，供按需加载时核对安装包；它与 Manifest 引用同一份包内声明，不会因此加载编辑配置。
 
@@ -60,7 +62,7 @@ Server 仅消费 Manifest，不能让清单入口通过组件或编辑配置间�
 
 Button 使用 `type`，不提供 `color` 或 `variant`；`target` 配置声明依赖非空 `href`。其他联动条件通过 `linkageShow` 声明，不新增独立插件。属性面板的下拉选项显示 `label`，Schema 保存 `value`；选择默认项时移除对应可选属性。
 
-Checkbox.Group、Select、Radio.Group 的 `options` 编辑控件暂不开放，已有默认选项及页面数据继续保留。回调与实例方法不作为本轮属性配置；已有事件声明保留，避免破坏历史绑定。基础输入的数组/对象高级编辑、图标、数字高精度字符串模式及函数型格式化不在本轮新增范围。
+Checkbox.Group、Select、Radio.Group 的 `options` 支持可视化编辑，保留已有默认选项和页面数据。回调与实例方法不作为本轮属性配置；已有事件声明保留，避免破坏历史绑定。基础输入的数组/对象高级编辑、图标、数字高精度字符串模式及函数型格式化不在本轮新增范围。
 
 ## 复杂输入属性配置
 
@@ -78,8 +80,14 @@ Checkbox.Group、Select、Radio.Group 的 `options` 编辑控件暂不开放，�
 
 表单支持布局、栅格跨度、标签、禁用、必填标记、校验触发时机、控件外观及初始字段值。表格支持列、数据、分页、滚动、固定表头、尺寸与空数据提示。树支持节点数据、默认展开/选中/勾选键、复选框、多选、虚拟滚动及高度。分页、勾选与水平布局等相关字段使用 `linkageShow` 声明显隐。初始字段值和校验依赖原生具名 `Form.Item`；本轮不自动为 Schema 子控件生成字段绑定或校验规则。
 
-结构化字段使用 JSON 数据编辑入口：编辑文本后点击“更新…”才进入画布和 Working 流程；语法或基础结构错误会提示并保留输入。表格列需要文本 `title` 与 `dataIndex`，可配置 `key`、数字 `width`、`align`、`fixed`、`ellipsis` 和 `hidden`；表格数据编辑入口支持对象数组，单元格值限于文本、数字、布尔值或 `null`。树节点需要唯一 `key` 和文本 `title`，通过 `children` 嵌套。Tabs 页签需要唯一文本 `key` 与文本 `label`，可配置纯文本 `children`、禁用、关闭与销毁行为；Schema 中拖入 Tabs 的子元素归属第一个页签，不支持按页签分别绑定 Schema 子树。完整候选仍由 Server 的 Manifest 校验后保存。
+表格列使用可视化编辑器，其他结构化字段使用 JSON 数据编辑入口：编辑文本后点击“更新…”才进入画布和 Working 流程；语法或基础结构错误会提示并保留输入。表格列需要文本 `title` 与 `dataIndex`，可配置 `key`、数字 `width`、`align`、`fixed`、`ellipsis` 和 `hidden`；表格数据编辑入口支持对象数组，单元格值限于文本、数字、布尔值或 `null`。树节点需要唯一 `key` 和文本 `title`，通过 `children` 嵌套。Tabs 页签需要唯一文本 `key` 与文本 `label`，可配置纯文本 `children`、禁用、关闭与销毁行为；Schema 中拖入 Tabs 的子元素归属第一个页签，不支持按页签分别绑定 Schema 子树。完整候选仍由 Server 的 Manifest 校验后保存。
 
 Modal 支持显示状态、标题、宽度、底部按钮、遮罩、关闭、加载及销毁；Drawer 支持位置、预设/自定义尺寸、顶部辅助文本、底部文本、拖动调整尺寸与嵌套推开行为。Drawer 自定义尺寸使用当前 Ant Design `size` 适配，不提供 `width`/`height` 旧字段。编辑模式将浮层限制在组件区域内并停用焦点锁定、遮罩及 Esc 捕获，关闭时仍提供可选中/拖入的占位区域；运行模式使用原生浮层行为。关闭、确定等动作仍由运行时的受控 `open` 与回调处理，属性面板不配置回调或实例方法。浮层占位及展示组件使用所在项目的 Ant Design 主题令牌，不读取工作台的亮暗偏好。
 
 Manifest 格式从 Shared 引用，构建将其代码和声明内联；Shared 是构建依赖，不向独立生成项目增加工作区依赖。
+
+### 可视化列与选项配置
+
+Table 的列配置支持标题、字段、稳定 key、宽度、对齐、固定、超出省略、隐藏与上下排序。Checkbox、Radio、Select 共用选项编辑器，支持名称、值类型、值、增删与排序；Select 值使用文本或数字，Checkbox/Radio 也支持布尔值。编辑保留在本地，点击更新时整体校验并进入原有 Working 更新链路；无效内容保留供修正。删除或调整选项不会自动修改 Form 的初始值，请同步检查相关字段。
+
+配置沿用已有 Manifest 格式，运行时消费 columns/options；分页沿用 `enabledPagination` 与各分页属性的 Ant Design 转换。表格未指定 render 的布尔单元格显示 true/false。参考物料中的 isDefault 没有完整保存和运行时处理，因此不引入该标记，默认值仍由 Form initialValues 管理。

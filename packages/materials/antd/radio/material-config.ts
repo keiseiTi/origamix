@@ -1,3 +1,4 @@
+import { OptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { radioManifest } from './manifest';
@@ -10,6 +11,7 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
+          { field: 'options', label: '选项配置', uiType: 'custom', render: OptionsEditor },
           {
             label: '禁用',
             field: 'disabled',

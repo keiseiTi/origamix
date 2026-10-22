@@ -60,7 +60,7 @@ export type ColorAttributeConfig = BasicAttributeConfig & {
 
 export type CustomAttributeConfig = BasicAttributeConfig & {
   uiType: 'custom';
-  render: (props: BasicAttributeConfig) => React.ReactNode;
+  render: React.ComponentType<{ value?: unknown; onChange?: (value: unknown) => void }>;
 };
 
 /** Structured JSON editor; guards belong to editor metadata, never to the Manifest. */

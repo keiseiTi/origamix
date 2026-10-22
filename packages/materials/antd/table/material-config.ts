@@ -1,7 +1,8 @@
+import { ColumnsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { tableManifest } from './manifest';
-import { validateColumns, validateRows } from '../structured-data-validation';
+import { validateRows } from '../structured-data-validation';
 
 const material = defineMaterial({
   manifest: tableManifest,
@@ -18,9 +19,9 @@ const material = defineMaterial({
           },
           {
             field: 'columns',
-            validateValue: validateColumns,
+            render: ColumnsEditor,
             label: '列配置',
-            uiType: 'json',
+            uiType: 'custom',
           },
           {
             field: 'dataSource',

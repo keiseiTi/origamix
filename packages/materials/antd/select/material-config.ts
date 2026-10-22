@@ -1,3 +1,4 @@
+import { SelectOptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { selectManifest } from './manifest';
@@ -10,6 +11,7 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
+          { field: 'options', label: '选项配置', uiType: 'custom', render: SelectOptionsEditor },
           {
             label: '占位符',
             field: 'placeholder',

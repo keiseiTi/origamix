@@ -236,7 +236,20 @@ export const AttributePanel = ({
         return (
           <span className='text-xs text-zinc-600 dark:text-zinc-300'>{String(value ?? '')}</span>
         );
-      case 'custom':
+      case 'custom': {
+        const Component = (
+          config as unknown as {
+            render?: React.ComponentType<{ value?: unknown; onChange?: (value: unknown) => void }>;
+          }
+        ).render;
+        return Component ? (
+          <Component
+            key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
+            value={value}
+            onChange={(next) => update(config.field, next)}
+          />
+        ) : null;
+      }
       case 'color':
         return <p className='m-0 text-xs text-zinc-500'>该配置控件暂未接入 MVP。</p>;
       default:
