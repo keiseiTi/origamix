@@ -31,6 +31,25 @@ const recordedObservation = (
 };
 
 describe('fixed Agent evaluation harness', () => {
+  it('does not report a successful evaluation when no cases ran', async () => {
+    const report = await runAgentEvaluation(
+      {
+        kind: 'recorded',
+        run: async () => {
+          throw new Error('No case should execute');
+        },
+      },
+      [],
+    );
+    expect(report.passed).toBe(false);
+    expect(report.summary).toMatchObject({
+      total: 0,
+      passed: 0,
+      successRate: 0,
+      firstTerminalSuccessRate: 0,
+    });
+  });
+
   it('covers every MVP behavior with a versioned, aggregate report', async () => {
     const report = await runAgentEvaluation({
       kind: 'recorded',

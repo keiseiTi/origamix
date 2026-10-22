@@ -69,7 +69,9 @@ Agent 仅通过终态工具 `agent/tools/complete-page-run.ts` 提交完整的�
 
 Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origamix/pages/<pageId>/agent-commits/` 目录。回执在 Working 替换前准备、替换后确认；启动恢复仅核对 Run、页面、Operation 摘要、Working Version 与 Hash，不会重新执行 Operation。回执作为审计与恢复证据随页面长期保留，并在页面删除时随页面目录一并删除。
 
-工具调用审计持久化在 `agent_tool_audits`，只包含工具名、阶段、耗时、安全错误码及 Operation 数量/类型/摘要，不保存工具参数、完整 Schema、凭据或模型上下文。Run 记录同时保留失败阶段和提交恢复标记；`tooling.ts` 提供聚合指标与结构化 Outcome 评测，`gate:agent` 执行单 Run 单提交、事实回复和错误分类等发布门禁。
+工具调用审计持久化在 `agent_tool_audits`，只包含工具名、阶段、耗时、安全错误码及 Operation 数量/类型/摘要，不保存工具参数、完整 Schema、凭据或模型上下文。Run 记录同时保留失败阶段和提交恢复标记；`tooling.ts` 提供聚合指标与结构化 Outcome 评测。`gate:agent` 使用手写固定结果检查评测规则和门槛计算，输出明确标记为 `synthetic-fixtures`；其耗时、资源数量和工具轨迹不是实际执行测量，不代表实时模型质量或运行时安全验收。空评测集不会报告成功。
+
+真实页面质量验收使用 [Desktop 的 `evaluate:agent`](../../apps/desktop/README.md#真实-agent-页面质量验收)，经现有 Main 凭据注入、真实 Server HTTP 和工具管线执行，保留 Run、失败阶段、页面结果及截图。固定评测、模型能力探测、真实页面任务与人工视觉验收分别提供证据，不能互相替代。
 
 ### 同步调用与重复请求
 

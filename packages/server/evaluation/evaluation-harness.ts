@@ -272,14 +272,14 @@ export const runAgentEvaluation = async (
     suiteVersion: 'unified-page-agent-1',
     startedAt,
     finishedAt: now().toISOString(),
-    passed: passed === results.length,
+    passed: results.length > 0 && passed === results.length,
     summary: {
       total: results.length,
       passed,
-      successRate: results.length === 0 ? 1 : passed / results.length,
+      successRate: results.length === 0 ? 0 : passed / results.length,
       firstTerminalSuccessRate:
         observations.length === 0
-          ? 1
+          ? 0
           : rate(observations.filter((item) => item.terminalDecisionAttempts <= 1).length),
       repairRate: rate(repairs.length),
       repairSuccessRate:

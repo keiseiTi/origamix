@@ -73,8 +73,10 @@ pnpm build
 | `pnpm package:dir`   | 构建后生成 `release/` 下未签名应用目录                   |
 | `pnpm package`       | 四项检查后制作发行包；发行签名另行配置                   |
 | `pnpm package:npm`   | 库构建与本地 npm tarball，不发布到 registry              |
-| `pnpm gate:internal` | Server 的确定性 Agent 内测门禁                           |
+| `pnpm gate:internal` | 固定评测数据与门槛计算检查，不证明真实模型质量           |
 
 包内 `build:assemble` 只消费已准备好的输入；根构建统一排序，避免在每一层重复构建依赖。单包 `build` 保留准备依赖的职责，以支持独立调用。
+
+真实页面质量验收见 [Desktop 的验收说明](apps/desktop/README.md#真实-agent-页面质量验收)：先构建并在桌面设置配置模型，再运行 `pnpm --filter @origamix/desktop evaluate:agent`。该命令会调用真实模型并产生费用，使用临时项目，记录实际预览、恢复、保存／Apply 和独立运行结果。
 
 Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测试，边界规则变更验证规则及仓库 lint。用 `pnpm hooks:install` 安装、`pnpm hooks:run` 手动执行。完整仓库检查仍是交付依据。

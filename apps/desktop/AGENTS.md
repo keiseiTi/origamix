@@ -39,6 +39,7 @@ pnpm --filter @origamix/desktop test:main
 ```
 
 - The Main integration check needs compiled artifacts and a graphical session. It exercises real Main/IPC/backend paths with a temporary directory picker. Verify iframe preview isolation, theme persistence and shutdown when changed.
+- `evaluate:agent` is an opt-in, billable live-model quality run, not a default test. Its harness reuses real Main credential injection with copied encrypted settings and temporary app/project state. Preserve failure reports, nonzero failure exits, cleanup and the distinction between automated evidence and manual visual acceptance; never replace provider results with fixed observations to obtain a pass. Usage limitations and invocation belong in the Desktop README.
 - The preview smoke must wait for a material rendered inside the iframe, not a workbench overlay. Preview exit controls belong to the host; file-mode Renderer routing must keep the built index document reachable.
 - For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.

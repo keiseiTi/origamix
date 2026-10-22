@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:main": "node test/test-electron.mjs",
+    "evaluate:agent": "node test/evaluate-agent.mjs",
     "test:resources": "node test/test-electron.mjs --resources",
     "build": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build && pnpm --filter @origamix/server build:assemble && node scripts/build.mjs",
     "build:assemble": "node scripts/build.mjs",
