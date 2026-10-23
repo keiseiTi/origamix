@@ -6,7 +6,7 @@ import {
   type MaterialValidationRuntime,
 } from '../../schema/material-validation';
 
-const supportedSet = [{ id: 'official-antd', version: '2.0.0' }] as const;
+const supportedSet = [{ id: 'official-antd', version: '1.0.0' }] as const;
 
 const page = (): OrigamixPageSchema => {
   return {

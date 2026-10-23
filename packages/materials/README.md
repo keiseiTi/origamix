@@ -88,4 +88,4 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 
 ## 契约版本
 
-本轮物料集与 Materials 包提升至 2.0.0，Runtime/Template 版本仍为 1.0.0。它收敛了旧属性、分页模型、尺寸枚举以及运行时能力白名单，与 official-antd@1.0.0 不兼容。旧项目会在技术栈检查时明确拒绝，不自动换版本或重写 Working、历史 Revision、目标文件。新项目采用新物料集；需要继续使用旧项目时应保留匹配的旧构建。
+当前处于 MVP 阶段，所有内置物料、物料集和 Materials 包统一使用 `1.0.0`，Runtime 与 Template 也使用 `1.0.0`。物料配置调整不引入历史版本兼容、版本迁移或多版本选择；项目清单、Manifest、编辑器、运行时与生成模板使用同一套当前契约。页面字段与能力仍按 Manifest 校验。

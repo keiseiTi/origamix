@@ -22,6 +22,8 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Material rules
 
+- MVP 内所有内置物料、物料集及 Materials 包统一保持 `1.0.0`；配置调整不引入 `2.0.0`、历史版本兼容或迁移。Shared 技术栈、模板与 Agent 元数据同步使用当前版本。
+
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
 - Workspace and published exports both resolve JavaScript and types to `dist`; do not expose source aliases to consumers. Root `pnpm typecheck` builds Materials first. Before isolated App/Server typechecks, build Materials explicitly. Keep both export maps synchronized.

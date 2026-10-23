@@ -263,7 +263,7 @@ Form.validateFields/resetFields/setFieldsValue 是可调用方法，不是事件
 
 Table 使用本地分页，total 由完整数据长度得出，配置的 position 映射为当前原生 placement；未增加远程分页、上传异步取消、函数型渲染等本就排除的能力。读取、写入和方法在 Server 与 Runtime 都按白名单检查；event.payload 是每次调用的独立快照。运行时业务投影仅跟随页面 Engine，不写回 Working、Revision 或目标项目。
 
-控件联动默认仍为 AND；TreeSelect 有效多选、Slider 提示显隐等显式采用 linkageMode=any 组合现有规则。物料集及 Materials 包已提升至 2.0.0，旧 1.0.0 项目在技术栈检查时明确拒绝，不写入或迁移原文件。旧字段或旧枚举不会被静默迁移，原文件保持不变。
+控件联动默认仍为 AND；TreeSelect 有效多选、Slider 提示显隐等显式采用 linkageMode=any 组合现有规则。MVP 阶段所有内置物料、物料集及 Materials 包统一保持 1.0.0，不引入多版本兼容或迁移；项目、编辑器、运行时和校验使用同一套当前契约。
 
 ## 9. 核对入口
 

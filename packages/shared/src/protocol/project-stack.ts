@@ -25,7 +25,7 @@ export type ProjectStack = Static<typeof ProjectStackSchema>;
 export const BUILTIN_PROJECT_STACK = {
   framework: 'react',
   uiLibrary: 'antd',
-  materialSet: { id: 'official-antd', version: '2.0.0' },
+  materialSet: { id: 'official-antd', version: '1.0.0' },
   runtime: { id: 'origamix.react', version: '1.0.0' },
   template: { id: 'origamix.react-antd', version: '1.0.0' },
 } as const satisfies ProjectStack;
@@ -47,7 +47,7 @@ export const resolveProjectStack = (descriptor: unknown): ProjectStack => {
     materialSet.version !== BUILTIN_PROJECT_STACK.materialSet.version
   )
     throw new Error(
-      `项目物料集 ${materialSet.id}@${materialSet.version} 不受支持；请安装匹配版本，不能自动替换物料集`,
+      `项目物料集 ${materialSet.id}@${materialSet.version} 不受支持，当前 MVP 仅使用 official-antd@1.0.0`,
     );
   return {
     ...BUILTIN_PROJECT_STACK,

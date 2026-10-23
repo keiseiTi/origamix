@@ -11,6 +11,7 @@ describe('material boundary used by editing and preview', () => {
       expect(antdValidationMaterialRegistry[material.type]).toBeDefined();
       expect(material.type in materialComponents).toBe(true);
     }
+    expect(materialSet).toEqual({ id: 'official-antd', version: '1.0.0' });
     expect(antdMaterialManifest.materialSet).toEqual(materialSet);
     for (const material of antdMaterialManifest.materials) {
       expect(material.version).toBe(materialSet.version);

@@ -60,7 +60,7 @@ describe('server startup Agent recovery', () => {
       promptVersion: '1',
       policyVersion: '1',
       toolsetVersion: '1',
-      materialManifestVersion: 'official-antd@2.0.0',
+      materialManifestVersion: 'official-antd@1.0.0',
     });
     await recoverAgentRunsOnStartup(runs, new ProjectRepository(database), service);
     expect(runs.get(started.run.id)).toMatchObject({

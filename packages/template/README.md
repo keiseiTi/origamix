@@ -17,7 +17,7 @@ pnpm preview
 
 `src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面。页面入口使用 `@origamix/runtime/react` 和 `@origamix/materials/antd/runtime` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
 
-项目清单记录 `framework: react`、`uiLibrary: antd` 和 `materialSet: { "id": "official-antd", "version": "2.0.0" }`。当前固定使用对应版本的 Runtime 与模板；修改配置不会自动更换依赖、升级历史数据或重写页面入口。Origamix 会拒绝不支持的技术栈或版本。
+项目清单记录 `framework: react`、`uiLibrary: antd` 和 `materialSet: { "id": "official-antd", "version": "1.0.0" }`。当前固定使用对应版本的 Runtime 与模板；修改配置不会自动更换依赖、升级历史数据或重写页面入口。Origamix 会拒绝不支持的技术栈或版本。
 
 模板必须保留自己的依赖、TypeScript、Vite 和 ESLint 配置，才能脱离工作区运行。源码工作区中的 `workspace:*` 由模板打包步骤替换为随项目提供的 `vendor/*.tgz`，打包后的项目不需要 monorepo。
 
