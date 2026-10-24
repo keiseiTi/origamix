@@ -37,18 +37,20 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
       relativePath: page.relativePath,
     };
     const manifestPath = join(project.path, 'origamix.project.json');
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    // Recognized pre-unification descriptor is preserved until the explicit operation.
-    delete manifest.version;
-    manifest.materialSet = { id: 'official-antd', version: '1.0.0' };
-    const manifestSource = JSON.stringify(manifest);
-    await writeFile(manifestPath, manifestSource);
+    const manifestSource = await readFile(manifestPath, 'utf8');
+    const manifest = JSON.parse(manifestSource);
     const targetPath = join(project.path, page.relativePath, 'schema.json');
-    const original = JSON.parse(await readFile(targetPath, 'utf8'));
-    original.extensions.origamix.schemaVersion = '1.0';
-    await writeFile(targetPath, JSON.stringify(original));
-    await rm(join(project.path, '.origamix'), { recursive: true, force: true });
-    const working = await getWorkingSchemaState(ref);
+    const initial = await getWorkingSchemaState(ref);
+    const working = await updateWorkingSchema(ref, {
+      baseWorkingVersion: initial.workingVersion,
+      schema: {
+        ...initial.schema,
+        elements: {
+          ...initial.schema.elements,
+          element_root: { ...initial.schema.elements.element_root, props: { padding: 24 } },
+        },
+      },
+    });
     const template = join(directory, 'prepared-template');
     await mkdir(join(template, 'vendor'), { recursive: true });
     await writeFile(
@@ -58,7 +60,7 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
     // Archive bytes are opaque to this persistence test; the template smoke installs real archives.
     await writeFile(join(template, 'vendor/runtime.tgz'), 'runtime artifact');
     await writeFile(join(template, 'vendor/materials.tgz'), 'materials artifact');
-    const input = { expectedVersion: '1.0.0', clientRequestId: 'upgrade_once' };
+    const input = { expectedVersion: ORIGAMIX_VERSION, clientRequestId: 'upgrade_once' };
     const interrupted = new ProjectUpgradeService(projects, template, (stage) => {
       if (stage === 'package') throw new Error('interrupted');
     });

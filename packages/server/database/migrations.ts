@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { openSync, closeSync, renameSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import {
@@ -33,25 +33,9 @@ export const migrateDatabase = (
   if (version > targetVersion) throw new Error('数据库版本较新，请使用对应或更新的 Origamix');
   const empty = currentUserTables(connection).length === 0;
   if (empty && version !== 0) throw new Error('数据库版本记录与结构不一致');
-  // Explicit adoption of the exact unversioned initial schema; unknown structures are never guessed.
-  if (!empty && version === 0) {
-    assertCurrentSchema(connection);
-    const expected = new DatabaseSync(':memory:');
-    const definitions = (database: DatabaseSync) =>
-      database
-        .prepare(
-          "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
-        )
-        .all();
-    try {
-      expected.exec(schemaSql);
-      if (JSON.stringify(definitions(connection)) !== JSON.stringify(definitions(expected)))
-        throw new Error('无版本数据库结构无法确认为初始版本，不能自动升级');
-    } finally {
-      expected.close();
-    }
-  }
-  let nextVersion = version === 0 ? 1 : version;
+  if (!empty && version === 0) throw new Error('数据库缺少版本信息或结构不兼容');
+  // Fresh databases use the current DDL directly; only versioned databases run upgrade steps.
+  let nextVersion = empty ? targetVersion : version;
   const steps: DatabaseMigration[] = [];
   while (nextVersion < targetVersion) {
     const matches = migrations.filter((step) => step.from === nextVersion);

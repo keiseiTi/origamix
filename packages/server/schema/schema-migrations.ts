@@ -15,22 +15,8 @@ export const schemaVersionOf = (value: unknown): string => {
   return version;
 };
 
-// The initial schema format persisted "1.0". Its shape is identical to release 1.0.0;
-// this explicit step is the only accepted initial format, never a missing-version fallback.
-const transformSchema_1_0_to_1_0_0 = (input: unknown): unknown => {
-  const schema = input as OrigamixPageSchema;
-  return {
-    ...schema,
-    extensions: {
-      ...schema.extensions,
-      origamix: { ...schema.extensions.origamix, schemaVersion: '1.0.0' },
-    },
-  };
-};
-
-export const schemaMigrations: readonly SchemaMigration[] = [
-  { from: '1.0', to: '1.0.0', transform: transformSchema_1_0_to_1_0_0 },
-];
+// Register transformations only when a real subsequent release changes the contract.
+export const schemaMigrations: readonly SchemaMigration[] = [];
 
 /** Pure, all-or-nothing candidate conversion; persistence belongs to SchemaService. */
 export const transformSchema = (

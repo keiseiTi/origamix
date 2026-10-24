@@ -166,12 +166,6 @@ it('reconciles the project without opening pages and imports only the page reque
     });
     const first = await service.createPage(project.id, { name: 'First', slug: 'first' });
     const second = await service.createPage(project.id, { name: 'Second', slug: 'second' });
-    for (const page of [first, second]) {
-      const targetPath = join(project.path, page.relativePath, 'schema.json');
-      const old = JSON.parse(await readFile(targetPath, 'utf8'));
-      old.extensions.origamix.schemaVersion = '1.0';
-      await writeFile(targetPath, JSON.stringify(old));
-    }
     await rm(join(project.path, '.origamix'), { recursive: true, force: true });
     await service.reconcile(project.path);
     await expect(access(join(project.path, '.origamix/pages'))).rejects.toThrow();
@@ -181,12 +175,12 @@ it('reconciles the project without opening pages and imports only the page reque
       slug: first.slug,
       relativePath: first.relativePath,
     });
-    expect(opened.workingHash).not.toBe(opened.savedSchemaHash);
+    expect(opened.workingHash).toBe(opened.savedSchemaHash);
     await expect(access(join(project.path, '.origamix/pages', second.id))).rejects.toThrow();
     expect(
       JSON.parse(await readFile(join(project.path, first.relativePath, 'schema.json'), 'utf8'))
         .extensions.origamix.schemaVersion,
-    ).toBe('1.0');
+    ).toBe(opened.schema.extensions.origamix.schemaVersion);
   } finally {
     database.close();
   }

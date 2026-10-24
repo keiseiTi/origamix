@@ -23,7 +23,6 @@ describe('ApplicationDatabase', () => {
     expect(tables.map(({ name }) => name)).toEqual(
       expect.arrayContaining(['projects', 'pages', 'conversations', 'messages', 'agent_runs']),
     );
-    expect(tables.map(({ name }) => name)).not.toContain('app_meta');
     database.close();
     const reopened = new ApplicationDatabase(path);
     expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM projects').get()).toEqual({
@@ -48,39 +47,41 @@ describe('ApplicationDatabase', () => {
     database.close();
   });
 
-  it('preserves an incompatible existing database instead of deleting it', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'origamix-db-old-'));
+  it('rejects a database with missing version metadata without modifying its records', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-db-invalid-version-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
-    const legacy = new DatabaseSync(path);
-    legacy.exec('CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-    legacy.close();
-    expect(() => new ApplicationDatabase(path)).toThrow('不兼容');
+    const current = new ApplicationDatabase(path);
+    current.connection.exec(
+      "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
+    );
+    current.connection.exec('PRAGMA user_version = 0');
+    current.close();
+    expect(() => new ApplicationDatabase(path)).toThrow('版本信息');
     const preserved = new DatabaseSync(path);
-    expect(
-      preserved
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'app_meta'")
-        .get(),
-    ).toBeTruthy();
-    preserved.close();
+    try {
+      expect(preserved.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
+      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 0 });
+    } finally {
+      preserved.close();
+    }
   });
 });
 
-it('adopts the known initial database with a backup and rolls back a failed upgrade', async () => {
+it('backs up a versioned database and rolls back a failed upgrade', async () => {
   const { readdir } = await import('node:fs/promises');
   const { migrateDatabase } = await import('../../database/migrations');
   const directory = await mkdtemp(join(tmpdir(), 'origamix-db-upgrade-'));
   directories.push(directory);
   const path = join(directory, 'origamix.db');
-  const connection = new DatabaseSync(path);
+  const database = new ApplicationDatabase(path);
+  const connection = database.connection;
   try {
-    connection.exec(schemaSql);
     connection.exec(
-      "INSERT INTO projects VALUES (1, 'project_old', '/temporary', 'Keep me', 0, '2026-10-23', '2026-10-23')",
+      "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-23', '2026-10-23')",
     );
     migrateDatabase(connection);
     expect(connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
-    expect((await readdir(directory)).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
     const failed = [
       {
         from: 1,
@@ -90,6 +91,7 @@ it('adopts the known initial database with a backup and rolls back a failed upgr
       },
     ];
     expect(() => migrateDatabase(connection, failed, 2)).toThrow();
+    expect((await readdir(directory)).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
     expect(connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
     expect(connection.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
     expect(

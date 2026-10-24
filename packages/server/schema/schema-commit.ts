@@ -4,6 +4,7 @@ import {
   type ChangeSource,
   type OrigamixPageSchema,
   ORIGAMIX_VERSION,
+  isSupportedOrigamixVersion,
   validatePage,
 } from '@origamix/shared';
 
@@ -30,7 +31,9 @@ export const validateSnapshot = (snapshot: RevisionSnapshot): void => {
     hashSchema(snapshot.schema) !== snapshot.schemaHash
   )
     throw invalid('Revision 内容校验失败');
-  if (schemaVersionOf(snapshot.schema) === ORIGAMIX_VERSION && !validatePage(snapshot.schema).valid)
+  const version = schemaVersionOf(snapshot.schema);
+  if (!isSupportedOrigamixVersion(version)) throw invalid('Revision Schema 版本不受支持');
+  if (version === ORIGAMIX_VERSION && !validatePage(snapshot.schema).valid)
     throw invalid('Revision Schema 校验失败');
 };
 export const createRevisionSnapshot = (

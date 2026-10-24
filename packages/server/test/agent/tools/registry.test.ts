@@ -106,7 +106,7 @@ describe('Agent tool policy and budget', () => {
     expect(() =>
       createDefaultAgentToolEntries([
         {
-          name: 'legacy_write_tool',
+          name: 'unregistered_write_tool',
           description: 'unregistered model-visible write',
           parameters: Type.Object({}),
           execute: async () => ({}),

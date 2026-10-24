@@ -32,11 +32,19 @@ it('retains manifest uniqueness checks after structural validation', async () =>
   }
 });
 
-it('rejects incomplete project manifests without rewriting the file', async () => {
+it('rejects missing project versions without inferring or rewriting them', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-manifest-invalid-'));
   const path = join(directory, 'origamix.project.json');
-  const source = JSON.stringify({ name: 'Incomplete project', pages: [] });
+  const store = new ProjectManifestStore();
   try {
+    await store.initializeManifest(directory, {
+      projectId: 'project_test',
+      name: 'Current project',
+      pageDirectory: 'pages',
+      code: 'current-project',
+    });
+    const manifest = await store.readManifest(directory);
+    const source = JSON.stringify({ ...manifest, version: undefined });
     await writeFile(path, source);
     await expect(new ProjectManifestStore().readManifest(directory)).rejects.toThrow();
     expect(await readFile(path, 'utf8')).toBe(source);

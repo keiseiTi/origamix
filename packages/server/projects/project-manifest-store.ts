@@ -52,17 +52,6 @@ export class ProjectManifestStore {
     } catch {
       throw invalid('项目清单不是有效的 JSON');
     }
-    // Explicitly recognize the initial release descriptor. Keep the user's file untouched on reads.
-    if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
-      const legacy = manifest as Record<string, unknown>;
-      const material = legacy.materialSet as { id?: unknown; version?: unknown } | undefined;
-      if (
-        !('version' in legacy) &&
-        material?.id === 'official-antd' &&
-        material.version === '1.0.0'
-      )
-        manifest = { ...legacy, version: '1.0.0', materialSet: 'official-antd' };
-    }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     this.resolveStack(manifest);
     const ids = new Set<string>();
