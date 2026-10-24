@@ -7,6 +7,7 @@ import type { LifecycleTarget } from './mod/lifecycle-modal';
 
 interface ProjectNavigationProps {
   onCreatePage: (projectId: string) => void;
+  onUpgrade: (project: ProjectItem) => void;
   onSelectPage: (pageId: string) => void;
   onLifecycle: (target: LifecycleTarget) => void;
 }
@@ -15,6 +16,7 @@ const ProjectNavigationRow = ({
   project,
   activePageId,
   onCreatePage,
+  onUpgrade,
   onSelectPage,
   onLifecycle,
 }: ProjectNavigationProps & {
@@ -27,6 +29,7 @@ const ProjectNavigationRow = ({
       <span className='min-w-0 flex-1 truncate'>{project.name}</span>
       <SidebarActionMenu
         label={`${project.name} 项目操作`}
+        onUpgrade={() => onUpgrade(project)}
         onRename={() => onLifecycle({ kind: 'rename-project', id: project.id, name: project.name })}
         onDelete={() => onLifecycle({ kind: 'delete-project', id: project.id, name: project.name })}
       />
@@ -83,6 +86,7 @@ const ProjectNavigationRow = ({
 
 export const ProjectNavigation = ({
   onCreatePage,
+  onUpgrade,
   onSelectPage,
   onLifecycle,
 }: ProjectNavigationProps): React.JSX.Element => {
@@ -98,6 +102,7 @@ export const ProjectNavigation = ({
           project={project}
           activePageId={activePageId}
           onCreatePage={onCreatePage}
+          onUpgrade={onUpgrade}
           onSelectPage={onSelectPage}
           onLifecycle={onLifecycle}
         />

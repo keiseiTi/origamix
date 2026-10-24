@@ -49,7 +49,7 @@ pnpm --filter @origamix/shared build
   "flows": {},
   "bindElements": [],
   "context": { "globalVariables": [] },
-  "extensions": { "origamix": { "schemaVersion": "1.0" } }
+  "extensions": { "origamix": { "schemaVersion": "1.0.0" } }
 }
 ```
 
@@ -99,3 +99,7 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 本模块不包含 React、LogicFlow、表单控件或执行函数。Editor 与 Runtime 使用当前节点契约，不转换旧节点格式。Server 的物料与写入校验仍由对应服务负责。
 
 物料 Manifest.context.variables 只声明可读业务属性，writable 独立声明可写运行状态；values 中 isMethod=true 的项是可调用方法，methods 是可绑定事件。设计期 propsSchema 不自动授予运行时读写能力。可读项可声明精确嵌套路径，例如 pagination.current；事件的 linkageShow 是纯数据显隐元数据。
+
+## 统一版本
+
+`ORIGAMIX_VERSION` 是当前发布契约，`ORIGAMIX_RELEASES` 是明确支持的发布序列。所有自有包统一发布。项目清单只保存 `version` 与 `materialSet` ID，物料、Runtime 和模板的解析版本由当前发布派生。Schema 的 `extensions.origamix.schemaVersion` 记录该份数据的来源版本，当前校验器只接受当前版本；旧数据迁移由 Server 负责。

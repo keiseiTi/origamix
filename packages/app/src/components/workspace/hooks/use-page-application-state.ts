@@ -1,3 +1,4 @@
+import { useProjectUpgrades } from '@/store/project-upgrades';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { schemaService } from '@/services/schema';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
@@ -28,6 +29,9 @@ export const usePageApplicationState = ({
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
+  const projectUpgradeVersion = useProjectUpgrades(
+    (state) => state.completed[projectId ?? ''] ?? 0,
+  );
   const pageKey = pageOperationKey(projectId ?? '', pageId ?? '');
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
   const [applyState, setApplyState] = useState<{ pageKey: string; value: PageApplyStatus }>({
@@ -80,7 +84,7 @@ export const usePageApplicationState = ({
       requestState.accepted = ++requestState.issued;
       window.clearTimeout(initial);
     };
-  }, [active, refreshApplyState, schemaRefreshKey]);
+  }, [active, refreshApplyState, schemaRefreshKey, projectUpgradeVersion]);
 
   const applyPage = async (): Promise<void> => {
     if (!pageId || !projectId) return;

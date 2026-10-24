@@ -16,6 +16,7 @@ const schemaMocks = vi.hoisted(() => ({
 
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
 
+import { useProjectUpgrades } from '../../../../src/store/project-upgrades';
 import { usePendingOperations } from '../../../../src/store/pending-operations';
 import { usePageApplicationState } from '../../../../src/components/workspace/hooks/use-page-application-state';
 
@@ -39,6 +40,7 @@ describe('usePageApplicationState', () => {
     vi.resetAllMocks();
     vi.mocked(editorRef.current!.flush).mockResolvedValue(undefined);
     usePendingOperations.setState({ applies: {}, agents: {} });
+    useProjectUpgrades.setState({ completed: {} });
   });
 
   afterEach(() => {
@@ -155,6 +157,12 @@ describe('usePageApplicationState', () => {
     expect(editorRef.current!.flush).toHaveBeenCalledOnce();
     expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
     expect(onSchemaCommitted).toHaveBeenCalledWith('page_a', 'revision_saved');
+    // A project-level Apply changes lifecycle state without replacing this editor's snapshot.
+    schemaMocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    act(() => useProjectUpgrades.getState().notifyCompleted('project_1'));
+    await act(async () => vi.advanceTimersByTime(0));
+    expect(result.current.applyStatus).toBe('in_sync');
+    expect(onSchemaCommitted).toHaveBeenCalledTimes(1);
   });
   it('keeps an ambiguous Apply across unmount, then clears it on explicit retry', async () => {
     schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });

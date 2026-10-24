@@ -79,7 +79,8 @@ describe('Project and Schema HTTP flows', () => {
     ).toMatchObject({
       framework: 'react',
       uiLibrary: 'antd',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
+      version: '1.0.0',
+      materialSet: 'official-antd',
       pageDirectory: 'screens',
       pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
@@ -248,7 +249,8 @@ describe('Project and Schema HTTP flows', () => {
     expect(manifest).toMatchObject({
       framework: 'react',
       uiLibrary: 'antd',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
+      version: '1.0.0',
+      materialSet: 'official-antd',
       pages: [],
     });
     await access(join(directory, 'src', 'router.ts'));

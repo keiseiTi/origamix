@@ -25,7 +25,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 | `infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复                                                                                                                     |
 | `scripts/`        | 构建、开发监听、模板与启动集成检查                                                                                                                                                  |
 
-数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。旧结构不会自动迁移或删除，启动时会报告不兼容。
+数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。已登记的结构升级在启动时备份并按序迁移；未知结构保留原文件并拒绝启动。
 
 业务目录内部保留 Service → Repository/Store 的职责边界，不再为每个技术层建立子目录。目录位置不代表允许绕过服务写入。
 
@@ -203,7 +203,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 | 409            | 检查 Working 版本、未保存状态或目标外部变化，先读取最新状态      |
 | 500 / 连接中断 | 写入结果可能不明确，先核对持久化结果；Apply/Agent 保留原请求身份 |
 
-具体业务错误以响应文案和拥有该规则的 Service 为准。数据库不兼容时保留原文件，确认使用的应用版本；没有自动迁移或重置流程。
+具体业务错误以响应文案和拥有该规则的 Service 为准。数据库未知或较新时保留原文件，确认使用的应用版本；已登记的升级路径先备份再迁移，失败回滚，不会自动重置。
 
 ## pi 与模型适配维护
 
@@ -212,3 +212,17 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 升级时对照 [模型注册](agent/pi-runtime.ts)、[引擎适配](agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；配置 `DEEPSEEK_API_KEY` 后运行 `pnpm --filter @origamix/server probe:deepseek` 可验证默认模型的文本流和工具调用，会产生真实 API 请求。未配置 Key 时该脚本跳过探测，不能算探测通过。
 
 事件生成默认预算为 24 次工具调用；系统提示包含剩余预算并要求为提交和修复保留调用。物料 Manifest 与逻辑工具共用精确分页格式，保留大小写类型和深层属性定义。工具异常保留原始文本错误内容，避免空 `details` 遮蔽修复信息。
+
+## 页面与数据库升级
+
+页面打开走 `schema/schema-service.ts` 的统一入口，按 `schema/schema-migrations.ts` 串联转换，仅在完整校验成功后写入 Working。并发打开只迁移一次；失败保留旧草稿。项目索引重建不会打开所有页面。历史 Revision 保留原文，恢复时转换为当前 Working；启动时恢复 Agent 回执先读取未迁移的持久化状态。
+
+当前发布仍为 `1.0.0`。唯一已登记的历史转换是初始 MVP 的 `schemaVersion: "1.0"` → `"1.0.0"`，只收敛版本标记；不猜测缺少版本的数据。初始 MVP 的 `materialSet: { id: "official-antd", version: "1.0.0" }` 项目清单可在读取时明确识别，转换为单一项目版本视图，不自动重写文件。
+
+`database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库初始化为存储版本 1；无版本但结构完全匹配的初始 MVP 数据库在备份后登记版本。后续结构变化逐级执行 SQL，并将版本记录与结构变更一起提交；失败回滚。备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
+
+发布时执行 `pnpm release:version --set <版本>`，同步所有包、Shared 版本和模板清单；然后为相邻发布声明 Schema 转换，无变化也显式声明原样转换。`pnpm release:version --check` 已接入根 lint。数据库结构有变化时另外增加迁移步骤和存储版本，更新当前结构与验证规则。
+
+打开页面不切换项目依赖。项目菜单的“升级项目”显式调用 `POST /api/v1/projects/upgrade`，提交 `projectId`、`expectedVersion` 和稳定的 `clientRequestId`。所有页面必须已打开、迁移并显式保存；升级按计划中的版本逐页调用原 Apply 服务，然后安装独立命名的版本归档、更新 package.json 依赖和项目清单。不会执行依赖安装命令，用户完成后需重新安装依赖并验证项目。
+
+`.origamix/project-upgrade.json` 保留原配置、计划中的 Revision/Working 版本及结果；升级期间阻止普通编辑和 Apply。状态通过 `/projects/upgrade-state/get` 读取，显式重试复用原请求，不在启动时自动重放。项目配置、目标页或草稿出现冲突时停止并保留记录。目标页和配置尚未改变时，可通过 `/projects/upgrade/cancel` 撤销；已经写入时需继续完成。此流程不是跨文件原子替换，升级期间应停止目标项目运行。

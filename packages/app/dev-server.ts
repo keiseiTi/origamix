@@ -12,17 +12,25 @@ export const localWebServer = (): Plugin => {
     async configureServer(vite) {
       if (process.env.ORIGAMIX_DESKTOP === '1' || process.env.VITEST) return;
       const { startServer } = await import('@origamix/server/runtime');
+      const { prepareTemplateArtifact } = await import('@origamix/server/template-artifact');
       const stateDir =
         process.env.ORIGAMIX_WEB_STATE_DIR ??
         fileURLToPath(new URL('../../.origamix-web/', import.meta.url));
       await mkdir(stateDir, { recursive: true });
+      const templatePath = resolve(stateDir, 'template');
+      await prepareTemplateArtifact({
+        sourceTemplate: fileURLToPath(new URL('../template', import.meta.url)),
+        targetTemplate: templatePath,
+        runtimePackage: fileURLToPath(new URL('../runtime', import.meta.url)),
+        materialsPackage: fileURLToPath(new URL('../materials', import.meta.url)),
+      });
       const token = randomUUID();
       const serviceInstanceId = randomUUID();
       const port = vite.config.server.port ?? 5173;
       const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
       const backend = await startServer({
         databasePath: resolve(stateDir, 'origamix.db'),
-        templatePath: fileURLToPath(new URL('../template', import.meta.url)),
+        templatePath,
         desktopToken: token,
         serviceInstanceId,
         allowedOrigins: [...hosts].map((host) => `http://${host}`),

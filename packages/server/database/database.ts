@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { BetterSQLiteTransaction } from 'drizzle-orm/better-sqlite3/session';
 import type { TablesRelationalConfig } from 'drizzle-orm/relations';
-import { initializeDatabase } from './initialize';
+import { migrateDatabase } from './migrations';
 import { createNodeSQLiteDrizzle } from './node-sqlite-adapter';
 
 type EmptySchema = Record<string, never>;
@@ -33,7 +33,7 @@ export class ApplicationDatabase {
     connection.exec(
       'PRAGMA foreign_keys = OFF; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;',
     );
-    initializeDatabase(connection);
+    migrateDatabase(connection);
   }
 
   transaction<T>(

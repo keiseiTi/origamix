@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import type { OrigamixPageSchema } from '@origamix/shared';
 export const sample: OrigamixPageSchema = {
   elements: {
@@ -29,5 +30,5 @@ export const sample: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 };

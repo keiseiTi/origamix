@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
@@ -100,7 +101,7 @@ describe('Working Schema request protocol', () => {
     flows: {},
     bindElements: [],
     context: { globalVariables: [] },
-    extensions: { origamix: { schemaVersion: '1.0' } },
+    extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
   };
 
   it('requires a versioned full Schema draft update', () => {

@@ -55,7 +55,7 @@ try {
   );
   assert.deepEqual(
     JSON.parse(await readFile(join(project, 'origamix.project.json'), 'utf8')).materialSet,
-    BUILTIN_PROJECT_STACK.materialSet,
+    BUILTIN_PROJECT_STACK.materialSet.id,
   );
   const page = await request('/pages/create', {
     projectId: created.id,
@@ -156,6 +156,16 @@ try {
   const readme = await readFile(join(project, 'README.md'), 'utf8');
   assert.ok(readme.startsWith('# Template smoke'));
   assert.ok(readme.includes('## 职责与入口'));
+  const upgraded = await request('/projects/upgrade', {
+    projectId: created.id,
+    expectedVersion: BUILTIN_PROJECT_STACK.materialSet.version,
+    clientRequestId: 'template-upgrade-once',
+  });
+  assert.equal(upgraded.status, 'completed');
+  assert.equal(
+    (await request('/projects/upgrade-state/get', { projectId: created.id })).upgrade.state,
+    'completed',
+  );
   await backend.close();
   backend = undefined;
   for (const args of [['install', '--ignore-scripts'], ['typecheck'], ['build']]) {

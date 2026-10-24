@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { deferred } from '../../testing/deferred';
 import { FakeAgentEngine } from '../../testing/fake-agent-engine';
 import { Type } from '@sinclair/typebox';
@@ -124,7 +125,7 @@ const setup = (
       flows: {},
       bindElements: [],
       context: { globalVariables: [] },
-      extensions: { origamix: { schemaVersion: '1.0' as const } },
+      extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
     },
   }));
   const service = new AgentService({

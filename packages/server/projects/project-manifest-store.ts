@@ -1,3 +1,4 @@
+import { assertProjectNotUpgrading } from './project-upgrade-store';
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import { invalid, notFound } from '../errors';
 
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
+    await assertProjectNotUpgrading(projectPath);
     await writeFileAtomically(
       join(projectPath, 'origamix.project.json'),
       `${JSON.stringify(manifest, null, 2)}\n`,
@@ -27,22 +29,42 @@ export class ProjectManifestStore {
       ...input,
       framework: BUILTIN_PROJECT_STACK.framework,
       uiLibrary: BUILTIN_PROJECT_STACK.uiLibrary,
-      materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
+      version: BUILTIN_PROJECT_STACK.materialSet.version,
+      materialSet: BUILTIN_PROJECT_STACK.materialSet.id,
       pages: [],
     });
   }
 
   async readManifest(projectPath: string): Promise<ProjectManifest> {
-    let manifest: unknown;
     try {
-      manifest = JSON.parse(await readFile(join(projectPath, 'origamix.project.json'), 'utf8'));
+      return this.parseManifest(await readFile(join(projectPath, 'origamix.project.json'), 'utf8'));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
         throw invalid('目录尚未初始化为 Origamix 项目');
+      throw error;
+    }
+  }
+
+  parseManifest(source: string): ProjectManifest {
+    let manifest: unknown;
+    try {
+      manifest = JSON.parse(source);
+    } catch {
       throw invalid('项目清单不是有效的 JSON');
     }
+    // Explicitly recognize the shipped MVP descriptor. Keep the user's file untouched on reads.
+    if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
+      const legacy = manifest as Record<string, unknown>;
+      const material = legacy.materialSet as { id?: unknown; version?: unknown } | undefined;
+      if (
+        !('version' in legacy) &&
+        material?.id === 'official-antd' &&
+        material.version === '1.0.0'
+      )
+        manifest = { ...legacy, version: '1.0.0', materialSet: 'official-antd' };
+    }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
-    const stack = this.resolveStack(manifest);
+    this.resolveStack(manifest);
     const ids = new Set<string>();
     const slugs = new Set<string>();
     for (const page of manifest.pages) {
@@ -51,7 +73,7 @@ export class ProjectManifestStore {
       ids.add(page.pageId);
       slugs.add(page.slug);
     }
-    return { ...manifest, materialSet: stack.materialSet };
+    return manifest;
   }
 
   private resolveStack(descriptor: unknown) {

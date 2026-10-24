@@ -2,7 +2,10 @@ import { open, rename, rm } from 'node:fs/promises';
 import { nanoid } from 'nanoid';
 
 /** The caller owns path authorization and parent-directory creation. */
-export const writeFileAtomically = async (path: string, contents: string): Promise<void> => {
+export const writeFileAtomically = async (
+  path: string,
+  contents: string | Uint8Array,
+): Promise<void> => {
   const temporary = `${path}.${nanoid()}.tmp`;
   const handle = await open(temporary, 'wx', 0o600);
   try {

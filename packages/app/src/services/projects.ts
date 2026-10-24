@@ -1,4 +1,7 @@
 import {
+  type ProjectUpgradeState,
+  type ProjectUpgradeRequest,
+  type ProjectUpgradeResult,
   type OpenProjectResult,
   type PageRecord,
   type ProjectRecord,
@@ -10,6 +13,12 @@ import {
 import { request } from './request';
 
 export const projectsService = {
+  upgradeState: (projectId: string): Promise<ProjectUpgradeState> =>
+    request('/projects/upgrade-state/get', { projectId }),
+  upgrade: (projectId: string, input: ProjectUpgradeRequest): Promise<ProjectUpgradeResult> =>
+    request('/projects/upgrade', { projectId, ...input }),
+  cancelUpgrade: (projectId: string, clientRequestId: string): Promise<{ cancelled: true }> =>
+    request('/projects/upgrade/cancel', { projectId, clientRequestId }),
   stack: async (projectId: string): Promise<ProjectStack> =>
     validateResolvedProjectStack(await request<unknown>('/projects/stack/get', { projectId })),
   list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),

@@ -1,5 +1,8 @@
+import { ProjectUpgradeService } from './project-upgrade-service';
+import { assertProjectNotUpgrading, readProjectUpgrade } from './project-upgrade-store';
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
-import { access, lstat, mkdir, readFile, realpath, rename, rm } from 'node:fs/promises';
+import { access, lstat, mkdir, realpath, rename, rm } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative } from 'node:path';
 import { nanoid } from 'nanoid';
 import {
@@ -8,7 +11,6 @@ import {
   type ProjectRecord,
   type OrigamixPageSchema,
   resolveProjectStack,
-  validatePage,
 } from '@origamix/shared';
 
 import {
@@ -64,7 +66,7 @@ const schemaTemplate = (): OrigamixPageSchema => ({
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 });
 
 export class ProjectService {
@@ -75,7 +77,7 @@ export class ProjectService {
 
   constructor(
     private readonly projects: ProjectRepository,
-    templatePath: string,
+    private readonly templatePath: string,
     private readonly projectApply = new ProjectApplyService(projects),
   ) {
     this.scaffold = new ProjectScaffoldService(templatePath);
@@ -191,6 +193,8 @@ export class ProjectService {
     const name = input.name.trim();
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
     const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.version !== ORIGAMIX_VERSION)
+      throw conflict('项目版本尚未升级，不能向旧运行环境创建新页面');
     const pages = manifest.pages;
     if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
     const relativePath = join('src', manifest.pageDirectory, input.slug);
@@ -320,10 +324,45 @@ export class ProjectService {
     });
   }
 
-  deleteProject(projectId: string): void {
-    if (this.projects.hasActiveRuns(projectId))
-      throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
-    if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+  async deleteProject(projectId: string): Promise<void> {
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project) throw notFound('项目不存在');
+      await assertProjectNotUpgrading(project.path);
+      if (this.projects.hasActiveRuns(projectId))
+        throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
+      if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+    });
+  }
+
+  upgradeProject(projectId: string, input: { expectedVersion: string; clientRequestId: string }) {
+    return withProjectQueue(projectId, () =>
+      new ProjectUpgradeService(this.projects, this.templatePath).upgrade(projectId, input),
+    );
+  }
+
+  cancelProjectUpgrade(projectId: string, clientRequestId: string) {
+    return withProjectQueue(projectId, () =>
+      new ProjectUpgradeService(this.projects, this.templatePath).cancel(
+        projectId,
+        clientRequestId,
+      ),
+    );
+  }
+
+  async getUpgradeState(projectId: string) {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在');
+    const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
+    const upgrade = await readProjectUpgrade(project.path);
+    return {
+      version: manifest.version,
+      targetVersion: ORIGAMIX_VERSION,
+      upgrade: upgrade
+        ? { requestId: upgrade.requestId, from: upgrade.from, to: upgrade.to, state: upgrade.state }
+        : null,
+    };
   }
 
   reconcile = async (path: string): Promise<ProjectRecord> => {
@@ -332,21 +371,6 @@ export class ProjectService {
     const pages: PageRecord[] = [];
     for (const item of manifest.pages) {
       const relativePath = join('src', manifest.pageDirectory, item.slug);
-      const pagePath = join(path, relativePath);
-      const pageRef = { projectPath: path, pageId: item.pageId, slug: item.slug, relativePath };
-      try {
-        await getSchema(pageRef);
-      } catch (error) {
-        if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
-        const target = JSON.parse(
-          await readFile(join(pagePath, 'schema.json'), 'utf8'),
-        ) as OrigamixPageSchema;
-        await initializePageSchema(pageRef, target);
-      }
-      const schema = JSON.parse(
-        await readFile(join(pagePath, 'schema.json'), 'utf8'),
-      ) as OrigamixPageSchema;
-      if (!validatePage(schema).valid) throw invalid(`页面“${item.name}”无效`);
       pages.push({
         id: item.pageId,
         projectId: manifest.projectId,

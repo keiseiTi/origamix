@@ -91,3 +91,5 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 原型验证独立 React 入口、opaque-origin sandbox、MessageChannel 身份与版本校验、选中、按钮/输入提示属性、history、跨 document 拖入及快照恢复。`canvas-prototype-plugin.ts` 将画布脚本和样式编成单个离线 srcdoc；不增加 same-origin、网络、弹窗或宿主桥权限。开发时修改画布源码会整页重载并清空原型会话。
 
 目前不是完整隔离编辑器：画布内移动、复杂弹层/IME、失联检测、flush/Working 队列与完整保存交付仍需验证/接入。不能据此宣称已支持第三方物料或安全执行任意代码。协议暂为 App 内部原型，不是 Shared 的稳定公开协议。
+
+开发宿主会通过 Server 的模板准备工具，在本地状态目录生成带 Runtime/Materials 归档的模板，供新建项目与显式项目升级共用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。

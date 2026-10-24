@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '../version.ts';
 import { Type, type Static } from '@sinclair/typebox';
 import { ElementEventBindingSchema, FlowIdSchema, PageFlowSchema } from './flow.ts';
 
@@ -21,7 +22,7 @@ export const PageSchema = Type.Object({
   bindElements: Type.Array(ElementEventBindingSchema),
   context: Type.Object({ globalVariables: Type.Array(Type.Unknown()) }),
   extensions: Type.Object({
-    origamix: Type.Object({ schemaVersion: Type.Literal('1.0') }),
+    origamix: Type.Object({ schemaVersion: Type.Literal(ORIGAMIX_VERSION) }),
   }),
 });
 

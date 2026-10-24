@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import {
@@ -33,7 +34,7 @@ const page = (): OrigamixPageSchema => {
     },
     bindElements: [{ id: 'button_save', event: 'onClick', flowId: 'flow_save' }],
     context: { globalVariables: [] },
-    extensions: { origamix: { schemaVersion: '1.0' } },
+    extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
   };
 };
 

@@ -50,7 +50,16 @@ try {
   for (const name of ['tsconfig.base.json', 'package.json', 'pnpm-workspace.yaml'])
     await cp(join(original, name), join(root, name));
   await mkdir(join(root, 'packages'));
-  for (const name of ['server', 'app', 'shared', 'materials']) {
+  for (const name of [
+    'server',
+    'app',
+    'shared',
+    'materials',
+    'runtime',
+    'template',
+    'ui',
+    'editor',
+  ]) {
     const source = join(original, 'packages', name);
     await cp(source, join(root, 'packages', name), {
       recursive: true,

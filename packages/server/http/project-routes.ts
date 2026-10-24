@@ -1,5 +1,7 @@
 import type { Static } from '@sinclair/typebox';
 import {
+  ProjectUpgradeRequestSchema,
+  CancelProjectUpgradeRequestSchema,
   CreatePageSchema,
   CreateProjectSchema,
   DeleteDesktopRecordSchema,
@@ -16,6 +18,8 @@ import {
 } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
+const CancelUpgradeBodySchema = withProjectScope(CancelProjectUpgradeRequestSchema);
+const UpgradeProjectBodySchema = withProjectScope(ProjectUpgradeRequestSchema);
 const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
 const DeleteProjectBodySchema = withProjectScope(DeleteDesktopRecordSchema);
 const CreatePageBodySchema = withProjectScope(CreatePageSchema);
@@ -24,6 +28,30 @@ const DuplicatePageBodySchema = withPageScope(DuplicatePageSchema);
 const DeletePageBodySchema = withPageScope(DeleteDesktopRecordSchema);
 
 export const registerProjectRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
+  server.post(
+    '/api/v1/projects/upgrade/cancel',
+    { schema: { body: CancelUpgradeBodySchema } },
+    route<Static<typeof CancelUpgradeBodySchema>>((request) =>
+      input.projectService.cancelProjectUpgrade(
+        request.body.projectId,
+        request.body.clientRequestId,
+      ),
+    ),
+  );
+  server.post(
+    '/api/v1/projects/upgrade',
+    { schema: { body: UpgradeProjectBodySchema } },
+    route<Static<typeof UpgradeProjectBodySchema>>((request) =>
+      input.projectService.upgradeProject(request.body.projectId, request.body),
+    ),
+  );
+  server.post(
+    '/api/v1/projects/upgrade-state/get',
+    { schema: { body: ProjectScopeSchema } },
+    route<Static<typeof ProjectScopeSchema>>((request) =>
+      input.projectService.getUpgradeState(request.body.projectId),
+    ),
+  );
   server.post(
     '/api/v1/projects/list',
     { schema: { body: EmptyBodySchema } },
@@ -61,8 +89,8 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
   server.post(
     '/api/v1/projects/delete',
     { schema: { body: DeleteProjectBodySchema } },
-    route<Static<typeof DeleteProjectBodySchema>>((request) => {
-      input.projectService.deleteProject(request.body.projectId);
+    route<Static<typeof DeleteProjectBodySchema>>(async (request) => {
+      await input.projectService.deleteProject(request.body.projectId);
       return { deleted: true as const };
     }),
   );

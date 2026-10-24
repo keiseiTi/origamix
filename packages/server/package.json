@@ -19,7 +19,10 @@
       "types": "./template.ts",
       "default": "./dist/template.cjs"
     },
-    "./template-artifact": "./scripts/prepare-template-artifact.mjs"
+    "./template-artifact": {
+      "types": "./scripts/prepare-template-artifact.d.mts",
+      "default": "./scripts/prepare-template-artifact.mjs"
+    }
   },
   "scripts": {
     "lint": "eslint .",

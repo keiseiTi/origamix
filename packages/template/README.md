@@ -17,7 +17,7 @@ pnpm preview
 
 `src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面。页面入口使用 `@origamix/runtime/react` 和 `@origamix/materials/antd/runtime` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
 
-项目清单记录 `framework: react`、`uiLibrary: antd` 和 `materialSet: { "id": "official-antd", "version": "1.0.0" }`。当前固定使用对应版本的 Runtime 与模板；修改配置不会自动更换依赖、升级历史数据或重写页面入口。Origamix 会拒绝不支持的技术栈或版本。
+项目清单记录 `framework: react`、`uiLibrary: antd`、`materialSet: "official-antd"` 和统一的 `version: "1.0.0"`。打开页面时，Origamix 将支持的旧 Schema 转换为当前 Working 草稿；用户保存版本并 Apply 后才更新目标文件。依赖与项目版本不会随打开页面自动升级。Runtime 只接受与已安装发布版本一致的 Schema。
 
 模板必须保留自己的依赖、TypeScript、Vite 和 ESLint 配置，才能脱离工作区运行。源码工作区中的 `workspace:*` 由模板打包步骤替换为随项目提供的 `vendor/*.tgz`，打包后的项目不需要 monorepo。
 
@@ -60,3 +60,5 @@ vendor/materials.tgz        随项目提供的 Materials 包
 - 部署后刷新子路由返回 404：为静态服务器配置 SPA 回退到 `index.html`。例如 Nginx 根路径部署可使用 `try_files $uri $uri/ /index.html;`。
 
 当前路由使用浏览器历史模式，子路径部署需要同时考虑 Vite 资源基路径和路由 basename，不能只修改资源地址。`.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
+
+项目菜单的“升级项目”会应用所有已保存页面并更新依赖归档与统一版本。请先打开并验证所有页面、保存版本，升级时停止目标项目运行；完成后在项目目录重新执行 `pnpm install`，再启动验证。升级中断后返回同一入口继续，不能直接删除升级记录或手改版本跳过校验。

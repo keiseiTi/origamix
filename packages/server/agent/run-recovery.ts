@@ -2,7 +2,10 @@ import type { AgentRunRepository } from './run-repository';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ConversationService } from '../conversations/conversation-service';
 import { AgentRunService } from './run-service';
-import { getAgentWorkingCommitReceipt, getWorkingSchemaState } from '../schema/schema-service';
+import {
+  getAgentWorkingCommitReceipt,
+  getRetainedWorkingSchemaState,
+} from '../schema/schema-service';
 
 const responseFromOutcome = (value: unknown): string | undefined => {
   if (!value || typeof value !== 'object') return undefined;
@@ -42,7 +45,7 @@ export const recoverAgentRunsOnStartup = async (
       ) {
         return { disposition: 'conflict' } as const;
       }
-      const working = await getWorkingSchemaState(pageRef);
+      const working = await getRetainedWorkingSchemaState(pageRef);
       if (
         working.workingVersion === receipt.resultWorkingVersion &&
         working.workingHash === receipt.resultWorkingHash

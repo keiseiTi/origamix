@@ -12,3 +12,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - Verify with `pnpm --filter @origamix/runtime lint`, `typecheck`, `test` and `build`; generated-project changes also require the Server template smoke.
 
 - `material-state.ts` owns Engine-scoped business projections, capability checks and per-invocation event snapshots. User input must not call a renderer path that rebuilds all components; preserve focus and local composition. Programmatic property writes still render the changed element and synchronize bound Form fields. These projections never update source Schema or Working.
+
+- Runtime accepts only Schema tagged with Shared `ORIGAMIX_VERSION`; it never migrates project data. Older pages must be opened, saved and explicitly applied by Server before rendering with the new runtime.

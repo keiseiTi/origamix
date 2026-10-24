@@ -6,18 +6,20 @@ import {
   DropdownMenuTrigger,
 } from '@origamix/ui';
 
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2, ArrowUpCircle } from 'lucide-react';
 
 interface SidebarActionMenuProps {
   label: string;
   onRename: () => void;
   onDelete: () => void;
+  onUpgrade?: () => void;
 }
 
 export const SidebarActionMenu = ({
   label,
   onRename,
   onDelete,
+  onUpgrade,
 }: SidebarActionMenuProps): React.JSX.Element => {
   return (
     <DropdownMenu>
@@ -38,6 +40,12 @@ export const SidebarActionMenu = ({
           <Pencil />
           编辑
         </DropdownMenuItem>
+        {onUpgrade && (
+          <DropdownMenuItem onClick={onUpgrade}>
+            <ArrowUpCircle />
+            升级项目
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem variant='destructive' onClick={onDelete}>
           <Trash2 />
           删除

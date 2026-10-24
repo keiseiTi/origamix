@@ -46,3 +46,5 @@ pnpm --filter @origamix/desktop test:main
 - Run root gates before handoff; report unavailable graphical or signing checks.
 
 - `test:main` 还验证 `/canvas-prototype` 在 file 模式下实际渲染、opaque origin、无法访问 parent DOM 且没有 Desktop bridge；这仅证明原型资源与权限边界，不代表完整编辑器隔离交付。
+
+- Desktop development prepares the same vendored template as packaged builds before launching Electron and points ORIGAMIX_TEMPLATE_DIR at dist/template. Keep preparation delegated to Server tooling; source templates do not contain upgrade archives.

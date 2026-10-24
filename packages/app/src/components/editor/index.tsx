@@ -81,6 +81,15 @@ export const PageEditor = forwardRef<EditorHandle, EditorProps>(
       );
     return (
       <>
+        {session.initial.migration && (
+          <p
+            role='status'
+            className='border-b border-border bg-muted px-3 py-2 text-xs text-muted-foreground'
+          >
+            页面已从 {session.initial.migration.from} 升级到 {session.initial.migration.to}
+            。请验证内容，再保存版本并应用到项目。
+          </p>
+        )}
         {session.error && (
           <div
             role='alert'

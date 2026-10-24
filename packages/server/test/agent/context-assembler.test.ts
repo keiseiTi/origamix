@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { createProjectStackFixture } from '../../testing/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
@@ -36,7 +37,7 @@ const schema = (extra = 0): OrigamixPageSchema => ({
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 });
 const message = (sequence: number, text: string): StoredMessage => ({
   version: '1',

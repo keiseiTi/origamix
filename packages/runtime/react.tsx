@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
   bindMaterialEventPayloads,
@@ -180,6 +181,13 @@ const RuntimeCanvas = ({
   }, [schema]);
   const executionError = flowError?.schema === schema ? flowError.message : null;
   const engine = useMemo(() => {
+    if (
+      (schema.extensions?.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
+      ORIGAMIX_VERSION
+    )
+      throw new Error(
+        `页面版本不受支持，请使用 Origamix ${ORIGAMIX_VERSION} 打开页面、保存版本并应用到项目`,
+      );
     const instance = createEngine(schema);
     // Engine's legacy object-variable initializer evaluates JavaScript. Initialize
     // declarative JSON here and give the event adapter no executable defaults.

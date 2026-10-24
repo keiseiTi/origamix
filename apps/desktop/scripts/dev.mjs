@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { desktopRoot, workspaceRoot, options } from './build-options.mjs';
+import { assembleResources } from './assemble-resources.mjs';
 import { copyServerArtifact } from './copy-server-artifact.mjs';
 import { stopChild } from '@origamix/server/development';
 
@@ -75,7 +76,7 @@ function restartElectron() {
       const env = {
         ...process.env,
         ELECTRON_RENDERER_URL: rendererUrl,
-        ORIGAMIX_TEMPLATE_DIR: `${workspaceRoot}packages/template`,
+        ORIGAMIX_TEMPLATE_DIR: `${desktopRoot}dist/template`,
       };
       delete env.ELECTRON_RUN_AS_NODE;
       const debugArgs = process.env.ORIGAMIX_DEBUG
@@ -117,6 +118,7 @@ async function waitForRenderer() {
 
 try {
   await Promise.all([waitForRenderer(), serverReady]);
+  await assembleResources();
   await build({
     ...options,
     clean: false,

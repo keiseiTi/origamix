@@ -291,3 +291,15 @@ export type { ProjectStack } from './protocol/project-stack.ts';
 
 export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './protocol/hyper-value.ts';
 export type { HyperValue, FunctionValue } from './protocol/hyper-value.ts';
+
+export { ORIGAMIX_VERSION, ORIGAMIX_RELEASES, isSupportedOrigamixVersion } from './version.ts';
+
+export {
+  ProjectUpgradeRequestSchema,
+  CancelProjectUpgradeRequestSchema,
+} from './protocol/project-upgrade.ts';
+export type {
+  ProjectUpgradeRequest,
+  ProjectUpgradeState,
+  ProjectUpgradeResult,
+} from './protocol/project-upgrade.ts';

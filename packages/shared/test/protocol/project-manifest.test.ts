@@ -11,7 +11,8 @@ const manifest = () => ({
   name: '示例项目',
   framework: 'react',
   uiLibrary: 'antd',
-  materialSet: { id: 'official-antd', version: '1.0.0' },
+  version: '1.0.0',
+  materialSet: 'official-antd',
   pageDirectory: 'pages',
   pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
 });
@@ -26,7 +27,7 @@ describe('project manifest protocol', () => {
     expect(() =>
       resolveProjectStack({
         ...manifest(),
-        materialSet: { id: 'official-antd', version: '9.0.0' },
+        version: '9.0.0',
       }),
     ).toThrow('9.0.0');
     expect(() => resolveProjectStack({ ...manifest(), materialSet: null })).toThrow();

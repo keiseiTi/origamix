@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION, isSupportedOrigamixVersion } from '../version.ts';
 import { Type, type Static } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
@@ -25,9 +26,9 @@ export type ProjectStack = Static<typeof ProjectStackSchema>;
 export const BUILTIN_PROJECT_STACK = {
   framework: 'react',
   uiLibrary: 'antd',
-  materialSet: { id: 'official-antd', version: '1.0.0' },
-  runtime: { id: 'origamix.react', version: '1.0.0' },
-  template: { id: 'origamix.react-antd', version: '1.0.0' },
+  materialSet: { id: 'official-antd', version: ORIGAMIX_VERSION },
+  runtime: { id: 'origamix.react', version: ORIGAMIX_VERSION },
+  template: { id: 'origamix.react-antd', version: ORIGAMIX_VERSION },
 } as const satisfies ProjectStack;
 
 export const resolveProjectStack = (descriptor: unknown): ProjectStack => {
@@ -39,28 +40,23 @@ export const resolveProjectStack = (descriptor: unknown): ProjectStack => {
     input.uiLibrary !== BUILTIN_PROJECT_STACK.uiLibrary
   )
     throw new Error('项目技术栈不受支持，当前仅支持 React + Antd');
-  const materialSet = input.materialSet;
-  if (!Value.Check(VersionedStackReferenceSchema, materialSet))
+  if (input.materialSet !== BUILTIN_PROJECT_STACK.materialSet.id)
     throw new Error('项目物料集配置无效');
-  if (
-    materialSet.id !== BUILTIN_PROJECT_STACK.materialSet.id ||
-    materialSet.version !== BUILTIN_PROJECT_STACK.materialSet.version
-  )
-    throw new Error(
-      `项目物料集 ${materialSet.id}@${materialSet.version} 不受支持，当前 MVP 仅使用 official-antd@1.0.0`,
-    );
-  return {
-    ...BUILTIN_PROJECT_STACK,
-    materialSet: { ...materialSet },
-    runtime: { ...BUILTIN_PROJECT_STACK.runtime },
-    template: { ...BUILTIN_PROJECT_STACK.template },
-  };
+  if (!isSupportedOrigamixVersion(input.version))
+    throw new Error(`项目版本 ${String(input.version)} 不受支持`);
+  // Editing always uses the installed release. The manifest keeps the target runtime version.
+  return structuredClone(BUILTIN_PROJECT_STACK);
 };
 
 export const validateResolvedProjectStack = (value: unknown): ProjectStack => {
   if (!Value.Check(ProjectStackSchema, value)) throw new Error('项目技术栈响应无效');
-  const resolved = resolveProjectStack(value);
+  const resolved = resolveProjectStack({
+    ...value,
+    version: value.materialSet.version,
+    materialSet: value.materialSet.id,
+  });
   if (
+    value.materialSet.version !== resolved.materialSet.version ||
     value.runtime.id !== resolved.runtime.id ||
     value.runtime.version !== resolved.runtime.version ||
     value.template.id !== resolved.template.id ||

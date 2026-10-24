@@ -1,3 +1,7 @@
+import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
+import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { transformSchema, schemaVersionOf } from './schema-migrations';
+import { readTargetSchema } from './target-schema-reader';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import {
   SchemaCommit,
@@ -47,6 +51,7 @@ export interface AgentWorkingCommitInput {
   operationDigest: string;
 }
 export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'beforeWrite'> {
+  migration?: { from: string; to: string };
   agentCommit?: AgentWorkingCommitInput;
   /** Test hook for deterministic interruption at a durable Agent write boundary. */
   afterWorkingStage?: (stage: WorkingDraftWriteStage) => void | Promise<void>;
@@ -57,6 +62,7 @@ export interface SchemaReadResult {
   revisionId: string;
 }
 export interface WorkingSchemaReadResult extends SchemaReadResult {
+  migration?: { from: string; to: string };
   workingVersion: number;
   workingHash: string;
   savedSchemaHash: string;
@@ -149,6 +155,7 @@ export const initializePageSchema = async (
   return withSchemaPageQueue(page, async () => {
     await commits.recover(page);
     await validateWritableSchema(page, schema);
+    await assertProjectNotUpgrading(page.projectPath);
     return (
       await commits.commit(
         page,
@@ -161,7 +168,27 @@ export const initializePageSchema = async (
 
 const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
   await commits.recover(page);
+  if (!(await store.readWorkingIfPresent(page))) {
+    // Import the original checkpoint lazily. Preserve its hash as the target baseline.
+    const original = await readTargetSchema(page);
+    const candidate = transformSchema(original);
+    await validateWritableSchema(page, candidate);
+    await assertProjectNotUpgrading(page.projectPath);
+    await commits.commit(
+      page,
+      createRevisionSnapshot(original, { kind: 'user', actorId: 'system' }, null),
+      {},
+    );
+  }
   const working = await readWorking(page);
+  if (schemaVersionOf(working.schema) !== ORIGAMIX_VERSION) {
+    const candidate = transformSchema(working.schema);
+    await validateWritableSchema(page, candidate);
+    await writeWorkingDraft(page, working, candidate, {
+      migration: { from: schemaVersionOf(working.schema), to: ORIGAMIX_VERSION },
+    });
+    return readWorking(page);
+  }
   const validation = validatePage(working.schema);
   if (!validation.valid) throw invalid(validationMessage(validation));
   return working;
@@ -180,6 +207,7 @@ export const getWorkingSchemaState = async (
     const current = await getSchemaUnlocked(page);
     return {
       schema: current.schema,
+      ...(current.migration ? { migration: current.migration } : {}),
       revisionId: current.lastSavedRevisionId,
       workingVersion: current.workingVersion,
       workingHash: current.workingHash,
@@ -222,6 +250,7 @@ export const applyWorkingSchemaOperation = async <T>(
       throw conflict('当前草稿尚未保存版本，请先保存版本再应用到项目');
     const completed = await operation({
       schema: current.schema,
+      ...(current.migration ? { migration: current.migration } : {}),
       revisionId: current.lastSavedRevisionId,
       workingVersion: current.workingVersion,
       workingHash: current.workingHash,
@@ -243,8 +272,10 @@ export const reloadWorkingSchemaFromTarget = async (
 ): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     await commits.recover(page);
-    await validateWritableSchema(page, schema);
+    const candidate = transformSchema(schema);
+    await validateWritableSchema(page, candidate);
     const current = await getSchemaUnlocked(page);
+    await assertProjectNotUpgrading(page.projectPath);
     const updated = await commits.commit(
       page,
       createRevisionSnapshot(
@@ -259,6 +290,10 @@ export const reloadWorkingSchemaFromTarget = async (
       ...working,
       baselineHash: hashSchema(schema),
     });
+    if (schemaVersionOf(schema) !== ORIGAMIX_VERSION) {
+      const migrated = await writeWorkingDraft(page, await readWorking(page), candidate);
+      return { schema: migrated.schema, revisionId: migrated.revisionId };
+    }
     return updated;
   });
 };
@@ -280,6 +315,7 @@ export const hasValidRevision = async (
 
 const workingResult = (working: WorkingSchemaFile): WorkingSchemaReadResult => ({
   schema: working.schema,
+  ...(working.migration ? { migration: working.migration } : {}),
   revisionId: working.lastSavedRevisionId,
   workingVersion: working.workingVersion,
   workingHash: working.workingHash,
@@ -293,6 +329,7 @@ const writeWorkingDraft = async (
   schema: OrigamixPageSchema,
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
+  await assertProjectNotUpgrading(page.projectPath);
   const durableSchema = structuredClone(schema);
   const workingHash = hashSchema(durableSchema);
   const updated: WorkingSchemaFile =
@@ -300,6 +337,7 @@ const writeWorkingDraft = async (
       ? current
       : {
           ...current,
+          ...(options.migration ? { migration: options.migration } : {}),
           workingVersion: current.workingVersion + 1,
           workingHash,
           updatedAt: new Date().toISOString(),
@@ -420,6 +458,7 @@ export const saveWorkingRevision = async (
       throw conflict('页面草稿已更新，请重新保存');
     if (current.workingHash === current.savedSchemaHash) return workingResult(current);
     await options.beforeWrite?.();
+    await assertProjectNotUpgrading(page.projectPath);
     await commits.commit(
       page,
       createRevisionSnapshot(current.schema, { kind: 'user' }, current.lastSavedRevisionId),
@@ -440,8 +479,10 @@ export const restoreRevisionToWorking = async (
       throw conflict('页面草稿已更新，请重新恢复');
     const snapshot = await store.readRevision(page, revisionId);
     validateSnapshot(snapshot);
-    await validateWritableSchema(page, snapshot.schema);
-    return writeWorkingDraft(page, current, snapshot.schema);
+    if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
+    const candidate = transformSchema(snapshot.schema);
+    await validateWritableSchema(page, candidate);
+    return writeWorkingDraft(page, current, candidate);
   });
 };
 export const getSchemaRevision = async (
@@ -456,3 +497,12 @@ export const getSchemaRevision = async (
     return { schema: snapshot.schema, revisionId: snapshot.revisionId };
   });
 };
+
+/** Startup recovery reads durable commit evidence without opening or upgrading a page. */
+export const getRetainedWorkingSchemaState = (
+  page: SchemaPageRef,
+): Promise<WorkingSchemaReadResult> =>
+  withSchemaPageQueue(page, async () => {
+    await commits.recover(page);
+    return workingResult(await readWorking(page));
+  });

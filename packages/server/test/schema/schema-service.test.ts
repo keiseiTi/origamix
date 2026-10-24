@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import {
   mkdtemp,
   mkdir,
@@ -36,7 +37,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 };
 
 const logicFlow = (): PageFlow => ({
@@ -95,7 +96,8 @@ const createPageFixture = async (): Promise<{
       name: 'Test',
       framework: 'react',
       uiLibrary: 'antd',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
+      version: '1.0.0',
+      materialSet: 'official-antd',
       pageDirectory: 'pages',
       pages: [{ pageId, name: '测试页面', slug }],
     }),
@@ -582,7 +584,7 @@ describe('Schema Service', () => {
       manifestPath,
       JSON.stringify({
         ...JSON.parse(manifestSource),
-        materialSet: { id: 'official-antd', version: '9.0.0' },
+        version: '9.0.0',
       }),
     );
     await expect(
@@ -824,4 +826,88 @@ describe('Schema Service', () => {
     expect(saved.revisionId).not.toBe(initialRevisionId);
     expect((await getSchema(page)).schema.elements.element_root.props.alias).toBe('页面布局');
   });
+});
+
+// This exercises the existing page queue and actual durable files, not a parallel migration store.
+it('migrates a retained page once and restores old history without rewriting snapshots or target', async () => {
+  const page = await createPageFixture();
+  const revisionId = await initializePageSchema(page, schema);
+  const { hashSchema } = await import('../../schema/schema-hash');
+  const workingPath = join(page.projectPath, '.origamix/pages', page.pageId, 'working.json');
+  const revisionPath = join(
+    page.projectPath,
+    '.origamix/revisions',
+    page.pageId,
+    `${revisionId}.json`,
+  );
+  const targetPath = join(page.projectPath, 'src/pages', page.slug, 'schema.json');
+  const old = { ...schema, extensions: { origamix: { schemaVersion: '1.0' } } };
+  const oldHash = hashSchema(old as OrigamixPageSchema);
+  const retained = JSON.parse(await readFile(workingPath, 'utf8'));
+  const snapshot = JSON.parse(await readFile(revisionPath, 'utf8'));
+  await writeFile(
+    workingPath,
+    JSON.stringify({
+      ...retained,
+      schema: old,
+      workingHash: oldHash,
+      savedSchemaHash: oldHash,
+      baselineHash: oldHash,
+    }),
+  );
+  const originalRevision = JSON.stringify({ ...snapshot, schema: old, schemaHash: oldHash });
+  await writeFile(revisionPath, originalRevision);
+  await writeFile(targetPath, JSON.stringify(old));
+  const [first, second] = await Promise.all([
+    getWorkingSchemaState(page),
+    getWorkingSchemaState(page),
+  ]);
+  expect(first).toEqual(second);
+  expect(first.workingVersion).toBe(retained.workingVersion + 1);
+  expect(first.schema.extensions.origamix.schemaVersion).toBe(ORIGAMIX_VERSION);
+  expect(first.workingHash).not.toBe(first.savedSchemaHash);
+  expect(await readFile(revisionPath, 'utf8')).toBe(originalRevision);
+  expect(JSON.parse(await readFile(targetPath, 'utf8'))).toEqual(old);
+  expect(await readdir(join(page.projectPath, '.origamix/revisions', page.pageId))).toHaveLength(1);
+  await expect(
+    updateWorkingSchema(page, { baseWorkingVersion: retained.workingVersion, schema }),
+  ).rejects.toThrow('已更新');
+  const edited = await applyWorkingSchemaOperations(page, {
+    baseWorkingVersion: first.workingVersion,
+    operations: [
+      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 24 } },
+    ],
+  });
+  const saved = await saveWorkingRevision(page, edited.workingVersion);
+  const restored = await restoreRevisionToWorking(page, revisionId, saved.workingVersion);
+  expect(restored.schema.elements.element_root.props.padding).toBe(8);
+  expect(restored.schema.extensions.origamix.schemaVersion).toBe(ORIGAMIX_VERSION);
+  expect(restored.workingHash).not.toBe(restored.savedSchemaHash);
+  expect(await readFile(revisionPath, 'utf8')).toBe(originalRevision);
+  expect(await readdir(join(page.projectPath, '.origamix/revisions', page.pageId))).toHaveLength(2);
+});
+
+it('preserves the original Working when migration has no path or fails material validation', async () => {
+  const page = await createPageFixture();
+  await initializePageSchema(page, schema);
+  const { hashSchema } = await import('../../schema/schema-hash');
+  const path = join(page.projectPath, '.origamix/pages', page.pageId, 'working.json');
+  const working = JSON.parse(await readFile(path, 'utf8'));
+  for (const candidate of [
+    { ...schema, extensions: { origamix: { schemaVersion: '99.0.0' } } },
+    {
+      ...schema,
+      extensions: { origamix: { schemaVersion: '1.0' } },
+      elements: { element_root: { type: 'missing-material', props: {} } },
+    },
+  ]) {
+    const original = JSON.stringify({
+      ...working,
+      schema: candidate,
+      workingHash: hashSchema(candidate as OrigamixPageSchema),
+    });
+    await writeFile(path, original);
+    await expect(getSchema(page)).rejects.toThrow();
+    expect(await readFile(path, 'utf8')).toBe(original);
+  }
 });

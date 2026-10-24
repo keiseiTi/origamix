@@ -5,8 +5,6 @@
   "uiLibrary": "antd",
   "pageDirectory": "pages",
   "pages": [],
-  "materialSet": {
-    "id": "official-antd",
-    "version": "1.0.0"
-  }
+  "materialSet": "official-antd",
+  "version": "1.0.0"
 }

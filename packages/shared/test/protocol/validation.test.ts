@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import {
   validatePage,
@@ -11,7 +12,7 @@ const emptyPage = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 };
 
 describe('page protocol validation', () => {

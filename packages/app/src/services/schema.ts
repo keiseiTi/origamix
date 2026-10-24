@@ -16,6 +16,7 @@ interface SchemaResult {
 }
 
 interface WorkingSchemaResult extends SchemaResult {
+  migration?: { from: string; to: string };
   workingVersion: number;
   workingHash: string;
   savedSchemaHash: string;

@@ -1,3 +1,4 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import { deriveSchemaOperations } from '../../src/core/derive-schema-operations';
@@ -14,7 +15,7 @@ const schema = (): OrigamixPageSchema => ({
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: '1.0' } },
+  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
 });
 
 describe('visual editor Operation Batch', () => {

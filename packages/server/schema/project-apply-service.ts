@@ -1,3 +1,5 @@
+import { assertProjectApplyVersion } from '../projects/project-upgrade-store';
+import { ProjectManifestStore } from '../projects/project-manifest-store';
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { hashSchema } from './schema-hash';
 import { createHash } from 'node:crypto';
@@ -27,6 +29,7 @@ interface ApplyReceipt extends ApplyPageResult {
 }
 
 export interface ProjectApplyOptions {
+  upgradeRequestId?: string;
   /** Test/host hook used to simulate interruption after a durable apply stage. */
   afterStage?: (stage: 'target' | 'receipt') => void | Promise<void>;
 }
@@ -122,6 +125,13 @@ export class ProjectApplyService {
   ): Promise<ApplyPageResult> {
     if (!/^[A-Za-z0-9_-]{1,100}$/.test(input.clientRequestId)) throw invalid('应用请求 ID 无效');
     const page = this.resolve(projectId, pageId);
+    const projectManifest = await new ProjectManifestStore().readManifest(page.projectPath);
+    if (projectManifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
+    await assertProjectApplyVersion(
+      page.projectPath,
+      projectManifest.version,
+      this.options.upgradeRequestId,
+    );
     const requestHash = createHash('sha256')
       .update(
         JSON.stringify({
@@ -177,6 +187,12 @@ export class ProjectApplyService {
             baselineHash: queuedReceipt.schemaHash,
           };
         }
+        const manifest = await new ProjectManifestStore().readManifest(page.projectPath);
+        await assertProjectApplyVersion(
+          page.projectPath,
+          manifest.version,
+          this.options.upgradeRequestId,
+        );
         const targetSchema = await this.readTarget(page);
         const targetHash = hashSchema(targetSchema);
         if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)

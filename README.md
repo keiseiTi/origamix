@@ -28,11 +28,13 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 4. 预览当前草稿，确认后点击“保存版本”创建 Revision，再点击“应用到项目”更新生成项目的 `schema.json`。
 5. 在生成项目目录运行 `pnpm install`、`pnpm dev`；部署说明见生成项目的 README。
 
+开发模式需要当前库构建产物；首次启动前运行 `pnpm build:libs`。开发宿主会准备带版本归档的模板，供新建与升级项目共用。
+
 浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
 
 ## 包与接口
 
-工作台重构的依赖方向、公开契约与迁移归属见 [架构边界](packages/architecture.md)。Editor 已承接画布、FlowEditor 与通用编辑组件，公共 UI 已独立为工作区包。
+工作台重构的依赖方向、公开契约与迁移归属见 [架构边界](site/docs/architecture/index.md)。Editor 已承接画布、FlowEditor 与通用编辑组件，公共 UI 已独立为工作区包。
 
 项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd/runtime` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。第五阶段的专属属性编辑器按需延期，现有结构化字段继续使用 JSON 编辑。
 
@@ -63,7 +65,7 @@ pnpm build
 
 根 lint 包含跨包接口规则，根 typecheck 会先构建 Materials 的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
 
-本轮架构迁移的核心链路、真实桌面与独立项目验证结果，以及未验证范围，见 [迁移交付验证](packages/migration-verification.md)。
+核心链路与独立项目验证方式见 [Server 集成说明](packages/server/README.md#开发宿主与模板集成)，真实桌面运行检查见 [Desktop README](apps/desktop/README.md)。
 
 | 命令                 | 产物/用途                                                |
 | -------------------- | -------------------------------------------------------- |
@@ -83,3 +85,7 @@ pnpm build
 真实页面质量验收见 [Desktop 的验收说明](apps/desktop/README.md#真实-agent-页面质量验收)：先构建并在桌面设置配置模型，再运行 `pnpm --filter @origamix/desktop evaluate:agent`。该命令会调用真实模型并产生费用，使用临时项目，记录实际预览、恢复、保存／Apply 和独立运行结果。
 
 Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测试，边界规则变更验证规则及仓库 lint。用 `pnpm hooks:install` 安装、`pnpm hooks:run` 手动执行。完整仓库检查仍是交付依据。
+
+### 统一发布版本
+
+所有自有包统一使用根版本。`pnpm release:version --check` 检查版本与迁移声明，已接入 lint；`pnpm release:version --set <版本>` 更新包版本、Shared 契约版本和模板项目清单。版本更新后需补齐相邻 Schema 迁移步骤，再运行仓库检查。页面按需迁移及数据库启动迁移见 [Server README](packages/server/README.md#页面与数据库升级)。

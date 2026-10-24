@@ -149,3 +149,45 @@ describe('Project page persistence and recovery', () => {
     database.close();
   });
 });
+
+it('reconciles the project without opening pages and imports only the page requested later', async () => {
+  const { getWorkingSchemaState } = await import('../../schema/schema-service');
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-lazy-page-'));
+  directories.push(directory);
+  const database = new ApplicationDatabase(join(directory, 'application.db'));
+  try {
+    const projects = new ProjectRepository(database);
+    const service = new ProjectService(projects, templatePath);
+    service.registerGrant('lazy_grant', directory);
+    const project = await service.createProject({
+      name: 'Lazy',
+      code: 'lazy',
+      directoryGrantId: 'lazy_grant',
+    });
+    const first = await service.createPage(project.id, { name: 'First', slug: 'first' });
+    const second = await service.createPage(project.id, { name: 'Second', slug: 'second' });
+    for (const page of [first, second]) {
+      const targetPath = join(project.path, page.relativePath, 'schema.json');
+      const old = JSON.parse(await readFile(targetPath, 'utf8'));
+      old.extensions.origamix.schemaVersion = '1.0';
+      await writeFile(targetPath, JSON.stringify(old));
+    }
+    await rm(join(project.path, '.origamix'), { recursive: true, force: true });
+    await service.reconcile(project.path);
+    await expect(access(join(project.path, '.origamix/pages'))).rejects.toThrow();
+    const opened = await getWorkingSchemaState({
+      projectPath: project.path,
+      pageId: first.id,
+      slug: first.slug,
+      relativePath: first.relativePath,
+    });
+    expect(opened.workingHash).not.toBe(opened.savedSchemaHash);
+    await expect(access(join(project.path, '.origamix/pages', second.id))).rejects.toThrow();
+    expect(
+      JSON.parse(await readFile(join(project.path, first.relativePath, 'schema.json'), 'utf8'))
+        .extensions.origamix.schemaVersion,
+    ).toBe('1.0');
+  } finally {
+    database.close();
+  }
+});

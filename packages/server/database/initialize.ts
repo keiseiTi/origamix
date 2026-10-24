@@ -124,7 +124,7 @@ export class IncompatibleDatabaseError extends Error {
   }
 }
 
-const currentUserTables = (connection: DatabaseSync): string[] =>
+export const currentUserTables = (connection: DatabaseSync): string[] =>
   (
     connection
       .prepare(
@@ -138,7 +138,7 @@ const tableColumns = (connection: DatabaseSync, table: string): string[] =>
     ({ name }) => name,
   );
 
-const assertCurrentSchema = (connection: DatabaseSync): void => {
+export const assertCurrentSchema = (connection: DatabaseSync): void => {
   const actualTables = currentUserTables(connection);
   const expectedTables = Object.keys(expectedColumns).sort();
   if (JSON.stringify(actualTables) !== JSON.stringify(expectedTables))
@@ -150,19 +150,4 @@ const assertCurrentSchema = (connection: DatabaseSync): void => {
     if ((connection.prepare(`PRAGMA foreign_key_list(${table})`).all() as unknown[]).length > 0)
       throw new Error(`数据库表 ${table} 包含禁止的外键`);
   }
-};
-
-export const initializeDatabase = (connection: DatabaseSync): void => {
-  assertSchemaSafety(schemaSql);
-  if (currentUserTables(connection).length === 0) {
-    connection.exec('BEGIN IMMEDIATE');
-    try {
-      connection.exec(schemaSql);
-      connection.exec('COMMIT');
-    } catch (error) {
-      connection.exec('ROLLBACK');
-      throw error;
-    }
-  }
-  assertCurrentSchema(connection);
 };

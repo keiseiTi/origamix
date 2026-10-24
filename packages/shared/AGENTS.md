@@ -6,8 +6,8 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/protocol/api.ts`: HTTP shapes and domain records.
 - `src/protocol/project-manifest.ts`: executable project/page manifest contract shared by trusted hosts.
-- `src/protocol/project-stack.ts`: versioned stack references and strict current-format resolution. Concrete catalogs and executable module loaders do not belong here. materialSet is required; missing or unsupported values fail without fallback or migration.
-- `src/protocol/hyper-value.ts` owns the serializable HyperValue/FunctionValue contract; only Runtime evaluates expressions/functions. Flow-node manifest version 1.0 uses these envelopes with no legacy conversion.
+- `src/protocol/project-stack.ts`: versioned stack references and strict current-format resolution. Concrete catalogs and executable module loaders do not belong here. Project manifests have one release version and a material-set ID; resolved stack references derive from the installed release. Legacy descriptor recognition belongs to Server, not Shared.
+- `src/protocol/hyper-value.ts` owns the serializable HyperValue/FunctionValue contract; only Runtime evaluates expressions/functions. Flow-node manifests use the unified ORIGAMIX_VERSION; old Schema conversion belongs exclusively to Server.
 - `src/protocol/flow-node.ts`: pure-data logical node Manifest catalog, canonical property schemas, derived node parameter types, result descriptions and connection constraints. Editor owns forms/graph layout; Runtime derives its implementation keys and parameters here and validates Engine data before execution. Adding this catalog does not enable Server validation or Agent tools automatically.
 - `src/protocol/schema.ts`: page Schema, IDs and typed operation variants. `flow.ts` defines executable graph/binding shapes; `flow-validation.ts` checks graph safety (including disconnected draft components) and binding semantics are checked in `validation.ts`. Material capabilities and Agent-only completeness remain Server-owned.
 - `src/protocol/agent.ts`: unified Page Agent Run, terminal outcome, structured clarification and typed SSE payload contracts; `agent-validation.ts` validates both event envelopes and their type-specific payloads.
@@ -44,3 +44,5 @@ pnpm --filter @origamix/shared build
 - Root ESLint restrictions cover some platform imports, not the entire dependency graph. Review imports/manifests explicitly; do not describe architectural isolation as fully lint-enforced.
 
 - Material context keeps independent variables (read), writable (runtime write), values (callable methods) and methods (events) declarations. Optional pure linkage metadata can control event visibility; it does not grant runtime access. `propsSchema` remains design-time validation, not a fallback capability source.
+
+- `src/version.ts` declares the unified release and supported release sequence. Public page validation accepts only the current contract; never loosen it to implement persisted-data migration.

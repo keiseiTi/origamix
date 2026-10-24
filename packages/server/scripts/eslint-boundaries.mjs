@@ -13,6 +13,8 @@ const owners = new Map([
       'projects/project-manifest-store',
       'projects/project-source',
       'projects/project-scaffold',
+      'projects/project-upgrade-store',
+      'projects/project-upgrade-service',
       'schema/working-schema-store',
       'schema/target-schema-store',
       'schema/project-apply-service',
