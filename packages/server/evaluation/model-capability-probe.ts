@@ -5,7 +5,7 @@ import type {
   Model,
   ToolCall,
 } from '@earendil-works/pi-ai';
-import { createMvpPiModels, mvpModelReference } from '../agent/pi-runtime';
+import { createPiModels, defaultModelReference } from '../agent/pi-runtime';
 
 export type ModelProbeFailureCode =
   'AUTHENTICATION' | 'RATE_LIMITED' | 'PROVIDER_ERROR' | 'TIMEOUT' | 'CANCELLED';
@@ -19,8 +19,8 @@ export interface ModelProbeObservation {
 }
 
 export interface DeepSeekCapabilityReport {
-  provider: typeof mvpModelReference.provider;
-  model: typeof mvpModelReference.model;
+  provider: typeof defaultModelReference.provider;
+  model: typeof defaultModelReference.model;
   textStreaming: ModelProbeObservation;
   structuredToolCall: ModelProbeObservation;
 }
@@ -172,7 +172,7 @@ export const probeDeepSeekCapabilities = async (
   options: ProbeOptions,
 ): Promise<DeepSeekCapabilityReport> => {
   if (!options.apiKey.trim()) throw new Error('DeepSeek API Key is required');
-  const { model, models } = createMvpPiModels();
+  const { model, models } = createPiModels();
   const streamFn = options.stream ?? (models.streamSimple.bind(models) as ProbeStream);
   const requestOptions = {
     apiKey: options.apiKey,
@@ -182,7 +182,7 @@ export const probeDeepSeekCapabilities = async (
   const textStreaming = await runObservation(model, streamFn, textContext, requestOptions);
   if (textStreaming.outcome === 'failed') {
     return {
-      ...mvpModelReference,
+      ...defaultModelReference,
       textStreaming,
       structuredToolCall: {
         outcome: 'failed',
@@ -193,5 +193,5 @@ export const probeDeepSeekCapabilities = async (
     };
   }
   const structuredToolCall = await runObservation(model, streamFn, toolContext, requestOptions);
-  return { ...mvpModelReference, textStreaming, structuredToolCall };
+  return { ...defaultModelReference, textStreaming, structuredToolCall };
 };

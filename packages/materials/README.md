@@ -88,4 +88,4 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 
 ## 契约版本
 
-当前处于 MVP 阶段，所有内置物料、物料集和 Materials 包统一使用 `1.0.0`，Runtime 与 Template 也使用 `1.0.0`。后续随 Origamix 统一发布；旧 Schema 通过 Server 迁移链转换，物料运行组件只处理当前契约。项目清单只记录一个版本及物料集 ID，Manifest、编辑器、运行时与生成模板使用同一套当前契约。页面字段与能力仍按 Manifest 校验。
+所有内置物料、物料集、Materials、Runtime 与 Template 随 Origamix 统一发布，版本由 Shared 的 `ORIGAMIX_VERSION` 提供；旧 Schema 通过 Server 迁移链转换，物料运行组件只处理当前契约。项目清单只记录一个版本及物料集 ID，Manifest、编辑器、运行时与生成模板使用同一套当前契约。页面字段与能力仍按 Manifest 校验。

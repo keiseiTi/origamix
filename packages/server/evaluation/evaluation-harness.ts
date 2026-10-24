@@ -67,7 +67,7 @@ const observation = (
   ...(errorStage ? { errorStage } : {}),
 });
 
-const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservation>> = {
+const RECORDED_EVALUATION_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservation>> = {
   eval_login_form: observation('completed', 'changed', true),
   eval_mixed_modify_question: observation('completed', 'changed_and_answered', true),
   eval_page_question: observation('completed', 'answered_only'),
@@ -98,10 +98,10 @@ const RECORDED_MVP_OBSERVATIONS: Readonly<Record<string, AgentEvaluationObservat
   eval_cancelled: { ...observation('cancelled', undefined), durationMs: 80 },
 };
 
-export const createRecordedMvpAdapter = (): AgentEvaluationAdapter => ({
+export const createRecordedEvaluationAdapter = (): AgentEvaluationAdapter => ({
   kind: 'recorded',
   run: async (testCase) => {
-    const recorded = RECORDED_MVP_OBSERVATIONS[testCase.id];
+    const recorded = RECORDED_EVALUATION_OBSERVATIONS[testCase.id];
     if (!recorded) throw new Error(`缺少固定记录：${testCase.id}`);
     return { ...recorded, toolTrace: [...recorded.toolTrace] };
   },

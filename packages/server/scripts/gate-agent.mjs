@@ -1,7 +1,7 @@
 import tooling from '../dist/tooling.cjs';
 
-const report = await tooling.runAgentEvaluation(tooling.createRecordedMvpAdapter());
-const gate = tooling.evaluateMvpGate(report, {
+const report = await tooling.runAgentEvaluation(tooling.createRecordedEvaluationAdapter());
+const gate = tooling.evaluateAgentReleaseGate(report, {
   activeRuns: 0,
   eventSubscribers: 0,
   openPreviewWrites: 0,

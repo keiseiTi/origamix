@@ -96,7 +96,7 @@ export const deterministicSchema = (
   return { ...schema, elements, layout: { ...schema.layout, structure } };
 };
 
-/** Deterministic test/MVP engine. It uses the same RunExecutor and Tool Registry as real models. */
+/** Deterministic test engine. It uses the same RunExecutor and Tool Registry as real models. */
 export const createDeterministicFakeAgentEngine = (): AgentEngine => {
   return new FakeAgentEngine(async (request) => {
     const contextMatch = request.systemPrompt.match(

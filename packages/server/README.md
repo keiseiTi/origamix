@@ -142,11 +142,11 @@ pnpm --filter @origamix/server build
 
 HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应；`test/http/project-routes.test.ts` 关注项目／页面 HTTP 流程；`test/http/agent-schema-flow.test.ts` 使用真实服务、存储和写工具连接完整流程，仅替换模型，验证 Agent 保存不隐式 Apply、重复请求、陈旧版本和跨项目拒绝。纯项目恢复测试放在 `test/projects/project-service.test.ts`。
 
-## 包入口（MVP）
+## 包入口
 
 `runtime` 只导出宿主需要的 `startServer`，返回 `port`、`registerGrant` 和 `close`，不暴露内部业务服务。`utility` 是 Electron 入口，`tooling` 提供评测和能力探测；模板、构建和开发脚本使用各自的包出口。内部模块直接导入所属业务文件，测试从 `testing/` 使用 Fake Engine。
 
-当前处于 MVP 阶段，重构时同步修改调用方，不保留旧名称别名、旧启动路径或内部实现的聚合导出。
+内部接口重构时同步修改调用方，不保留旧名称别名、旧启动路径或内部实现的聚合导出。
 
 ## 开发宿主与模板集成
 
@@ -217,9 +217,9 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 页面打开走 `schema/schema-service.ts` 的统一入口，按 `schema/schema-migrations.ts` 串联转换，仅在完整校验成功后写入 Working。并发打开只迁移一次；失败保留旧草稿。项目索引重建不会打开所有页面。历史 Revision 保留原文，恢复时转换为当前 Working；启动时恢复 Agent 回执先读取未迁移的持久化状态。
 
-当前发布仍为 `1.0.0`。唯一已登记的历史转换是初始 MVP 的 `schemaVersion: "1.0"` → `"1.0.0"`，只收敛版本标记；不猜测缺少版本的数据。初始 MVP 的 `materialSet: { id: "official-antd", version: "1.0.0" }` 项目清单可在读取时明确识别，转换为单一项目版本视图，不自动重写文件。
+当前发布仍为 `1.0.0`。唯一已登记的历史转换是初始版本 的 `schemaVersion: "1.0"` → `"1.0.0"`，只收敛版本标记；不猜测缺少版本的数据。初始版本 的 `materialSet: { id: "official-antd", version: "1.0.0" }` 项目清单可在读取时明确识别，转换为单一项目版本视图，不自动重写文件。
 
-`database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库初始化为存储版本 1；无版本但结构完全匹配的初始 MVP 数据库在备份后登记版本。后续结构变化逐级执行 SQL，并将版本记录与结构变更一起提交；失败回滚。备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
+`database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库初始化为存储版本 1；无版本但结构完全匹配的初始版本 数据库在备份后登记版本。后续结构变化逐级执行 SQL，并将版本记录与结构变更一起提交；失败回滚。备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
 
 发布时执行 `pnpm release:version --set <版本>`，同步所有包、Shared 版本和模板清单；然后为相邻发布声明 Schema 转换，无变化也显式声明原样转换。`pnpm release:version --check` 已接入根 lint。数据库结构有变化时另外增加迁移步骤和存储版本，更新当前结构与验证规则。
 

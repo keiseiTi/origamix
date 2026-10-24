@@ -52,7 +52,7 @@ export class ProjectManifestStore {
     } catch {
       throw invalid('项目清单不是有效的 JSON');
     }
-    // Explicitly recognize the shipped MVP descriptor. Keep the user's file untouched on reads.
+    // Explicitly recognize the initial release descriptor. Keep the user's file untouched on reads.
     if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
       const legacy = manifest as Record<string, unknown>;
       const material = legacy.materialSet as { id?: unknown; version?: unknown } | undefined;

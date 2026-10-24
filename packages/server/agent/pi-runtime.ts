@@ -1,13 +1,13 @@
 import { createModels } from '@earendil-works/pi-ai';
 import { deepseekProvider } from '@earendil-works/pi-ai/providers/deepseek';
 
-export const mvpModelReference = {
+export const defaultModelReference = {
   provider: 'deepseek',
   model: 'deepseek-flash',
 } as const;
 
 const supportedModelReferences = [
-  mvpModelReference,
+  defaultModelReference,
   { provider: 'deepseek', model: 'deepseek-v4-pro' },
 ] as const;
 
@@ -15,7 +15,7 @@ const supportedModelReferences = [
  * Creates Pi's provider collection without resolving credentials or starting a request.
  * Credential use and the product-facing AgentEngine adapter remain separate boundaries.
  */
-export const createMvpPiModels = () => {
+export const createPiModels = () => {
   const models = createModels();
   models.setProvider(deepseekProvider());
   const resolved = supportedModelReferences.map(({ provider, model }) =>

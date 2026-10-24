@@ -33,7 +33,7 @@ export const migrateDatabase = (
   if (version > targetVersion) throw new Error('数据库版本较新，请使用对应或更新的 Origamix');
   const empty = currentUserTables(connection).length === 0;
   if (empty && version !== 0) throw new Error('数据库版本记录与结构不一致');
-  // Explicit adoption of the exact unversioned MVP schema; unknown structures are never guessed.
+  // Explicit adoption of the exact unversioned initial schema; unknown structures are never guessed.
   if (!empty && version === 0) {
     assertCurrentSchema(connection);
     const expected = new DatabaseSync(':memory:');
@@ -46,7 +46,7 @@ export const migrateDatabase = (
     try {
       expected.exec(schemaSql);
       if (JSON.stringify(definitions(connection)) !== JSON.stringify(definitions(expected)))
-        throw new Error('无版本数据库结构无法确认为初始 MVP，不能自动升级');
+        throw new Error('无版本数据库结构无法确认为初始版本，不能自动升级');
     } finally {
       expected.close();
     }

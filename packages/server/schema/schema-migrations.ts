@@ -15,8 +15,8 @@ export const schemaVersionOf = (value: unknown): string => {
   return version;
 };
 
-// The initial MVP persisted "1.0". Its shape is identical to release 1.0.0;
-// this explicit step is the only accepted pre-release format, never a missing-version fallback.
+// The initial schema format persisted "1.0". Its shape is identical to release 1.0.0;
+// this explicit step is the only accepted initial format, never a missing-version fallback.
 const transformSchema_1_0_to_1_0_0 = (input: unknown): unknown => {
   const schema = input as OrigamixPageSchema;
   return {

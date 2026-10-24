@@ -1,6 +1,6 @@
 import type { AgentEvaluationReport } from '@origamix/shared';
 
-export interface MvpGateThresholds {
+export interface AgentReleaseGateThresholds {
   minimumSuccessRate: number;
   maximumP95FirstEventMs: number;
   maximumP95DurationMs: number;
@@ -9,7 +9,7 @@ export interface MvpGateThresholds {
   maximumToolCallsPerCase: number;
 }
 
-export const DEFAULT_FAKE_MVP_THRESHOLDS: MvpGateThresholds = {
+export const DEFAULT_RECORDED_GATE_THRESHOLDS: AgentReleaseGateThresholds = {
   minimumSuccessRate: 1,
   maximumP95FirstEventMs: 1_000,
   maximumP95DurationMs: 5_000,
@@ -24,16 +24,16 @@ export interface AgentResourceSnapshot {
   openPreviewWrites: number;
 }
 
-export interface MvpGateResult {
+export interface AgentReleaseGateResult {
   passed: boolean;
   failures: string[];
 }
 
-export const evaluateMvpGate = (
+export const evaluateAgentReleaseGate = (
   report: AgentEvaluationReport,
   resources: AgentResourceSnapshot,
-  thresholds: MvpGateThresholds = DEFAULT_FAKE_MVP_THRESHOLDS,
-): MvpGateResult => {
+  thresholds: AgentReleaseGateThresholds = DEFAULT_RECORDED_GATE_THRESHOLDS,
+): AgentReleaseGateResult => {
   const failures: string[] = [];
   if (!report.passed || report.summary.successRate < thresholds.minimumSuccessRate) {
     failures.push(`成功率 ${report.summary.successRate} 未达到 ${thresholds.minimumSuccessRate}`);

@@ -66,7 +66,7 @@ describe('ApplicationDatabase', () => {
   });
 });
 
-it('adopts the known MVP database with a backup and rolls back a failed upgrade', async () => {
+it('adopts the known initial database with a backup and rolls back a failed upgrade', async () => {
   const { readdir } = await import('node:fs/promises');
   const { migrateDatabase } = await import('../../database/migrations');
   const directory = await mkdtemp(join(tmpdir(), 'origamix-db-upgrade-'));

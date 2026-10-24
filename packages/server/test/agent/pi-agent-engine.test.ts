@@ -6,7 +6,7 @@ import {
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
 import { describe, expect, it } from 'vitest';
-import { MVP_MODEL_ID, type AgentEngineEvent } from '../../agent/engine';
+import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '../../agent/engine';
 import { PiAgentEngine } from '../../agent/pi-agent-engine';
 
 const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) => {
@@ -37,7 +37,7 @@ describe('PiAgentEngine', () => {
       getCredential: async () => undefined,
     });
     await expect(
-      engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+      engine.run({ modelId: DEEPSEEK_FLASH_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
       message: '请先在设置中配置 DeepSeek API Key',
@@ -48,7 +48,7 @@ describe('PiAgentEngine', () => {
     const { engine, getCredentialReads } = setup([fauxAssistantMessage('hello')]);
     const events: AgentEngineEvent[] = [];
     const result = await engine.run({
-      modelId: MVP_MODEL_ID,
+      modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'ping',
       onEvent: (event) => {
@@ -69,7 +69,7 @@ describe('PiAgentEngine', () => {
     ]);
     const events: AgentEngineEvent[] = [];
     const result = await engine.run({
-      modelId: MVP_MODEL_ID,
+      modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'use tool',
       tools: [
@@ -103,7 +103,7 @@ describe('PiAgentEngine', () => {
     let decisions = 0;
     const events: AgentEngineEvent[] = [];
     const result = await engine.run({
-      modelId: MVP_MODEL_ID,
+      modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'complete the page request',
       tools: [
@@ -133,7 +133,7 @@ describe('PiAgentEngine', () => {
       fauxAssistantMessage('', { stopReason: 'error', errorMessage: 'private upstream detail' }),
     ]);
     await expect(
-      engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+      engine.run({ modelId: DEEPSEEK_FLASH_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
       message: 'DeepSeek 服务暂时不可用，请稍后重试',
@@ -146,7 +146,11 @@ describe('PiAgentEngine', () => {
       }),
     ]);
     await expect(
-      invalidRequest.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+      invalidRequest.engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: 'ping',
+      }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
       message: 'DeepSeek 拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
@@ -159,7 +163,11 @@ describe('PiAgentEngine', () => {
       fauxAssistantMessage('', { stopReason: 'error', errorMessage: '429 private quota detail' }),
     ]);
     await expect(
-      limited.engine.run({ modelId: MVP_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
+      limited.engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: 'ping',
+      }),
     ).rejects.toMatchObject({
       code: 'RATE_LIMITED',
       message: '请求过于频繁或额度不足，请稍后重试',
@@ -171,7 +179,7 @@ describe('PiAgentEngine', () => {
     ]);
     const events: AgentEngineEvent[] = [];
     const result = await toolFailure.engine.run({
-      modelId: MVP_MODEL_ID,
+      modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'use tool',
       tools: [
@@ -199,7 +207,7 @@ describe('PiAgentEngine', () => {
     const { engine } = setup([fauxAssistantMessage('a long answer')], 1);
     const controller = new AbortController();
     const pending = engine.run({
-      modelId: MVP_MODEL_ID,
+      modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'ping',
       signal: controller.signal,
@@ -212,7 +220,7 @@ describe('PiAgentEngine', () => {
     const slow = setup([fauxAssistantMessage('slow')], 1);
     await expect(
       slow.engine.run({
-        modelId: MVP_MODEL_ID,
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
         systemPrompt: 'test',
         prompt: 'ping',
         timeoutMs: 1,

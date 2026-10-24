@@ -316,7 +316,7 @@ export const AttributePanel = ({
         ) : null;
       }
       case 'color':
-        return <p className='m-0 text-xs text-zinc-500'>该配置控件暂未接入 MVP。</p>;
+        return <p className='m-0 text-xs text-zinc-500'>暂不支持此配置控件。</p>;
       default:
         return null;
     }

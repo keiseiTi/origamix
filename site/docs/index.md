@@ -3,7 +3,7 @@ pageType: home
 title: Origamix
 description: AI 驱动、本地优先的低代码编辑器。获取源码，启动工作台，用对话和可视化编辑构建页面。
 hero:
-  badge: MVP · 本地优先
+  badge: AI 优先 · 本地优先
   name: Origamix
   text: AI 驱动的本地低代码编辑器
   tagline: 用对话开始，用可视化编辑完善。在同一个工作台中编辑、预览与保存页面，将确认后的版本应用到你的本地项目。

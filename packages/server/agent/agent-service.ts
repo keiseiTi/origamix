@@ -14,7 +14,7 @@ import type {
   StartConversationRunInput,
 } from '../conversations/conversation-service';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
-import { getAgentModel, MVP_MODEL_ID } from './engine';
+import { getAgentModel, DEEPSEEK_FLASH_MODEL_ID } from './engine';
 import { conflict } from '../errors';
 import { progressPayload } from './progress';
 
@@ -106,7 +106,7 @@ export class AgentService {
         .trim();
       const modelRef = this.dependencies.getModelRef
         ? await this.dependencies.getModelRef()
-        : (this.dependencies.modelRef ?? MVP_MODEL_ID);
+        : (this.dependencies.modelRef ?? DEEPSEEK_FLASH_MODEL_ID);
       if (this.dependencies.getModelRef) getAgentModel(modelRef);
       const started = this.dependencies.conversations.startRun({
         ...request,

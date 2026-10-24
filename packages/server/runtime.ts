@@ -22,9 +22,9 @@ import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
 import { createDomainAgentTools } from './agent/tools/domain-tools';
 import { createCompletePageRunTool } from './agent/tools/complete-page-run';
 import { createDefaultAgentToolEntries } from './agent/tools/registry';
-import { MVP_MODEL_ID } from './agent/engine';
+import { DEEPSEEK_FLASH_MODEL_ID } from './agent/engine';
 import { PiAgentEngine } from './agent/pi-agent-engine';
-import { createMvpPiModels } from './agent/pi-runtime';
+import { createPiModels } from './agent/pi-runtime';
 import { progressPayload } from './agent/progress';
 import { AgentToolAuditRepository } from './agent/tool-audit-repository';
 
@@ -83,7 +83,7 @@ export const startServer = async (input: {
     conversations,
     productDocs,
   );
-  const pi = createMvpPiModels();
+  const pi = createPiModels();
   const executor = new RunExecutor({
     projects,
     runs,
@@ -141,7 +141,7 @@ export const startServer = async (input: {
     runService,
     events: agentEvents,
     executor,
-    getModelRef: async () => (await input.getModelReference?.()) ?? MVP_MODEL_ID,
+    getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
     getCurrentState: async (projectId, pageId) => {
       const project = projects.getProject(projectId);
       const page = projects.getPage(projectId, pageId);

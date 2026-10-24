@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { runAgentEvaluation } from '../../evaluation/evaluation-harness';
-import { evaluateMvpGate } from '../../evaluation/mvp-gate';
+import { evaluateAgentReleaseGate } from '../../evaluation/release-gate';
 
-describe('MVP performance and release gate', () => {
+describe('Agent performance and release gate', () => {
   it('accepts bounded continuous/cancel evidence after resources are released', async () => {
     const report = await runAgentEvaluation({
       kind: 'fake',
@@ -27,7 +27,7 @@ describe('MVP performance and release gate', () => {
       }),
     });
     expect(
-      evaluateMvpGate(report, {
+      evaluateAgentReleaseGate(report, {
         activeRuns: 0,
         eventSubscribers: 0,
         openPreviewWrites: 0,
@@ -58,7 +58,7 @@ describe('MVP performance and release gate', () => {
         ...(testCase.expectedStatus === 'failed' ? { errorStage: 'validating' } : {}),
       }),
     });
-    const result = evaluateMvpGate(report, {
+    const result = evaluateAgentReleaseGate(report, {
       activeRuns: 1,
       eventSubscribers: 2,
       openPreviewWrites: 1,

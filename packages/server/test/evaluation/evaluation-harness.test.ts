@@ -50,7 +50,7 @@ describe('fixed Agent evaluation harness', () => {
     });
   });
 
-  it('covers every MVP behavior with a versioned, aggregate report', async () => {
+  it('covers every core-flow behavior with a versioned, aggregate report', async () => {
     const report = await runAgentEvaluation({
       kind: 'recorded',
       run: async (testCase) => recordedObservation(testCase),
