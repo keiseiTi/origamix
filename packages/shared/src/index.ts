@@ -1,37 +1,108 @@
 export {
-  CredentialGatewayVersionSchema,
-  CredentialReferenceSchema,
-  CredentialPurposeSchema,
-  CredentialRequestSchema,
-  CredentialSuccessResponseSchema,
-  CredentialFailureResponseSchema,
-  CredentialResponseSchema,
-  isCredentialRequest,
-  isCredentialResponse,
-} from './credential-gateway.ts';
-
+  CreateAgentRunRequestSchema,
+  CreateAgentRunResponseSchema,
+  ListConversationsResponseSchema,
+  ListMessagesResponseSchema,
+  GetAgentRunResponseSchema,
+  GetAgentRunRequestSchema,
+  SubscribeAgentEventsRequestSchema,
+  CancelAgentRunRequestSchema,
+  CancelAgentRunResponseSchema,
+  AgentErrorPayloadSchema,
+} from './agent/agent-api.ts';
 export type {
-  CredentialReference,
-  CredentialPurpose,
-  CredentialRequest,
-  CredentialResponse,
-} from './credential-gateway.ts';
+  CreateAgentRunRequest,
+  CreateAgentRunResponse,
+  ListConversationsResponse,
+  ListMessagesResponse,
+  GetAgentRunRequest,
+  GetAgentRunResponse,
+  SubscribeAgentEventsRequest,
+  CancelAgentRunRequest,
+  CancelAgentRunResponse,
+  AgentErrorPayload,
+} from './agent/agent-api.ts';
 
+export {
+  AgentEvaluationCaseResultSchema,
+  AgentEvaluationReportSchema,
+} from './agent/agent-evaluation.ts';
+export type { AgentEvaluationCaseResult, AgentEvaluationReport } from './agent/agent-evaluation.ts';
+
+export {
+  AgentEventSchema,
+  AgentProgressEventPayloadSchema,
+  AgentRunCompletedEventPayloadSchema,
+  AgentRunFailedEventPayloadSchema,
+  WorkingCommittedEventPayloadSchema,
+  AgentToolActivityEventPayloadSchema,
+  ClarificationAvailableEventPayloadSchema,
+} from './agent/agent-event.ts';
 export type {
-  BackendConnection,
-  DirectoryGrant,
-  UserProfile,
-  ModelSettings,
-  DesktopApi,
-} from './desktop-api.ts';
+  AgentEvent,
+  AgentProgressEventPayload,
+  AgentRunCompletedEventPayload,
+  AgentRunFailedEventPayload,
+  WorkingCommittedEventPayload,
+  AgentToolActivityEventPayload,
+  ClarificationAvailableEventPayload,
+} from './agent/agent-event.ts';
 
-export { PreviewRenderDiagnosticSchema, PreviewRenderReportSchema } from './page-window.ts';
-
+export {
+  MessageContentBlockSchema,
+  MessageContentSchema,
+  AgentMessageSchema,
+  ConversationSchema,
+} from './agent/agent-message.ts';
 export type {
-  PreviewSnapshot,
-  PreviewRenderDiagnostic,
-  PreviewRenderReport,
-} from './page-window.ts';
+  MessageContentBlock,
+  MessageContent,
+  AgentMessage,
+  Conversation,
+} from './agent/agent-message.ts';
+
+export {
+  ClarificationCandidateSchema,
+  CompletePageRunInputSchema,
+  CompletePageRunToolParametersSchema,
+  PageAgentOutcomeSchema,
+  ClarificationResultSchema,
+  ClarificationSelectionSchema,
+  OperationValidationFailureSchema,
+} from './agent/agent-outcome.ts';
+export type {
+  ClarificationCandidate,
+  CompletePageRunInput,
+  PageAgentOutcome,
+  ClarificationResult,
+  ClarificationSelection,
+  OperationValidationFailure,
+} from './agent/agent-outcome.ts';
+
+export {
+  AgentRunKindSchema,
+  AgentRunStatusSchema,
+  RunBudgetSchema,
+  ToolPolicySchema,
+  AgentRunSchema,
+} from './agent/agent-run.ts';
+export type {
+  AgentRunKind,
+  AgentRunStatus,
+  RunBudget,
+  ToolPolicy,
+  AgentRun,
+} from './agent/agent-run.ts';
+
+export {
+  AgentProtocolVersionSchema,
+  AgentRunIdSchema,
+  ConversationIdSchema,
+  MessageIdSchema,
+  PageIdSchema,
+  RequestIdSchema,
+  IsoDateTimeSchema,
+} from './agent/agent-schema.ts';
 
 export {
   validateAgentRun,
@@ -59,109 +130,60 @@ export {
   validatePageAgentOutcome,
   validateClarificationResult,
   validateOperationValidationFailure,
-} from './protocol/agent-validation.ts';
-
-export type { AgentProtocolValidationResult } from './protocol/agent-validation.ts';
+} from './agent/agent-validation.ts';
+export type { AgentProtocolValidationResult } from './agent/agent-validation.ts';
 
 export {
-  AgentProtocolVersionSchema,
-  AgentRunIdSchema,
-  ConversationIdSchema,
-  MessageIdSchema,
-  PageIdSchema,
-  RequestIdSchema,
-  IsoDateTimeSchema,
-  AgentRunKindSchema,
-  ClarificationCandidateSchema,
-  CompletePageRunInputSchema,
-  CompletePageRunToolParametersSchema,
-  PageAgentOutcomeSchema,
-  ClarificationResultSchema,
-  ClarificationSelectionSchema,
-  OperationValidationFailureSchema,
-  AgentRunStatusSchema,
-  RunBudgetSchema,
-  ToolPolicySchema,
   RuntimeDiagnosticSchema,
   RuntimeRenderReportSchema,
   RuntimeReportResultSchema,
   PageRuntimeStateSchema,
-  AgentRunSchema,
-  MessageContentBlockSchema,
-  MessageContentSchema,
-  AgentMessageSchema,
-  AgentEventSchema,
-  AgentProgressEventPayloadSchema,
-  AgentRunCompletedEventPayloadSchema,
-  AgentRunFailedEventPayloadSchema,
-  ClarificationAvailableEventPayloadSchema,
-  WorkingCommittedEventPayloadSchema,
-  AgentToolActivityEventPayloadSchema,
-  CreateAgentRunRequestSchema,
-  CreateAgentRunResponseSchema,
-  ConversationSchema,
-  ListConversationsResponseSchema,
-  ListMessagesResponseSchema,
-  GetAgentRunResponseSchema,
-  GetAgentRunRequestSchema,
-  SubscribeAgentEventsRequestSchema,
-  CancelAgentRunRequestSchema,
-  CancelAgentRunResponseSchema,
-  AgentErrorPayloadSchema,
-  AgentEvaluationCaseResultSchema,
-  AgentEvaluationReportSchema,
-} from './protocol/agent.ts';
-
+} from './agent/runtime-report.ts';
 export type {
-  AgentRunKind,
-  ClarificationCandidate,
-  CompletePageRunInput,
-  PageAgentOutcome,
-  ClarificationResult,
-  ClarificationSelection,
-  OperationValidationFailure,
-  AgentRunStatus,
-  RunBudget,
-  ToolPolicy,
   RuntimeDiagnostic,
   RuntimeRenderReport,
   RuntimeReportResult,
   PageRuntimeState,
-  AgentRun,
-  MessageContentBlock,
-  MessageContent,
-  AgentMessage,
-  AgentEvent,
-  AgentProgressEventPayload,
-  AgentRunCompletedEventPayload,
-  AgentRunFailedEventPayload,
-  ClarificationAvailableEventPayload,
-  WorkingCommittedEventPayload,
-  AgentToolActivityEventPayload,
-  CreateAgentRunRequest,
-  CreateAgentRunResponse,
-  Conversation,
-  ListConversationsResponse,
-  ListMessagesResponse,
-  GetAgentRunRequest,
-  GetAgentRunResponse,
-  SubscribeAgentEventsRequest,
-  CancelAgentRunRequest,
-  CancelAgentRunResponse,
-  AgentErrorPayload,
-  AgentEvaluationCaseResult,
-  AgentEvaluationReport,
-} from './protocol/agent.ts';
+} from './agent/runtime-report.ts';
 
 export {
-  ApiResultSchema,
-  ProjectRecordSchema,
+  FLOW_NODE_MANIFEST_VERSION,
+  flowNodeManifests,
+  flowNodeManifestCatalog,
+  getFlowNodeManifest,
+  isFlowNodeProps,
+} from './flow/flow-node-manifest.ts';
+export type {
+  FlowNodeManifest,
+  FlowNodeType,
+  FlowNodeProps,
+  RuntimeFlowNodeType,
+} from './flow/flow-node-manifest.ts';
+
+export {
+  FlowIdSchema,
+  PageFlowSchema,
+  PageFlowNodeSchema,
+  ElementEventBindingSchema,
+} from './flow/flow-schema.ts';
+export type { PageFlow, PageFlowNode, ElementEventBinding } from './flow/flow-schema.ts';
+
+export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './flow/hyper-value.ts';
+export type { HyperValue, FunctionValue } from './flow/hyper-value.ts';
+
+export { MATERIAL_MANIFEST_FORMAT_VERSION } from './material/material-manifest.ts';
+export type {
+  MaterialRole,
+  JsonSchema,
+  MaterialContextEntry,
+  MaterialManifest,
+  ValidationMaterialManifest,
+  MaterialManifestCatalog,
+  AgentMaterialSummary,
+} from './material/material-manifest.ts';
+
+export {
   PageRecordSchema,
-  ProjectWithPagesSchema,
-  CreateProjectSchema,
-  OpenProjectSchema,
-  RenameProjectSchema,
-  DeleteDesktopRecordSchema,
   CreatePageSchema,
   ApplyPageSchema,
   SaveWorkingRevisionSchema,
@@ -175,36 +197,41 @@ export {
   ApplyPageResultSchema,
   RenamePageSchema,
   DuplicatePageSchema,
-  isApiResultEnvelope,
   isPageApplyState,
   isApplyPageResult,
-} from './protocol/api.ts';
-
+} from './page/page-api.ts';
 export type {
-  ProjectWithPages,
-  ApiResult,
-  ProjectRecord,
-  OpenProjectResult,
   PageRecord,
   PageApplyState,
   ApplyPageResult,
   RevisionHistoryItem,
   RevisionHistory,
-} from './protocol/api.ts';
-
-export {
-  ProjectPageManifestSchema,
-  ProjectManifestSchema,
-  isProjectManifest,
-} from './protocol/project-manifest.ts';
-
-export type { ProjectPageManifest, ProjectManifest } from './protocol/project-manifest.ts';
+} from './page/page-api.ts';
 
 export {
   ElementIdSchema,
   RevisionIdSchema,
   PageElementSchema,
   PageSchema,
+  getElementLabel,
+  getAgentElementLabel,
+  GlobalVariableSchema,
+} from './page/page-schema.ts';
+export type { OrigamixPageSchema, GlobalVariable } from './page/page-schema.ts';
+
+export {
+  validatePage,
+  validateSchemaOperation,
+  validateSchemaOperationBatch,
+  isPageSchema,
+} from './page/page-validation.ts';
+export type {
+  ValidationResult,
+  SemanticError,
+  PageValidationResult,
+} from './page/page-validation.ts';
+
+export {
   ChangeSourceSchema,
   AddElementOperationSchema,
   InsertSubtreeOperationSchema,
@@ -221,63 +248,29 @@ export {
   UpdatePageContextOperationSchema,
   SchemaOperationSchema,
   SchemaOperationBatchSchema,
-  getElementLabel,
-  getAgentElementLabel,
-} from './protocol/schema.ts';
-
-export {
-  FlowIdSchema,
-  PageFlowSchema,
-  PageFlowNodeSchema,
-  ElementEventBindingSchema,
-} from './protocol/flow.ts';
-export type { PageFlow, PageFlowNode, ElementEventBinding } from './protocol/flow.ts';
-
+} from './page/schema-operation.ts';
 export type {
-  OrigamixPageSchema,
   ChangeSource,
   SchemaOperation,
   SchemaOperationBatch,
-} from './protocol/schema.ts';
+} from './page/schema-operation.ts';
 
 export {
-  validatePage,
-  validateSchemaOperation,
-  validateSchemaOperationBatch,
-} from './protocol/validation.ts';
-
-export type {
-  ValidationResult,
-  SemanticError,
-  PageValidationResult,
-} from './protocol/validation.ts';
+  ProjectRecordSchema,
+  ProjectWithPagesSchema,
+  CreateProjectSchema,
+  OpenProjectSchema,
+  RenameProjectSchema,
+  DeleteDesktopRecordSchema,
+} from './project/project-api.ts';
+export type { ProjectWithPages, ProjectRecord, OpenProjectResult } from './project/project-api.ts';
 
 export {
-  FLOW_NODE_MANIFEST_VERSION,
-  flowNodeManifests,
-  flowNodeManifestCatalog,
-  getFlowNodeManifest,
-  isFlowNodeProps,
-} from './protocol/flow-node.ts';
-
-export type {
-  FlowNodeManifest,
-  FlowNodeType,
-  FlowNodeProps,
-  RuntimeFlowNodeType,
-} from './protocol/flow-node.ts';
-
-export { MATERIAL_MANIFEST_FORMAT_VERSION } from './protocol/material-manifest.ts';
-
-export type {
-  MaterialRole,
-  JsonSchema,
-  MaterialContextEntry,
-  MaterialManifest,
-  ValidationMaterialManifest,
-  MaterialManifestCatalog,
-  AgentMaterialSummary,
-} from './protocol/material-manifest.ts';
+  ProjectPageManifestSchema,
+  ProjectManifestSchema,
+  isProjectManifest,
+} from './project/project-manifest.ts';
+export type { ProjectPageManifest, ProjectManifest } from './project/project-manifest.ts';
 
 export {
   VersionedStackReferenceSchema,
@@ -285,26 +278,56 @@ export {
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
   validateResolvedProjectStack,
-} from './protocol/project-stack.ts';
-
-export type { ProjectStack } from './protocol/project-stack.ts';
-
-export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './protocol/hyper-value.ts';
-export type { HyperValue, FunctionValue } from './protocol/hyper-value.ts';
-
-export { ORIGAMIX_VERSION, ORIGAMIX_RELEASES, isSupportedOrigamixVersion } from './version.ts';
+} from './project/project-stack.ts';
+export type { ProjectStack } from './project/project-stack.ts';
 
 export {
   ProjectUpgradeRequestSchema,
   CancelProjectUpgradeRequestSchema,
-} from './protocol/project-upgrade.ts';
+} from './project/project-upgrade.ts';
 export type {
   ProjectUpgradeRequest,
   ProjectUpgradeState,
   ProjectUpgradeResult,
-} from './protocol/project-upgrade.ts';
+} from './project/project-upgrade.ts';
 
-export { GlobalVariableSchema } from './protocol/schema.ts';
-export type { GlobalVariable } from './protocol/schema.ts';
+export { ApiResultSchema, isApiResultEnvelope } from './transport/api-result.ts';
+export type { ApiResult } from './transport/api-result.ts';
 
-export { isPageSchema } from './protocol/validation.ts';
+export {
+  CredentialGatewayVersionSchema,
+  CredentialReferenceSchema,
+  CredentialPurposeSchema,
+  CredentialRequestSchema,
+  CredentialSuccessResponseSchema,
+  CredentialFailureResponseSchema,
+  CredentialResponseSchema,
+  isCredentialRequest,
+  isCredentialResponse,
+} from './transport/credential-gateway.ts';
+export type {
+  CredentialReference,
+  CredentialPurpose,
+  CredentialRequest,
+  CredentialResponse,
+} from './transport/credential-gateway.ts';
+
+export type {
+  BackendConnection,
+  DirectoryGrant,
+  UserProfile,
+  ModelSettings,
+  DesktopApi,
+} from './transport/desktop-api.ts';
+
+export {
+  PreviewRenderDiagnosticSchema,
+  PreviewRenderReportSchema,
+} from './transport/preview-message.ts';
+export type {
+  PreviewSnapshot,
+  PreviewRenderDiagnostic,
+  PreviewRenderReport,
+} from './transport/preview-message.ts';
+
+export { ORIGAMIX_VERSION, ORIGAMIX_RELEASES, isSupportedOrigamixVersion } from './version.ts';

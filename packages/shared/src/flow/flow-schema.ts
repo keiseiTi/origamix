@@ -1,4 +1,5 @@
-import { Type, type Static } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
+import type { Static } from '@sinclair/typebox';
 
 // IDs remain compatible with engine-generated IDs; reserved object keys are not identities.
 export const FlowIdSchema = Type.String({
@@ -35,5 +36,7 @@ export const ElementEventBindingSchema = Type.Object(
 );
 
 export type PageFlow = Static<typeof PageFlowSchema>;
+
 export type PageFlowNode = Static<typeof PageFlowNodeSchema>;
+
 export type ElementEventBinding = Static<typeof ElementEventBindingSchema>;

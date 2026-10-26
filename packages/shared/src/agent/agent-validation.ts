@@ -1,38 +1,42 @@
-import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
-import addFormats from 'ajv-formats';
+import Ajv from 'ajv';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import { AgentRunSchema, RunBudgetSchema, ToolPolicySchema } from './agent-run.ts';
+import { MessageContentSchema, AgentMessageSchema } from './agent-message.ts';
 import {
   AgentEventSchema,
-  AgentMessageSchema,
-  AgentRunSchema,
-  MessageContentSchema,
-  RunBudgetSchema,
-  CancelAgentRunRequestSchema,
-  CancelAgentRunResponseSchema,
-  CreateAgentRunRequestSchema,
-  CreateAgentRunResponseSchema,
-  GetAgentRunRequestSchema,
-  GetAgentRunResponseSchema,
+  AgentProgressEventPayloadSchema,
+  AgentRunCompletedEventPayloadSchema,
+  AgentRunFailedEventPayloadSchema,
+  WorkingCommittedEventPayloadSchema,
+  AgentToolActivityEventPayloadSchema,
+  ClarificationAvailableEventPayloadSchema,
+} from './agent-event.ts';
+import {
   RuntimeDiagnosticSchema,
   RuntimeRenderReportSchema,
   RuntimeReportResultSchema,
   PageRuntimeStateSchema,
+} from './runtime-report.ts';
+import {
+  CreateAgentRunRequestSchema,
+  CreateAgentRunResponseSchema,
+  GetAgentRunRequestSchema,
+  GetAgentRunResponseSchema,
   SubscribeAgentEventsRequestSchema,
-  ToolPolicySchema,
+  CancelAgentRunRequestSchema,
+  CancelAgentRunResponseSchema,
   AgentErrorPayloadSchema,
   ListConversationsResponseSchema,
   ListMessagesResponseSchema,
-  AgentEvaluationReportSchema,
+} from './agent-api.ts';
+import { AgentEvaluationReportSchema } from './agent-evaluation.ts';
+import {
   CompletePageRunInputSchema,
   PageAgentOutcomeSchema,
   ClarificationResultSchema,
   OperationValidationFailureSchema,
-  AgentProgressEventPayloadSchema,
-  AgentRunCompletedEventPayloadSchema,
-  AgentRunFailedEventPayloadSchema,
-  ClarificationAvailableEventPayloadSchema,
-  WorkingCommittedEventPayloadSchema,
-  AgentToolActivityEventPayloadSchema,
-} from './agent.ts';
+} from './agent-outcome.ts';
+import addFormats from 'ajv-formats';
 
 export interface AgentProtocolValidationResult {
   valid: boolean;
@@ -74,7 +78,9 @@ const schemas = {
 };
 
 let ajv: Ajv | undefined;
+
 const validators: Partial<Record<keyof typeof schemas, ValidateFunction>> = {};
+
 const getValidator = (name: keyof typeof schemas): ValidateFunction => {
   if (!ajv) {
     ajv = new Ajv({ allErrors: true, strict: true });
@@ -93,11 +99,16 @@ const check = (validator: ValidateFunction, value: unknown): AgentProtocolValida
 };
 
 export const validateAgentRun = (value: unknown) => check(getValidator('run'), value);
+
 export const validateRunBudget = (value: unknown) => check(getValidator('budget'), value);
+
 export const validateToolPolicy = (value: unknown) => check(getValidator('toolPolicy'), value);
+
 export const validateMessageContent = (value: unknown) =>
   check(getValidator('messageContent'), value);
+
 export const validateAgentMessage = (value: unknown) => check(getValidator('message'), value);
+
 export const validateAgentEvent = (value: unknown): AgentProtocolValidationResult => {
   const envelope = check(getValidator('event'), value);
   if (!envelope.valid || !value || typeof value !== 'object') return envelope;
@@ -129,41 +140,60 @@ export const validateAgentEvent = (value: unknown): AgentProtocolValidationResul
   }
   return { valid: false, errors: [] };
 };
+
 export const validateRuntimeDiagnostic = (value: unknown) =>
   check(getValidator('diagnostic'), value);
+
 export const validateRuntimeRenderReport = (value: unknown) =>
   check(getValidator('runtimeReport'), value);
+
 export const validateRuntimeReportResult = (value: unknown) =>
   check(getValidator('runtimeReportResult'), value);
+
 export const validatePageRuntimeState = (value: unknown) =>
   check(getValidator('pageRuntimeState'), value);
+
 export const validateCreateAgentRunRequest = (value: unknown) =>
   check(getValidator('createRequest'), value);
+
 export const validateCreateAgentRunResponse = (value: unknown) =>
   check(getValidator('createResponse'), value);
+
 export const validateGetAgentRunRequest = (value: unknown) =>
   check(getValidator('getRequest'), value);
+
 export const validateGetAgentRunResponse = (value: unknown) =>
   check(getValidator('getResponse'), value);
+
 export const validateSubscribeAgentEventsRequest = (value: unknown) =>
   check(getValidator('subscribeRequest'), value);
+
 export const validateCancelAgentRunRequest = (value: unknown) =>
   check(getValidator('cancelRequest'), value);
+
 export const validateCancelAgentRunResponse = (value: unknown) =>
   check(getValidator('cancelResponse'), value);
+
 export const validateAgentErrorPayload = (value: unknown) =>
   check(getValidator('errorPayload'), value);
+
 export const validateListConversationsResponse = (value: unknown) =>
   check(getValidator('conversationsResponse'), value);
+
 export const validateListMessagesResponse = (value: unknown) =>
   check(getValidator('messagesResponse'), value);
+
 export const validateAgentEvaluationReport = (value: unknown) =>
   check(getValidator('evaluationReport'), value);
+
 export const validateCompletePageRunInput = (value: unknown) =>
   check(getValidator('completePageRunInput'), value);
+
 export const validatePageAgentOutcome = (value: unknown) =>
   check(getValidator('pageAgentOutcome'), value);
+
 export const validateClarificationResult = (value: unknown) =>
   check(getValidator('clarificationResult'), value);
+
 export const validateOperationValidationFailure = (value: unknown) =>
   check(getValidator('operationValidationFailure'), value);

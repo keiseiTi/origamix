@@ -184,11 +184,11 @@ curl --fail-with-body "$ORIGAMIX_API_URL/pages/working-state/get" \
 
 常用接口入口：
 
-| 流程                                  | 路由/契约                                                                                     |
-| ------------------------------------- | --------------------------------------------------------------------------------------------- |
-| 读取/编辑 Working、保存/恢复 Revision | [schema-routes.ts](http/schema-routes.ts) 与 Shared [api.ts](../shared/src/protocol/api.ts)   |
-| 检查 Apply 状态、Apply、从项目重载    | [apply-routes.ts](http/apply-routes.ts)                                                       |
-| 创建/查询/取消 Run、会话及 SSE        | [agent-routes.ts](http/agent-routes.ts) 与 Shared [agent.ts](../shared/src/protocol/agent.ts) |
+| 流程                                  | 路由/契约                                                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 读取/编辑 Working、保存/恢复 Revision | [schema-routes.ts](http/schema-routes.ts) 与 Shared [page-api.ts](../shared/src/page/page-api.ts)  |
+| 检查 Apply 状态、Apply、从项目重载    | [apply-routes.ts](http/apply-routes.ts)                                                            |
+| 创建/查询/取消 Run、会话及 SSE        | [agent-routes.ts](http/agent-routes.ts) 与 Shared [agent-api.ts](../shared/src/agent/agent-api.ts) |
 
 SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端必须发送认证头；不要把 token 放进 URL。断线后查询持久化 Run/消息和 Working，事件通道不是可恢复数据库。
 

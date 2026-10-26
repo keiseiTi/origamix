@@ -14,8 +14,9 @@ import {
   validateSubscribeAgentEventsRequest,
   validateCompletePageRunInput,
   validateClarificationResult,
-} from '../../src/protocol/agent-validation';
-import { CompletePageRunToolParametersSchema } from '../../src/protocol/agent';
+} from '../../src/agent/agent-validation.ts';
+
+import { CompletePageRunToolParametersSchema } from '../../src/agent/agent-outcome.ts';
 
 const timestamp = '2026-09-04T00:00:00.000Z';
 const content = { version: '1', blocks: [{ type: 'text', text: '创建客户表单' }] };

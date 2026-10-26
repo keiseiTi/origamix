@@ -1,5 +1,5 @@
-import { Type, type Static } from '@sinclair/typebox';
-
+import { Type } from '@sinclair/typebox';
+import type { Static } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
 export const ProjectPageManifestSchema = Type.Object({
@@ -20,6 +20,7 @@ export const ProjectManifestSchema = Type.Object({
 });
 
 export type ProjectPageManifest = Static<typeof ProjectPageManifestSchema>;
+
 export type ProjectManifest = Static<typeof ProjectManifestSchema>;
 
 export const isProjectManifest = (value: unknown): value is ProjectManifest =>

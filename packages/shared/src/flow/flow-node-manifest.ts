@@ -1,8 +1,8 @@
 import { ORIGAMIX_VERSION } from '../version.ts';
-import { Check } from '@sinclair/typebox/value';
-import { Type, type Static, type TProperties, type TSchema } from '@sinclair/typebox';
-
+import { Type } from '@sinclair/typebox';
+import type { TSchema, TProperties, Static } from '@sinclair/typebox';
 import { HyperValueSchema, FunctionValueSchema } from './hyper-value.ts';
+import { Check } from '@sinclair/typebox/value';
 
 export const FLOW_NODE_MANIFEST_VERSION = ORIGAMIX_VERSION;
 
@@ -26,6 +26,7 @@ const value = (description: string): typeof HyperValueSchema => ({
   ...HyperValueSchema,
   description,
 });
+
 const props = <T extends TProperties>(properties: T) =>
   Type.Object(
     {
@@ -34,8 +35,10 @@ const props = <T extends TProperties>(properties: T) =>
     },
     { additionalProperties: false },
   );
+
 const target = () =>
   Type.String({ description: '当前页面的真实元素 ID；执行前必须选择有效目标。' });
+
 const sequence = { acceptsInput: true, outputs: ['next'] } as const;
 
 export const flowNodeManifests = [

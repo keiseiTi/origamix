@@ -21,7 +21,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 | [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                     |
 | [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/src/index.ts`                                                                |
 | [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/runtime.ts`, `packages/server/projects/`                                      |
-| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`                          |
+| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/index.ts`, `packages/shared/src/page/`                                    |
 | [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                                     |
 
 - [README.md](README.md): current setup, development, builds and integration checks.

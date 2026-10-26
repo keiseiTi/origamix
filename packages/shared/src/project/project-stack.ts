@@ -1,5 +1,6 @@
+import { Type } from '@sinclair/typebox';
+import type { Static } from '@sinclair/typebox';
 import { ORIGAMIX_VERSION, isSupportedOrigamixVersion } from '../version.ts';
-import { Type, type Static } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
 export const VersionedStackReferenceSchema = Type.Object(
@@ -20,6 +21,7 @@ export const ProjectStackSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
 export type ProjectStack = Static<typeof ProjectStackSchema>;
 
 // Supported built-in stack identity, not a material catalog or a package loader.

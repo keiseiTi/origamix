@@ -1,15 +1,13 @@
-import { Check } from '@sinclair/typebox/value';
-import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import Ajv from 'ajv';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import { validateFlowSemantics, flowPointer } from '../flow/flow-validation.ts';
+import type { FlowSemanticError } from '../flow/flow-validation.ts';
 import addFormats from 'ajv-formats';
-import { flowPointer, validateFlowSemantics, type FlowSemanticError } from './flow-validation.ts';
-import {
-  PageSchema,
-  SchemaOperationBatchSchema,
-  SchemaOperationSchema,
-  type OrigamixPageSchema,
-  type SchemaOperation,
-  type SchemaOperationBatch,
-} from './schema.ts';
+import { PageSchema } from './page-schema.ts';
+import type { OrigamixPageSchema } from './page-schema.ts';
+import { SchemaOperationSchema, SchemaOperationBatchSchema } from './schema-operation.ts';
+import type { SchemaOperation, SchemaOperationBatch } from './schema-operation.ts';
+import { Check } from '@sinclair/typebox/value';
 
 export interface ValidationResult {
   valid: boolean;
@@ -36,6 +34,7 @@ export interface PageValidationResult extends ValidationResult {
 }
 
 let ajv: Ajv | undefined;
+
 const getAjv = (): Ajv => {
   if (!ajv) {
     ajv = new Ajv({ allErrors: true, strict: true });
@@ -45,7 +44,9 @@ const getAjv = (): Ajv => {
 };
 
 let pageValidator: ValidateFunction<OrigamixPageSchema> | undefined;
+
 let operationValidator: ValidateFunction<SchemaOperation> | undefined;
+
 let batchValidator: ValidateFunction<SchemaOperationBatch> | undefined;
 
 const result = (errors: ErrorObject[] | null | undefined): ValidationResult => {

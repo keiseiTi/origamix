@@ -1,8 +1,9 @@
-import { Type, type Static } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
+import type { Static } from '@sinclair/typebox';
 
 export interface PreviewSnapshot {
-  stack: import('./protocol/project-stack').ProjectStack;
-  schema: import('./protocol/schema').OrigamixPageSchema;
+  stack: import('../project/project-stack.ts').ProjectStack;
+  schema: import('../page/page-schema.ts').OrigamixPageSchema;
   revisionId: string;
   theme: 'light' | 'dark';
 }

@@ -11,7 +11,7 @@ description: Shared：公共契约的职责、使用与开发说明
 
 ## 关键入口
 
-`src/index.ts` 显式汇总公共导出，内部仍按领域分模块。`src/protocol/api.ts` 定义 HTTP 契约；`schema.ts` 定义页面与操作；`agent.ts` 定义 Run 与事件；`src/desktop-api.ts` 定义桌面桥；`src/page-window.ts` 定义预览消息。
+`src/index.ts` 显式汇总唯一公共入口。内部按 `page/`、`project/`、`flow/`、`agent/`、`material/`、`transport/` 分领域；页面 Schema 与编辑操作、项目与页面 HTTP 契约分别维护。Agent 的 Run、消息、事件、请求与终态结果也各有独立文件；桌面桥、凭据网关和预览消息归入 `transport/`。
 
 `project-stack.ts` 定义当前项目技术栈与严格解析；`material-manifest.ts` 定义物料 Manifest 格式；`flow-node.ts` 定义内置流程节点身份、默认参数、连接限制与参数校验；`hyper-value.ts` 定义可序列化值及函数配置。
 

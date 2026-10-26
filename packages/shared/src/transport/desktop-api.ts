@@ -3,19 +3,23 @@ export interface BackendConnection {
   token: string;
   serviceInstanceId: string;
 }
+
 export interface DirectoryGrant {
   directoryGrantId: string;
   displayPath: string;
 }
+
 export interface UserProfile {
   name: string;
   iconBackground: string;
 }
+
 export interface ModelSettings {
   provider: 'deepseek';
   model: 'deepseek-flash' | 'deepseek-v4-pro';
   hasApiKey: boolean;
 }
+
 export interface DesktopApi {
   platform: 'darwin' | 'other';
   backend: { getConnection(): Promise<BackendConnection> };

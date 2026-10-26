@@ -3,8 +3,9 @@ import {
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
   validateResolvedProjectStack,
-} from '../../src/protocol/project-stack';
-import { isProjectManifest } from '../../src/protocol/project-manifest';
+} from '../../src/project/project-stack.ts';
+
+import { isProjectManifest } from '../../src/project/project-manifest.ts';
 
 const manifest = () => ({
   projectId: 'project_one',

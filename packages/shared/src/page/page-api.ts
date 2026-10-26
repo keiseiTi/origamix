@@ -1,36 +1,8 @@
-import { Type, type Static } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
+import type { Static } from '@sinclair/typebox';
+import { PageSchema, RevisionIdSchema } from './page-schema.ts';
+import { SchemaOperationSchema, ChangeSourceSchema } from './schema-operation.ts';
 import { Value } from '@sinclair/typebox/value';
-import {
-  ChangeSourceSchema,
-  PageSchema,
-  RevisionIdSchema,
-  SchemaOperationSchema,
-} from './schema.ts';
-
-export const ApiResultSchema = Type.Union([
-  Type.Object(
-    { success: Type.Literal(true), code: Type.Literal(200), data: Type.Unknown() },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      success: Type.Literal(false),
-      code: Type.Integer({ minimum: 400 }),
-      data: Type.Null(),
-      message: Type.Optional(Type.String()),
-    },
-    { additionalProperties: false },
-  ),
-]);
-
-export const ProjectRecordSchema = Type.Object({
-  id: Type.String(),
-  name: Type.String(),
-  path: Type.String(),
-  status: Type.Integer({ minimum: 0, maximum: 5 }),
-  createdAt: Type.String(),
-  lastOpenedAt: Type.String(),
-});
 
 export const PageRecordSchema = Type.Object({
   id: Type.String(),
@@ -41,36 +13,6 @@ export const PageRecordSchema = Type.Object({
   status: Type.Integer({ minimum: 0, maximum: 5 }),
   createdAt: Type.String(),
   updatedAt: Type.String(),
-});
-
-export const ProjectWithPagesSchema = Type.Intersect([
-  ProjectRecordSchema,
-  Type.Object({ pages: Type.Array(PageRecordSchema) }),
-]);
-
-export type ProjectWithPages = Static<typeof ProjectWithPagesSchema>;
-
-export const CreateProjectSchema = Type.Object({
-  name: Type.String({ minLength: 1, maxLength: 80 }),
-  code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
-  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
-  directoryGrantId: Type.String({ minLength: 1 }),
-});
-
-export const OpenProjectSchema = Type.Object({
-  name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
-  code: Type.Optional(Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })),
-  directoryGrantId: Type.String({ minLength: 1 }),
-  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
-  initializeIfNeeded: Type.Optional(Type.Boolean()),
-});
-
-export const RenameProjectSchema = Type.Object({
-  name: Type.String({ minLength: 1, maxLength: 80 }),
-});
-
-export const DeleteDesktopRecordSchema = Type.Object({
-  scope: Type.Literal('desktop_record'),
 });
 
 export const CreatePageSchema = Type.Object({
@@ -180,35 +122,11 @@ export const DuplicatePageSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
 });
 
-export type ApiResult<T> =
-  | { success: true; code: 200; data: T }
-  | { success: false; code: number; data: null; message?: string };
-
-export const isApiResultEnvelope = (value: unknown): value is ApiResult<unknown> => {
-  return Value.Check(ApiResultSchema, value);
-};
-
 export const isPageApplyState = (value: unknown): value is PageApplyState =>
   Value.Check(PageApplyStateSchema, value);
 
 export const isApplyPageResult = (value: unknown): value is ApplyPageResult =>
   Value.Check(ApplyPageResultSchema, value);
-
-export interface ProjectRecord {
-  id: string;
-  name: string;
-  path: string;
-  status: number;
-  createdAt: string;
-  lastOpenedAt: string;
-}
-
-export type OpenProjectResult =
-  | { status: 'opened'; project: ProjectRecord }
-  | {
-      status: 'initialization_required';
-      displayPath: string;
-    };
 
 export interface PageRecord {
   id: string;
@@ -241,4 +159,5 @@ export interface ApplyPageResult {
 }
 
 export type RevisionHistoryItem = Static<typeof RevisionHistoryItemSchema>;
+
 export type RevisionHistory = Static<typeof RevisionHistorySchema>;

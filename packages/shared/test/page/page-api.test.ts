@@ -3,14 +3,13 @@ import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
   ApplyWorkingOperationsSchema,
-  ApiResultSchema,
   ApplyPageSchema,
   RevisionHistorySchema,
   UpdateWorkingSchemaSchema,
-  isApiResultEnvelope,
   isApplyPageResult,
   isPageApplyState,
-} from '../../src/protocol/api';
+} from '../../src/page/page-api.ts';
+import { ApiResultSchema, isApiResultEnvelope } from '../../src/transport/api-result.ts';
 
 describe('API result protocol', () => {
   it('accepts the success and failure envelopes', () => {

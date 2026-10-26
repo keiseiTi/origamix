@@ -1,11 +1,14 @@
-import { Type, type Static, type TSchema } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
+import type { TSchema, Static } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
 
 export const CredentialGatewayVersionSchema = Type.Literal('1');
+
 export const CredentialReferenceSchema = Type.Union([Type.Literal('model.deepseek.api-key')]);
+
 export const CredentialPurposeSchema = Type.Union([
   Type.Literal('agent.model-request'),
   Type.Literal('agent.model-capability-check'),
@@ -48,8 +51,11 @@ export const CredentialResponseSchema = Type.Union([
 ]);
 
 export type CredentialReference = Static<typeof CredentialReferenceSchema>;
+
 export type CredentialPurpose = Static<typeof CredentialPurposeSchema>;
+
 export type CredentialRequest = Static<typeof CredentialRequestSchema>;
+
 export type CredentialResponse = Static<typeof CredentialResponseSchema>;
 
 export const isCredentialRequest = (value: unknown): value is CredentialRequest => {

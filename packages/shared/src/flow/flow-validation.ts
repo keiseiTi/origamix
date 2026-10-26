@@ -1,5 +1,5 @@
-import type { PageFlow } from './flow.ts';
-import { isFlowNodeProps } from './flow-node.ts';
+import type { PageFlow } from './flow-schema.ts';
+import { isFlowNodeProps } from './flow-node-manifest.ts';
 
 export interface FlowSemanticError {
   code:

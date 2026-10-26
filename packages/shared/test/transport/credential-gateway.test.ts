@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isCredentialRequest, isCredentialResponse } from '../src/credential-gateway';
+import {
+  isCredentialRequest,
+  isCredentialResponse,
+} from '../../src/transport/credential-gateway.ts';
 
 describe('credential gateway protocol', () => {
   it('accepts only the fixed server caller, reference and purposes', () => {
