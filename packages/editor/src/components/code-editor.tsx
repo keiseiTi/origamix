@@ -3,8 +3,8 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
 import { cn } from '@origamix/ui';
-import { EditorThemeContext } from '../core/environment';
-import type { EditorTheme } from '../interface';
+import { EditorThemeContext } from '../session/editor-environment';
+import type { EditorTheme } from '../contracts/editor-contracts';
 
 export interface CodeEditorProps {
   theme?: EditorTheme;

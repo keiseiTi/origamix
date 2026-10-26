@@ -1,8 +1,8 @@
 import { getElementLabel } from '@origamix/shared';
-import { useFlowEditorSession } from './session';
+import { useFlowEditorSession } from './flow-editor-context';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { useState } from 'react';
-import type { EventTarget } from './model';
+import type { EventTarget } from './flow-graph';
 
 interface EventTreeNode {
   id: string;

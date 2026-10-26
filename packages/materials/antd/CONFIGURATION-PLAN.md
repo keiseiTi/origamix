@@ -269,8 +269,8 @@ Table 使用本地分页，total 由完整数据长度得出，配置的 positio
 
 - 当前注册与实现：[manifest.ts](./manifest.ts)、[editor.ts](./editor.ts)、[runtime.ts](./runtime.ts)，以及各物料的 manifest.ts / material-config.ts / index.tsx。
 - 共用声明：[manifest-definition.ts](./manifest-definition.ts)、[material-manifest.ts](../src/material-manifest.ts)。
-- 当前属性控件与显隐：[attribute-panel.tsx](../../editor/src/mods/attribute-panel.tsx)。
-- 逻辑流读候选：[hyper-input.tsx](../../editor/src/flow-editor/nodes/hyper-input.tsx)；写候选：[setters-fields.tsx](../../editor/src/flow-editor/nodes/setters-fields.tsx)。
+- 当前属性控件与显隐：[attribute-panel.tsx](../../editor/src/panels/attribute-panel.tsx)。
+- 逻辑流读候选：[hyper-value-input.tsx](../../editor/src/flow-editor/nodes/hyper-value-input.tsx)；写候选：[setter-fields.tsx](../../editor/src/flow-editor/nodes/setter-fields.tsx)。
 - 实际读取与执行：[execute.ts](../../runtime/execute.ts)、[logic-nodes.ts](../../runtime/logic-nodes.ts)。
 - 本地类型：materials/node_modules/antd/es 中 button/button.d.ts、table/InternalTable.d.ts、config-provider/SizeContext.d.ts、input/Input.d.ts、switch/index.d.ts、drawer/Drawer.d.ts、float-button/FloatButton.d.ts 等（依赖安装后可核对）。
 - 参考实现：`/Users/keisei/Dev/tangramino/playground/antd-demo/src/editor/mods/attribute-panel.tsx` 与同项目 materials/table；参考只提供交互思路，不等于当前 Origamix 的实现或类型契约。

@@ -21,7 +21,7 @@ import {
 import '@origamix/editor/styles.css';
 ```
 
-`src/editor.tsx` 装配共享 EditorProvider；`src/mods/` 组织画布与面板；`src/flow-editor/` 包含事件树、LogicFlow、节点表单与图转换；`src/core/` 负责引擎快照到操作事务的转换。逻辑模式通过内部适配层动态加载，保留加载和重试反馈。
+`src/editor.tsx` 装配共享 EditorProvider；`src/layout/`、`src/panels/`、`src/tools/` 组织画布与面板；`src/flow-editor/` 包含事件树、LogicFlow、节点表单与图转换；`src/session/` 管理共享会话和历史；`src/schema/` 提供编辑操作；`src/transactions/` 负责快照到操作事务的转换。逻辑模式通过内部适配层动态加载，保留加载和重试反馈。
 
 ## 宿主与编辑会话
 

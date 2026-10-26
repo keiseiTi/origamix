@@ -1,12 +1,12 @@
 import { getElementLabel } from '@origamix/shared';
 import type LogicFlow from '@logicflow/core';
-import { useFlowEditorSession } from '../session';
+import { useFlowEditorSession } from '../flow-editor-context';
 import { Checkbox, FieldLabel, Input } from '@origamix/ui';
 
 import { FlowSelect } from '../flow-select';
-import { getNodeDefinition, getNodePropertyChoices } from './definitions';
-import { SettersFields } from './setters-fields';
-import { HyperInput } from './hyper-input';
+import { getNodeDefinition, getNodePropertyChoices } from './node-catalog';
+import { SettersFields } from './setter-fields';
+import { HyperInput } from './hyper-value-input';
 
 export const NodeProperties = ({
   node,

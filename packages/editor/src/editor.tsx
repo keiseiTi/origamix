@@ -1,16 +1,16 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import { EditorThemeContext, MaterialCatalogContext } from './core/environment';
-import { DragOverlay } from './canvas';
-import { EditorProvider } from './core/provider';
-import { useEditorCore, useEditorStoreApi, type EditorCore } from './core/session';
-import { type Material } from './core/material';
+import { EditorThemeContext, MaterialCatalogContext } from './session/editor-environment';
+import { DragOverlay } from './canvas/canvas-drag-controls';
+import { EditorProvider } from './session/editor-provider';
+import { useEditorCore, useEditorStoreApi, type EditorCore } from './session/editor-session';
+import { type Material } from './contracts/material-contracts';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { InsertPositionIndicator } from './mods/insert-position-indicator';
-import { MainContent } from './mods/main-content';
-import type { MaterialGroup } from './mods/material-panel';
-import { EditorToolDialog } from './mods/editor-tool-dialog';
-import { TargetSelectionContext } from './target-selection';
+import { InsertPositionIndicator } from './canvas/insert-position-indicator';
+import { EditorLayout } from './layout/editor-layout';
+import type { MaterialGroup } from './panels/material-panel';
+import { EditorToolDialog } from './tools/editor-tool-dialog';
+import { TargetSelectionContext } from './canvas/target-selection-context';
 
 import type {
   EditorMaterialRegistration,
@@ -20,7 +20,7 @@ import type {
   EditorTool,
   EditorHistoryState,
   EditorTargetSelection,
-} from './interface';
+} from './contracts/editor-contracts';
 
 export interface EditorProps {
   schema: OrigamixPageSchema;
@@ -77,7 +77,7 @@ const EditorCanvas = ({
 
   return (
     <>
-      <MainContent
+      <EditorLayout
         groups={groups}
         viewportWidth={viewportWidth}
         mode={mode}

@@ -1,5 +1,2 @@
-/* Include editor-owned Tailwind classes in the consuming workbench. */
-@source './editor.tsx';
-@source './mods';
-@source './components';
-@source './flow-editor';
+/* Include all editor-owned Tailwind classes in the consuming workbench. */
+@source './';
