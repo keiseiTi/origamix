@@ -11,7 +11,7 @@ description: Runtime：页面渲染的职责、使用与开发说明
 
 ## 关键入口
 
-`index.ts` 提供唯一根入口 `@origamix/runtime`，导出运行态 `OrigamixPage`、编辑态 `DesignRenderer`、未知物料检测和诊断契约。两种模式复用稳定渲染核心；编辑态不创建业务执行会话。
+`src/index.ts` 提供唯一根入口 `@origamix/runtime`，导出运行态 `OrigamixPage`、编辑态 `DesignRenderer`、未知物料检测和诊断契约。两种模式复用稳定渲染核心；编辑态不创建业务执行会话。
 
 ## 协作边界
 
@@ -19,7 +19,7 @@ description: Runtime：页面渲染的职责、使用与开发说明
 
 ## 事件执行
 
-`logic-nodes.ts` 注册 Shared 定义的节点处理器；`execute.ts` 统一解析 HyperValue、上下文与函数参数。开始节点由引擎处理；自定义 JS 和其他节点函数都在页面 Runtime 执行，Editor 与 Server 只处理配置。
+`src/logic-nodes.ts` 注册 Shared 定义的节点处理器；`src/execute.ts` 统一解析 HyperValue、上下文与函数参数。开始节点由引擎处理；自定义 JS 和其他节点函数都在页面 Runtime 执行，Editor 与 Server 只处理配置。
 
 上下文使用 `state.elementId.property`、`global.name`、`result.nodeId.path`；函数参数还可绑定公开的 `method.elementId.methodName`。函数体接收按参数列表顺序解析的值，异步节点等待 Promise。方法节点把求值结果作为一个参数传入，数组不展开。
 

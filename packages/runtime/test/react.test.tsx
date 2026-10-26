@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { DesignRenderer } from '../design';
+import { DesignRenderer } from '../src/design';
 import { describe, expect, it } from 'vitest';
-import type { RuntimeSchema as Schema } from '../core/types';
-import { findUnknownMaterialTypes } from '../react';
+import type { RuntimeSchema as Schema } from '../src/core/types';
+import { findUnknownMaterialTypes } from '../src/react';
 
 describe('page preview', () => {
   it('rejects a Schema whose material is unavailable to the renderer', () => {

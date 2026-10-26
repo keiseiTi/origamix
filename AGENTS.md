@@ -19,7 +19,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 | [UI](packages/ui/AGENTS.md)               | 公共基础控件、工具与主题基础                                  | `packages/ui/src/components/`、`packages/ui/src/styles/styles.css`                             |
 | [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`            |
 | [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                     |
-| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/index.ts`                                                                    |
+| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/src/index.ts`                                                                |
 | [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/runtime.ts`, `packages/server/projects/`                                      |
 | [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/protocol/`, `packages/shared/src/desktop-api.ts`                          |
 | [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                                     |

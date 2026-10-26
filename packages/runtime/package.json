@@ -7,7 +7,7 @@
     "NOTICE"
   ],
   "exports": {
-    ".": "./index.ts"
+    ".": "./src/index.ts"
   },
   "publishConfig": {
     "access": "public",

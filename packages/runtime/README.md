@@ -2,6 +2,23 @@
 
 独立页面渲染适配器，App 预览和生成项目共用。不绑定物料库，不包含工作台路由、编辑器、后端传输或持久化。
 
+## 代码结构
+
+```text
+src/
+  index.ts             公共入口
+  react.tsx            运行态页面会话
+  design.tsx           编辑态渲染
+  renderer.tsx         共享 React 渲染
+  core/                元素状态、布局解析和流程调度
+  execute.ts           HyperValue 求值
+  logic-nodes.ts       流程节点动作
+  material-state.ts    物料状态、能力和事件载荷
+test/                 核心流程测试
+```
+
+包根保留构建配置、说明文档和许可声明。
+
 ## 接口
 
 ```tsx
@@ -16,13 +33,13 @@ import { OrigamixPage } from '@origamix/runtime';
 
 ## 事件逻辑
 
-[logic-nodes.ts](logic-nodes.ts) 注册 `interfaceRequest`、`setElementProps`、`emitElementAction`、`visibleElement`、`condition`、`setGlobalVariable`、`openModalDrawer` 和 `closeModalDrawer`。属性、变量和方法节点使用 `setters` 数组，显隐节点使用 `elementIds`；弹窗操作只接受 `modal` / `drawer` 元素。
+[logic-nodes.ts](src/logic-nodes.ts) 注册 `interfaceRequest`、`setElementProps`、`emitElementAction`、`visibleElement`、`condition`、`setGlobalVariable`、`openModalDrawer` 和 `closeModalDrawer`。属性、变量和方法节点使用 `setters` 数组，显隐节点使用 `elementIds`；弹窗操作只接受 `modal` / `drawer` 元素。
 
 节点名称和参数类型由 Shared 的 `protocol/flow-node` 契约派生，实现表必须覆盖除引擎自带 `start` 外的所有节点。引擎传入的参数先按同一契约校验，失败会抛出错误并阻止该节点动作。`customJS` 通过统一求值器执行函数。Shared 作为构建依赖内联到发布产物，独立项目无需额外安装 Shared。
 
 取值字段统一使用 Shared 的 `HyperValue`：`{ type, value }`。字面值类型为 `string`、`number`、`boolean` 和 `null`；`contextValue` 读取 `state.elementId.property`、`event.payload.path`、`global.name` 或 `result.nodeId.path`。函数参数也可绑定 `method.elementId.methodName`。上下文读取拒绝原型链路径。
 
-[execute.ts](execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败显示执行错误、停止本次事件后续动作，下一次触发可重新执行。
+[execute.ts](src/execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败显示执行错误、停止本次事件后续动作，下一次触发可重新执行。
 
 项目 JavaScript 在页面环境中执行，求值器本身不是沙箱。工作台预览继续使用既有的 sandbox iframe，不接收后端凭据或 Desktop bridge；生成页面在自身宿主环境中运行。Editor 和 Server 不执行项目代码。节点契约 1.0 不接受原来的原始值和 `$ref` 格式。
 
@@ -80,7 +97,7 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 
 ## 编辑态与运行态
 
-`@origamix/runtime` 是唯一公开入口。工作区消费根源码以支持 HMR，发布包消费 dist/index.js 与内联后的声明；生成项目无需安装 Shared 或 Editor。
+`@origamix/runtime` 是唯一公开入口。工作区消费 `src/index.ts` 以支持 HMR，发布包消费 dist/index.js 与内联后的声明；生成项目无需安装 Shared 或 Editor。
 
 `OrigamixPage` 创建运行状态、变量、事件和异步流程会话。卸载或更换会话时中止请求，并阻止旧调用的后续状态写入。`DesignRenderer` 只解析布局并调用物料，复用稳定的 MaterialView；不创建执行引擎、绑定业务事件、执行 init/表达式/函数，也不注入运行写值和方法注册回调。Editor 通过 renderElement 提供选择、拖拽、容器占位与覆盖层。
 

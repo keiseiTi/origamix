@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
-  entry: { index: 'index.ts' },
+  entry: { index: 'src/index.ts' },
   format: ['esm'],
   dts: {
     resolve: ['@origamix/shared'],

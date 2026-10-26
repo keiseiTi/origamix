@@ -1,4 +1,4 @@
-// State/subscription model adapted from Tangramino; see ../NOTICE.
+// State/subscription model adapted from Tangramino; see ../../NOTICE.
 import { parseLayout } from './layout';
 import type { RuntimeEngine, RuntimeSchema, Listener } from './types';
 export const ELEMENT_UPDATE = 'element-update';
