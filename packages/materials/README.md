@@ -1,6 +1,6 @@
 # Materials
 
-Tangramino 页面物料包，当前只提供 Ant Design。它拥有页面组件、物料默认值、编辑配置和可序列化清单，不包含 Origamix 工作台、项目服务或持久化。
+Origamix 页面物料包，当前只提供 Ant Design。它拥有页面组件、物料默认值、编辑配置和可序列化清单，不包含 Origamix 工作台、项目服务或持久化。
 
 属性面板、事件与逻辑流读值的完整配置契约，见 [Ant Design 物料配置清单](antd/CONFIGURATION-PLAN.md)。
 
@@ -34,7 +34,7 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials build
 ```
 
-tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区和发布包统一消费 `dist` 中的 JavaScript 与类型声明，两套出口保持一致。根 `pnpm typecheck` 会先构建 Materials；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials build`。Shared 的代码与类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 和 Tangramino base-editor 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
+tsup 输出到 `dist/`；根 `pnpm package:npm` 构建并生成 tarball。工作区和发布包统一消费 `dist` 中的 JavaScript 与类型声明，两套出口保持一致。根 `pnpm typecheck` 会先构建 Materials；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -78,7 +78,7 @@ Upload 无 action 时只选择文件，不发送请求；流只能读取文件�
 
 ## 运行时接入
 
-runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务事件投影和字段边界；它不导入 Editor/UI。Runtime 注入 tg_setRuntimeState 与 tg_setContextValues，业务值先同步后调用事件。当前事件通过 event.payload 读取，异步调用各自保留快照。
+runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务事件投影和字段边界；它不导入 Editor/UI。Runtime 注入 om_setRuntimeState 与 om_setContextValues，业务值先同步后调用事件。当前事件通过 event.payload 读取，异步调用各自保留快照。
 
 输入的本地状态与运行时读值投影同步，不因每次输入重建 Engine 组件；逻辑流主动写值才更新对应渲染元素。字段方法及程序写值同步 Form 和控件投影。这些都是临时运行态，不会写 Working、创建 Revision 或 Apply。
 

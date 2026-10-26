@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
+    "types": ["node"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "ignoreDeprecations": "6.0"
   },
-  "include": ["*.ts", "*.tsx", "test"]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

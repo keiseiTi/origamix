@@ -1,4 +1,4 @@
-import type { AttributeConfig } from '@tangramino/base-editor';
+import type { AttributeConfig } from './core/material';
 import type { ComponentType } from 'react';
 import type { EditorPageScope } from './interface';
 

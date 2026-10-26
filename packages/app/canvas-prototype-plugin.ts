@@ -23,14 +23,6 @@ export const canvasPrototype = (): Plugin => {
           name: 'OrigamixCanvasPrototype',
           formats: ['iife'],
         },
-        // Tangramino definePlugin is an identity factory. Remove unused collaboration
-        // exports and their eager WASM startup; this frame never installs collaboration.
-        rolldownOptions: {
-          treeshake: {
-            manualPureFunctions: ['definePlugin'],
-            moduleSideEffects: (id) => !id.includes('/loro-crdt/'),
-          },
-        },
         cssCodeSplit: false,
       },
     });

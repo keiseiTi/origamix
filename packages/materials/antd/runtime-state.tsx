@@ -20,7 +20,7 @@ export const useRuntimeValue = <T,>(
   field: string,
   supplied: T | undefined,
   initial: T,
-  publish: RuntimeMaterialProps['tg_setRuntimeState'],
+  publish: RuntimeMaterialProps['om_setRuntimeState'],
 ): [T, (next: T) => void] => {
   const [fallback] = useState(initial);
   const [value, setValue] = useState<T>(supplied === undefined ? initial : supplied);
@@ -224,9 +224,9 @@ const RuntimeField = ({
   );
   useLayoutEffect(() => {
     const unregister = context?.register(name, (value) =>
-      props.tg_setRuntimeState?.({ [field]: value ?? initialState(type, props)[field] }),
+      props.om_setRuntimeState?.({ [field]: value ?? initialState(type, props)[field] }),
     );
-    props.tg_setContextValues?.({
+    props.om_setContextValues?.({
       $writeField: (value: unknown) => {
         form.setFieldValue(name, value);
         context?.sync();
@@ -234,9 +234,9 @@ const RuntimeField = ({
     });
     return () => {
       unregister?.();
-      props.tg_setContextValues?.({ $writeField: undefined });
+      props.om_setContextValues?.({ $writeField: undefined });
     };
-  }, [context, field, form, name, props.tg_setContextValues, props.tg_setRuntimeState, type]);
+  }, [context, field, form, name, props.om_setContextValues, props.om_setRuntimeState, type]);
   return (
     <Form.Item
       name={name}
@@ -275,12 +275,12 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
     const { fieldName, fieldLabel, fieldRequired, init, alias, tabKey, ...rest } = props;
     const initialized = useRef(false);
     useEffect(() => {
-      if (!initialized.current && props.tg_mode !== 'design') {
+      if (!initialized.current && props.om_mode !== 'design') {
         initialized.current = true;
         if (typeof init === 'function') init();
       }
-    }, [init, props.tg_mode]);
-    if (typeof fieldName !== 'string' || !fieldName || props.tg_mode === 'design')
+    }, [init, props.om_mode]);
+    if (typeof fieldName !== 'string' || !fieldName || props.om_mode === 'design')
       return <Component {...rest} />;
     return (
       <RuntimeField

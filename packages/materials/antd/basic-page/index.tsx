@@ -15,9 +15,11 @@ export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps
     children,
     margin,
     padding,
-    tg_dropPlaceholder,
-    tg_setContextValues,
-    tg_setRuntimeState,
+    om_dropPlaceholder,
+    om_setContextValues,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
     display,
     flexDirection,
     ...rest
@@ -36,7 +38,7 @@ export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps
 
   return (
     <div ref={ref} className={cn('overflow-auto w-full')} style={style} {...rest}>
-      {children || tg_dropPlaceholder}
+      {children || om_dropPlaceholder}
     </div>
   );
 });

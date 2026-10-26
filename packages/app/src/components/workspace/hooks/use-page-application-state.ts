@@ -135,9 +135,9 @@ export const usePageApplicationState = ({
     await editorRef.current?.flush();
     const current = await schemaService.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
-    const saved = await schemaService.saveRevision(projectId, pageId, current.workingVersion);
+    await schemaService.saveRevision(projectId, pageId, current.workingVersion);
     if (pageKeyRef.current !== requestPageKey) return;
-    onSchemaCommitted(pageId, saved.revisionId);
+    // Saving a checkpoint does not replace Working or reset the canvas/history.
     await refreshApplyState();
   };
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEditorCore } from '@tangramino/base-editor';
+import { useEditorCore } from '../core/session';
 import { Button, Spinner } from '@origamix/ui';
 import { useMaterialCatalog } from '../core/environment';
 import { FlowEditorSessionContext } from '../flow-editor/session';
@@ -28,6 +28,10 @@ export const FlowEditorView = ({
   const schema = useEditorCore((state) => state.schema);
   const materials = useEditorCore((state) => state.materials);
   const setSchema = useEditorCore((state) => state.setSchema);
+  const canUndo = useEditorCore((state) => state.canUndo);
+  const canRedo = useEditorCore((state) => state.canRedo);
+  const undo = useEditorCore((state) => state.undo);
+  const redo = useEditorCore((state) => state.redo);
   const catalog = useMaterialCatalog();
   const [View, setView] = useState<FlowComponent | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +75,15 @@ export const FlowEditorView = ({
       </div>
     );
   return (
-    <FlowEditorSessionContext.Provider value={{ schema, materials, catalog, onChange: setSchema }}>
+    <FlowEditorSessionContext.Provider
+      value={{
+        schema,
+        materials,
+        catalog,
+        onChange: setSchema,
+        history: { canUndo, canRedo, undo, redo },
+      }}
+    >
       <View target={target} onTargetChange={onTargetChange} />
     </FlowEditorSessionContext.Provider>
   );

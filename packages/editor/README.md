@@ -22,7 +22,7 @@ import '@origamix/editor/styles.css';
 
 ## 宿主装配
 
-App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过句柄调用 flush/undo/redo；切页、切换编辑视图与预览前必须等待 flush 成功。底层引擎状态按模块共享，因此 App 只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
+App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过句柄调用 flush/undo/redo；切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
 
 schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置引擎。历史恢复或 Agent 新提交由 App 开启新会话。代码编辑器读取传入主题，独立使用时可显式传 `theme`；Monaco workers 由 App 的构建宿主配置，Editor 内不包含 Vite 专有 worker 导入。
 
@@ -59,8 +59,16 @@ pnpm --filter @origamix/editor build
 
 流程节点的取值字段统一使用 Shared 的 HyperValue。HyperInput 提供字符串、数字、布尔值、空值、JSON、上下文、表达式和函数。函数弹窗支持参数绑定、代码编辑、确认、取消和校验；编辑过程不执行代码。请求参数、条件、属性与变量设置、方法参数、显隐和自定义 JS 共用该输入与 Runtime 求值器；元素 ID、事件和连线等结构字段继续使用选择器。节点契约版本随 Origamix 统一发布，旧 Schema 转换只由 Server 在页面打开时执行。
 
-逻辑流表单沿用 Tangramino 示例的值类型与字段方式：请求头、查询参数、请求体使用函数；条件判断使用表达式或函数，不提供 JSON 类型或额外比较器。节点属性、增删、连线及编排变化均提交完整图快照，通过 `onChange(schema, { immediate: true })` 通知宿主及时进入 Working 队列。函数弹窗确认后才提交配置，取消保留原值。
+逻辑流表单使用 Shared 定义的值类型与字段方式：请求头、查询参数、请求体使用函数；条件判断使用表达式或函数，不提供 JSON 类型或额外比较器。节点属性、增删、连线及编排变化均提交完整图快照，通过 `onChange(schema, { immediate: true })` 通知宿主及时进入 Working 队列。函数弹窗确认后才提交配置，取消保留原值。
 
 ## 隔离原型表面
 
-`CanvasPrototypeSurface` 是单独 frame 中的实验画布，拥有自己的 Tangramino Engine 和 history。宿主仅调用受限 `CanvasPrototypeHandle.run`，不取得 Engine。它验证公开 SchemaUtils + 插件 hooks 的属性/插入路径；不持有 Working 或 HTTP 权限，也不替换正式 Editor。正式迁移前必须补齐原生移动、交互和持久化会话验证。
+`CanvasPrototypeSurface` 是单独 frame 中的实验画布，复用本包的画布、Schema 操作和独立会话历史。宿主仅调用受限 `CanvasPrototypeHandle.run`，不取得底层会话。它不持有 Working 或 HTTP 权限，正式 Editor 的持久化继续由 App 协调。
+
+## 本地编辑内核
+
+`core/schema/` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`core/session.tsx` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。
+
+`canvas/` 使用 dnd-kit 处理拖拽和占位；调用 `@origamix/runtime` 的 DesignRenderer 展示物料。设计态只允许设计交互，不绑定页面流程或执行函数。选中框和插入指示器只查询当前会话画布。
+
+部分底层算法迁自 Tangramino，来源及许可见 [NOTICE](NOTICE)；安装和构建不依赖该项目。

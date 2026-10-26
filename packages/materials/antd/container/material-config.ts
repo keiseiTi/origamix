@@ -22,12 +22,9 @@ const ContainerMaterial = defineMaterial({
             },
           },
           {
-            label: '高度',
+            label: '高度（px）',
             field: 'height',
             uiType: 'number',
-            props: {
-              suffix: 'px',
-            },
             linkageShow: [{ field: 'heightConfig', value: 'fixed' }],
           },
         ],

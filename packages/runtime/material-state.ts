@@ -1,7 +1,7 @@
 import type { MaterialManifest } from '@origamix/shared';
-import type { createEngine, FlowExecuteContext } from '@tangramino/engine';
+import type { RuntimeEngine, FlowExecuteContext } from './core/types';
 
-type Engine = ReturnType<typeof createEngine>;
+type Engine = RuntimeEngine;
 type Context = FlowExecuteContext<Record<string, unknown>>;
 export interface RuntimeMaterialMetadata {
   context: MaterialManifest['context'];
@@ -16,6 +16,7 @@ export const writeRuntimeState = (
   id: string,
   patch: Record<string, unknown>,
 ): void => {
+  if (engine.disposed) return;
   const values = liveValues.get(engine);
   if (values) values[id] = { ...values[id], ...patch };
 };
@@ -79,20 +80,20 @@ export const installMaterialState = (engine: Engine, components: Record<string, 
     engine.setState({
       [id]: {
         ...initial,
-        tg_mode: 'render',
-        tg_setRuntimeState: (patch: Record<string, unknown>) => {
+        om_mode: 'render',
+        om_setRuntimeState: (patch: Record<string, unknown>) => {
           const previous = readRuntimeState(engine, id);
           const changes = Object.fromEntries(
             Object.entries(patch).filter(
               ([key, value]) =>
-                !key.startsWith('tg_') &&
+                !key.startsWith('om_') &&
                 !['__proto__', 'prototype', 'constructor'].includes(key) &&
                 JSON.stringify(previous?.[key]) !== JSON.stringify(value),
             ),
           );
           if (Object.keys(changes).length) writeRuntimeState(engine, id, changes);
         },
-        tg_setContextValues: (values: Record<string, unknown>) =>
+        om_setContextValues: (values: Record<string, unknown>) =>
           engine.setContextValue(id, { ...engine.getContextValue(id), ...values }),
       },
     });

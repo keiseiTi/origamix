@@ -13,9 +13,11 @@ export const Tree = ({
   onSelect,
   onCheck,
   onExpand,
-  tg_setContextValues,
-  tg_setRuntimeState,
-  tg_mode,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_readonly,
+  om_dropPlaceholder,
+  om_mode,
   ...rest
 }: IProps) => {
   const allKeys: Key[] = [];
@@ -29,19 +31,19 @@ export const Tree = ({
     'selectedKeys',
     selectedKeys,
     defaultSelectedKeys ?? [],
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   const [checked, check] = useRuntimeValue<Key[]>(
     'checkedKeys',
     Array.isArray(checkedKeys) ? checkedKeys : checkedKeys?.checked,
     defaultCheckedKeys ?? [],
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   const [expanded, expand] = useRuntimeValue<Key[]>(
     'expandedKeys',
     expandedKeys,
     rest.defaultExpandAll ? allKeys : (defaultExpandedKeys ?? []),
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdTree

@@ -2,6 +2,7 @@ import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import {
   validatePage,
+  isPageSchema,
   validateSchemaOperation,
   validateSchemaOperationBatch,
 } from '../../src/protocol/validation';
@@ -17,10 +18,15 @@ const emptyPage = {
 
 describe('page protocol validation', () => {
   it('accepts the canonical empty page', () => {
+    expect(isPageSchema(emptyPage)).toBe(true);
+    expect(isPageSchema({ ...emptyPage, layout: { ...emptyPage.layout, root: 'missing' } })).toBe(
+      false,
+    );
+    expect(isPageSchema({ ...emptyPage, elements: null })).toBe(false);
     expect(validatePage(emptyPage)).toEqual({ valid: true, errors: [], semanticErrors: [] });
   });
 
-  it('accepts Tangramino-generated material IDs', () => {
+  it('accepts material-prefixed element IDs', () => {
     const result = validatePage({
       ...emptyPage,
       elements: {

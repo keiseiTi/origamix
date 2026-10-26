@@ -11,16 +11,17 @@ export const Drawer = ({
   mask,
   maskClosable,
   onClose,
-  tg_mode,
-  tg_dropPlaceholder,
-  tg_setContextValues,
-  tg_setRuntimeState,
+  om_mode,
+  om_dropPlaceholder,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_readonly,
   customSize,
   ...rest
 }: IProps) => {
-  const [currentOpen, setOpen] = useRuntimeValue('open', open, false, tg_setRuntimeState);
+  const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
   const { token } = theme.useToken();
-  const content = children ?? tg_dropPlaceholder;
+  const content = children ?? om_dropPlaceholder;
   const drawer = (
     <AntdDrawer
       {...rest}
@@ -35,7 +36,7 @@ export const Drawer = ({
         onClose?.(event);
       }}
       size={customSize ?? rest.size}
-      {...(tg_mode === 'design'
+      {...(om_mode === 'design'
         ? {
             getContainer: false,
             rootStyle: { position: 'absolute' },
@@ -50,7 +51,7 @@ export const Drawer = ({
       {content}
     </AntdDrawer>
   );
-  if (tg_mode !== 'design') return drawer;
+  if (om_mode !== 'design') return drawer;
   return (
     <div
       className={`relative w-full ${currentOpen ? 'min-h-80' : 'min-h-16'}`}

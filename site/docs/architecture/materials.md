@@ -7,7 +7,7 @@ description: Materials：页面物料的职责、使用与开发说明
 
 ## 职责
 
-提供 Tangramino 页面组件、默认值、编辑器配置和可序列化物料清单。当前物料家族为 Ant Design。
+提供 Origamix 页面组件、默认值、编辑器配置和可序列化物料清单。当前物料家族为 Ant Design。
 
 ## 关键入口
 
@@ -19,7 +19,7 @@ App 从 `@origamix/materials/antd/editor` 加载编辑注册并注入 Editor；R
 
 项目当前固定 React + Antd，物料集为 `official-antd@1.0.0`，缺失或不受支持的配置会报错，不静默回退。第二套 React 物料、Vue 和物料市场尚未接入；列、分页、选项、树、页签与表单初始值有各自的专用属性编辑器；逻辑流读取、运行时写入和事件分别按 Manifest 白名单配置。
 
-运行、编辑、Manifest 三个入口隔离依赖。生成项目不安装 Editor；React 和 Ant Design 是运行 peer dependencies，UI 和 Tangramino base-editor 仅用于可选的编辑消费方。页面材料与工作台基础控件职责不同。
+运行、编辑、Manifest 三个入口隔离依赖。生成项目不安装 Editor；React 和 Ant Design 是运行 peer dependencies，UI 仅用于可选的编辑消费方，物料运行契约由 Runtime 提供并内联到声明。页面材料与工作台基础控件职责不同。
 
 ## 开发与验证
 

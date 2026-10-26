@@ -24,11 +24,14 @@ export const Textarea = (props: IProps) => {
     fieldName,
     fieldRequired,
     fieldLabel,
-    tg_setRuntimeState,
-    tg_setContextValues,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    om_setContextValues,
     ...rest
   } = props;
-  const [current, change] = useRuntimeValue('value', value, defaultValue ?? '', tg_setRuntimeState);
+  const [current, change] = useRuntimeValue('value', value, defaultValue ?? '', om_setRuntimeState);
   return (
     <AntdInput.TextArea
       {...rest}

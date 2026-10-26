@@ -17,9 +17,11 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
     padding,
     heightConfig,
     height,
-    tg_dropPlaceholder,
-    tg_setContextValues,
-    tg_setRuntimeState,
+    om_dropPlaceholder,
+    om_setContextValues,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
     ...rest
   } = props;
 
@@ -37,7 +39,7 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
 
   return (
     <div ref={ref} style={style} {...rest}>
-      {children || tg_dropPlaceholder}
+      {children || om_dropPlaceholder}
     </div>
   );
 });

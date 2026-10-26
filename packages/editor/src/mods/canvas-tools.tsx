@@ -1,13 +1,8 @@
 import { getElementLabel } from '@origamix/shared';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
 
-import {
-  Movable,
-  useEditorCore,
-  usePluginCore,
-  type DropPlaceholderProps,
-  type EnhancedComponentProps,
-} from '@tangramino/base-editor';
+import { Movable, type DropPlaceholderProps, type EnhancedComponentProps } from '../canvas';
+import { useEditorCore } from '../core/session';
 import { Move, Trash2 } from 'lucide-react';
 import { removeEditorElement } from '../core/editor-schema';
 import { useTargetSelection } from '../target-selection';
@@ -66,7 +61,6 @@ export const EditableElement = ({
 
 export const EditorOverlay = (): React.JSX.Element | null => {
   const { activeElement, schema, setSchema, setActiveElement } = useEditorCore();
-  const { callSchemaHook } = usePluginCore();
 
   if (!activeElement) return null;
 
@@ -76,19 +70,7 @@ export const EditorOverlay = (): React.JSX.Element | null => {
 
   const remove = (): void => {
     if (isRoot) return;
-    const parentId = Object.entries(schema.layout.structure).find(([, children]) =>
-      children.includes(id),
-    )?.[0];
-    const index = parentId ? (schema.layout.structure[parentId] ?? []).indexOf(id) : -1;
-    const operation = {
-      elementId: id,
-      parentId: parentId ?? '',
-      index,
-      element: { id, ...schema.elements[id] },
-    };
-    if (callSchemaHook('onBeforeRemove', schema, operation) === false) return;
     const nextSchema = removeEditorElement(schema, id);
-    callSchemaHook('onAfterRemove', nextSchema, operation);
     setSchema(nextSchema);
     setActiveElement(null);
   };

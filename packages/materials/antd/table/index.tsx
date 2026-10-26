@@ -14,12 +14,15 @@ export const Table = ({
   scroll,
   emptyText,
   locale,
-  tg_setContextValues,
-  tg_setRuntimeState,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
   ...rest
 }: IProps) => {
   const { token } = theme.useToken();
-  const [page, setPage] = useRuntimeValue('pagination', pagination, false, tg_setRuntimeState);
+  const [page, setPage] = useRuntimeValue('pagination', pagination, false, om_setRuntimeState);
   useLayoutEffect(() => {
     if (!page) return;
     const pageSize = Math.max(1, Math.trunc(page.pageSize ?? 10));

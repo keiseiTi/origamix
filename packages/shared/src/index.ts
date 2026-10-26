@@ -303,3 +303,8 @@ export type {
   ProjectUpgradeState,
   ProjectUpgradeResult,
 } from './protocol/project-upgrade.ts';
+
+export { GlobalVariableSchema } from './protocol/schema.ts';
+export type { GlobalVariable } from './protocol/schema.ts';
+
+export { isPageSchema } from './protocol/validation.ts';

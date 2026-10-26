@@ -11,15 +11,18 @@ export const TimePicker = ({
   onOk,
   fieldName,
   fieldLabel,
-  tg_setRuntimeState,
-  tg_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
+  om_setContextValues,
   ...rest
 }: IProps) => {
   const [current, change] = useRuntimeValue(
     'value',
     value,
     serializeTimeValue(defaultValue),
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdTimePicker

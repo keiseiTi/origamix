@@ -1,4 +1,5 @@
-import { Draggable, type Material } from '@tangramino/base-editor';
+import { Draggable } from '../canvas';
+import { type Material } from '../core/material';
 
 export interface MaterialGroup {
   title: string;

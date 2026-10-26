@@ -1,5 +1,5 @@
 import type LogicFlow from '@logicflow/core';
-import type { Flow, Schema } from '@tangramino/engine';
+import type { PageFlow as Flow, OrigamixPageSchema as Schema } from '@origamix/shared';
 import { getNodeDefinition } from './nodes/definitions';
 
 export interface EventTarget {

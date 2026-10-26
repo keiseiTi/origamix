@@ -7,8 +7,8 @@ import {
 } from '@origamix/shared';
 import { useEffect, useMemo, useState } from 'react';
 
-import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime/react';
-import type { Schema } from '@tangramino/engine';
+import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime';
+import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 
 type RenderOutcome =
   | { outcome: 'success'; diagnostics: PreviewRenderDiagnostic[] }

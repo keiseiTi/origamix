@@ -1,4 +1,4 @@
-import type { Material } from '@tangramino/base-editor';
+import type { Material } from './core/material';
 import {
   type MaterialManifestCatalog,
   type OrigamixPageSchema,

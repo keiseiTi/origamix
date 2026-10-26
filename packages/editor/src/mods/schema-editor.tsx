@@ -1,8 +1,9 @@
 import { Button } from '@origamix/ui';
 import { CodeEditor } from '../components/code-editor';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
-import { SchemaUtils, type Schema } from '@tangramino/engine';
-import { useEditorCore } from '@tangramino/base-editor';
+import { SchemaUtils } from '../core/schema';
+import { type OrigamixPageSchema as Schema } from '@origamix/shared';
+import { useEditorCore } from '../core/session';
 import { Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

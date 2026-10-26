@@ -5,7 +5,7 @@ import {
   readRuntimeState,
 } from './material-state';
 import type { HyperValue } from '@origamix/shared';
-import type { FlowExecuteContext } from '@tangramino/engine';
+import type { FlowExecuteContext } from './core/types';
 
 type Context = FlowExecuteContext<Record<string, unknown>>;
 const safe = (key: string): boolean => !['__proto__', 'prototype', 'constructor'].includes(key);

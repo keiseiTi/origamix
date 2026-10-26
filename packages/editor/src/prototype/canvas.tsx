@@ -7,16 +7,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  CanvasEditor,
-  DragOverlay,
-  EditorProvider,
-  historyPlugin,
-  useEditorCore,
-  usePluginCore,
-  usePluginContext,
-} from '@tangramino/base-editor';
-import { SchemaUtils, type Schema } from '@tangramino/engine';
+import { CanvasEditor, DragOverlay } from '../canvas';
+import { EditorProvider } from '../core/provider';
+import { useEditorCore, useEditorStoreApi } from '../core/session';
+import { SchemaUtils } from '../core/schema';
+import { type OrigamixPageSchema as Schema } from '@origamix/shared';
 import { TooltipProvider } from '@origamix/ui';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorMaterialRegistration } from '../interface';
@@ -43,37 +38,30 @@ interface Props {
   registration: EditorMaterialRegistration;
   onSnapshot: (snapshot: CanvasPrototypeSnapshot) => void;
 }
-type History = {
-  id: string;
-  undo: () => void;
-  redo: () => void;
-  canUndo: () => boolean;
-  canRedo: () => boolean;
-};
 const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
   ({ registration, onSnapshot }, ref) => {
     const schema = useEditorCore((state) => state.schema);
     const selected = useEditorCore((state) => state.activeElement?.id ?? null);
-    const history = usePluginContext<History>('history');
-    const { callSchemaHook } = usePluginCore();
+    const store = useEditorStoreApi();
+    const history = store.getState();
     const viewport = useRef<HTMLDivElement>(null);
     const [marker, setMarker] = useState<{ x: number; y: number; width: number } | null>(null);
     const snapshot = useCallback(
       (): CanvasPrototypeSnapshot => ({
-        schema: useEditorCore.getState().schema as OrigamixPageSchema,
+        schema: store.getState().schema as OrigamixPageSchema,
         selectedId: (() => {
-          const state = useEditorCore.getState();
+          const state = store.getState();
           const id = state.activeElement?.id;
           return id && Object.hasOwn(state.schema.elements, id) ? id : null;
         })(),
-        canUndo: history?.canUndo() ?? false,
-        canRedo: history?.canRedo() ?? false,
+        canUndo: store.getState().canUndo,
+        canRedo: store.getState().canRedo,
       }),
-      [history],
+      [store],
     );
     const locate = (x: number, y: number) => {
       if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) throw new Error('落点在画布之外');
-      const state = useEditorCore.getState();
+      const state = store.getState();
       const hit = document
         .elementsFromPoint(x, y)
         .map((node) => node.closest<HTMLElement>('[data-element-id]'))
@@ -96,7 +84,7 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
     };
     useImperativeHandle(ref, () => ({
       run: (command) => {
-        const state = useEditorCore.getState();
+        const state = store.getState();
         if (command.kind === 'undo') history?.undo();
         else if (command.kind === 'redo') history?.redo();
         else if (command.kind === 'cancel') setMarker(null);
@@ -118,9 +106,6 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
           const result = SchemaUtils.setElementProps(state.schema, command.id, {
             [command.field]: command.value,
           });
-          if (callSchemaHook('onBeforeUpdateProps', state.schema, result.operation) === false)
-            throw new Error('属性更新被拒绝');
-          callSchemaHook('onAfterUpdateProps', result.schema, result.operation);
           state.setSchema(result.schema);
         } else if (command.kind === 'add' || command.kind === 'hover') {
           const area = viewport.current;
@@ -163,9 +148,6 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
             const result = hit.inside
               ? SchemaUtils.insertElement(state.schema, hit.id, element)
               : SchemaUtils.insertAdjacentElement(state.schema, hit.id, element, hit.position);
-            if (callSchemaHook('onBeforeInsert', state.schema, result.operation) === false)
-              throw new Error('插入被拒绝');
-            callSchemaHook('onAfterInsert', result.schema, result.operation);
             state.setSchema(result.schema);
           }
         }
@@ -217,10 +199,9 @@ export const CanvasPrototypeSurface = forwardRef<CanvasPrototypeHandle, Props>(
       ],
       [registration],
     );
-    const plugins = useMemo(() => [historyPlugin({ limit: 50 })], []);
     return (
       <TooltipProvider>
-        <EditorProvider schema={schema as Schema} materials={materials} plugins={plugins}>
+        <EditorProvider schema={schema as Schema} materials={materials}>
           <Surface ref={ref} registration={registration} onSnapshot={onSnapshot} />
         </EditorProvider>
       </TooltipProvider>

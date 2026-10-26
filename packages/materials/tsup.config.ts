@@ -11,13 +11,14 @@ export default defineConfig({
   },
   format: ['esm'],
   dts: {
-    resolve: ['@origamix/shared'],
+    resolve: ['@origamix/shared', '@origamix/runtime'],
     compilerOptions: {
       paths: {
         '@': [fileURLToPath(new URL('./src/index.ts', import.meta.url))],
         '@/*': [fileURLToPath(new URL('./src/*', import.meta.url))],
         // Resolve the declared Shared entry for tsup's declaration bundler.
         '@origamix/shared': [fileURLToPath(import.meta.resolve('@origamix/shared'))],
+        '@origamix/runtime': [fileURLToPath(import.meta.resolve('@origamix/runtime'))],
       },
     },
   },
@@ -25,5 +26,5 @@ export default defineConfig({
   clean: true,
   splitting: false,
   sourcemap: true,
-  external: ['@origamix/ui', '@tangramino/base-editor', 'antd', 'react', 'react/jsx-runtime'],
+  external: ['@origamix/ui', 'antd', 'react', 'react/jsx-runtime'],
 });

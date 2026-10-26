@@ -12,20 +12,14 @@ import {
   useRef,
   useLayoutEffect,
   useSyncExternalStore,
-  type ComponentType,
-  type ComponentProps,
   type ErrorInfo,
   type ReactNode,
 } from 'react';
 import { createLogicNodes } from './logic-nodes';
-import {
-  createEngine,
-  withFlowEngine,
-  ELEMENT_UPDATE,
-  VIEW_UPDATE,
-  type Schema,
-} from '@tangramino/engine';
-import type { ReactView } from '@tangramino/react';
+import { createEngine, ELEMENT_UPDATE, VIEW_UPDATE } from './core/engine';
+import { withFlowEngine } from './core/flow';
+import type { RuntimeSchema as Schema, MaterialRegistry } from './core/types';
+import { MaterialView, renderLayout } from './renderer';
 
 export interface RuntimeDiagnostic {
   code: 'UNKNOWN_MATERIAL' | 'RENDER_ERROR' | 'FLOW_EXECUTION_ERROR';
@@ -38,10 +32,7 @@ export type RuntimeOutcome =
   | { outcome: 'success'; diagnostics: RuntimeDiagnostic[] }
   | { outcome: 'failed'; diagnostics: RuntimeDiagnostic[] };
 
-export const findUnknownMaterialTypes = (
-  schema: Schema,
-  materials: NonNullable<ComponentProps<typeof ReactView>['components']>,
-): string[] => {
+export const findUnknownMaterialTypes = (schema: Schema, materials: MaterialRegistry): string[] => {
   return [...new Set(Object.values(schema.elements).map((element) => element.type))].filter(
     (type) => !(type in materials),
   );
@@ -85,9 +76,8 @@ class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error 
   }
 }
 
-type RuntimeComponents = NonNullable<ComponentProps<typeof ReactView>['components']>;
+type RuntimeComponents = MaterialRegistry;
 type Engine = ReturnType<typeof createEngine>;
-type RuntimeLayout = { id: string; children?: RuntimeLayout[] };
 
 /** Subscribe per element so another element's event never remounts a focused input. */
 const RuntimeElement = ({
@@ -132,12 +122,15 @@ const RuntimeElement = ({
     [engine, id],
   );
   if (!element || element.hidden) return null;
-  const Material = components[element.type] as ComponentType<Record<string, unknown>>;
-  if (!Material) return null;
   return (
-    <Material {...callbacks} {...element.props} data-element-id={id}>
+    <MaterialView
+      id={id}
+      type={element.type}
+      components={components}
+      props={{ ...element.props, ...callbacks }}
+    >
       {children}
-    </Material>
+    </MaterialView>
   );
 };
 const RuntimeTree = ({
@@ -147,19 +140,21 @@ const RuntimeTree = ({
   engine: Engine;
   components: RuntimeComponents;
 }): React.JSX.Element => {
-  const render = (nodes: RuntimeLayout[]): ReactNode =>
-    nodes.map((node) => (
-      <RuntimeElement
-        key={node.id}
-        id={node.id}
-        engine={engine}
-        components={components}
-        tabKey={engine.elements[node.id]?.props.tabKey}
-      >
-        {node.children?.length ? render(node.children) : undefined}
-      </RuntimeElement>
-    ));
-  return <>{render(engine.layouts as RuntimeLayout[])}</>;
+  return (
+    <>
+      {renderLayout(engine.layouts, (node, children) => (
+        <RuntimeElement
+          key={node.id}
+          id={node.id}
+          engine={engine}
+          components={components}
+          tabKey={engine.elements[node.id]?.props.tabKey}
+        >
+          {children}
+        </RuntimeElement>
+      ))}
+    </>
+  );
 };
 
 const RuntimeCanvas = ({
@@ -168,7 +163,7 @@ const RuntimeCanvas = ({
   onOutcome,
 }: {
   schema: Schema;
-  materials: NonNullable<ComponentProps<typeof ReactView>['components']>;
+  materials: MaterialRegistry;
   onOutcome?: (outcome: RuntimeOutcome) => void;
 }): React.JSX.Element => {
   const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
@@ -189,37 +184,26 @@ const RuntimeCanvas = ({
         `页面版本不受支持，请使用 Origamix ${ORIGAMIX_VERSION} 打开页面、保存版本并应用到项目`,
       );
     const instance = createEngine(schema);
-    // Engine's legacy object-variable initializer evaluates JavaScript. Initialize
-    // declarative JSON here and give the event adapter no executable defaults.
-    for (const variable of schema.context?.globalVariables ?? []) {
-      let value: unknown = variable.defaultValue;
-      if (variable.type === 'object' || variable.type === 'array') {
-        try {
-          value = JSON.parse(String(value));
-        } catch {
-          value = undefined;
-        }
-      }
-      instance.setGlobalVariable(variable.name, value);
-    }
     installMaterialState(instance, materials);
     withFlowEngine({
       engine: instance,
-      schema: { ...schema, context: { globalVariables: [] } },
-      logicNodes: {
-        start: captureRuntimeEvent,
-        ...createLogicNodes((error) => {
-          if (activeSchema.current !== schema) return;
-          setFlowError({
-            schema,
-            message: (error instanceof Error ? error.message : '流程执行失败').slice(0, 1800),
-          });
-        }),
+      schema,
+      logicNodes: { start: captureRuntimeEvent, ...createLogicNodes() },
+      onError: (error) => {
+        if (activeSchema.current !== schema) return;
+        setFlowError({
+          schema,
+          message: (error instanceof Error ? error.message : '流程执行失败').slice(0, 1800),
+        });
       },
     });
     bindMaterialEventPayloads(instance);
     return instance;
   }, [schema, materials]);
+  useLayoutEffect(() => {
+    engine.activate();
+    return () => engine.dispose();
+  }, [engine]);
   const unknownTypes = useMemo(
     () => findUnknownMaterialTypes(schema, materials),
     [materials, schema],
@@ -255,19 +239,21 @@ const RuntimeCanvas = ({
   );
 };
 
+export interface OrigamixPageProps {
+  schema: Schema;
+  materials: MaterialRegistry;
+  resetKey?: string;
+  onOutcome?: (outcome: RuntimeOutcome) => void;
+  renderError?: (error: Error, retry: () => void) => ReactNode;
+}
+
 export const OrigamixPage = ({
   schema,
   materials,
   resetKey = JSON.stringify(schema),
   onOutcome,
   renderError,
-}: {
-  schema: Schema;
-  materials: NonNullable<ComponentProps<typeof ReactView>['components']>;
-  resetKey?: string;
-  onOutcome?: (outcome: RuntimeOutcome) => void;
-  renderError?: (error: Error, retry: () => void) => ReactNode;
-}): React.JSX.Element => {
+}: OrigamixPageProps): React.JSX.Element => {
   return (
     <RuntimeErrorBoundary resetKey={resetKey} onOutcome={onOutcome} renderError={renderError}>
       <RuntimeCanvas key={resetKey} schema={schema} materials={materials} onOutcome={onOutcome} />

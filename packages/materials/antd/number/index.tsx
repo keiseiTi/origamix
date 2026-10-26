@@ -14,15 +14,18 @@ export const Number = (props: IProps) => {
     fieldName,
     fieldRequired,
     fieldLabel,
-    tg_setRuntimeState,
-    tg_setContextValues,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    om_setContextValues,
     ...rest
   } = props;
   const [current, change] = useRuntimeValue(
     'value',
     value,
     defaultValue ?? null,
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdInputNumber

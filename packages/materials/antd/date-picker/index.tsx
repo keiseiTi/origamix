@@ -18,8 +18,11 @@ export const DatePicker = ({
   onOk,
   fieldName,
   fieldLabel,
-  tg_setRuntimeState,
-  tg_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
+  om_setContextValues,
   ...rest
 }: IProps) => {
   const [current, change] = useRuntimeValue(
@@ -29,7 +32,7 @@ export const DatePicker = ({
       defaultValue,
       Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
     ),
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdDatePicker

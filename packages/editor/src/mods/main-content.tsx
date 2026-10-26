@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FlowEditorView } from './flow-editor-view';
 import type { EditorMode } from '../interface';
 import type { EventTarget } from '../flow-editor/model';
-import { CanvasEditor } from '@tangramino/base-editor';
+import { CanvasEditor } from '../canvas';
 import { AttributePanel } from './attribute-panel';
 import { DropIndicator, EditableElement, EditorOverlay } from './canvas-tools';
 import { LeftPanel } from './left-panel';

@@ -1,6 +1,7 @@
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type LogicFlow from '@logicflow/core';
-import type { Schema } from '@tangramino/engine';
+import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 import { isFlowNodeProps } from '@origamix/shared';
 import { readGraph, toFlow } from '../../src/flow-editor/model';
 
@@ -47,6 +48,7 @@ describe('event graph commit', () => {
     expect(isFlowNodeProps('setElementProps', flow.nodes.action?.props)).toBe(true);
     expect(graph.nodes[1]?.properties?.width).toBe(148);
     const schema: Schema = {
+      context: { globalVariables: [] },
       elements: {},
       layout: { root: 'root', structure: {} },
       bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
@@ -70,7 +72,10 @@ describe('event graph commit', () => {
           },
         },
       },
-      extensions: { flowGraph: { 'button::onClick': graph } },
+      extensions: {
+        origamix: { schemaVersion: ORIGAMIX_VERSION },
+        flowGraph: { 'button::onClick': graph },
+      },
     };
     expect(
       toFlow(readGraph(schema, { elementId: 'button', event: 'onClick', label: '点击事件' })).nodes
@@ -135,7 +140,8 @@ describe('event graph commit', () => {
       {
         elements: {},
         layout: { root: 'root', structure: {} },
-        extensions: {},
+        extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+        context: { globalVariables: [] },
         bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
         flows: { flow },
       } as Schema,
@@ -151,7 +157,8 @@ describe('event graph commit', () => {
       {
         elements: {},
         layout: { root: 'root', structure: {} },
-        extensions: {},
+        extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+        context: { globalVariables: [] },
         bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
         flows: { flow: sharedFlow },
       } as Schema,

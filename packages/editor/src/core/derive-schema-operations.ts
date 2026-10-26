@@ -23,7 +23,7 @@ const depthOf = (elementId: string, parents: Map<string, string>): number => {
 };
 
 /**
- * Converts a Tangramino snapshot into deterministic domain operations.
+ * Converts an Editor snapshot into deterministic domain operations.
  * Returns null when the change cannot be represented safely by the current
  * operation protocol, allowing the editor-only snapshot endpoint to be used.
  */

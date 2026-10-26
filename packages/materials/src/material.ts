@@ -1,10 +1,35 @@
 import type React from 'react';
-import type {
-  Material as BasicMaterial,
-  AttributeConfig as BasicAttributeConfig,
-  PanelConfig as BasicPanelConfig,
-  EditorConfig as BasicEditorConfig,
-} from '@tangramino/base-editor';
+import type { MaterialManifest } from '@origamix/shared';
+
+type BasicAttributeConfig = {
+  label?: React.ReactNode;
+  field: string;
+  uiType?: string;
+  defaultValue?: string | number | boolean;
+  required?: boolean;
+  linkageShow?: { field: string; value?: string | number | boolean; isNotEmpty?: boolean }[];
+};
+type BasicPanelConfig = { title?: React.ReactNode };
+type BasicEditorConfig = { panels?: PanelConfig[] };
+type BasicMaterial = {
+  Component: React.ComponentType | React.LazyExoticComponent<React.ComponentType>;
+  title: string;
+  type: string;
+  icon?: React.ReactNode;
+  dropTypes?: string[];
+  defaultProps?: Record<string, unknown>;
+  isContainer?: boolean;
+  isBlock?: boolean;
+  contextConfig?: {
+    variables?: MaterialManifest['context']['variables'];
+    contextValues?: MaterialManifest['context']['values'];
+    methods?: {
+      name: string;
+      description?: string;
+      params?: { description: string; fields?: Record<string, unknown> }[];
+    }[];
+  };
+};
 import type { Input, Select, Checkbox, Switch, RadioGroupItem } from '@origamix/ui';
 
 export type OptionItem = {

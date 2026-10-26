@@ -131,7 +131,7 @@ describe('usePageApplicationState', () => {
     expect(onSchemaCommitted).not.toHaveBeenCalled();
   });
 
-  it('flushes the Working draft and explicitly saves a Revision', async () => {
+  it('flushes and saves a Revision without replacing the editor draft or history', async () => {
     schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
     schemaMocks.workingState.mockResolvedValue({
       revisionId: 'revision_old',
@@ -156,13 +156,13 @@ describe('usePageApplicationState', () => {
 
     expect(editorRef.current!.flush).toHaveBeenCalledOnce();
     expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
-    expect(onSchemaCommitted).toHaveBeenCalledWith('page_a', 'revision_saved');
+    expect(onSchemaCommitted).not.toHaveBeenCalled();
     // A project-level Apply changes lifecycle state without replacing this editor's snapshot.
     schemaMocks.applyState.mockResolvedValue({ status: 'in_sync' });
     act(() => useProjectUpgrades.getState().notifyCompleted('project_1'));
     await act(async () => vi.advanceTimersByTime(0));
     expect(result.current.applyStatus).toBe('in_sync');
-    expect(onSchemaCommitted).toHaveBeenCalledTimes(1);
+    expect(onSchemaCommitted).not.toHaveBeenCalled();
   });
   it('keeps an ambiguous Apply across unmount, then clears it on explicit retry', async () => {
     schemaMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });

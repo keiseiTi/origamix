@@ -1,5 +1,5 @@
 import { assertRuntimeField, assertRuntimeMethod, writeRuntimeState } from './material-state';
-import type { FlowExecuteContext, LogicNodes } from '@tangramino/engine';
+import type { FlowExecuteContext, LogicNodes } from './core/types';
 import { isFlowNodeProps, type FlowNodeProps, type RuntimeFlowNodeType } from '@origamix/shared';
 
 import { executeHyperValue } from './execute';
@@ -57,6 +57,7 @@ const handlers: NodeHandlers = {
         };
       }
     }
+    if (context.signal?.aborted || engine.disposed) return;
     for (const [id, patch] of Object.entries(changes)) writeRuntimeState(engine, id, patch);
     for (const [id, patch] of Object.entries(changes)) {
       const writeField = engine.getContextValue(id)?.$writeField;
@@ -71,6 +72,7 @@ const handlers: NodeHandlers = {
       .map((id) => elementId(context, id))
       .filter((id): id is string => Boolean(id));
     const visible = await executeHyperValue(context, data.value);
+    if (context.signal?.aborted || engine.disposed) return;
     if (visible === false) engine.hiddenElements(ids);
     else engine.showElements(ids);
   },
@@ -80,6 +82,7 @@ const handlers: NodeHandlers = {
     for (const setter of entries)
       if (typeof setter.name === 'string' && setter.name && safeKey(setter.name))
         changes.push([setter.name, await executeHyperValue(context, setter.value)]);
+    if (context.signal?.aborted || context.engine.disposed) return;
     for (const [name, value] of changes) context.engine.setGlobalVariable(name, value);
   },
   emitElementAction: async (context) => {
@@ -93,6 +96,7 @@ const handlers: NodeHandlers = {
       const method = values[setter.methodName];
       if (typeof method !== 'function') continue;
       const value = await executeHyperValue(context, setter.value);
+      if (context.signal?.aborted || context.engine.disposed) return;
       results.push(Promise.resolve().then(() => method(value)));
     }
     return Promise.allSettled(results);
@@ -128,7 +132,9 @@ const handlers: NodeHandlers = {
         headers,
         credentials: 'omit',
         redirect: 'error',
-        signal: AbortSignal.timeout(10000),
+        signal: context.signal
+          ? AbortSignal.any([context.signal, AbortSignal.timeout(10000)])
+          : AbortSignal.timeout(10000),
         ...(method !== 'GET' && body !== null && body !== undefined
           ? { body: JSON.stringify(body) }
           : {}),
@@ -171,8 +177,9 @@ export const logicNodes: LogicNodes = Object.fromEntries(
   (Object.keys(handlers) as RuntimeFlowNodeType[]).map((type) => [type, registerNode(type)]),
 );
 
-/** Engine does not catch rejected actions. Stop this invocation and report its failure. */
-export const createLogicNodes = (onError: (error: unknown) => void): LogicNodes => {
+/** Direct evaluators may report errors; the production dispatcher consumes rejections. */
+export const createLogicNodes = (onError?: (error: unknown) => void): LogicNodes => {
+  if (!onError) return logicNodes;
   const stopped = new WeakSet<object>();
   return Object.fromEntries(
     Object.entries(logicNodes).map(([type, handler]) => [

@@ -3,7 +3,9 @@ import {
   bindMaterialEventPayloads,
   captureRuntimeEvent,
 } from '../material-state';
-import { createEngine, withFlowEngine, type Schema } from '@tangramino/engine';
+import { createEngine } from '../core/engine';
+import { withFlowEngine } from '../core/flow';
+import type { RuntimeSchema as Schema } from '../core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared';
 import { createLogicNodes, logicNodes } from '../logic-nodes';
@@ -18,6 +20,9 @@ const schema: Schema = {
   },
   layout: { root: 'root', structure: { root: ['button', 'form', 'modal'] } },
   extensions: {},
+  flows: {},
+  bindElements: [],
+  context: { globalVariables: [] },
 };
 afterEach(() => vi.unstubAllGlobals());
 
@@ -63,9 +68,13 @@ describe('declarative event execution', () => {
         },
       },
       bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
+      context: {
+        globalVariables: [{ name: 'config', type: 'object', defaultValue: { nested: true } }],
+      },
     };
     const original = JSON.stringify(source);
     const engine = createEngine(source);
+    (engine.getGlobalVariable('config') as { nested: boolean }).nested = false;
     const context = { engine, data: {}, lastReturnedVal: {} };
     installMaterialState(engine, {
       button: {
@@ -109,12 +118,17 @@ describe('declarative event execution', () => {
         },
       }),
     ).rejects.toThrow('not writable');
-    const publish = engine.getState('button')?.tg_setRuntimeState as (
+    const publish = engine.getState('button')?.om_setRuntimeState as (
       patch: Record<string, unknown>,
     ) => void;
     publish({ text: 'latest' });
     expect(resolveHyperContext(context, 'state.button.text')).toBe('latest');
     expect(JSON.stringify(source)).toBe(original);
+    const interrupted = trigger({ value: 'disposed', delay: 10 });
+    engine.dispose();
+    await interrupted;
+    expect(captured).toEqual(['second', 'first']);
+    expect(engine.signal.aborted).toBe(true);
   });
 
   // Runtime owns page execution; Server cannot verify resolved bindings or code results.

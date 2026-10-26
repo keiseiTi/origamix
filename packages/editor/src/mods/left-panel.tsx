@@ -1,7 +1,7 @@
 import { getElementLabel } from '@origamix/shared';
 import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
-import { SchemaUtils } from '@tangramino/engine';
-import { useEditorCore, type ActiveElement } from '@tangramino/base-editor';
+import { SchemaUtils } from '../core/schema';
+import { useEditorCore, type ActiveElement } from '../core/session';
 import { useMemo, useState } from 'react';
 import { MaterialPanel, type MaterialGroup } from './material-panel';
 import type { EventTarget } from '../flow-editor/model';

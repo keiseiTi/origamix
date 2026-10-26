@@ -4,7 +4,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Ownership and entry points
 
-- `src/main.tsx`, `src/router.ts`, and the manifest-configured page directory (default `src/pages/`): portable React/Tangramino scaffold.
+- `src/main.tsx`, `src/router.ts`, and the manifest-configured page directory (default `src/pages/`): portable React/Origamix scaffold.
 - `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`: standalone tools and build configuration.
 - The template README is also the generated-project usage documentation; ProjectSource only customizes its heading and project code.
 - Copying is owned by `../server/template.ts`; coverage starts in `../server/test/template.test.ts` and `../server/test/test-template.mjs`.
@@ -15,7 +15,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - Generated projects must install, typecheck and build outside the monorepo. Declare runtime/dev dependencies locally; no `workspace:*`, cross-package source imports, root-only tsconfig inheritance or absolute developer paths.
 - Do not import Electron, the desktop bridge, Origamix's local backend or privileged credentials. Generated runtime is independent of the editor.
 - Generated page code is a stable shell: it loads the page's managed `schema.json`, registers the declared `@origamix/materials/*` package and renders through `@origamix/runtime`. Origamix applies Schema only; it must not regenerate or overwrite the shell during ordinary editing.
-- Keep Tangramino page data compatible with Shared Schema without a runtime dependency on `@origamix/shared`. Coordinate format changes with Server project/page generation and the Apply-to-Project pipeline.
+- Keep Origamix page data compatible with Shared Schema without a runtime dependency on `@origamix/shared`. Coordinate format changes with Server project/page generation and the Apply-to-Project pipeline.
 - Use strict TypeScript and Tailwind. Follow root HeroUI/Lucide requirements when adding controls/icons and declare imported packages directly, including stylesheet entry packages such as `@heroui/styles`. Do not add packages for unused future plans.
 - `src/index.css` includes the installed Materials `dist` in Tailwind scanning so generated projects compile material-owned canvas classes independently of the monorepo.
 - Changed pages support light/dark themes and accessible states. Do not copy workbench navigation, editor chrome or mock persistence into generated applications.

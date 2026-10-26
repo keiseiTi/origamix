@@ -34,8 +34,11 @@ export const DatePickerRange = ({
   onOk,
   fieldName,
   fieldLabel,
-  tg_setRuntimeState,
-  tg_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
+  om_setContextValues,
   ...rest
 }: IProps) => {
   const [current, change] = useRuntimeValue<Range>(
@@ -51,7 +54,7 @@ export const DatePickerRange = ({
         Boolean(rest.showTime) && (!rest.picker || rest.picker === 'date'),
       ),
     ],
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdDatePicker.RangePicker

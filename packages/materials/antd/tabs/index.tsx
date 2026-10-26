@@ -10,19 +10,20 @@ export const Tabs = ({
   defaultActiveKey,
   onChange,
   onEdit,
-  tg_mode,
-  tg_dropPlaceholder,
-  tg_setContextValues,
-  tg_setRuntimeState,
+  om_mode,
+  om_dropPlaceholder,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_readonly,
   ...rest
 }: IProps) => {
   const { token } = theme.useToken();
-  const [pages, setPages] = useRuntimeValue('items', items, [], tg_setRuntimeState);
+  const [pages, setPages] = useRuntimeValue('items', items, [], om_setRuntimeState);
   const [active, setActive] = useRuntimeValue<string | null>(
     'activeKey',
     activeKey,
     defaultActiveKey ?? pages[0]?.key ?? null,
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   const contents = Children.toArray(children);
   const target = (child: (typeof contents)[number]) =>
@@ -58,7 +59,7 @@ export const Tabs = ({
           <>
             {item.children}
             {contents.filter((child) => target(child) === item.key)}
-            {tg_mode === 'design' && index === 0 && !contents.length ? tg_dropPlaceholder : null}
+            {om_mode === 'design' && index === 0 && !contents.length ? om_dropPlaceholder : null}
           </>
         ),
       }))}

@@ -10,8 +10,8 @@ import {
   Textarea,
 } from '@origamix/ui';
 
-import { useEditorCore } from '@tangramino/base-editor';
-import type { GlobalVariable } from '@tangramino/engine';
+import { useEditorCore } from '../core/session';
+import type { GlobalVariable } from '@origamix/shared';
 import { Plus, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useState } from 'react';

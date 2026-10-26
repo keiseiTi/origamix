@@ -1,3 +1,4 @@
+import { Check } from '@sinclair/typebox/value';
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 import { flowPointer, validateFlowSemantics, type FlowSemanticError } from './flow-validation.ts';
@@ -150,3 +151,7 @@ export const validateSchemaOperationBatch = (value: unknown): ValidationResult =
   validateSchemaOperationBatchSchema(value);
   return result(validateSchemaOperationBatchSchema.errors);
 };
+
+/** Interpreted validation for CSP-restricted design surfaces; no generated JavaScript. */
+export const isPageSchema = (value: unknown): value is OrigamixPageSchema =>
+  Check(PageSchema, value) && validatePageSemantics(value).length === 0;

@@ -1,8 +1,9 @@
-import { useEditorCore } from '@tangramino/base-editor';
+import { useEditorCore } from '../core/session';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export const InsertPositionIndicator = (): React.JSX.Element | null => {
+  const canvasRoot = useEditorCore((state) => state.canvasRoot);
   const insertPosition = useEditorCore((state) => state.insertPosition);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -14,8 +15,8 @@ export const InsertPositionIndicator = (): React.JSX.Element | null => {
     }
 
     const selector = `[data-element-id="${CSS.escape(insertPosition.id)}"]`;
-    setRect(document.querySelector(selector)?.getBoundingClientRect() ?? null);
-  }, [insertPosition]);
+    setRect(canvasRoot?.querySelector(selector)?.getBoundingClientRect() ?? null);
+  }, [insertPosition, canvasRoot]);
 
   useEffect(() => {
     const update = (): void => {

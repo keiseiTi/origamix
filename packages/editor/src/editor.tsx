@@ -1,14 +1,10 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
 import { EditorThemeContext, MaterialCatalogContext } from './core/environment';
-import {
-  DragOverlay,
-  EditorProvider,
-  historyPlugin,
-  usePluginContext,
-  useEditorCore,
-  type Material,
-} from '@tangramino/base-editor';
-import type { Schema } from '@tangramino/engine';
+import { DragOverlay } from './canvas';
+import { EditorProvider } from './core/provider';
+import { useEditorCore, useEditorStoreApi, type EditorCore } from './core/session';
+import { type Material } from './core/material';
+import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { InsertPositionIndicator } from './mods/insert-position-indicator';
 import { MainContent } from './mods/main-content';
@@ -48,17 +44,19 @@ const HistoryBridge = ({
   historyRef,
   onChange,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  historyRef: React.RefObject<any | undefined>;
+  historyRef: React.RefObject<Pick<EditorCore, 'undo' | 'redo'> | undefined>;
   onChange: (state: EditorHistoryState) => void;
 }): null => {
-  const schema = useEditorCore((state) => state.schema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const history = usePluginContext<any>('history');
+  const store = useEditorStoreApi();
+  const canUndo = useEditorCore((state) => state.canUndo);
+  const canRedo = useEditorCore((state) => state.canRedo);
   useEffect(() => {
-    historyRef.current = history;
-    onChange({ canUndo: history?.canUndo() ?? false, canRedo: history?.canRedo() ?? false });
-  }, [history, historyRef, onChange, schema]);
+    historyRef.current = store.getState();
+    onChange({ canUndo, canRedo });
+    return () => {
+      historyRef.current = undefined;
+    };
+  }, [store, historyRef, onChange, canUndo, canRedo]);
   return null;
 };
 
@@ -128,10 +126,7 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
       () => [...(registration.rootMaterials ?? []), ...groups.flatMap((group) => group.children)],
       [groups, registration.rootMaterials],
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const plugins = useMemo(() => [historyPlugin({ limit: 100 })], [sessionKey]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const historyRef = useRef<any>(undefined);
+    const historyRef = useRef<Pick<EditorCore, 'undo' | 'redo'> | undefined>(undefined);
 
     // Host status updates must not rerun the engine's change effect for an unchanged schema.
     const onChangeRef = useRef(onChange);
@@ -164,7 +159,6 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(
               <EditorProvider
                 key={sessionKey}
                 materials={materials}
-                plugins={plugins}
                 schema={schema as Schema}
                 onChange={onEngineChange}
               >

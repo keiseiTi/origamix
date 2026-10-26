@@ -5,14 +5,14 @@
 ## 接口
 
 ```tsx
-import { OrigamixPage } from '@origamix/runtime/react';
+import { OrigamixPage } from '@origamix/runtime';
 
 <OrigamixPage schema={schema} materials={materials} resetKey={revisionId} />;
 ```
 
-调用者提供 Schema 和物料注册表。Runtime 负责 Engine 与按元素订阅的 React 渲染装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。`resetKey` 变化会重建页面会话并恢复错误边界。
+调用者提供 Schema 和物料注册表。Runtime 负责本地运行会话 与按元素订阅的 React 渲染装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。`resetKey` 变化会重建页面会话并恢复错误边界。
 
-该入口也导出 `RuntimeDiagnostic`、`RuntimeOutcome` 和 `findUnknownMaterialTypes`。UI 风格、诊断上传及页面刷新属于调用方；生成项目无需依赖 App、Shared 或 Server。
+该根入口也导出 `DesignRenderer`、`MaterialRegistry`、`RuntimeMaterialProps`、`RuntimeDiagnostic`、`RuntimeOutcome` 和 `findUnknownMaterialTypes`。UI 风格、诊断上传及页面刷新属于调用方；生成项目无需依赖 App、Shared 或 Server。
 
 ## 事件逻辑
 
@@ -44,7 +44,7 @@ pnpm --filter @origamix/runtime build
 在使用 Ant Design 物料的 React 项目中，页面入口可以写为：
 
 ```tsx
-import { OrigamixPage } from '@origamix/runtime/react';
+import { OrigamixPage } from '@origamix/runtime';
 import materials from '@origamix/materials/antd/runtime';
 import schema from './schema.json';
 
@@ -77,3 +77,15 @@ export default Page;
 用户输入先发布到读值投影，再触发事件；setElementProps 对 context.writable 校验后更新投影与目标元素。state 引用只允许 context.variables 的业务路径，method 只允许公开可调用方法。事件参数在 start 捕获为本次调用的独立快照，异步事件不共享一个可变载荷。
 
 React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建正在输入的其他控件。Form 的字段绑定在物料适配器处理；程序写入与字段方法同时维护字段值及整表读值。新增回归见 test/logic-nodes.test.ts，覆盖异步事件隔离、白名单与源 Schema 不变；界面焦点和原生控件转换仍需实际交互验收。
+
+## 编辑态与运行态
+
+`@origamix/runtime` 是唯一公开入口。工作区消费根源码以支持 HMR，发布包消费 dist/index.js 与内联后的声明；生成项目无需安装 Shared 或 Editor。
+
+`OrigamixPage` 创建运行状态、变量、事件和异步流程会话。卸载或更换会话时中止请求，并阻止旧调用的后续状态写入。`DesignRenderer` 只解析布局并调用物料，复用稳定的 MaterialView；不创建执行引擎、绑定业务事件、执行 init/表达式/函数，也不注入运行写值和方法注册回调。Editor 通过 renderElement 提供选择、拖拽、容器占位与覆盖层。
+
+物料收到 `om_mode: 'design' | 'render'`，设计占位通过 om_dropPlaceholder 提供；运行态通过 om_setRuntimeState、om_setContextValues 上报业务状态和注册方法。内置物料在设计态允许 Tabs 等必要设计交互，但跳过运行生命周期；自定义组件也必须遵守此约定。
+
+既有页面源码使用旧 `@origamix/runtime/react` 导入时，需要显式改成根入口；Origamix 不自动改写用户已有页面源码。新生成页面直接使用根入口。Schema 数据格式保持兼容。
+
+部分状态、布局和流程算法参考 Tangramino，来源及许可见 [NOTICE](NOTICE)；运行包不依赖该项目。

@@ -65,7 +65,6 @@ const material = defineMaterial({
             linkageShow: [
               {
                 field: 'autoSize',
-                defaultValue: false,
                 value: false,
               },
             ],

@@ -7,11 +7,5 @@ export default defineConfig({
   clean: true,
   splitting: true,
   sourcemap: true,
-  external: [
-    'react',
-    'react-dom',
-    'react-dom/client',
-    'react/jsx-runtime',
-    '@tangramino/base-editor',
-  ],
+  external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
 });

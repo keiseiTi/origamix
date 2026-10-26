@@ -179,8 +179,7 @@ try {
   const installed = JSON.parse(
     await readFile(join(project, 'node_modules/@origamix/materials/package.json'), 'utf8'),
   );
-  assert.equal(installed.dependencies?.['@tangramino/base-editor'], undefined);
-  assert.equal(installed.peerDependenciesMeta?.['@tangramino/base-editor']?.optional, true);
+  assert.ok(!JSON.stringify(installed).includes('@tangramino/'));
   assert.equal(installed.peerDependencies?.['@heroui/react'], undefined);
   assert.equal(installed.dependencies?.['@origamix/ui'], undefined);
   assert.equal(installed.peerDependenciesMeta?.['@origamix/ui']?.optional, true);
@@ -192,7 +191,7 @@ try {
   }
   const lockfile = await readFile(join(project, 'pnpm-lock.yaml'), 'utf8');
   for (const forbidden of [
-    '@tangramino/base-editor',
+    '@tangramino/',
     '@logicflow/',
     '@origamix/editor',
     '@origamix/ui',

@@ -19,11 +19,11 @@ const FormContent = (props: IProps) => {
     onValuesChange: onValuesChangeProp,
     onFinish,
     onFinishFailed,
-    tg_mode,
-    tg_readonly,
-    tg_dropPlaceholder,
-    tg_setContextValues,
-    tg_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    om_setContextValues,
+    om_setRuntimeState,
     ...restProps
   } = props;
   const [form] = AntdForm.useForm();
@@ -31,9 +31,9 @@ const FormContent = (props: IProps) => {
   const fieldPublishers = useRef(new Map<string, (value: unknown) => void>());
   const publish = useCallback(() => {
     const values = form.getFieldsValue(true);
-    tg_setRuntimeState?.({ value: values });
+    om_setRuntimeState?.({ value: values });
     for (const [name, send] of fieldPublishers.current) send(values[name]);
-  }, [form, tg_setRuntimeState]);
+  }, [form, om_setRuntimeState]);
   const fieldContext = useMemo(
     () => ({
       sync: publish,
@@ -56,7 +56,7 @@ const FormContent = (props: IProps) => {
   }, [value, form]);
 
   useLayoutEffect(() => {
-    tg_setContextValues?.({
+    om_setContextValues?.({
       setFieldsValue: (fields: Record<string, unknown>) => {
         form.setFieldsValue(fields);
         publish();
@@ -72,10 +72,10 @@ const FormContent = (props: IProps) => {
       },
     });
     publish();
-  }, [form, tg_setContextValues, publish]);
+  }, [form, om_setContextValues, publish]);
 
   const onValuesChange = (_: Record<string, unknown>, allValues: Record<string, unknown>) => {
-    tg_setRuntimeState?.({ value: allValues });
+    om_setRuntimeState?.({ value: allValues });
     onValuesChangeProp?.(_, allValues);
   };
 
@@ -86,11 +86,11 @@ const FormContent = (props: IProps) => {
         form={form}
         onValuesChange={onValuesChange}
         onFinish={(values) => {
-          tg_setRuntimeState?.({ value: values });
+          om_setRuntimeState?.({ value: values });
           onFinish?.(values);
         }}
         onFinishFailed={(info) => {
-          tg_setRuntimeState?.({ value: info.values });
+          om_setRuntimeState?.({ value: info.values });
           onFinishFailed?.(info);
         }}
         labelCol={
@@ -114,7 +114,7 @@ const FormContent = (props: IProps) => {
           ...restProps.style,
         }}
       >
-        {children ?? tg_dropPlaceholder}
+        {children ?? om_dropPlaceholder}
       </AntdForm>
     </FormRuntimeContext.Provider>
   );
@@ -124,7 +124,7 @@ export const Form = React.forwardRef<HTMLDivElement, IProps>((props, ref) => {
   return (
     <div ref={ref} className='min-h-12 w-full'>
       <FormContent
-        key={props.tg_mode === 'design' ? JSON.stringify(props.initialValues) : undefined}
+        key={props.om_mode === 'design' ? JSON.stringify(props.initialValues) : undefined}
         {...props}
       />
     </div>

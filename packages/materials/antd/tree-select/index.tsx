@@ -15,8 +15,11 @@ export const TreeSelect = (props: IProps) => {
     fieldName,
     fieldRequired,
     fieldLabel,
-    tg_setRuntimeState,
-    tg_setContextValues,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    om_setContextValues,
     treeCheckStrictly,
     ...rest
   } = props;
@@ -24,7 +27,7 @@ export const TreeSelect = (props: IProps) => {
     'value',
     value,
     defaultValue ?? (props.multiple || props.treeCheckable ? [] : null),
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   return (
     <AntdTreeSelect

@@ -1,6 +1,7 @@
 import { getElementLabel } from '@origamix/shared';
 import type { EventTarget } from '../flow-editor/model';
 import {
+  Button,
   Checkbox,
   FieldLabel,
   Input,
@@ -15,13 +16,9 @@ import {
 } from '@origamix/ui';
 
 import { ChevronRight } from 'lucide-react';
-import { SchemaUtils } from '@tangramino/engine';
-import {
-  useEditorCore,
-  usePluginCore,
-  type ActiveElement,
-  type AttributeConfig,
-} from '@tangramino/base-editor';
+import { SchemaUtils } from '../core/schema';
+import { useEditorCore, type ActiveElement } from '../core/session';
+import { type AttributeConfig } from '../core/material';
 import { useEffect, useMemo, useState } from 'react';
 import type { JsonAttributeConfig } from '../extensions';
 import { JsonAttributeField } from '../components/json-attribute-field';
@@ -62,7 +59,6 @@ export const AttributePanel = ({
   onEditEvent: (target: EventTarget) => void;
 }): React.JSX.Element => {
   const { activeElement, materials, schema, setActiveElement, setSchema } = useEditorCore();
-  const { callSchemaHook } = usePluginCore();
   const [activePanel, setActivePanel] = useState('0');
   const material = activeElement?.material;
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
@@ -139,15 +135,8 @@ export const AttributePanel = ({
 
   const update = (field: string, value: unknown): void => {
     if (!activeElement) return;
-    const operation = {
-      elementId: activeElement.id,
-      props: { [field]: value },
-      oldProps: { [field]: values[field] },
-    };
-    if (callSchemaHook('onBeforeUpdateProps', schema, operation) === false) return;
     const result = SchemaUtils.setElementProps(schema, activeElement.id, { [field]: value });
-    callSchemaHook('onAfterUpdateProps', result.schema, result.operation);
-    setSchema(result.schema);
+    setSchema(result.schema, { historyGroup: `props:${activeElement.id}:${field}` });
   };
 
   const renderField = (config: AttributeConfig): React.JSX.Element | null => {
@@ -411,10 +400,11 @@ export const AttributePanel = ({
                           </p>
                         )}
                         {panel.methods.map((method) => (
-                          <div
+                          <Button
+                            variant='outline'
                             key={method.name}
                             data-flow-event={method.name}
-                            className='cursor-pointer mb-2 w-full justify-between p-2 border border-solid border-blue-500 rounded'
+                            className='mb-2 w-full justify-start text-xs'
                             onClick={() =>
                               onEditEvent({
                                 elementId: activeElement.id,
@@ -426,7 +416,7 @@ export const AttributePanel = ({
                             <span>
                               {method.description || method.name}（{method.name}）
                             </span>
-                          </div>
+                          </Button>
                         ))}
                       </div>
                     );

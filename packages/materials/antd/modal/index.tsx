@@ -16,10 +16,11 @@ export const Modal = ({
   maskClosable,
   onCancel,
   onOk,
-  tg_mode,
-  tg_dropPlaceholder,
-  tg_setContextValues,
-  tg_setRuntimeState,
+  om_mode,
+  om_dropPlaceholder,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_readonly,
   showFooter,
   okDisabled,
   cancelDisabled,
@@ -27,9 +28,9 @@ export const Modal = ({
   cancelButtonProps,
   ...rest
 }: IProps) => {
-  const [currentOpen, setOpen] = useRuntimeValue('open', open, false, tg_setRuntimeState);
+  const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
   const { token } = theme.useToken();
-  const content = children ?? tg_dropPlaceholder;
+  const content = children ?? om_dropPlaceholder;
   const modal = (
     <AntdModal
       {...rest}
@@ -56,7 +57,7 @@ export const Modal = ({
         ...cancelButtonProps,
         ...(cancelDisabled !== undefined ? { disabled: cancelDisabled } : {}),
       }}
-      {...(tg_mode === 'design'
+      {...(om_mode === 'design'
         ? {
             getContainer: false,
             keyboard: false,
@@ -72,7 +73,7 @@ export const Modal = ({
       {content}
     </AntdModal>
   );
-  if (tg_mode !== 'design') return modal;
+  if (om_mode !== 'design') return modal;
   return (
     <div
       className={`relative w-full ${currentOpen ? 'min-h-80' : 'min-h-16'}`}

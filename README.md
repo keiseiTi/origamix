@@ -47,7 +47,7 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 | [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口               |
 | [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 显式协议子路径                               |
 | [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest        |
-| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime/react`                    |
+| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime`                          |
 | [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                           |
 
 自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。

@@ -5,7 +5,7 @@ import '@logicflow/core/lib/style/index.css';
 import '@logicflow/extension/lib/style/index.css';
 import { useEffect, useRef, useState } from 'react';
 import { useFlowEditorSession } from './session';
-import { SchemaUtils } from '@tangramino/engine';
+import { SchemaUtils } from '../core/schema';
 import { Maximize, Minus, Plus, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@origamix/ui';
 import { nodeKinds, readGraph, toFlow, type EventTarget } from './model';
@@ -22,12 +22,15 @@ export const FlowEditor = ({
   target: EventTarget | null;
   onTargetChange: (target: EventTarget) => void;
 }): React.JSX.Element => {
-  const { schema, materials, onChange } = useFlowEditorSession();
+  const { schema, materials, onChange, history } = useFlowEditorSession();
   const container = useRef<HTMLDivElement>(null);
   const lfRef = useRef<LogicFlow | null>(null);
   const lastGraph = useRef('');
   const [selected, setSelected] = useState<LogicFlow.NodeData | null>(null);
-  const [historyState, setHistoryState] = useState({ undoAble: false, redoAble: false });
+  const historyRef = useRef(history);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
   const [error, setError] = useState<string | null>(null);
   const schemaRef = useRef(schema);
   useEffect(() => {
@@ -75,7 +78,7 @@ export const FlowEditor = ({
       plugins: [SelectionSelect],
       keyboard: { enabled: true },
       guards: { beforeDelete: (data) => data.type !== 'start' },
-      history: true,
+      history: false,
       edgeTextEdit: false,
       nodeTextEdit: false,
       adjustEdge: false,
@@ -126,15 +129,13 @@ export const FlowEditor = ({
       return false;
     });
     lf.keyboard.on(['cmd+z', 'ctrl+z'], () => {
-      lf.undo();
-      commit();
+      historyRef.current.undo();
       setSelected(null);
       lf.container.focus();
       return false;
     });
     lf.keyboard.on(['cmd+y', 'ctrl+y', 'cmd+shift+z', 'ctrl+shift+z'], () => {
-      lf.redo();
-      commit();
+      historyRef.current.redo();
       setSelected(null);
       lf.container.focus();
       return false;
@@ -150,9 +151,6 @@ export const FlowEditor = ({
     );
     lf.on('node:click', ({ data }) => setSelected(data));
     lf.on('blank:click', () => setSelected(null));
-    lf.on('history:change', ({ data }) =>
-      setHistoryState({ undoAble: data.undoAble, redoAble: data.redoAble }),
-    );
     lf.on(
       'node:add,node:dnd-add,node:delete,node:drop,node:properties-change,edge:add,edge:delete,edge:adjust,edge:exchange-node',
       scheduleCommit,
@@ -280,10 +278,9 @@ export const FlowEditor = ({
                 size='icon-sm'
                 variant='ghost'
                 aria-label='撤销流程修改'
-                disabled={!historyState.undoAble}
+                disabled={!history.canUndo}
                 onClick={() => {
-                  lfRef.current?.undo();
-                  commit();
+                  history.undo();
                   setSelected(null);
                 }}
               >
@@ -293,10 +290,9 @@ export const FlowEditor = ({
                 size='icon-sm'
                 variant='ghost'
                 aria-label='重做流程修改'
-                disabled={!historyState.redoAble}
+                disabled={!history.canRedo}
                 onClick={() => {
-                  lfRef.current?.redo();
-                  commit();
+                  history.redo();
                   setSelected(null);
                 }}
               >

@@ -15,8 +15,11 @@ export const Upload = ({
   onChange,
   onRemove,
   fileList: _runtimeFiles,
-  tg_setContextValues,
-  tg_setRuntimeState,
+  om_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
   ...rest
 }: IProps) => {
   const [files, setFiles] = useState<UploadProps['fileList']>([]);
@@ -24,7 +27,7 @@ export const Upload = ({
     fileList: files,
     onChange: (info) => {
       setFiles(info.fileList);
-      tg_setRuntimeState?.({ fileList: fileDescriptions(info.fileList) });
+      om_setRuntimeState?.({ fileList: fileDescriptions(info.fileList) });
       onChange?.(info);
     },
     onRemove: (file) => {
@@ -32,9 +35,10 @@ export const Upload = ({
       return true;
     },
     ...rest,
-    disabled,
-    action,
-    beforeUpload: beforeUpload ?? (action ? undefined : () => false),
+    disabled: disabled || om_mode === 'design',
+    action: om_mode === 'design' ? undefined : action,
+    beforeUpload:
+      om_mode === 'design' ? () => false : (beforeUpload ?? (action ? undefined : () => false)),
   };
   if (drag)
     return <AntdUpload.Dragger {...uploadProps}>{children ?? <p>{text}</p>}</AntdUpload.Dragger>;

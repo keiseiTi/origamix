@@ -24,8 +24,17 @@ export interface IProps
 }
 
 export const Button = (props: IProps) => {
-  const { text, tg_setContextValues, fieldName, fieldLabel, tg_setRuntimeState, ...restProps } =
-    props;
+  const {
+    text,
+    om_setContextValues,
+    fieldName,
+    fieldLabel,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    ...restProps
+  } = props;
   return <AntdButton {...restProps}>{text}</AntdButton>;
 };
 

@@ -7,11 +7,11 @@ description: Runtime：页面渲染的职责、使用与开发说明
 
 ## 职责
 
-将调用者提供的 Schema 与物料注册表交给 Tangramino 渲染，供 App 预览与生成项目共用。
+通过 Origamix 自有渲染核心展示调用者提供的 Schema 与物料注册表，供 App 预览与生成项目共用。
 
 ## 关键入口
 
-`react.tsx` 提供 `@origamix/runtime/react`，包括 `OrigamixPage`、未知物料检测和渲染结果诊断。
+`index.ts` 提供唯一根入口 `@origamix/runtime`，导出运行态 `OrigamixPage`、编辑态 `DesignRenderer`、未知物料检测和诊断契约。两种模式复用稳定渲染核心；编辑态不创建业务执行会话。
 
 ## 协作边界
 

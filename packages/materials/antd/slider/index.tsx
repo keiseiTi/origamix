@@ -19,8 +19,11 @@ export const Slider = ({
   tooltipPlacement,
   fieldName,
   fieldLabel,
-  tg_setRuntimeState,
-  tg_setContextValues,
+  om_setRuntimeState,
+  om_mode,
+  om_readonly,
+  om_dropPlaceholder,
+  om_setContextValues,
   ...rest
 }: IProps) => {
   const [current, change] = useRuntimeValue<number | number[]>(
@@ -29,7 +32,7 @@ export const Slider = ({
     rest.range
       ? [defaultStart ?? rest.min ?? 0, defaultEnd ?? rest.max ?? 100]
       : (defaultValue ?? rest.min ?? 0),
-    tg_setRuntimeState,
+    om_setRuntimeState,
   );
   const tooltip = {
     ...rest.tooltip,

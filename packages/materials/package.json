@@ -62,19 +62,15 @@
     "react": "^19.2.8",
     "tsup": "^8.5.0",
     "@origamix/shared": "workspace:*",
-    "@tangramino/base-editor": "^0.1.3",
-    "@origamix/ui": "workspace:*"
+    "@origamix/ui": "workspace:*",
+    "@origamix/runtime": "workspace:*"
   },
   "peerDependencies": {
     "antd": "^6",
     "react": "^19",
-    "@tangramino/base-editor": "^0.1.3",
     "@origamix/ui": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@tangramino/base-editor": {
-      "optional": true
-    },
     "@origamix/ui": {
       "optional": true
     }
