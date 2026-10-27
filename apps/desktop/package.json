@@ -14,12 +14,11 @@
     "test:main": "node test/test-electron.mjs",
     "evaluate:agent": "node test/evaluate-agent.mjs",
     "test:resources": "node test/test-electron.mjs --resources",
-    "build": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build && pnpm --filter @origamix/server build:assemble && node scripts/build.mjs",
-    "build:assemble": "node scripts/build.mjs",
-    "package": "pnpm --filter @origamix/app build && pnpm build && pnpm package:assemble",
-    "package:dir": "pnpm --filter @origamix/app build && pnpm build && pnpm package:dir:assemble",
-    "package:dir:assemble": "electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
-    "package:assemble": "electron-builder --config electron-builder.yml --mac --arm64 --publish never"
+    "build": "node scripts/build.mjs",
+    "package": "pnpm package:mac",
+    "package:dir": "electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
+    "package:mac": "electron-builder --config electron-builder.yml --mac --arm64 --publish never",
+    "test:dev": "node test/test-development.mjs"
   },
   "dependencies": {
     "@origamix/server": "workspace:*",

@@ -97,6 +97,8 @@ controlPort.on('message', async ({ data }) => {
   try {
     backend = await startServer({
       databasePath: input.databasePath,
+      allowedOrigins:
+        typeof input.workbenchOrigin === 'string' ? [input.workbenchOrigin] : undefined,
       templatePath: input.templatePath,
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,

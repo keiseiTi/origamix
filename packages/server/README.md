@@ -134,7 +134,7 @@ pnpm dev:web
 pnpm dev
 ```
 
-Server 单包检查：
+Server 单包检查（先运行 `pnpm --filter @origamix/materials build` 准备物料声明和清单）：
 
 ```sh
 pnpm --filter @origamix/server lint
@@ -178,6 +178,8 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 ## 开发宿主与模板集成
 
 独立启动可设置 `ORIGAMIX_SERVER_TOKEN` 后执行 `pnpm --filter @origamix/server dev`。监听地址保持 loopback，客户端同时发送 bearer token 与 `X-Origamix-Service`。开发监督器只清理自己启动的进程。
+
+根 `pnpm test:template` 自动准备库与 Server 产物；包内 `test:template`、`gate:agent` 消费已构建产物，`build` 只构建 Server，不隐式重建依赖。
 
 `test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建项目和页面，编辑包含按钮的 Working 草稿，重启后端确认恢复，再显式保存并 Apply，最后独立安装、类型检查和构建。它同时确认编辑和保存版本不写目标、Apply 不重写页面入口，并检查生成项目不安装编辑引擎，需要依赖缓存或 registry 网络。
 
@@ -236,7 +238,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 `pi-agent-core` 与 `pi-ai` 的精确版本以 [package.json](package.json) 和锁文件为准，两者同步升级。当前适配使用 `finishTurn` 在 `complete_page_run` 成功后结束正常回合；错误和取消保持 pi 的退出语义。
 
-升级时对照 [模型注册](src/agent/pi-runtime.ts)、[引擎适配](src/agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](src/evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；配置 `DEEPSEEK_API_KEY` 后运行 `pnpm --filter @origamix/server probe:deepseek` 可验证默认模型的文本流和工具调用，会产生真实 API 请求。未配置 Key 时该脚本跳过探测，不能算探测通过。
+升级时对照 [模型注册](src/agent/pi-runtime.ts)、[引擎适配](src/agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](src/evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；不设置供应商专属 package script。确需排障时，先构建 Server，再配置进程环境中的 `DEEPSEEK_API_KEY` 并直接运行 `node packages/server/scripts/probe-deepseek.mjs`；该工具会产生真实 API 请求，未配置 Key 时跳过，不能算探测通过。
 
 事件生成默认预算为 24 次工具调用；系统提示包含剩余预算并要求为提交和修复保留调用。物料 Manifest 与逻辑工具共用精确分页格式，保留大小写类型和深层属性定义。工具异常保留原始文本错误内容，避免空 `details` 遮蔽修复信息。
 

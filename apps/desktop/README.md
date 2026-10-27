@@ -26,7 +26,13 @@ pnpm package:dir
 pnpm package:mac
 ```
 
-开发脚本启动 Server 编译器、Vite 和 Electron，前端 HMR、宿主重编译后重启。`test:main` 使用真实 Main/IPC/SQLite、临时项目及替代目录选择器，需要图形会话和已构建产物。
+开发脚本按依赖顺序构建库、Server、Main/Preload 和带 vendor 的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。Shared、Runtime、Materials、Server、Main/Preload、模板或 Desktop 环境文件变化时，自动构建受影响的包，并在终端提示手动重启。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
+
+构建不会关闭窗口，也不会替换运行中宿主使用的后端与模板。处理完活动任务、确认编辑已保留后，按 Ctrl+C 并重新运行 `pnpm dev`；新启动会组装最新后端和模板。构建失败后修复源码会再次触发构建，也可在终端按 Enter 重试。已有用户项目仍需显式升级，不由源码监听自动改写。
+
+重启后的后端继续使用系统分配的动态端口（`port: 0`），旧监听关闭，新窗口获取新的地址、认证信息和服务实例；新端口可能与原端口相同。配置的前端来源会同步到后端校验，支持自定义开发端口。
+
+`pnpm test:dev` 在临时工作区验证依赖构建不中断当前窗口、手动重启后加载新产物及连接更换。`test:main` 使用真实 Main/IPC/SQLite、临时项目及替代目录选择器，需要图形会话和已构建产物。
 
 macOS 打包后资源检查：
 
@@ -90,7 +96,7 @@ pnpm package:mac
 | `release/origamix-<version>-macOS-arm64.zip` | 同一应用的 ZIP 归档                     |
 | `release/mac-arm64/origamix.app`             | 解包的应用目录，供本地资源验证          |
 
-`pnpm package:dir` 构建同一 macOS arm64 应用目录，不制作 DMG／ZIP。内部 `package:assemble`、`package:dir:assemble` 只消费已构建资源。暂不交付 Intel、Windows 或 Linux 安装包。
+`pnpm package:dir` 构建同一 macOS arm64 应用目录，不制作 DMG／ZIP。包内 `package:dir`、`package:mac` 只消费已构建资源，完整构建使用根命令。暂不交付 Intel、Windows 或 Linux 安装包。
 
 本轮采用 `identity: '-'` 的本地 ad-hoc 签名、`hardenedRuntime: false` 和 `notarize: false`。该配置确保 Apple Silicon 本地试用包具有完整代码签名，但不证明开发者身份，也不是经过 Gatekeeper 公证的公开发行包；从浏览器下载或跨机器传递后，系统可能阻止打开。正式发行需要单独配置 Developer ID、启用并复核 hardened runtime／entitlements、完成公证，再验证下载、安装与首次启动；不要通过全局关闭 Gatekeeper 处理问题。
 

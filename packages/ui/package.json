@@ -8,7 +8,7 @@
     "./styles.css": "./src/styles/styles.css"
   },
   "scripts": {
-    "lint": "eslint src",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsup"
   },

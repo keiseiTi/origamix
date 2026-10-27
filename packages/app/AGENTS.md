@@ -90,3 +90,5 @@ pnpm --filter @origamix/app build
 - The Node-only web host prepares a vendored template under ORIGAMIX_WEB_STATE_DIR using Server's exported template-artifact tooling. Do not send source-only templates or workspace dependency paths to the project upgrade service.
 
 - Package `config.ts` owns Node-only development settings from `.env` / optional `.env.local` / process overrides. Vite envDir is disabled; do not expose the entire env or VITE_* from these files to Renderer. Desktop injects its renderer host/port and host mode. Tests set ORIGAMIX_ENV_LOCAL=0.
+
+- In Desktop mode, Vite ignores Materials/Shared/Runtime changes: the Desktop supervisor rebuilds dependencies and asks for a manual restart instead of refreshing Renderer against an older running backend. App/Editor/UI retain source HMR. Keep this coordination in Node-side tooling, without adding development lifecycle methods to the product bridge or business sessions.

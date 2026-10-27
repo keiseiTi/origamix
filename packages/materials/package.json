@@ -24,25 +24,7 @@
     }
   },
   "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./antd/manifest": {
-        "types": "./dist/antd/manifest.d.ts",
-        "import": "./dist/antd/manifest.js"
-      },
-      "./antd/runtime": {
-        "types": "./dist/antd/runtime.d.ts",
-        "import": "./dist/antd/runtime.js"
-      },
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
-      },
-      "./antd/editor": {
-        "types": "./dist/antd/editor.d.ts",
-        "import": "./dist/antd/editor.js"
-      }
-    }
+    "access": "public"
   },
   "scripts": {
     "lint": "eslint .",

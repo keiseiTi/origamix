@@ -1,157 +1,254 @@
-import {
-  loadDesktopEnvironment,
-  desktopRendererUrl,
-  desktopDebug,
-  desktopPort,
-} from '../src/main/config.ts';
+import { fork, spawn } from 'node:child_process';
+import { watch } from 'node:fs';
+import { mkdtemp, rename, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { once } from 'node:events';
+import { createInterface } from 'node:readline';
 import { build } from 'tsup';
 import electronPath from 'electron';
-import { fork, spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { once } from 'node:events';
-import { setTimeout as delay } from 'node:timers/promises';
 import { desktopRoot, workspaceRoot, options } from './build-options.mjs';
-import { assembleResources } from './assemble-resources.mjs';
 import { copyServerArtifact } from './copy-server-artifact.mjs';
 import { stopChild } from '@origamix/server/development';
 
-const envConfig = loadDesktopEnvironment(desktopRoot);
-const rendererUrl = desktopRendererUrl(envConfig);
-const debugArgs = desktopDebug(envConfig)
-  ? [
-      `--inspect=${desktopPort(envConfig, 'ORIGAMIX_INSPECT_PORT')}`,
-      `--remote-debugging-port=${desktopPort(envConfig, 'ORIGAMIX_DEBUG_PORT')}`,
-    ]
-  : [];
-const abort = new AbortController();
-let electron;
-let stopping = false;
-let desktopReady = false;
-let restartQueue = Promise.resolve();
 const require = createRequire(import.meta.url);
-const serverWatcher = fork(require.resolve('@origamix/server/build'), ['--watch'], {
-  cwd: workspaceRoot,
-  stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
-});
-const serverReady = new Promise((resolve, reject) => {
-  serverWatcher.once('message', resolve);
-  serverWatcher.once('error', reject);
-  serverWatcher.once('exit', () => reject(new Error('Server compiler exited before startup')));
-});
-const vite = fork(`${workspaceRoot}packages/app/scripts/dev.mjs`, [], {
-  cwd: `${workspaceRoot}packages/app`,
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    ORIGAMIX_DESKTOP: '1',
-    ORIGAMIX_RENDERER_HOST: envConfig.ORIGAMIX_RENDERER_HOST,
-    ORIGAMIX_RENDERER_PORT: envConfig.ORIGAMIX_RENDERER_PORT,
-  },
-});
+const tsupManifest = require('tsup/package.json');
+const tsupCli = join(dirname(require.resolve('tsup/package.json')), tsupManifest.bin.tsup);
+const dirty = new Set(['shared', 'runtime', 'materials', 'server', 'desktop', 'template']);
+const watchers = [];
+let electron;
+let vite;
+let builder;
+let running = false;
+let stopping = false;
+let timer;
+let generation = 0;
+let started = false;
 
-async function stopElectron() {
-  const child = electron;
-  electron = undefined;
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  const exited = once(child, 'exit');
-  child.kill();
-  const timer = setTimeout(() => child.kill('SIGKILL'), 3000);
+const run = async (entry, cwd) => {
+  const child = fork(entry, [], { cwd, stdio: 'inherit' });
+  builder = child;
+  const [code] = await once(child, 'exit');
+  if (builder === child) builder = undefined;
+  if (code !== 0 || stopping) throw new Error(`构建未完成：${cwd}`);
+};
+const stopDesktop = async () => {
+  const previous = electron;
+  if (!previous || previous.exitCode !== null || previous.signalCode !== null) return;
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      previous.off('exit', exited);
+      reject(new Error('桌面退出超时，已暂停更新，请检查后重试'));
+    }, 15000);
+    const exited = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+    previous.once('exit', exited);
+    previous.kill('SIGTERM');
+  });
+};
+const start = async (env, rendererUrl) => {
+  let occupied = false;
   try {
-    await exited;
-  } finally {
-    clearTimeout(timer);
+    await fetch(rendererUrl, { signal: AbortSignal.timeout(500) });
+    occupied = true;
+  } catch {
+    /* port is available */
   }
-}
-
-async function shutdown(code = 0) {
-  if (stopping) return;
-  stopping = true;
-  abort.abort();
-  await Promise.all([stopChild(vite), stopChild(serverWatcher), stopElectron()]);
-  process.exit(code);
-}
-
-process.once('SIGINT', () => void shutdown());
-process.once('SIGTERM', () => void shutdown());
-vite.once('error', (error) => {
-  console.error(error);
-  void shutdown(1);
-});
-vite.once('exit', (code) => {
-  if (!stopping) void shutdown(code ?? 1);
-});
-serverWatcher.once('exit', (code) => {
-  if (!stopping) void shutdown(code ?? 1);
-});
-
-function restartElectron() {
-  restartQueue = restartQueue
-    .then(async () => {
-      if (stopping || !desktopReady) return;
-      await stopElectron();
-      await copyServerArtifact();
-      if (stopping || !desktopReady) return;
-      const env = {
-        ...envConfig,
-        ELECTRON_RENDERER_URL: rendererUrl,
-        ORIGAMIX_TEMPLATE_DIR: envConfig.ORIGAMIX_TEMPLATE_DIR,
-      };
-      delete env.ELECTRON_RUN_AS_NODE;
-      electron = spawn(electronPath, [...debugArgs, desktopRoot], {
-        cwd: workspaceRoot,
-        stdio: 'inherit',
-        env,
-      });
-      electron.once('error', (error) => {
-        console.error(error);
-        void shutdown(1);
-      });
-    })
-    .catch(async (error) => {
-      console.error(error);
-      await shutdown(1);
-    });
-  return restartQueue;
-}
-serverWatcher.on('message', () => {
-  // if (desktopReady) void restartElectron();
-});
-
-async function waitForRenderer() {
-  const deadline = Date.now() + 30000;
-  while (!stopping && Date.now() < deadline) {
-    try {
-      const response = await fetch(rendererUrl, { signal: AbortSignal.timeout(1000) });
-      if (response.ok) return;
-    } catch {
-      /* Vite may still be starting. */
-    }
-    await delay(150, undefined, { signal: abort.signal });
-  }
-  throw new Error('Renderer did not become ready within 30 seconds');
-}
-
-try {
-  await Promise.all([waitForRenderer(), serverReady]);
-  await assembleResources();
-  await build({
-    ...options,
-    clean: false,
-    watch: [`${desktopRoot}src`, `${workspaceRoot}packages/shared/src`],
-    // tsup calls this after all desktop entries succeed and runs the returned
-    // cleanup before rebuilding, preventing stale or partially built launches.
-    async onSuccess() {
-      if (stopping) return;
-      desktopReady = true;
-      await restartElectron();
-      return async () => {
-        desktopReady = false;
-        await restartQueue;
-        await stopElectron();
-      };
+  if (occupied) throw new Error('页面开发端口已被占用，请先关闭已有开发服务或调整端口');
+  const nextVite = fork(`${workspaceRoot}packages/app/scripts/dev.mjs`, ['--force'], {
+    cwd: `${workspaceRoot}packages/app`,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      ORIGAMIX_DESKTOP: '1',
+      ORIGAMIX_RENDERER_HOST: env.ORIGAMIX_RENDERER_HOST,
+      ORIGAMIX_RENDERER_PORT: env.ORIGAMIX_RENDERER_PORT,
     },
   });
-} catch (error) {
-  if (!stopping) console.error(error);
-  await shutdown(1);
+  vite = nextVite;
+  nextVite.once('exit', () => {
+    if (!stopping && vite === nextVite) console.error('页面开发服务已停止，请重新启动 pnpm dev');
+  });
+  const deadline = Date.now() + 30000;
+  let available = false;
+  while (!stopping && Date.now() < deadline) {
+    if (nextVite.exitCode !== null) throw new Error('页面开发服务启动失败');
+    try {
+      if ((await fetch(rendererUrl, { signal: AbortSignal.timeout(1000) })).ok) {
+        available = true;
+        break;
+      }
+    } catch {
+      /* starting */
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  if (!available) throw new Error('页面开发服务启动超时');
+  const config = await import('../src/main/config.ts');
+  const debug = config.desktopDebug(env)
+    ? [
+        `--inspect=${config.desktopPort(env, 'ORIGAMIX_INSPECT_PORT')}`,
+        `--remote-debugging-port=${config.desktopPort(env, 'ORIGAMIX_DEBUG_PORT')}`,
+      ]
+    : [];
+  const launchEnv = { ...env, ELECTRON_RENDERER_URL: rendererUrl };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
+  const child = spawn(electronPath, [...debug, desktopRoot], {
+    cwd: workspaceRoot,
+    stdio: 'inherit',
+    env: launchEnv,
+  });
+  electron = child;
+  child.once('exit', () => {
+    if (electron === child) {
+      electron = undefined;
+    }
+  });
+};
+const update = async () => {
+  if (running || stopping || !dirty.size) return;
+  running = true;
+  let completed = false;
+  let stagedTemplate;
+  const initial = !started;
+  const batch = new Set(dirty);
+  for (const name of batch) dirty.delete(name);
+  try {
+    const config = await import(`../src/main/config.ts?generation=${++generation}`);
+    const env = config.loadDesktopEnvironment(desktopRoot);
+    const rendererUrl = config.desktopRendererUrl(env);
+    config.desktopDebug(env);
+    if (batch.has('shared')) {
+      batch.add('runtime');
+      batch.add('materials');
+      batch.add('server');
+      batch.add('desktop');
+      batch.add('template');
+    }
+    if (batch.has('runtime')) {
+      batch.add('materials');
+      batch.add('template');
+    }
+    if (batch.has('materials')) {
+      batch.add('server');
+      batch.add('template');
+    }
+    for (const name of ['shared', 'runtime', 'materials'])
+      if (batch.has(name)) await run(tsupCli, `${workspaceRoot}packages/${name}`);
+    if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
+    if (batch.has('desktop')) await build({ ...options, clean: false });
+    if (stopping) return;
+    const { assembleResources } = await import('./assemble-resources.mjs');
+    stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
+    await assembleResources({ templatePath: stagedTemplate });
+    if (stopping) return;
+    await stopDesktop();
+    const previousVite = vite;
+    vite = undefined;
+    await stopChild(previousVite);
+    await rm(`${desktopRoot}dist/template`, { recursive: true, force: true });
+    await rename(stagedTemplate, `${desktopRoot}dist/template`);
+    stagedTemplate = undefined;
+    await copyServerArtifact();
+    await start(env, rendererUrl);
+    started = true;
+    console.info(initial ? '[开发环境] 桌面已启动' : '[开发环境] 桌面已自动重启');
+    completed = true;
+  } catch (error) {
+    for (const name of batch) dirty.add(name);
+    console.error('[开发环境] 更新暂停：', error.message, '。处理后按 Enter 重试。');
+  } finally {
+    if (stagedTemplate) await rm(stagedTemplate, { recursive: true, force: true });
+    running = false;
+    if (completed && dirty.size) schedule();
+  }
+};
+const schedule = () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => void update(), 400);
+};
+for (const [name, paths] of Object.entries({
+  shared: [
+    'packages/shared/src',
+    'packages/shared/package.json',
+    'packages/shared/tsup.config.ts',
+    'packages/shared/tsconfig.json',
+    'tsconfig.base.json',
+  ],
+  runtime: [
+    'packages/runtime/src',
+    'packages/runtime/package.json',
+    'packages/runtime/tsup.config.ts',
+    'packages/runtime/tsconfig.json',
+  ],
+  materials: [
+    'packages/materials/src',
+    'packages/materials/antd',
+    'packages/materials/package.json',
+    'packages/materials/tsup.config.ts',
+    'packages/materials/tsconfig.json',
+  ],
+  server: [
+    'packages/server/src',
+    'packages/server/package.json',
+    'packages/server/scripts/build-options.mjs',
+    'packages/server/tsconfig.json',
+  ],
+  desktop: [
+    'apps/desktop/src',
+    'apps/desktop/.env',
+    'apps/desktop/.env.local',
+    'apps/desktop/tsconfig.json',
+  ],
+  template: [
+    'packages/template/src',
+    'packages/template/package.json',
+    'packages/template/origamix.project.json',
+    'packages/template/vite.config.ts',
+    'packages/template/README.md',
+    'packages/template/index.html',
+    'packages/template/.gitignore',
+    'packages/template/tsconfig.json',
+    'packages/template/tsconfig.app.json',
+    'packages/template/tsconfig.node.json',
+    'packages/template/eslint.config.js',
+  ],
+})) {
+  for (const path of paths) {
+    try {
+      watchers.push(
+        watch(join(workspaceRoot, path), { recursive: true }, () => {
+          dirty.add(name);
+          schedule();
+        }),
+      );
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
 }
+watchers.push(
+  watch(desktopRoot, (_event, filename) => {
+    if (filename === '.env.local' || filename === '.env') {
+      dirty.add('desktop');
+      schedule();
+    }
+  }),
+);
+const terminal = createInterface({ input: process.stdin });
+terminal.on('line', () => {
+  if (dirty.size) schedule();
+});
+const shutdown = async () => {
+  if (stopping) return;
+  stopping = true;
+  clearTimeout(timer);
+  watchers.forEach((watcher) => watcher.close());
+  terminal.close();
+  await Promise.all([stopChild(builder), stopChild(vite), stopChild(electron)]);
+};
+process.once('SIGINT', () => void shutdown());
+process.once('SIGTERM', () => void shutdown());
+await update();

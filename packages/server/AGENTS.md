@@ -109,3 +109,5 @@ pnpm --filter @origamix/server gate:agent
 - `src/schema/validation/` separates shared validation contracts, property/value safety, material semantics, flow-reference checks and the aggregate material-validation entry. Preserve error ordering and Agent executable-flow completeness checks.
 - `src/projects/page-directory.ts` owns page directory normalization/authorization checks; `initial-page-schema.ts` builds the initial schema. ProjectService still owns project queue orchestration.
 - Root `scripts/` owns build/development tools; `test/fixtures/` and `test/helpers/` own test fixtures and utilities within `test/`. Do not import them from production business code. Directory moves must update the architecture rule and its fixtures, release-version script, build/watch entries and Drizzle schema paths together.
+
+- Package `build` compiles only Server; prepare Materials first (or use root `build`). `test` runs schema and architecture checks without an implicit build. Root `test:template` prepares library and Server artifacts for the independent template check; package-local integration/evaluation commands consume existing artifacts.

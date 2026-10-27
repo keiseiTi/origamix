@@ -175,6 +175,7 @@ const spawnBackend = async (): Promise<BackendConnection> => {
     backend.once('spawn', () => {
       backend.postMessage({
         kind: 'initialize',
+        workbenchOrigin: new URL(workbenchEntryUrl()).origin,
         databasePath: desktopConfig.databasePath,
         templatePath: desktopConfig.templatePath,
         desktopToken: token,
@@ -381,6 +382,9 @@ app
     dialog.showErrorBox('Origamix 无法启动', message);
     app.quit();
   });
+
+// Let the development supervisor use the normal backend shutdown lifecycle.
+if (!app.isPackaged) process.on('SIGTERM', () => app.quit());
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

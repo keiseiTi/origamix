@@ -45,7 +45,7 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 | [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                    | 单控件入口、`utils`、`styles.css`            |
 | [Editor](packages/editor/README.md)       | 画布、FlowEditor、通用编辑组件与契约            | `visual`、`flow`、`components`、`core`、契约 |
 | [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口               |
-| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 显式协议子路径                               |
+| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 单一根入口                                   |
 | [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest        |
 | [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime`                          |
 | [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                           |
@@ -71,14 +71,16 @@ pnpm build
 | -------------------- | -------------------------------------------------------- |
 | `pnpm build:libs`    | UI、Shared、Editor、Runtime、Materials 构建产物          |
 | `pnpm build:web`     | 上述依赖及 App 的静态资源                                |
-| `pnpm build`         | 库 → App → Server → Desktop 编译和资源组装，不制作安装包 |
+| `pnpm build`         | 库 → Server → App → Desktop 编译和资源组装，不制作安装包 |
 | `pnpm package:dir`   | 构建后生成 macOS arm64 应用目录，使用本地 ad-hoc 签名    |
 | `pnpm package:mac`   | 四项检查后制作 macOS arm64 DMG 和 ZIP 本地试用包         |
 | `pnpm package`       | 执行 `package:mac`，当前仅交付 macOS                     |
-| `pnpm package:npm`   | 库构建与本地 npm tarball，不发布到 registry              |
+| `pnpm pack:npm`      | 库构建与本地 npm tarball，不发布到 registry              |
 | `pnpm gate:internal` | 固定评测数据与门槛计算检查，不证明真实模型质量           |
 
-包内 `build:assemble` 只消费已准备好的输入；根构建统一排序，避免在每一层重复构建依赖。单包 `build` 保留准备依赖的职责，以支持独立调用。
+包内 `build` 只构建本包，所需上游产物须先准备；根命令负责依赖顺序，避免重复构建。Desktop 的 `build` 还组装已构建的 Server 和模板资源，包内 `package:*` 只消费这些产物。Shared、Runtime 在工作区使用源码出口、打包时切换到 dist；Materials 始终使用 dist；Editor、UI 保持私有源码出口以支持 HMR。
+
+集成入口：`pnpm test:template` 验证独立模板，`pnpm test:web` 验证浏览器宿主，`pnpm test:desktop` 验证真实 Main，`pnpm test:dev` 验证 Desktop／Server 开发更新。前三项自动准备构建输入，开发更新检查使用临时工作区。桌面检查需要图形会话。
 
 桌面构建包当前仅面向 macOS 13+ 的 Apple Silicon（arm64）。`release/` 中的 `origamix-<version>-macOS-arm64.dmg` 用于拖入 Applications，ZIP 提供同一应用的归档；`release/mac-arm64/origamix.app` 为解包目录。本地 ad-hoc 签名不等于 Developer ID 签名或 Apple 公证，当前构建属于本地试用交付；官网尚未提供公开下载。详细验证与限制见 [Desktop README](apps/desktop/README.md#macos-构建包)。
 
@@ -92,4 +94,4 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 ## 开发环境文件
 
-Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量，修改后重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
+Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量。Desktop 开发启动器监听自身环境文件并提示手动重启；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。

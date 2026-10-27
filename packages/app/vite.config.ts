@@ -11,7 +11,20 @@ export default defineConfig(() => {
     base: './',
     envDir: false as const,
     plugins: [tailwindcss(), react(), canvasPrototype(), localWebServer()],
-    server: { host: config.host, port: config.port, strictPort: true },
+    server: {
+      host: config.host,
+      port: config.port,
+      strictPort: true,
+      watch: config.desktop
+        ? {
+            ignored: [
+              '**/packages/materials/**',
+              '**/packages/shared/**',
+              '**/packages/runtime/**',
+            ],
+          }
+        : undefined,
+    },
     resolve: {
       alias: {
         '@': '/src',

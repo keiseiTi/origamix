@@ -33,7 +33,7 @@ pnpm --filter @origamix/shared test
 pnpm --filter @origamix/shared build
 ```
 
-`pnpm package:npm` 可与其他发布包一同构建打包。修改协议后必须检查生产者和消费者，根验证命令见 [根 README](../../README.md)。维护约束见 [AGENTS.md](AGENTS.md)。
+`pnpm pack:npm` 可与其他发布包一同构建打包。修改协议后必须检查生产者和消费者，根验证命令见 [根 README](../../README.md)。维护约束见 [AGENTS.md](AGENTS.md)。
 
 ## 最小页面与编辑请求
 

@@ -2,14 +2,14 @@ import { copyFile, mkdir } from 'node:fs/promises';
 import { prepareTemplateArtifact } from '@origamix/server/template-artifact';
 import { desktopRoot, workspaceRoot } from './build-options.mjs';
 
-export const assembleResources = async () => {
+export const assembleResources = async ({ templatePath = `${desktopRoot}dist/template` } = {}) => {
   await mkdir(`${desktopRoot}dist`, { recursive: true });
   await copyFile(`${desktopRoot}.env`, `${desktopRoot}dist/.env`);
   // TODO: publish these packages and replace the vendored archives
   // with pinned registry versions in generated projects.
   await prepareTemplateArtifact({
     sourceTemplate: `${workspaceRoot}packages/template`,
-    targetTemplate: `${desktopRoot}dist/template`,
+    targetTemplate: templatePath,
     runtimePackage: `${workspaceRoot}packages/runtime`,
     materialsPackage: `${workspaceRoot}packages/materials`,
   });
