@@ -24,6 +24,7 @@ let stopping = false;
 let timer;
 let generation = 0;
 let started = false;
+let paused = false;
 
 const run = async (entry, cwd) => {
   const child = fork(entry, [], { cwd, stdio: 'inherit' });
@@ -144,6 +145,12 @@ const update = async () => {
     stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
     await assembleResources({ templatePath: stagedTemplate });
     if (stopping) return;
+    if (!initial && (paused || dirty.size)) {
+      for (const name of batch) dirty.add(name);
+      if (paused) console.info('[开发环境] 自动重启已暂停，输入 p 并回车恢复。');
+      else completed = true;
+      return;
+    }
     await stopDesktop();
     const previousVite = vite;
     vite = undefined;
@@ -238,9 +245,14 @@ watchers.push(
   }),
 );
 const terminal = createInterface({ input: process.stdin });
-terminal.on('line', () => {
-  if (dirty.size) schedule();
+terminal.on('line', (line) => {
+  if (line.trim().toLowerCase() === 'p') {
+    paused = !paused;
+    console.info(paused ? '[开发环境] 自动重启已暂停' : '[开发环境] 自动重启已恢复');
+  }
+  if (!paused && dirty.size) schedule();
 });
+console.info('[开发环境] 输入 p 并回车可暂停／恢复自动重启；构建失败后按 Enter 重试。');
 const shutdown = async () => {
   if (stopping) return;
   stopping = true;

@@ -26,13 +26,15 @@ pnpm package:dir
 pnpm package:mac
 ```
 
-开发脚本按依赖顺序构建库、Server、Main/Preload 和带 vendor 的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。Shared、Runtime、Materials、Server、Main/Preload、模板或 Desktop 环境文件变化时，自动构建受影响的包，并在终端提示手动重启。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
+开发脚本按依赖顺序构建库、Server、Main/Preload 和带 vendor 的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。Shared、Runtime、Materials、Server、Main/Preload、模板或 Desktop 环境文件变化时，自动按依赖顺序构建，准备好新后端和模板后，正常退出并重启 Vite 与 Electron。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
 
-构建不会关闭窗口，也不会替换运行中宿主使用的后端与模板。处理完活动任务、确认编辑已保留后，按 Ctrl+C 并重新运行 `pnpm dev`；新启动会组装最新后端和模板。构建失败后修复源码会再次触发构建，也可在终端按 Enter 重试。已有用户项目仍需显式升级，不由源码监听自动改写。
+多次保存会合并处理，构建期间的新变化进入下一轮；构建或资源准备失败时保留当前实例，修复源码后重试，也可在终端按 Enter 重试。输入 `p` 并回车可暂停／恢复自动重启，适合调试 Agent 或长时间编辑；暂停时可以继续构建，恢复后应用待更新内容。退出超时则暂停更新，不强制杀掉桌面实例。
+
+自动重启会重新创建窗口，可能中断活动 Agent、未提交的编辑和聊天输入；只保证已持久化的 Working 由既有机制恢复，不提供窗口临时状态的无损交接。没有新增 Renderer 重启桥接或业务会话协议。已有用户项目仍需显式升级，不由源码监听自动改写。
 
 重启后的后端继续使用系统分配的动态端口（`port: 0`），旧监听关闭，新窗口获取新的地址、认证信息和服务实例；新端口可能与原端口相同。配置的前端来源会同步到后端校验，支持自定义开发端口。
 
-`pnpm test:dev` 在临时工作区验证依赖构建不中断当前窗口、手动重启后加载新产物及连接更换。`test:main` 使用真实 Main/IPC/SQLite、临时项目及替代目录选择器，需要图形会话和已构建产物。
+`pnpm test:dev` 在临时工作区验证依赖自动重启、暂停／恢复、构建失败保留旧实例及连接更换。`test:main` 使用真实 Main/IPC/SQLite、临时项目及替代目录选择器，需要图形会话和已构建产物。
 
 macOS 打包后资源检查：
 

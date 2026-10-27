@@ -200,6 +200,25 @@ try {
     /Development template refreshed/,
   );
   if (first.baseUrl !== second.baseUrl) await assert.rejects(fetch(`${first.baseUrl}/health`));
+  child.stdin.write('p\n');
+  await waitFor(() => output.includes('自动重启已暂停'));
+  const currentMain = await readFile(mainSource, 'utf8');
+  await writeFile(mainSource, currentMain + '\n// paused update\n');
+  await waitFor(() => output.includes('输入 p 并回车恢复'));
+  assert.equal((await connection()).serviceInstanceId, second.serviceInstanceId);
+  child.stdin.write('p\n');
+  await waitFor(() => (output.match(/桌面已自动重启/g)?.length ?? 0) >= 2);
+  await waitFor(connect);
+  const third = await waitFor(() => connection());
+  assert.notEqual(third.serviceInstanceId, second.serviceInstanceId);
+  const beforeFailure = output.length;
+  await writeFile(mainSource, currentMain + '\nconst = invalid;\n');
+  await waitFor(() => output.slice(beforeFailure).includes('更新暂停'));
+  assert.equal((await connection()).serviceInstanceId, third.serviceInstanceId);
+  await writeFile(mainSource, currentMain);
+  await waitFor(() => (output.match(/桌面已自动重启/g)?.length ?? 0) >= 3);
+  await waitFor(connect);
+  assert.notEqual((await waitFor(() => connection())).serviceInstanceId, third.serviceInstanceId);
   console.info(
     'Desktop development passed: ordered dependency builds, automatic restart loads Main/backend/template updates and a fresh connection.',
   );
