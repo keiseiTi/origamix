@@ -21,6 +21,14 @@ App 从 `@origamix/materials/antd/editor` 加载编辑注册并注入 Editor；R
 
 运行、编辑、Manifest 三个入口隔离依赖。生成项目不安装 Editor；React 和 Ant Design 是运行 peer dependencies，UI 仅用于可选的编辑消费方，物料运行契约由 Runtime 提供并内联到声明。页面材料与工作台基础控件职责不同。
 
+## 更新物料后的联动
+
+工作区与发布包统一使用 `dist` 出口。`pnpm dev` 监听 Materials 源码，顺序构建 Materials 和消费 Manifest 的 Server，准备最新模板物料归档后，自动重启 Vite 与 Electron。App 的编辑器和预览随新实例加载新物料，开发时无需重新打包 App；正式交付使用根 `pnpm build` 构建 App 和桌面资源。
+
+只更新前端会使编辑配置与后端校验不一致，因此 Desktop 模式不会提前对 Materials 执行 HMR。未通过桌面开发启动器验证时，先构建 Materials，再构建 Server、Desktop 并重启宿主。已有用户项目仍使用其已安装的物料版本，需要显式升级项目并重新安装依赖。
+
+自动重启的暂停方式和状态限制见[开发与验证](/architecture/development#源码更新与自动重启)。
+
 ## 开发与验证
 
 从仓库根目录执行：

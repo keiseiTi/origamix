@@ -9,6 +9,14 @@ description: 常见问题的职责、使用与开发说明
 
 编辑只更新 Working 草稿。确认已经保存版本并应用到项目，再检查对应页面的目标 Schema。
 
+## 修改物料后，需要重新构建 App 吗？
+
+开发时，Materials 构建完成后，启动器会同步构建后端校验使用的 Manifest、准备模板物料归档并重启桌面实例。App 的编辑器和预览随重启加载新物料，不需要先打包 App。正式交付运行根 `pnpm build`，其中会重新构建 App。已有用户项目的依赖不会自动更新，需[显式升级项目](/guide/projects#升级项目)。
+
+## 开发时为什么桌面会重启？
+
+Shared、Runtime、Materials、Server、Main/Preload 等源码变化会触发依赖构建和自动重启；App、Editor、UI 保持 HMR。调试 Agent 或长时间编辑时，在开发终端输入 `p` 并回车暂停，再次输入恢复。重启可能中断未提交内容，完整行为见[开发与验证](/architecture/development#源码更新与自动重启)。
+
 ## 不配置 API Key 能编辑吗？
 
 普通可视化编辑不依赖模型调用；使用 Agent 需要有效的模型配置和凭据。

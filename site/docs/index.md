@@ -28,7 +28,7 @@ features:
 
 ## 从源码开始
 
-当前通过源码在本地启动，暂不提供安装包。准备 Node.js 24 和 pnpm，在下载或克隆后的仓库根目录运行：
+当前通过源码在本地启动，官网暂不提供安装包下载。准备 Node.js 24 和 pnpm，在下载或克隆后的仓库根目录运行：
 
 ```sh
 pnpm install --frozen-lockfile

@@ -23,9 +23,15 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` 会准备本地后端、启动前端开发服务并打开 Electron 工作台。开发 Renderer 默认使用端口 5173。
+`pnpm dev` 会准备本地后端、启动前端开发服务并打开 Electron 工作台。开发 Renderer 默认使用端口 5173；后端使用自动分配的本机端口。
 
 启动成功后应看到工作台。保持终端运行，完成首次使用后停止开发命令，并关闭本次启动的应用。
+
+## 修改源码后
+
+App、Editor、UI 使用 HMR。Shared、Runtime、Materials、Server 或 Main/Preload 修改后，开发启动器构建依赖、准备资源并自动重启桌面端。终端输入 `p` 并回车可暂停／恢复自动重启；调试 Agent 或编辑未提交内容时可先暂停，避免重启打断当前操作。完整说明见[开发与验证](/architecture/development)。
+
+本机非敏感配置放在对应宿主包的 `.env.local`：桌面端使用 `apps/desktop/.env.local`，独立 Web 使用 `packages/app/.env.local`。不要把 API Key 写入这些文件。
 
 ## 启动失败时
 
