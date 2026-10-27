@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AgentEngineError } from '../../agent/engine';
-import { AgentToolRegistry, RunBudgetController } from '../../agent/tools/registry';
-import { auditAgentSecurity, type AgentSecurityEvidence } from '../../evaluation/security-audit';
+import { AgentEngineError } from '../../src/agent/agent-engine';
+import { AgentToolRegistry, RunBudgetController } from '../../src/agent/tools/registry';
+import {
+  auditAgentSecurity,
+  type AgentSecurityEvidence,
+} from '../../src/evaluation/security-audit';
 
 const evidence = (): AgentSecurityEvidence => ({
   logs: ['Authorization=[REDACTED]'],

@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { ProjectRepository } from '../../projects/project-repository';
-import { ProjectService } from '../../projects/project-service';
-import { ProjectApplyService } from '../../schema/project-apply-service';
-import { createHttpServer } from '../../http/server';
+import { ApplicationDatabase } from '../../src/database/database';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { ProjectService } from '../../src/projects/project-service';
+import { ProjectApplyService } from '../../src/schema/project-apply-service';
+import { createHttpServer } from '../../src/http/server';
 
 const directories: string[] = [];
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));

@@ -6,8 +6,8 @@ import {
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
 import { describe, expect, it } from 'vitest';
-import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '../../agent/engine';
-import { PiAgentEngine } from '../../agent/pi-agent-engine';
+import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '../../src/agent/agent-engine';
+import { PiAgentEngine } from '../../src/agent/pi-agent-engine';
 
 const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) => {
   const faux = fauxProvider({ provider: 'deepseek', tokensPerSecond });

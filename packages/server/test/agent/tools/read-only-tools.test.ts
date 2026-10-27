@@ -1,10 +1,10 @@
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { loadProjectMaterials } from '../../../projects/project-materials';
-import { createProjectStackFixture } from '../../../testing/project-stack-fixture';
+import { loadProjectMaterials } from '../../../src/projects/project-materials';
+import { createProjectStackFixture } from '../../fixtures/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import { getFlowNodeManifest, type OrigamixPageSchema } from '@origamix/shared';
-import { ApiError } from '../../../errors';
-import { createReadOnlyAgentTools } from '../../../agent/tools/read-only-tools';
+import { ApiError } from '../../../src/errors';
+import { createReadOnlyAgentTools } from '../../../src/agent/tools/read-only-tools';
 
 let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
 beforeAll(async () => {

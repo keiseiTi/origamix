@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { writeFileAtomically, writeJsonAtomically } from '../../infrastructure/atomic-file';
+import { writeFileAtomically, writeJsonAtomically } from '../../src/infrastructure/atomic-file';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof fs>();

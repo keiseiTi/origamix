@@ -4,10 +4,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 export const options = {
   tsconfig: `${root}tsconfig.json`,
   entry: {
-    server: `${root}index.ts`,
-    runtime: `${root}runtime.ts`,
-    tooling: `${root}tooling.ts`,
-    template: `${root}template.ts`,
+    server: `${root}src/hosts/utility-process.ts`,
+    runtime: `${root}src/server.ts`,
+    tooling: `${root}src/tooling.ts`,
+    template: `${root}src/templates/copy-template.ts`,
   },
   outDir: `${root}dist`,
   format: ['cjs'],

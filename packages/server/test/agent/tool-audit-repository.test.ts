@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { AgentToolAuditRepository } from '../../agent/tool-audit-repository';
+import { ApplicationDatabase } from '../../src/database/database';
+import { AgentToolAuditRepository } from '../../src/agent/tool-audit-repository';
 
 describe('Agent tool audit persistence', () => {
   it('retains ordered safe evidence without tool arguments or Schema content', () => {

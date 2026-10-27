@@ -6,7 +6,7 @@ import {
   RunBudgetController,
   createDefaultAgentToolEntries,
   type ToolAuditEvent,
-} from '../../../agent/tools/registry';
+} from '../../../src/agent/tools/registry';
 
 const budget: RunBudget = {
   maxModelCalls: 1,

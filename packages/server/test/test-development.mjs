@@ -91,7 +91,7 @@ try {
   const api = 'http://127.0.0.1:5189/api/v1/health';
   const first = await waitFor(async () => (await (await fetch(api)).json()).data.serviceInstanceId);
   // Exercise relocated business modules, not only the unchanged runtime entry.
-  const schemaService = join(serverRoot, 'schema/schema-service.ts');
+  const schemaService = join(serverRoot, 'src/schema/schema-service.ts');
   await writeFile(
     schemaService,
     `${await readFile(schemaService, 'utf8')}\nconsole.info('dev-smoke-recompiled');\n`,
@@ -108,7 +108,7 @@ try {
   const url = await waitFor(
     () => output.match(/Local API: (http:\/\/127\.0\.0\.1:\d+\/api\/v1)/)?.[1],
   );
-  const toolRegistry = join(serverRoot, 'agent/tools/registry.ts');
+  const toolRegistry = join(serverRoot, 'src/agent/tools/registry.ts');
   await writeFile(
     toolRegistry,
     `${await readFile(toolRegistry, 'utf8')}\nconsole.info('standalone-recompiled');\n`,

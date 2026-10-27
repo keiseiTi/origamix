@@ -1,0 +1,72 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { ApplicationDatabase } from '../src/database/database';
+import { AgentRunRepository } from '../src/agent/run-repository';
+import { ConversationRepository } from '../src/conversations/conversation-repository';
+import { ProjectRepository } from '../src/projects/project-repository';
+import { ConversationService } from '../src/conversations/conversation-service';
+import { recoverAgentRunsOnStartup } from '../src/agent/run-recovery';
+
+const directories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
+});
+
+describe('server startup Agent recovery', () => {
+  it('interrupts an uncommitted active run without invoking a model', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-runtime-agent-'));
+    directories.push(directory);
+    const projectPath = join(directory, 'project');
+    await mkdir(projectPath);
+    const databasePath = join(directory, 'application.db');
+    const database = new ApplicationDatabase(databasePath);
+    const timestamp = new Date().toISOString();
+    database.connection
+      .prepare(
+        'INSERT INTO projects (project_id, path, name, status, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?, ?)',
+      )
+      .run('project_a', projectPath, 'A', 0, timestamp, timestamp);
+    database.connection
+      .prepare(
+        'INSERT INTO pages (page_id, project_id, slug, name, relative_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run('page_a', 1, 'home', 'Home', 'pages/home', 0, timestamp, timestamp);
+    const runs = new AgentRunRepository(database);
+    const service = new ConversationService(
+      database,
+      new ProjectRepository(database),
+      new ConversationRepository(database),
+      runs,
+    );
+    const started = service.startRun({
+      projectId: 'project_a',
+      pageId: 'page_a',
+      clientRequestId: 'startup-recovery',
+      baseWorkingVersion: 1,
+      content: { version: '1', blocks: [{ type: 'text', text: 'test' }] },
+      modelRef: 'deepseek/deepseek-flash',
+      runKind: 'page_assistant',
+      budget: {
+        maxModelCalls: 1,
+        maxToolCalls: 1,
+        maxOutputTokens: 1,
+        maxDurationMs: 1,
+        maxSchemaBytes: 1,
+        maxRepairAttempts: 0,
+      },
+      promptVersion: '1',
+      policyVersion: '1',
+      toolsetVersion: '1',
+      materialManifestVersion: 'official-antd@1.0.0',
+    });
+    await recoverAgentRunsOnStartup(runs, new ProjectRepository(database), service);
+    expect(runs.get(started.run.id)).toMatchObject({
+      status: 'interrupted',
+      errorCode: 'PROCESS_INTERRUPTED',
+    });
+    database.close();
+  });
+});

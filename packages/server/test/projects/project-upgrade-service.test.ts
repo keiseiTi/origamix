@@ -4,15 +4,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { ApplicationDatabase } from '../../database/database';
-import { ProjectRepository } from '../../projects/project-repository';
-import { ProjectService } from '../../projects/project-service';
-import { ProjectUpgradeService } from '../../projects/project-upgrade-service';
+import { ApplicationDatabase } from '../../src/database/database';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { ProjectService } from '../../src/projects/project-service';
+import { ProjectUpgradeService } from '../../src/projects/project-upgrade-service';
 import {
   getWorkingSchemaState,
   saveWorkingRevision,
   updateWorkingSchema,
-} from '../../schema/schema-service';
+} from '../../src/schema/schema-service';
 
 it('upgrades only saved pages through Apply and resumes an interrupted dependency switch with the same request', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-project-upgrade-'));

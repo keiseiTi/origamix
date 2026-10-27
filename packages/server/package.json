@@ -5,18 +5,18 @@
   "private": true,
   "exports": {
     "./runtime": {
-      "types": "./runtime.ts",
+      "types": "./src/server.ts",
       "default": "./dist/runtime.cjs"
     },
     "./tooling": {
-      "types": "./tooling.ts",
+      "types": "./src/tooling.ts",
       "default": "./dist/tooling.cjs"
     },
     "./utility": "./dist/server.cjs",
     "./build": "./scripts/build.mjs",
     "./development": "./scripts/dev-supervisor.mjs",
     "./template": {
-      "types": "./template.ts",
+      "types": "./src/templates/copy-template.ts",
       "default": "./dist/template.cjs"
     },
     "./template-artifact": {

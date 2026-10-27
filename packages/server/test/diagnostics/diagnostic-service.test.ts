@@ -2,10 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { ProjectRepository } from '../../projects/project-repository';
-import { RuntimeDiagnosticCache } from '../../diagnostics/diagnostic-cache';
-import { RuntimeDiagnosticService } from '../../diagnostics/diagnostic-service';
+import { ApplicationDatabase } from '../../src/database/database';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { RuntimeDiagnosticCache } from '../../src/diagnostics/diagnostic-cache';
+import { RuntimeDiagnosticService } from '../../src/diagnostics/diagnostic-service';
 
 let directory: string;
 let database: ApplicationDatabase;

@@ -4,7 +4,7 @@ import type { OrigamixPageSchema } from '@origamix/shared';
 import {
   applySchemaOperationBatch,
   SchemaOperationError,
-} from '../../schema/schema-operation-engine';
+} from '../../src/schema/schema-operation-engine';
 
 const createPage = (): OrigamixPageSchema => ({
   elements: {

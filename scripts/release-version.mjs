@@ -64,7 +64,7 @@ if (mode === '--set') {
   )
     throw new Error('发布序列与当前版本不一致');
   const migrationSource = await readFile(
-    resolve(root, 'packages/server/schema/schema-migrations.ts'),
+    resolve(root, 'packages/server/src/schema/schema-migrations.ts'),
     'utf8',
   );
   const steps = [...migrationSource.matchAll(/from: '([^']+)',\s*to: '([^']+)'/g)];

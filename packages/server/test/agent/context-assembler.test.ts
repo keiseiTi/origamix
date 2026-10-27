@@ -1,10 +1,10 @@
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { createProjectStackFixture } from '../../testing/project-stack-fixture';
+import { createProjectStackFixture } from '../fixtures/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { StoredMessage } from '../../conversations/conversation-repository';
-import { ProductDocsProvider } from '../../agent/product-docs-provider';
-import { ContextAssembler } from '../../agent/context-assembler';
+import type { StoredMessage } from '../../src/conversations/conversation-repository';
+import { ProductDocsProvider } from '../../src/agent/product-docs-provider';
+import { ContextAssembler } from '../../src/agent/context-assembler';
 
 let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
 beforeAll(async () => {

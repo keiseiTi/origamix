@@ -4,7 +4,7 @@ import {
   FIXED_AGENT_EVALUATION_CASES,
   runAgentEvaluation,
   type AgentEvaluationObservation,
-} from '../../evaluation/evaluation-harness';
+} from '../../src/evaluation/evaluation-harness';
 
 const recordedObservation = (
   testCase: (typeof FIXED_AGENT_EVALUATION_CASES)[number],

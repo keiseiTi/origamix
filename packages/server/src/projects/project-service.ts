@@ -1,0 +1,359 @@
+import { normalizePageDirectory, ensurePageDirectory } from './page-directory';
+import { createInitialPageSchema } from './initial-page-schema';
+import { ProjectUpgradeService } from './project-upgrade-service';
+import { assertProjectNotUpgrading, readProjectUpgrade } from './project-upgrade-store';
+import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { KeyedQueue } from '../infrastructure/keyed-queue';
+import { access, mkdir, rename, rm } from 'node:fs/promises';
+import { basename, join } from 'node:path';
+import { nanoid } from 'nanoid';
+import {
+  type OpenProjectResult,
+  type PageRecord,
+  type ProjectRecord,
+  type OrigamixPageSchema,
+  resolveProjectStack,
+} from '@origamix/shared';
+
+import {
+  discardInitializedPageSchema,
+  getSchema,
+  initializePageSchema,
+} from '../schema/schema-service';
+import type { ProjectRepository } from './project-repository';
+import { conflict, invalid, notFound } from '../errors';
+import { ProjectManifestStore } from './project-manifest-store';
+import { DirectoryGrants } from './directory-grants';
+import { ProjectScaffoldService } from './project-scaffold';
+import { ProjectSourceService } from './project-source';
+import { ProjectApplyService } from '../schema/project-apply-service';
+
+const now = (): string => new Date().toISOString();
+const projectQueue = new KeyedQueue();
+const withProjectQueue = <T>(projectId: string, action: () => Promise<T>): Promise<T> =>
+  projectQueue.run(projectId, action);
+export class ProjectService {
+  private readonly grants = new DirectoryGrants();
+  private readonly manifest = new ProjectManifestStore();
+  private readonly scaffold: ProjectScaffoldService;
+  private readonly source: ProjectSourceService;
+
+  constructor(
+    private readonly projects: ProjectRepository,
+    private readonly templatePath: string,
+    private readonly projectApply = new ProjectApplyService(projects),
+  ) {
+    this.scaffold = new ProjectScaffoldService(templatePath);
+    this.source = new ProjectSourceService(templatePath);
+  }
+
+  registerGrant(id: string, path: string): void {
+    this.grants.registerGrant(id, path);
+  }
+
+  async createProject(input: {
+    name: string;
+    code: string;
+    pageDirectory?: string;
+    directoryGrantId: string;
+  }): Promise<ProjectRecord> {
+    const name = input.name.trim();
+    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const code = input.code.trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
+      throw invalid('项目标识仅支持小写字母、数字和连字符');
+    }
+    const parentPath = this.grants.consumeGrant(input.directoryGrantId);
+    const pageDirectory = normalizePageDirectory(input.pageDirectory);
+    const path = join(parentPath, code);
+    try {
+      await access(path);
+      throw conflict('目标目录已经存在');
+    } catch (error) {
+      if (error instanceof Error && error.message === '目标目录已经存在') throw error;
+    }
+    const temporaryPath = join(parentPath, `.${code}.${nanoid()}.tmp`);
+    const id = `project_${nanoid()}`;
+    try {
+      await this.source.prepareNewProject(temporaryPath, { name, code });
+      await this.manifest.initializeManifest(temporaryPath, {
+        projectId: id,
+        name,
+        code,
+        pageDirectory,
+      });
+      await rename(temporaryPath, path);
+    } catch (error) {
+      await rm(temporaryPath, { recursive: true, force: true });
+      throw error;
+    }
+    return this.reconcile(path);
+  }
+
+  async openProject(input: {
+    name?: string;
+    code?: string;
+    directoryGrantId: string;
+    pageDirectory?: string;
+    initializeIfNeeded?: boolean;
+  }): Promise<OpenProjectResult> {
+    const path = this.grants.resolveGrant(input.directoryGrantId);
+    const directoryName = basename(path);
+    const name = (input.name ?? directoryName).trim();
+    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const inferredCode =
+      directoryName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'imported-project';
+    const code = (input.code ?? inferredCode).trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code))
+      throw invalid('项目标识仅支持小写字母、数字和连字符');
+    const pageDirectory = normalizePageDirectory(input.pageDirectory);
+    try {
+      await access(join(path, 'origamix.project.json'));
+    } catch {
+      if (!input.initializeIfNeeded)
+        return {
+          status: 'initialization_required',
+          displayPath: path,
+        };
+      await this.scaffold.initializeDirectoryAsNewProject(path, { name, code, pageDirectory });
+    }
+    this.grants.consumeGrant(input.directoryGrantId);
+    return { status: 'opened', project: await this.reconcile(path) };
+  }
+
+  async getStack(projectId: string) {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+    const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.projectId !== projectId) throw invalid('项目清单身份已变化，请重新打开项目');
+    return resolveProjectStack(manifest);
+  }
+
+  async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
+    return this.createPageWithSchema(projectId, input, createInitialPageSchema());
+  }
+
+  private async createPageWithSchema(
+    projectId: string,
+    input: { name: string; slug: string },
+    schema: OrigamixPageSchema,
+  ): Promise<PageRecord> {
+    return withProjectQueue(projectId, () =>
+      this.createPageWithSchemaUnlocked(projectId, input, schema),
+    );
+  }
+
+  private async createPageWithSchemaUnlocked(
+    projectId: string,
+    input: { name: string; slug: string },
+    schema: OrigamixPageSchema,
+  ): Promise<PageRecord> {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+    const name = input.name.trim();
+    if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
+    const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.version !== ORIGAMIX_VERSION)
+      throw conflict('项目版本尚未升级，不能向旧运行环境创建新页面');
+    const pages = manifest.pages;
+    if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
+    const relativePath = join('src', manifest.pageDirectory, input.slug);
+    const pagesPath = await ensurePageDirectory(project.path, manifest.pageDirectory);
+    const pagePath = join(pagesPath, input.slug);
+    try {
+      await access(pagePath);
+      throw conflict('页面文件已经存在');
+    } catch (error) {
+      if (error instanceof Error && error.message === '页面文件已经存在') throw error;
+    }
+    const id = `page_${nanoid()}`;
+    const pageRef = { projectPath: project.path, pageId: id, slug: input.slug, relativePath };
+    let manifestCommitted = false;
+    let pageDirectoryCreated = false;
+    try {
+      await mkdir(pagePath);
+      pageDirectoryCreated = true;
+      await this.projectApply.initializeTarget(pageRef, schema);
+      await this.source.createPageEntry(
+        project.path,
+        manifest.pageDirectory,
+        input.slug,
+        resolveProjectStack(manifest),
+      );
+      await initializePageSchema(pageRef, schema);
+      const nextPage = { pageId: id, name, slug: input.slug };
+      await this.manifest.addPage(project.path, nextPage);
+      manifestCommitted = true;
+      await this.reconcile(project.path);
+    } catch (error) {
+      if (!manifestCommitted) {
+        await Promise.allSettled([
+          ...(pageDirectoryCreated
+            ? [this.source.removePageDirectory(project.path, manifest.pageDirectory, input.slug)]
+            : []),
+          discardInitializedPageSchema(pageRef),
+        ]);
+        throw error;
+      }
+      throw conflict('页面已创建，但本地索引更新失败，请重新打开项目以重建页面索引');
+    }
+    const page = this.projects.getPage(projectId, id);
+    if (!page) throw new Error('页面索引失败');
+    return page;
+  }
+
+  async renameProject(projectId: string, nameInput: string): Promise<ProjectRecord> {
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project) throw notFound('项目不存在');
+      const name = nameInput.trim();
+      if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+      await this.manifest.renameProject(project.path, name);
+      return this.reconcile(project.path);
+    });
+  }
+
+  async renamePage(projectId: string, pageId: string, nameInput: string): Promise<PageRecord> {
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      const page = this.projects.getPage(projectId, pageId);
+      if (!project || !page) throw notFound('页面不存在');
+      const name = nameInput.trim();
+      if (!name) throw invalid('页面名称无效');
+      await this.manifest.renamePage(project.path, pageId, name);
+      await this.reconcile(project.path);
+      return this.projects.getPage(projectId, pageId)!;
+    });
+  }
+
+  async duplicatePage(
+    projectId: string,
+    pageId: string,
+    requestedName?: string,
+  ): Promise<PageRecord> {
+    const project = this.projects.getProject(projectId);
+    const page = this.projects.getPage(projectId, pageId);
+    if (!project || !page) throw notFound('页面不存在');
+    const current = await getSchema({
+      projectPath: project.path,
+      pageId: page.id,
+      slug: page.slug,
+      relativePath: page.relativePath,
+    });
+    const pages = this.projects.listPages(projectId);
+    const baseSlug = `${page.slug}-copy`;
+    let slug = baseSlug;
+    let suffix = 2;
+    while (true) {
+      let directoryExists = false;
+      try {
+        await access(join(project.path, page.relativePath, '..', slug));
+        directoryExists = true;
+      } catch {
+        // A missing directory is available for the copy.
+      }
+      if (!directoryExists && !pages.some((item) => item.slug === slug)) break;
+      slug = `${baseSlug}-${suffix++}`;
+    }
+    return this.createPageWithSchema(
+      projectId,
+      { name: requestedName?.trim() || `${page.name} 副本`, slug },
+      current.schema,
+    );
+  }
+
+  async deletePage(projectId: string, pageId: string): Promise<void> {
+    await withProjectQueue(projectId, async () => {
+      if (this.projects.hasActiveRuns(projectId, pageId))
+        throw conflict('页面 Agent 正在运行，请先停止后再删除');
+      const project = this.projects.getProject(projectId);
+      const page = this.projects.getPage(projectId, pageId);
+      if (!project || !page) throw notFound('页面不存在');
+      const manifest = await this.manifest.readManifest(project.path);
+      await this.manifest.removePage(project.path, pageId);
+      await Promise.all([
+        this.source.removePageDirectory(project.path, manifest.pageDirectory, page.slug),
+        discardInitializedPageSchema({
+          projectPath: project.path,
+          pageId,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        }),
+      ]);
+      if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
+    });
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project) throw notFound('项目不存在');
+      await assertProjectNotUpgrading(project.path);
+      if (this.projects.hasActiveRuns(projectId))
+        throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
+      if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+    });
+  }
+
+  upgradeProject(projectId: string, input: { expectedVersion: string; clientRequestId: string }) {
+    return withProjectQueue(projectId, () =>
+      new ProjectUpgradeService(this.projects, this.templatePath).upgrade(projectId, input),
+    );
+  }
+
+  cancelProjectUpgrade(projectId: string, clientRequestId: string) {
+    return withProjectQueue(projectId, () =>
+      new ProjectUpgradeService(this.projects, this.templatePath).cancel(
+        projectId,
+        clientRequestId,
+      ),
+    );
+  }
+
+  async getUpgradeState(projectId: string) {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在');
+    const manifest = await this.manifest.readManifest(project.path);
+    if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
+    const upgrade = await readProjectUpgrade(project.path);
+    return {
+      version: manifest.version,
+      targetVersion: ORIGAMIX_VERSION,
+      upgrade: upgrade
+        ? { requestId: upgrade.requestId, from: upgrade.from, to: upgrade.to, state: upgrade.state }
+        : null,
+    };
+  }
+
+  reconcile = async (path: string): Promise<ProjectRecord> => {
+    const manifest = await this.manifest.readManifest(path);
+    const timestamp = now();
+    const pages: PageRecord[] = [];
+    for (const item of manifest.pages) {
+      const relativePath = join('src', manifest.pageDirectory, item.slug);
+      pages.push({
+        id: item.pageId,
+        projectId: manifest.projectId,
+        name: item.name,
+        slug: item.slug,
+        relativePath,
+        status: 0,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+    const project: ProjectRecord = {
+      id: manifest.projectId,
+      name: manifest.name,
+      path,
+      status: 0,
+      createdAt: timestamp,
+      lastOpenedAt: timestamp,
+    };
+    this.projects.reconcile(project, pages);
+    return project;
+  };
+}

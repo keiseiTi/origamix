@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ProductDocsProvider, type ProductDocument } from '../../agent/product-docs-provider';
+import { ProductDocsProvider, type ProductDocument } from '../../src/agent/product-docs-provider';
 
 const docs: ProductDocument[] = [
   {

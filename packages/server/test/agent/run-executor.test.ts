@@ -1,19 +1,19 @@
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { deferred } from '../../testing/deferred';
-import { FakeAgentEngine } from '../../testing/fake-agent-engine';
+import { deferred } from '../helpers/deferred';
+import { FakeAgentEngine } from '../fixtures/fake-agent-engine';
 import { Type } from '@sinclair/typebox';
 import { describe, expect, it, vi } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { AgentRunRepository } from '../../agent/run-repository';
-import { ConversationRepository } from '../../conversations/conversation-repository';
-import { ProjectRepository } from '../../projects/project-repository';
-import { AgentRunService } from '../../agent/run-service';
-import { ConversationService } from '../../conversations/conversation-service';
-import { AgentEngineError, type AgentEngineRequest } from '../../agent/engine';
-import { RunExecutor } from '../../agent/run-executor';
-import { AgentService } from '../../agent/agent-service';
-import { AgentEventBroker } from '../../agent/event-broker';
-import type { ContextAssembler } from '../../agent/context-assembler';
+import { ApplicationDatabase } from '../../src/database/database';
+import { AgentRunRepository } from '../../src/agent/run-repository';
+import { ConversationRepository } from '../../src/conversations/conversation-repository';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { AgentRunService } from '../../src/agent/run-service';
+import { ConversationService } from '../../src/conversations/conversation-service';
+import { AgentEngineError, type AgentEngineRequest } from '../../src/agent/agent-engine';
+import { RunExecutor } from '../../src/agent/run-executor';
+import { AgentService } from '../../src/agent/agent-service';
+import { AgentEventBroker } from '../../src/agent/event-broker';
+import type { ContextAssembler } from '../../src/agent/context-assembler';
 
 const setup = (
   handler: (

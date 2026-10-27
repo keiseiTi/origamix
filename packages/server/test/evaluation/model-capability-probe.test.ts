@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   probeDeepSeekCapabilities,
   type ProbeStream,
-} from '../../evaluation/model-capability-probe';
+} from '../../src/evaluation/model-capability-probe';
 
 describe('DeepSeek capability probe', () => {
   it('normalizes streamed text and one structured tool call without returning content', async () => {

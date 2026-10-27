@@ -1,15 +1,15 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { AgentEventBroker } from '../../agent/event-broker';
-import { ApplicationDatabase } from '../../database/database';
-import { AgentRunRepository } from '../../agent/run-repository';
-import { ConversationRepository } from '../../conversations/conversation-repository';
-import { ProjectRepository } from '../../projects/project-repository';
-import { AgentRunService } from '../../agent/run-service';
-import { ConversationService } from '../../conversations/conversation-service';
-import { ProjectService } from '../../projects/project-service';
-import type { AgentService } from '../../agent/agent-service';
-import { createHttpServer } from '../../http/server';
+import { AgentEventBroker } from '../../src/agent/event-broker';
+import { ApplicationDatabase } from '../../src/database/database';
+import { AgentRunRepository } from '../../src/agent/run-repository';
+import { ConversationRepository } from '../../src/conversations/conversation-repository';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { AgentRunService } from '../../src/agent/run-service';
+import { ConversationService } from '../../src/conversations/conversation-service';
+import { ProjectService } from '../../src/projects/project-service';
+import type { AgentService } from '../../src/agent/agent-service';
+import { createHttpServer } from '../../src/http/server';
 import type { CreateAgentRunRequest } from '@origamix/shared';
 
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));

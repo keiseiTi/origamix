@@ -3,15 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MessageContent, RunBudget } from '@origamix/shared';
-import { ApplicationDatabase } from '../../database/database';
-import { AgentRunRepository, type AgentRunRecord } from '../../agent/run-repository';
-import { ConversationRepository } from '../../conversations/conversation-repository';
-import { ProjectRepository } from '../../projects/project-repository';
-import { AgentRunService } from '../../agent/run-service';
+import { ApplicationDatabase } from '../../src/database/database';
+import { AgentRunRepository, type AgentRunRecord } from '../../src/agent/run-repository';
+import { ConversationRepository } from '../../src/conversations/conversation-repository';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { AgentRunService } from '../../src/agent/run-service';
 import {
   ConversationService,
   type StartConversationRunInput,
-} from '../../conversations/conversation-service';
+} from '../../src/conversations/conversation-service';
 
 const directories: string[] = [];
 const content = (text: string): MessageContent => ({

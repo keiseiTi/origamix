@@ -3,9 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 const serverRoot = fileURLToPath(new URL('../', import.meta.url));
 const normalize = (path) => path.replaceAll('\\', '/').replace(/\.(?:[cm]?[jt]sx?)$/, '');
+const sourcePath = (path) => normalize(path).replace(/^src\//, '');
 const owners = new Map([
-  ['schema/schema-commit', ['schema/schema-service']],
-  ['schema/working-schema-store', ['schema/schema-service', 'schema/schema-commit']],
+  ['schema/revision-commit', ['schema/schema-service']],
+  ['schema/working-schema-store', ['schema/schema-service', 'schema/revision-commit']],
   ['schema/target-schema-store', ['schema/project-apply-service']],
   [
     'infrastructure/atomic-file',
@@ -22,7 +23,7 @@ const owners = new Map([
   ],
 ]);
 const business = /^(projects|schema|conversations|agent|diagnostics)\//;
-const testOnly = /(^testing\/|\.test$)/;
+const testOnly = /(^test\/|\.test$)/;
 const typeOnly = (node) =>
   node.importKind === 'type' ||
   node.exportKind === 'type' ||
@@ -40,7 +41,7 @@ export const serverBoundaries = {
     },
   },
   create(context) {
-    const file = normalize(relative(serverRoot, context.filename));
+    const file = sourcePath(relative(serverRoot, context.filename));
     if (file.startsWith('../') || testOnly.test(file) || file.startsWith('scripts/')) return {};
     const report = (node, reason) =>
       context.report({ node, messageId: 'boundary', data: { reason } });
@@ -76,9 +77,15 @@ export const serverBoundaries = {
       }
       let target;
       if (specifier.startsWith('.'))
-        target = normalize(relative(serverRoot, resolve(dirname(context.filename), specifier)));
+        target = sourcePath(relative(serverRoot, resolve(dirname(context.filename), specifier)));
       else if (specifier.startsWith('@origamix/server/'))
-        target = normalize(specifier.slice('@origamix/server/'.length));
+        target =
+          {
+            runtime: 'server',
+            utility: 'hosts/utility-process',
+            template: 'templates/copy-template',
+          }[specifier.slice('@origamix/server/'.length)] ??
+          sourcePath(specifier.slice('@origamix/server/'.length));
       else return;
       if (target.startsWith('../')) {
         report(
@@ -98,7 +105,7 @@ export const serverBoundaries = {
         report(node, 'Production modules cannot import testing helpers or tests.');
       if (
         business.test(file) &&
-        (target.startsWith('http/') || ['runtime', 'index'].includes(target))
+        (target.startsWith('http/') || ['server', 'hosts/utility-process'].includes(target))
       ) {
         report(node, 'Business modules cannot depend on HTTP or host startup.');
       }
@@ -106,20 +113,24 @@ export const serverBoundaries = {
         /^(database|infrastructure)\//.test(file) &&
         (business.test(target) ||
           target.startsWith('http/') ||
-          ['runtime', 'index'].includes(target))
+          ['server', 'hosts/utility-process'].includes(target))
       ) {
         report(node, 'Database and infrastructure cannot depend on business or transport modules.');
       }
       if (isType) return;
       if (thinBoundary) {
         const allowed = file.startsWith('http/')
-          ? target.startsWith('http/') || ['errors', 'schema/schema-service'].includes(target)
+          ? target.startsWith('http/') ||
+            ['errors', 'schema/schema-service', 'schema/validation/schema-validation'].includes(
+              target,
+            )
           : target.startsWith('agent/tools/') ||
             [
               'errors',
-              'agent/engine',
+              'agent/agent-engine',
               'schema/schema-service',
-              'schema/material-validation',
+              'schema/validation/schema-validation',
+              'schema/validation/material-validation',
             ].includes(target);
         if (!allowed)
           report(
@@ -139,7 +150,7 @@ export const serverBoundaries = {
     };
     const checkExport = (node) => {
       if (node.source) check(node.source, node, typeOnly(node));
-      if (file !== 'runtime') return;
+      if (file !== 'server') return;
       const declarations = node.declaration?.declarations ?? [];
       const names = [
         ...declarations.map((item) => item.id.name),
@@ -153,7 +164,7 @@ export const serverBoundaries = {
       ) {
         report(
           node,
-          'runtime.ts exposes only the local startServer function; import internal modules directly.',
+          'src/server.ts exposes only the local startServer function; import internal modules directly.',
         );
       }
     };

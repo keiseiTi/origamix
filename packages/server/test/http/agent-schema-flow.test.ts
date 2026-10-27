@@ -1,4 +1,4 @@
-import { loadProjectMaterials } from '../../projects/project-materials';
+import { loadProjectMaterials } from '../../src/projects/project-materials';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,25 +11,29 @@ import {
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
 import type { PageFlow, SchemaOperation } from '@origamix/shared';
-import { ApplicationDatabase } from '../../database/database';
-import { ProjectRepository } from '../../projects/project-repository';
-import { ProjectService } from '../../projects/project-service';
-import { ProjectApplyService } from '../../schema/project-apply-service';
-import { getSchema, getWorkingSchemaState, saveWorkingRevision } from '../../schema/schema-service';
-import { AgentRunRepository } from '../../agent/run-repository';
-import { AgentRunService } from '../../agent/run-service';
-import { AgentService } from '../../agent/agent-service';
-import { AgentEventBroker } from '../../agent/event-broker';
-import { RunExecutor } from '../../agent/run-executor';
-import { ContextAssembler } from '../../agent/context-assembler';
-import { ProductDocsProvider } from '../../agent/product-docs-provider';
-import { ConversationRepository } from '../../conversations/conversation-repository';
-import { ConversationService } from '../../conversations/conversation-service';
-import { createDefaultAgentToolEntries } from '../../agent/tools/registry';
-import { createCompletePageRunTool } from '../../agent/tools/complete-page-run';
-import { PiAgentEngine } from '../../agent/pi-agent-engine';
-import { createReadOnlyAgentTools } from '../../agent/tools/read-only-tools';
-import { createHttpServer } from '../../http/server';
+import { ApplicationDatabase } from '../../src/database/database';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { ProjectService } from '../../src/projects/project-service';
+import { ProjectApplyService } from '../../src/schema/project-apply-service';
+import {
+  getSchema,
+  getWorkingSchemaState,
+  saveWorkingRevision,
+} from '../../src/schema/schema-service';
+import { AgentRunRepository } from '../../src/agent/run-repository';
+import { AgentRunService } from '../../src/agent/run-service';
+import { AgentService } from '../../src/agent/agent-service';
+import { AgentEventBroker } from '../../src/agent/event-broker';
+import { RunExecutor } from '../../src/agent/run-executor';
+import { ContextAssembler } from '../../src/agent/context-assembler';
+import { ProductDocsProvider } from '../../src/agent/product-docs-provider';
+import { ConversationRepository } from '../../src/conversations/conversation-repository';
+import { ConversationService } from '../../src/conversations/conversation-service';
+import { createDefaultAgentToolEntries } from '../../src/agent/tools/registry';
+import { createCompletePageRunTool } from '../../src/agent/tools/complete-page-run';
+import { PiAgentEngine } from '../../src/agent/pi-agent-engine';
+import { createReadOnlyAgentTools } from '../../src/agent/tools/read-only-tools';
+import { createHttpServer } from '../../src/http/server';
 
 it('reports the invalid terminal field so a rejected reset can be repaired', async () => {
   const tool = createCompletePageRunTool(

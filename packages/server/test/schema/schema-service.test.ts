@@ -27,7 +27,7 @@ import {
   restoreRevisionToWorking,
   saveWorkingRevision,
   updateWorkingSchema,
-} from '../../schema/schema-service';
+} from '../../src/schema/schema-service';
 
 const directories: string[] = [];
 
@@ -842,7 +842,7 @@ it('opens the current page repeatedly without migration or additional checkpoint
 it('rejects unsupported or missing Schema versions without rewriting Working', async () => {
   const page = await createPageFixture();
   await initializePageSchema(page, schema);
-  const { hashSchema } = await import('../../schema/schema-hash');
+  const { hashSchema } = await import('../../src/schema/schema-hash');
   const path = join(page.projectPath, '.origamix/pages', page.pageId, 'working.json');
   const working = JSON.parse(await readFile(path, 'utf8'));
   for (const candidate of [

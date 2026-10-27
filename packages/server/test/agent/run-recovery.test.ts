@@ -3,20 +3,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { ProjectRepository } from '../../projects/project-repository';
-import { ProjectService } from '../../projects/project-service';
-import { ProjectApplyService } from '../../schema/project-apply-service';
+import { ApplicationDatabase } from '../../src/database/database';
+import { ProjectRepository } from '../../src/projects/project-repository';
+import { ProjectService } from '../../src/projects/project-service';
+import { ProjectApplyService } from '../../src/schema/project-apply-service';
 import {
   applyWorkingSchemaOperations,
   getWorkingSchemaState,
   updateWorkingSchema,
-} from '../../schema/schema-service';
-import { AgentRunRepository } from '../../agent/run-repository';
-import { AgentRunService } from '../../agent/run-service';
-import { ConversationRepository } from '../../conversations/conversation-repository';
-import { ConversationService } from '../../conversations/conversation-service';
-import { recoverAgentRunsOnStartup } from '../../agent/run-recovery';
+} from '../../src/schema/schema-service';
+import { AgentRunRepository } from '../../src/agent/run-repository';
+import { AgentRunService } from '../../src/agent/run-service';
+import { ConversationRepository } from '../../src/conversations/conversation-repository';
+import { ConversationService } from '../../src/conversations/conversation-service';
+import { recoverAgentRunsOnStartup } from '../../src/agent/run-recovery';
 
 const directories: string[] = [];
 

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { ProjectManifestStore } from '../../projects/project-manifest-store';
+import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
 
 it('retains manifest uniqueness checks after structural validation', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-manifest-'));

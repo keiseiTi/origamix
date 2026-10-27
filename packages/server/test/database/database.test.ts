@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../database/database';
-import { assertSchemaSafety, schemaSql } from '../../database/initialize';
+import { ApplicationDatabase } from '../../src/database/database';
+import { assertSchemaSafety, schemaSql } from '../../src/database/initialize';
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -70,7 +70,7 @@ describe('ApplicationDatabase', () => {
 
 it('backs up a versioned database and rolls back a failed upgrade', async () => {
   const { readdir } = await import('node:fs/promises');
-  const { migrateDatabase } = await import('../../database/migrations');
+  const { migrateDatabase } = await import('../../src/database/migrations');
   const directory = await mkdtemp(join(tmpdir(), 'origamix-db-upgrade-'));
   directories.push(directory);
   const path = join(directory, 'origamix.db');

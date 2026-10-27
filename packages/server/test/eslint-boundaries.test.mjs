@@ -17,7 +17,7 @@ const lint = (file, code) =>
         rules: { 'architecture/boundaries': 'error' },
       },
     ],
-    { filename: `${serverRoot}${file}` },
+    { filename: `${serverRoot}${file.startsWith('test/') ? '' : 'src/'}${file}` },
   );
 
 for (const [file, code] of [
@@ -32,12 +32,15 @@ for (const [file, code] of [
   ],
   ['agent/tools/new-tool.ts', "const db = import('node:sqlite');"],
   ['agent/tools/new-tool.ts', "import { createRequire } from 'node:module';"],
-  ['schema/new-service.ts', "import { SchemaCommit } from './schema-commit';"],
+  ['schema/new-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/new-service.ts', "import { helper } from '../http/helper';"],
-  ['schema/new-service.ts', "export { FakeAgentEngine } from '../testing/fake-agent-engine';"],
-  ['runtime.ts', "export * from './agent/engine';"],
-  ['runtime.ts', "export { startServer } from './other';"],
-  ['runtime.ts', 'export default {};'],
+  [
+    'schema/new-service.ts',
+    "export { FakeAgentEngine } from '../../test/fixtures/fake-agent-engine';",
+  ],
+  ['server.ts', "export * from './agent/agent-engine';"],
+  ['server.ts', "export { startServer } from './other';"],
+  ['server.ts', 'export default {};'],
   ['agent/new-service.ts', "import { evaluate } from '../evaluation/evaluation-harness';"],
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd';"],
   ['agent/new-service.ts', "import { manifest } from '@origamix/materials/manifest';"],
@@ -45,7 +48,7 @@ for (const [file, code] of [
   ['agent/new-service.ts', "import { defineMaterial } from '@origamix/materials';"],
   ['agent/new-service.ts', "import type { Component } from 'react';"],
   ['agent/new-service.ts', "import { host } from '@origamix/desktop/main';"],
-  ['agent/new-service.ts', "import { host } from '../../app/dev-server';"],
+  ['agent/new-service.ts', "import { host } from '../../../app/dev-server';"],
   ['agent/new-service.ts', "import { host } from '@origamix/server/runtime';"],
   ['agent/new-service.ts', 'const module = import(name);'],
   ['database/new.ts', "import { ProjectService } from '../projects/project-service';"],
@@ -72,7 +75,7 @@ for (const [file, code] of [
     'agent/tools/read-only-tools.ts',
     "import { manifest } from '@origamix/materials/antd/manifest';",
   ],
-  ['schema/schema-service.ts', "import { SchemaCommit } from './schema-commit';"],
+  ['schema/schema-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/schema-service.ts', "import { WorkingSchemaStore } from './working-schema-store';"],
   ['schema/project-apply-service.ts', "import { TargetSchemaStore } from './target-schema-store';"],
   [
@@ -83,16 +86,16 @@ for (const [file, code] of [
     'projects/project-source.ts',
     "import { writeFileAtomically } from '../infrastructure/atomic-file';",
   ],
-  ['runtime.ts', 'export const startServer = async () => {};'],
+  ['server.ts', 'export const startServer = async () => {};'],
   ['tooling.ts', "export * from './evaluation/evaluation-harness';"],
   ['http/agent-flow.test.ts', "import { writeFile } from 'node:fs/promises';"],
-  ['testing/fixture.ts', "import { FakeAgentEngine } from './fake-agent-engine';"],
+  ['test/fixtures/example.ts', "import { FakeAgentEngine } from './fake-agent-engine';"],
 ]) {
   test(`allows ${file}: ${code}`, () => assert.deepEqual(lint(file, code), []));
 }
 
 test('the repository configuration enables the Server boundary rule', async () => {
   const eslint = new ESLint({ cwd: fileURLToPath(new URL('../../../', import.meta.url)) });
-  const config = await eslint.calculateConfigForFile(`${serverRoot}http/schema-routes.ts`);
+  const config = await eslint.calculateConfigForFile(`${serverRoot}src/http/schema-routes.ts`);
   assert.equal(config.rules['architecture/server-boundaries'][0], 2);
 });

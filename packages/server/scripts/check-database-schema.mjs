@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
-const source = readFileSync(new URL('../database/initialize.ts', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../src/database/initialize.ts', import.meta.url), 'utf8');
 const embedded = source.match(/export const schemaSql = `([\s\S]*?)`;/)?.[1];
 if (!embedded) throw new Error('无法读取 initialize.ts 中的 schemaSql');
 

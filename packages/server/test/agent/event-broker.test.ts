@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AgentEventBroker } from '../../agent/event-broker';
+import { AgentEventBroker } from '../../src/agent/event-broker';
 
 const input = (type: string) => ({
   type,

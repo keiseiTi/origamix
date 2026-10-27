@@ -4,8 +4,8 @@ import type { OrigamixPageSchema } from '@origamix/shared';
 import {
   defaultMaterialValidationRuntime,
   validatePageAgainstMaterials,
-  type MaterialValidationRuntime,
-} from '../../schema/material-validation';
+} from '../../src/schema/validation/material-validation';
+import { type MaterialValidationRuntime } from '../../src/schema/validation/validation-contracts';
 
 const supportedSet = [{ id: 'official-antd', version: '1.0.0' }] as const;
 

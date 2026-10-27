@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { runAgentEvaluation } from '../../evaluation/evaluation-harness';
-import { evaluateAgentReleaseGate } from '../../evaluation/release-gate';
+import { runAgentEvaluation } from '../../src/evaluation/evaluation-harness';
+import { evaluateAgentReleaseGate } from '../../src/evaluation/release-gate';
 
 describe('Agent performance and release gate', () => {
   it('accepts bounded continuous/cancel evidence after resources are released', async () => {
