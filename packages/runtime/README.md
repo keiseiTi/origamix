@@ -104,5 +104,3 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 物料收到 `om_mode: 'design' | 'render'`，设计占位通过 om_dropPlaceholder 提供；运行态通过 om_setRuntimeState、om_setContextValues 上报业务状态和注册方法。内置物料在设计态允许 Tabs 等必要设计交互，但跳过运行生命周期；自定义组件也必须遵守此约定。
 
 既有页面源码使用旧 `@origamix/runtime/react` 导入时，需要显式改成根入口；Origamix 不自动改写用户已有页面源码。新生成页面直接使用根入口。Schema 数据格式保持兼容。
-
-部分状态、布局和流程算法参考 Tangramino，来源及许可见 [NOTICE](NOTICE)；运行包不依赖该项目。

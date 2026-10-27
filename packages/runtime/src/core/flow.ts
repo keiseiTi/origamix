@@ -1,4 +1,3 @@
-// Flow dispatch adapted from Tangramino; see ../../NOTICE.
 import type { LogicNodes, RuntimeEngine, RuntimeSchema } from './types';
 
 export const withFlowEngine = ({

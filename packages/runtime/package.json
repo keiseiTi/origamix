@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "files": [
-    "dist",
-    "NOTICE"
+    "dist"
   ],
   "exports": {
     ".": "./src/index.ts"

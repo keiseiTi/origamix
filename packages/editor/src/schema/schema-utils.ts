@@ -1,4 +1,3 @@
-// Editing algorithms adapted from Tangramino SchemaUtils; see ../../../NOTICE.
 import { isPageSchema, type OrigamixPageSchema as Schema, type PageFlow } from '@origamix/shared';
 
 type InsertElement = { id: string; type: string; props?: Record<string, unknown> };

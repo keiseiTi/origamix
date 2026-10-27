@@ -83,5 +83,3 @@ pnpm --filter @origamix/editor build
 `schema/schema-utils.ts` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`session/editor-session.tsx` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。
 
 `canvas/` 使用 dnd-kit 处理拖拽和占位；调用 `@origamix/runtime` 的 DesignRenderer 展示物料。设计态只允许设计交互，不绑定页面流程或执行函数。选中框和插入指示器只查询当前会话画布。
-
-部分底层算法迁自 Tangramino，来源及许可见 [NOTICE](NOTICE)；安装和构建不依赖该项目。
