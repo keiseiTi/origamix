@@ -14,6 +14,8 @@ assert.equal(existsSync(join(resources, 'app.asar', 'node_modules')), false,
 for (const name of ['runtime.tgz', 'materials.tgz'])
   assert.ok(existsSync(join(resources, 'template', 'vendor', name)), `Missing template dependency: ${name}`);
 const desktopDist = join(resources, 'app.asar', 'dist');
+assert.ok(existsSync(join(desktopDist, '.env')), 'Missing packaged environment defaults');
+assert.equal(existsSync(join(desktopDist, '.env.local')), false, 'Personal settings must not ship');
 const renderer = join(resources, 'app', 'index.html');
 const template = join(resources, 'template');
 let backend;

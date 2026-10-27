@@ -10,22 +10,16 @@ import {
   type UtilityProcess,
 } from 'electron';
 import { join } from 'path';
+import { resolveDesktopConfig } from './config';
 import { pathToFileURL } from 'node:url';
 import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from './workbench-security';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
 import type { BackendConnection, ModelSettings } from '@origamix/shared';
 
-const isDevelopment = !app.isPackaged;
-const rendererIndexPath = (): string =>
-  isDevelopment
-    ? join(__dirname, '../../../../packages/app/dist/index.html')
-    : join(process.resourcesPath, 'app', 'index.html');
-
+let desktopConfig: ReturnType<typeof resolveDesktopConfig>;
 const workbenchEntryUrl = (): string =>
-  isDevelopment && process.env['ELECTRON_RENDERER_URL']
-    ? process.env['ELECTRON_RENDERER_URL']
-    : pathToFileURL(rendererIndexPath()).href;
+  desktopConfig.rendererUrl ?? pathToFileURL(desktopConfig.rendererPath).href;
 
 let workbenchWindow: BrowserWindow | undefined;
 
@@ -52,7 +46,7 @@ const createWindow = (): BrowserWindow => {
         }
       : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.cjs'),
+      preload: desktopConfig.preloadPath,
       sandbox: false,
       nodeIntegration: false,
       contextIsolation: true,
@@ -81,10 +75,10 @@ const createWindow = (): BrowserWindow => {
     if (!isTrustedWorkbenchUrl(url, workbenchEntryUrl())) event.preventDefault();
   });
 
-  if (isDevelopment && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  if (desktopConfig.rendererUrl) {
+    void mainWindow.loadURL(desktopConfig.rendererUrl);
   } else {
-    mainWindow.loadFile(rendererIndexPath());
+    void mainWindow.loadFile(desktopConfig.rendererPath);
   }
   return mainWindow;
 };
@@ -98,7 +92,7 @@ let quitting = false;
 const spawnBackend = async (): Promise<BackendConnection> => {
   const serviceInstanceId = nanoid();
   const token = nanoid(48);
-  const backend = utilityProcess.fork(join(__dirname, 'server.cjs'), [], { stdio: 'pipe' });
+  const backend = utilityProcess.fork(desktopConfig.backendPath, [], { stdio: 'pipe' });
 
   backendProcess = backend;
   return new Promise<BackendConnection>((resolve, reject) => {
@@ -181,10 +175,8 @@ const spawnBackend = async (): Promise<BackendConnection> => {
     backend.once('spawn', () => {
       backend.postMessage({
         kind: 'initialize',
-        databasePath: join(app.getPath('userData'), 'origamix.db'),
-        templatePath: app.isPackaged
-          ? join(process.resourcesPath, 'template')
-          : (process.env.ORIGAMIX_TEMPLATE_DIR ?? join(__dirname, '../template')),
+        databasePath: desktopConfig.databasePath,
+        templatePath: desktopConfig.templatePath,
         desktopToken: token,
         serviceInstanceId,
       });
@@ -336,6 +328,12 @@ app
     // Set app user model id for windows
     app.setAppUserModelId('com.origamix');
 
+    desktopConfig = resolveDesktopConfig({
+      packaged: app.isPackaged,
+      mainDirectory: __dirname,
+      resourcesPath: process.resourcesPath,
+      userDataPath: app.getPath('userData'),
+    });
     await ensureBackend();
     const handleWorkbench = (
       channel: string,

@@ -88,3 +88,5 @@ pnpm --filter @origamix/app build
 - The project menu's upgrade dialog reads durable upgrade status, keeps the request ID on failures, and resumes only on explicit user action. It flushes local edits but never saves Revisions automatically. Close/reopen recovers pending identity from Server. Completion tells users to reinstall dependencies; the UI never runs a package manager.
 
 - The Node-only web host prepares a vendored template under ORIGAMIX_WEB_STATE_DIR using Server's exported template-artifact tooling. Do not send source-only templates or workspace dependency paths to the project upgrade service.
+
+- Package `config.ts` owns Node-only development settings from `.env` / optional `.env.local` / process overrides. Vite envDir is disabled; do not expose the entire env or VITE_* from these files to Renderer. Desktop injects its renderer host/port and host mode. Tests set ORIGAMIX_ENV_LOCAL=0.

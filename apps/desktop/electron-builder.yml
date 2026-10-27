@@ -5,6 +5,7 @@ directories:
   output: ../../release
 files:
   - dist/**
+  - dist/.env
   - '!dist/template/**'
   # Main, preload and Server are self-contained bundles.
   - '!node_modules/**'

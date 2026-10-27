@@ -1,3 +1,4 @@
+import { loadAppConfig } from './config.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +11,11 @@ export const localWebServer = (): Plugin => {
     name: 'origamix-local-web-server',
     apply: 'serve',
     async configureServer(vite) {
-      if (process.env.ORIGAMIX_DESKTOP === '1' || process.env.VITEST) return;
+      const config = loadAppConfig();
+      if (config.desktop || process.env.VITEST) return;
       const { startServer } = await import('@origamix/server/runtime');
       const { prepareTemplateArtifact } = await import('@origamix/server/template-artifact');
-      const stateDir =
-        process.env.ORIGAMIX_WEB_STATE_DIR ??
-        fileURLToPath(new URL('../../.origamix-web/', import.meta.url));
+      const stateDir = config.stateDir;
       await mkdir(stateDir, { recursive: true });
       const templatePath = resolve(stateDir, 'template');
       await prepareTemplateArtifact({
@@ -26,7 +26,7 @@ export const localWebServer = (): Plugin => {
       });
       const token = randomUUID();
       const serviceInstanceId = randomUUID();
-      const port = vite.config.server.port ?? 5173;
+      const port = vite.config.server.port ?? config.port;
       const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
       const backend = await startServer({
         databasePath: resolve(stateDir, 'origamix.db'),
@@ -34,7 +34,7 @@ export const localWebServer = (): Plugin => {
         desktopToken: token,
         serviceInstanceId,
         allowedOrigins: [...hosts].map((host) => `http://${host}`),
-        projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR,
+        projectPath: config.projectPath,
         getModelCredential: async (provider) =>
           provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY?.trim() : undefined,
       });

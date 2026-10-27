@@ -1,16 +1,21 @@
+import { loadAppConfig } from './config.ts';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { canvasPrototype } from './canvas-prototype-plugin.ts';
 import { localWebServer } from './dev-server.ts';
 
-export default defineConfig({
-  base: './',
-  plugins: [tailwindcss(), react(), canvasPrototype(), localWebServer()],
-  server: { port: 5173, strictPort: true },
-  resolve: {
-    alias: {
-      '@': '/src',
+export default defineConfig(() => {
+  const config = loadAppConfig();
+  return {
+    base: './',
+    envDir: false as const,
+    plugins: [tailwindcss(), react(), canvasPrototype(), localWebServer()],
+    server: { host: config.host, port: config.port, strictPort: true },
+    resolve: {
+      alias: {
+        '@': '/src',
+      },
     },
-  },
+  };
 });

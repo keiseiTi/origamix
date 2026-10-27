@@ -6,6 +6,8 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stopChild } from '../scripts/dev-supervisor.mjs';
 
+process.env.ORIGAMIX_ENV_LOCAL = '0';
+
 // Test real compilers in a throwaway workspace, without touching source mtimes or user data.
 const original = fileURLToPath(new URL('../../../', import.meta.url));
 const root = await mkdtemp(join(tmpdir(), 'origamix-dev-smoke-'));
@@ -69,13 +71,15 @@ try {
           .split(sep)
           .some(
             (part) =>
-              ['.vite', '.origamix-web'].includes(part) ||
+              ['.vite', '.origamix-web', '.env.local'].includes(part) ||
               (part === 'dist' && ['server', 'app'].includes(name)),
           ),
     });
   }
   const serverRoot = join(root, 'packages/server');
   const appRoot = join(root, 'packages/app');
+  await writeFile(join(appRoot, '.env.local'), 'ORIGAMIX_RENDERER_PORT=invalid');
+  await writeFile(join(serverRoot, '.env.local'), 'ORIGAMIX_WEB_STATE_DIR=');
   // App starts without any server dist files. An authenticated proxy must become ready.
   start(join(appRoot, 'scripts/dev.mjs'), appRoot, [
     '--host',

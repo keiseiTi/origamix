@@ -226,3 +226,11 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 打开页面不切换项目依赖。项目菜单的“升级项目”显式调用 `POST /api/v1/projects/upgrade`，提交 `projectId`、`expectedVersion` 和稳定的 `clientRequestId`。所有页面必须已打开、迁移并显式保存；升级按计划中的版本逐页调用原 Apply 服务，然后安装独立命名的版本归档、更新 package.json 依赖和项目清单。不会执行依赖安装命令，用户完成后需重新安装依赖并验证项目。
 
 `.origamix/project-upgrade.json` 保留原配置、计划中的 Revision/Working 版本及结果；升级期间阻止普通编辑和 Apply。状态通过 `/projects/upgrade-state/get` 读取，显式重试复用原请求，不在启动时自动重放。项目配置、目标页或草稿出现冲突时停止并保留记录。目标页和配置尚未改变时，可通过 `/projects/upgrade/cancel` 撤销；已经写入时需继续完成。此流程不是跨文件原子替换，升级期间应停止目标项目运行。
+
+## 独立开发环境配置
+
+只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为默认文件 → 个人文件 → 进程环境变量；相对路径以 Server 包目录解析。Desktop/Web 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
+
+ORIGAMIX_WEB_STATE_DIR 控制独立开发数据目录，ORIGAMIX_WEB_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-web/template`），先通过 Web 开发宿主准备，或显式指定已组装的 Desktop `dist/template` 绝对路径。
+
+ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。

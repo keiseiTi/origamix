@@ -89,3 +89,7 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 ### 统一发布版本
 
 所有自有包统一使用根版本。`pnpm release:version --check` 检查版本与迁移声明，已接入 lint；`pnpm release:version --set <版本>` 更新包版本、Shared 契约版本和模板项目清单。版本更新后需补齐相邻 Schema 迁移步骤，再运行仓库检查。页面按需迁移及数据库启动迁移见 [Server README](packages/server/README.md#页面与数据库升级)。
+
+## 开发环境文件
+
+Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量，修改后重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。

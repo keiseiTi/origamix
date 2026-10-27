@@ -48,3 +48,5 @@ pnpm --filter @origamix/desktop test:main
 - `test:main` 还验证 `/canvas-prototype` 在 file 模式下实际渲染、opaque origin、无法访问 parent DOM 且没有 Desktop bridge；这仅证明原型资源与权限边界，不代表完整编辑器隔离交付。
 
 - Desktop development prepares the same vendored template as packaged builds before launching Electron and points ORIGAMIX_TEMPLATE_DIR at dist/template. Keep preparation delegated to Server tooling; source templates do not contain upgrade archives.
+
+- `src/main/config.ts` owns Desktop env parsing and resolved paths. Dev scripts load package `.env` then optional `.env.local`, with process overrides; the packaged Main reads only shipped `dist/.env`. Build/resource assembly must copy only `.env`, never personal files. Renderer navigation and IPC authority must use the same resolved entry.

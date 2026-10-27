@@ -99,3 +99,5 @@ pnpm --filter @origamix/server gate:agent
 - Release updates use root `release:version`; its check enforces package alignment and adjacent Schema migration declarations. Database storage versions advance only for actual database changes, with migrations supplied before enabling that version.
 
 - `projects/project-upgrade-service.ts` runs explicit whole-project upgrades under ProjectService's project queue, with a durable `project-upgrade.json` plan. It accepts only already-opened, clean saved pages; target writes go through ProjectApplyService with stable per-page request IDs. Ordinary Working/manifest writes and Apply reject pending upgrades. Never auto-resume at startup, execute a package manager, or rewrite page shells. Cancellation requires unchanged targets and configuration.
+
+- `scripts/config.mjs` owns independent Server dev env loading. Hosted startServer remains parameter-injected and must not read environment files. Credentials remain process-injected, relative paths are package-root-relative, and tests disable personal overrides with ORIGAMIX_ENV_LOCAL=0.

@@ -1,3 +1,9 @@
+import {
+  loadDesktopEnvironment,
+  desktopRendererUrl,
+  desktopDebug,
+  desktopPort,
+} from '../src/main/config.ts';
 import { build } from 'tsup';
 import electronPath from 'electron';
 import { fork, spawn } from 'node:child_process';
@@ -9,7 +15,14 @@ import { assembleResources } from './assemble-resources.mjs';
 import { copyServerArtifact } from './copy-server-artifact.mjs';
 import { stopChild } from '@origamix/server/development';
 
-const rendererUrl = 'http://127.0.0.1:5173';
+const envConfig = loadDesktopEnvironment(desktopRoot);
+const rendererUrl = desktopRendererUrl(envConfig);
+const debugArgs = desktopDebug(envConfig)
+  ? [
+      `--inspect=${desktopPort(envConfig, 'ORIGAMIX_INSPECT_PORT')}`,
+      `--remote-debugging-port=${desktopPort(envConfig, 'ORIGAMIX_DEBUG_PORT')}`,
+    ]
+  : [];
 const abort = new AbortController();
 let electron;
 let stopping = false;
@@ -25,10 +38,15 @@ const serverReady = new Promise((resolve, reject) => {
   serverWatcher.once('error', reject);
   serverWatcher.once('exit', () => reject(new Error('Server compiler exited before startup')));
 });
-const vite = fork(`${workspaceRoot}packages/app/scripts/dev.mjs`, ['--host', '127.0.0.1'], {
+const vite = fork(`${workspaceRoot}packages/app/scripts/dev.mjs`, [], {
   cwd: `${workspaceRoot}packages/app`,
   stdio: 'inherit',
-  env: { ...process.env, ORIGAMIX_DESKTOP: '1' },
+  env: {
+    ...process.env,
+    ORIGAMIX_DESKTOP: '1',
+    ORIGAMIX_RENDERER_HOST: envConfig.ORIGAMIX_RENDERER_HOST,
+    ORIGAMIX_RENDERER_PORT: envConfig.ORIGAMIX_RENDERER_PORT,
+  },
 });
 
 async function stopElectron() {
@@ -74,14 +92,11 @@ function restartElectron() {
       await copyServerArtifact();
       if (stopping || !desktopReady) return;
       const env = {
-        ...process.env,
+        ...envConfig,
         ELECTRON_RENDERER_URL: rendererUrl,
-        ORIGAMIX_TEMPLATE_DIR: `${desktopRoot}dist/template`,
+        ORIGAMIX_TEMPLATE_DIR: envConfig.ORIGAMIX_TEMPLATE_DIR,
       };
       delete env.ELECTRON_RUN_AS_NODE;
-      const debugArgs = process.env.ORIGAMIX_DEBUG
-        ? ['--inspect=9229', '--remote-debugging-port=9222']
-        : [];
       electron = spawn(electronPath, [...debugArgs, desktopRoot], {
         cwd: workspaceRoot,
         stdio: 'inherit',

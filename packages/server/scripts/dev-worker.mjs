@@ -1,23 +1,18 @@
+import { loadServerConfig } from './config.mjs';
 import { mkdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { startServer } from '../dist/runtime.cjs';
 
-const token = process.env.ORIGAMIX_SERVER_TOKEN;
-if (!token) throw new Error('请通过 ORIGAMIX_SERVER_TOKEN 提供本地服务访问令牌');
-const stateDir = resolve(
-  process.env.ORIGAMIX_WEB_STATE_DIR ??
-    fileURLToPath(new URL('../../../.origamix-web', import.meta.url)),
-);
-await mkdir(stateDir, { recursive: true });
-const serviceInstanceId = process.env.ORIGAMIX_SERVICE_ID ?? randomUUID();
+const config = loadServerConfig();
+await mkdir(config.stateDir, { recursive: true });
+const serviceInstanceId = config.serviceInstanceId ?? randomUUID();
 const server = await startServer({
-  databasePath: resolve(stateDir, 'origamix.db'),
-  templatePath: fileURLToPath(new URL('../../template', import.meta.url)),
-  desktopToken: token,
+  databasePath: resolve(config.stateDir, 'origamix.db'),
+  templatePath: config.templatePath,
+  desktopToken: config.token,
   serviceInstanceId,
-  projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR,
+  projectPath: config.projectPath,
   getModelCredential: async (provider) =>
     provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY?.trim() : undefined,
 });
