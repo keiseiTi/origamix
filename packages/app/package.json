@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "tsx scripts/dev.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:web": "node test/test-web.mjs",
+    "test:web": "tsx test/test-web.ts",
     "build": "vite build"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "happy-dom": "^20.14.3",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "tsx": "4.23.13"
   }
 }

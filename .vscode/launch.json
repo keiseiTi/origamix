@@ -7,11 +7,12 @@
       "request": "launch",
       "cwd": "${workspaceRoot}",
       "runtimeExecutable": "node",
-      "program": "${workspaceFolder}/apps/desktop/scripts/dev.mjs",
+      "program": "${workspaceFolder}/apps/desktop/scripts/dev.ts",
       "autoAttachChildProcesses": true,
       "env": {
         "ORIGAMIX_DEBUG": "1"
-      }
+      },
+      "runtimeArgs": ["--import", "tsx"]
     },
     {
       "name": "Debug Renderer Process",

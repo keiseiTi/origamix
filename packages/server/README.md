@@ -150,7 +150,7 @@ pnpm --filter @origamix/server build
 | Apply 与目标路径  | `test/schema/project-apply-service.test.ts`，关注外部改动和路径逃逸                                                                                                                        |
 | Agent 执行与权限  | `test/agent/run-executor.test.ts`、`test/agent/tools/*.test.ts`、`test/http/agent-server.test.ts`、`test/http/agent-schema-flow.test.ts`；运行 `pnpm --filter @origamix/server gate:agent` |
 | 数据库            | `test/database/database.test.ts`；保持无外键检查                                                                                                                                           |
-| 开发与构建        | `test/build-options.test.mjs`；运行 `pnpm --filter @origamix/server test:dev`                                                                                                              |
+| 开发与构建        | `test/build-options.test.ts`；运行 `pnpm --filter @origamix/server test:dev`                                                                                                               |
 | 模板复制          | `test/templates/copy-template.test.ts`；运行 `pnpm --filter @origamix/server test:template`                                                                                                |
 
 交付前运行根目录的 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。完整约束见 [AGENTS.md](AGENTS.md)。
@@ -165,7 +165,7 @@ pnpm --filter @origamix/server build
 - 运行代码不能导入测试辅助、评测、React、Electron 或其他界面包；Materials 只允许 Manifest 出口。
 - `src/server.ts` 只导出 `startServer`，构建测试也会加载真实产物检查这一点。
 
-规则实现位于 [eslint-boundaries.mjs](scripts/eslint-boundaries.mjs)，正反例位于 [对应测试](test/eslint-boundaries.test.mjs)。它检查静态导入、重导出、字面量动态导入与直接 `require`，并拒绝被检查文件中的动态模块路径；它不能代替运行时授权与数据恢复验证。
+规则实现位于 [eslint-boundaries.ts](scripts/eslint-boundaries.ts)，正反例位于 [对应测试](test/eslint-boundaries.test.ts)。它检查静态导入、重导出、字面量动态导入与直接 `require`，并拒绝被检查文件中的动态模块路径；它不能代替运行时授权与数据恢复验证。
 
 HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应；`test/http/project-routes.test.ts` 关注项目／页面 HTTP 流程；`test/http/agent-schema-flow.test.ts` 使用真实服务、存储和写工具连接完整流程，仅替换模型，验证 Agent 保存不隐式 Apply、重复请求、陈旧版本和跨项目拒绝。纯项目恢复测试放在 `test/projects/project-service.test.ts`。
 
@@ -199,7 +199,7 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 | `ORIGAMIX_WEB_PROJECT_DIR` | 可选，宿主授权的项目路径                                   |
 | `DEEPSEEK_API_KEY`         | 可选，Agent 与真实模型探测使用的 Key                       |
 
-变量读取见 [dev-worker.mjs](scripts/dev-worker.mjs)。端口由启动时分配，worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
+变量读取见 [dev-worker.ts](scripts/dev-worker.ts)。端口由启动时分配，worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
 
 ```sh
 curl --fail-with-body "$ORIGAMIX_API_URL/pages/working-state/get" \
@@ -238,7 +238,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 `pi-agent-core` 与 `pi-ai` 的精确版本以 [package.json](package.json) 和锁文件为准，两者同步升级。当前适配使用 `finishTurn` 在 `complete_page_run` 成功后结束正常回合；错误和取消保持 pi 的退出语义。
 
-升级时对照 [模型注册](src/agent/pi-runtime.ts)、[引擎适配](src/agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](src/evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；不设置供应商专属 package script。确需排障时，先构建 Server，再配置进程环境中的 `DEEPSEEK_API_KEY` 并直接运行 `node packages/server/scripts/probe-deepseek.mjs`；该工具会产生真实 API 请求，未配置 Key 时跳过，不能算探测通过。
+升级时对照 [模型注册](src/agent/pi-runtime.ts)、[引擎适配](src/agent/pi-agent-engine.ts)、[适配测试](test/agent/pi-agent-engine.test.ts) 和 [能力探测](src/evaluation/model-capability-probe.ts)，运行根四项检查及 `gate:agent`。这些确定性检查不证明真实供应商兼容性；不设置供应商专属 package script。确需排障时，先构建 Server，再配置进程环境中的 `DEEPSEEK_API_KEY` 并直接运行 `pnpm --filter @origamix/server exec tsx scripts/probe-deepseek.ts`；该工具会产生真实 API 请求，未配置 Key 时跳过，不能算探测通过。
 
 事件生成默认预算为 24 次工具调用；系统提示包含剩余预算并要求为提交和修复保留调用。物料 Manifest 与逻辑工具共用精确分页格式，保留大小写类型和深层属性定义。工具异常保留原始文本错误内容，避免空 `details` 遮蔽修复信息。
 

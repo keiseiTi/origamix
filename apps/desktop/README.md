@@ -73,7 +73,7 @@ pnpm --filter @origamix/desktop evaluate:agent --case customer-form --model deep
 
 此命令会调用真实 DeepSeek 并产生供应商费用，不属于默认 `pnpm test`。它通过真实 Main 注入凭据；只把现有加密设置复制到临时应用目录，明文 Key 不离开既有 Main → Utility Process 通道。默认按当前包名查找系统应用数据目录的 `model-settings.json`；不同应用名称可通过 `--settings /absolute/path/to/model-settings.json` 指定加密设置文件。模型选择和真实用户数据库不会被修改。
 
-样本定义在 [agent-quality-cases.cjs](test/agent-quality-cases.cjs)，覆盖客户表单、表格和详情三个公开合成任务。验收在仓库外临时项目中执行，检查 Agent 修改、通过同一 Operation 管线进行的非 Agent 修改及后续局部修改、后端重启恢复、明暗主题预览中的实际按钮交互、显式保存／历史恢复／幂等 Apply，以及独立安装、类型检查、构建和产物页面实际点击。非 Agent 修改通过 HTTP 管线模拟，不能当作可视化拖拽和属性面板的人工验收。内容检查以实际可见字段与交互结果为准，不强制某种文本组件拆分数量。
+样本定义在 [agent-quality-cases.ts](test/agent-quality-cases.ts)，覆盖客户表单、表格和详情三个公开合成任务。验收在仓库外临时项目中执行，检查 Agent 修改、通过同一 Operation 管线进行的非 Agent 修改及后续局部修改、后端重启恢复、明暗主题预览中的实际按钮交互、显式保存／历史恢复／幂等 Apply，以及独立安装、类型检查、构建和产物页面实际点击。非 Agent 修改通过 HTTP 管线模拟，不能当作可视化拖拽和属性面板的人工验收。内容检查以实际可见字段与交互结果为准，不强制某种文本组件拆分数量。
 
 预览检查只操作当前可见、非 inert 的页面；点击前先在合法滚动容器中显示按钮，再核对点击命中，报告记录是否需要滚动。样本交互聚焦声明式属性更新，不代表真实业务接口、条件分支或全部流程节点已经通过模型验收。
 
@@ -130,5 +130,5 @@ ORIGAMIX_DEBUG=1
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
 
-开发依赖更新由 Server 的 `development-libraries.mjs` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
-公开包的名单、版本和归档路径由根 `scripts/public-packages.mjs` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
+开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
+公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。

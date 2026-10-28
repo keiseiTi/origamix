@@ -26,6 +26,9 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.12.0
+      jiti:
+        specifier: 2.7.0
+        version: 2.7.0
       lefthook:
         specifier: ^2.1.12
         version: 2.1.12
@@ -35,6 +38,9 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -69,6 +75,9 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
 
   packages/app:
     dependencies:
@@ -139,6 +148,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
       vite:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)
@@ -231,6 +243,9 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
 
   packages/runtime:
     dependencies:
@@ -259,6 +274,9 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
 
   packages/server:
     dependencies:
@@ -296,9 +314,18 @@ importers:
       drizzle-kit:
         specifier: 0.31.10
         version: 0.31.10
+      eslint:
+        specifier: ^10.9.0
+        version: 10.9.1(jiti@2.7.0)
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
+      typescript-eslint:
+        specifier: ^8.67.0
+        version: 8.69.0(eslint@10.9.1(jiti@2.7.0))(typescript@6.0.3)
 
   packages/shared:
     dependencies:
@@ -315,6 +342,9 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.13)(typescript@6.0.3)(yaml@2.9.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
 
   packages/template:
     dependencies:
@@ -370,6 +400,9 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.12.0
+      jiti:
+        specifier: 2.7.0
+        version: 2.7.0
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -453,6 +486,9 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.12.0
+      jiti:
+        specifier: 2.7.0
+        version: 2.7.0
       prettier:
         specifier: ^3.9.6
         version: 3.9.6

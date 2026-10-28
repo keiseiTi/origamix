@@ -6,7 +6,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/main/index.ts`: application lifecycle, directory grants, settings/credentials and backend bootstrap.
 - `src/preload/index.ts`: workbench bridge. Page previews are Renderer-owned sandboxed iframe documents and do not have a Desktop bridge.
-- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/build-options.mjs`, `scripts/assemble-resources.mjs`, `scripts/copy-server-artifact.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template npm-version preparation comes from Server tooling rather than a Desktop-owned recipe.
+- `scripts/dev.ts`, `scripts/build.ts`, `scripts/build-options.ts`, `scripts/assemble-resources.ts`, `scripts/copy-server-artifact.ts`, `electron-builder.yml`: supervision, compilation and resource assembly. Template npm-version preparation comes from Server tooling rather than a Desktop-owned recipe.
 
 ## Boundaries
 
@@ -54,3 +54,5 @@ pnpm --filter @origamix/desktop test:main
 - Desktop development watches Shared/Runtime/Materials/Server/Main/Preload sources and build configurations, rebuilding dependencies in order. App/Editor/UI retain HMR. Stage fresh resources after ordered builds, then gracefully stop Electron and Vite before replacing artifacts and restarting. Build failures preserve the live instance; exit timeout pauses updates without force-killing Electron. The terminal p command pauses/resumes automatic restart. Do not promise transient draft or Agent continuity across a development restart. Keep development tooling out of Renderer business sessions and the public desktop bridge. `pnpm test:dev` checks this lifecycle and listener cleanup. Main passes the trusted document origin to Server, including configured development ports.
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
+
+- Development/build and Node integration launchers are TypeScript run with package-local tsx. Electron-hosted TypeScript fixtures use .cts and are loaded through tsx/cjs registered by the Node launcher. Clear inherited NODE_OPTIONS before starting the application/backend so resource isolation checks do not depend on the test loader.

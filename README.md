@@ -106,5 +106,7 @@ Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感
 pre-commit 对 TypeScript 变更先构建一次库，再顺序检查类型和测试，避免同时清理同一 dist。
 根 lint 和暂存 lint 均覆盖根 scripts 下的发布工具。
 
-开发依赖更新由 Server 的 `development-libraries.mjs` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
-公开包的名单、版本和归档路径由根 `scripts/public-packages.mjs` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
+开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
+公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
+
+自定义 Node 工具使用 TypeScript 和 tsx 执行；根目录、Desktop、App、Server 及调用公开归档工具的 Shared/Runtime/Materials 分别声明 tsx 开发依赖。`pnpm install --frozen-lockfile` 后使用原有 pnpm 命令即可。脚本由 tsc 严格检查，tsx 只负责执行。子进程继承 tsx loader；通过 Node 显式启动 TypeScript 子脚本时保留 `process.execArgv`。ESLint 配置和规则也使用 TypeScript，根目录、Site、Template 分别声明 jiti 以支持 ESLint 加载配置。Electron 验收入口使用 `.cts`，由 Node 启动器注册 `tsx/cjs` 后加载；启动器不会把加载配置传给被验收的后端进程。

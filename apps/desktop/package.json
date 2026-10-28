@@ -7,18 +7,18 @@
   "private": true,
   "main": "dist/main/index.cjs",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "tsx scripts/dev.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:main": "node test/test-electron.mjs",
-    "evaluate:agent": "node test/evaluate-agent.mjs",
-    "test:resources": "node test/test-electron.mjs --resources",
-    "build": "node scripts/build.mjs",
+    "test:main": "tsx test/test-electron.ts",
+    "evaluate:agent": "tsx test/evaluate-agent.ts",
+    "test:resources": "tsx test/test-electron.ts --resources",
+    "build": "tsx scripts/build.ts",
     "package": "pnpm package:mac",
     "package:dir": "electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
     "package:mac": "electron-builder --config electron-builder.yml --mac --arm64 --publish never",
-    "test:dev": "node test/test-development.mjs"
+    "test:dev": "tsx test/test-development.ts"
   },
   "dependencies": {
     "@origamix/server": "workspace:*",
@@ -29,6 +29,7 @@
   "devDependencies": {
     "electron": "^44.0.0",
     "electron-builder": "^26.15.0",
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.0",
+    "tsx": "4.23.13"
   }
 }

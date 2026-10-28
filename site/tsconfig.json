@@ -21,7 +21,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["docs", "theme", "rspress.config.ts"],
+  "include": ["docs", "theme", "rspress.config.ts", "eslint.config.ts"],
   "mdx": {
     "checkMdx": true
   }

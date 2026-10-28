@@ -41,7 +41,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsup",
-    "pack:npm": "node ../../scripts/pack-public.mjs materials",
+    "pack:npm": "tsx ../../scripts/pack-public.ts materials",
     "prepack": "node -e \"throw new Error('Use pnpm pack:npm to prepare isolated public artifacts')\""
   },
   "dependencies": {
@@ -56,7 +56,8 @@
     "tsup": "^8.5.0",
     "@origamix/shared": "workspace:*",
     "@origamix/ui": "workspace:*",
-    "@origamix/runtime": "workspace:*"
+    "@origamix/runtime": "workspace:*",
+    "tsx": "4.23.13"
   },
   "peerDependencies": {
     "antd": "^6",

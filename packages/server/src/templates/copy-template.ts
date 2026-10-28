@@ -6,7 +6,7 @@ const rootFiles = new Set([
   'index.html',
   'package.json',
   'vite.config.ts',
-  'eslint.config.js',
+  'eslint.config.ts',
   'tsconfig.json',
   'tsconfig.app.json',
   'tsconfig.node.json',

@@ -12,7 +12,7 @@
     "build": "pnpm build:libs && pnpm build:prepared",
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
     "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
-    "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,mjs,css,md}\"",
+    "format": "prettier --write \"{packages,apps,scripts}/**/*.{js,jsx,ts,tsx,cts,json,mjs,css,md}\" \"eslint.config.ts\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
     "lint": "pnpm release:version --check && eslint scripts && pnpm -r lint",
@@ -22,18 +22,18 @@
     "package:dir": "pnpm release:registry && pnpm build && pnpm --filter @origamix/desktop package:dir",
     "package": "pnpm package:mac",
     "package:mac": "pnpm release:registry && pnpm check && pnpm --filter @origamix/desktop package:mac",
-    "release:version": "node scripts/release-version.mjs",
+    "release:version": "tsx scripts/release-version.ts",
     "pack:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
     "test:template": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/server test:template",
     "test:web": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/app test:web",
     "test:desktop": "pnpm build && pnpm --filter @origamix/desktop test:main",
     "test:dev": "pnpm --filter @origamix/desktop test:dev && pnpm --filter @origamix/server test:dev",
     "build:verify": "pnpm build:libs && pnpm --filter @origamix/ui --filter @origamix/editor build",
-    "release:check": "pnpm release:version --check && pnpm pack:npm && node scripts/check-public-packages.mjs",
-    "publish:npm": "pnpm release:check && node scripts/publish-public.mjs",
-    "release:registry": "node scripts/check-registry.mjs",
+    "release:check": "pnpm release:version --check && pnpm pack:npm && tsx scripts/check-public-packages.ts",
+    "publish:npm": "pnpm release:check && tsx scripts/publish-public.ts",
+    "release:registry": "tsx scripts/check-registry.ts",
     "build:prepared": "pnpm --filter @origamix/server build && pnpm --filter @origamix/app build && pnpm --filter @origamix/desktop build",
-    "typecheck:prepared": "pnpm -r typecheck",
+    "typecheck:prepared": "tsc --noEmit -p tsconfig.scripts.json && pnpm -r typecheck",
     "test:prepared": "pnpm -r test",
     "check": "pnpm lint && pnpm build:libs && pnpm typecheck:prepared && pnpm test:prepared && pnpm build:prepared"
   },
@@ -56,10 +56,13 @@
     "tsup": "^8.5.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "tsx": "4.23.13",
+    "jiti": "2.7.0"
   },
   "engines": {
     "node": ">=24.15.0 <25"
   },
-  "packageManager": "pnpm@10.33.4"
+  "packageManager": "pnpm@10.33.4",
+  "type": "module"
 }

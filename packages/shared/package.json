@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsup",
-    "pack:npm": "node ../../scripts/pack-public.mjs shared"
+    "pack:npm": "tsx ../../scripts/pack-public.ts shared"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.52",
@@ -27,7 +27,8 @@
     "ajv-formats": "^3.0.1"
   },
   "devDependencies": {
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.0",
+    "tsx": "4.23.13"
   },
   "sideEffects": false
 }

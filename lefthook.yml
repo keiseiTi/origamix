@@ -5,23 +5,24 @@ pre-commit:
         piped: true
         jobs:
           - name: format staged files
-            glob: '*.{js,jsx,ts,tsx,json,jsonc,css,md,mdx,yaml,yml,html}'
+            glob: '*.{js,jsx,ts,tsx,cts,json,jsonc,css,md,mdx,yaml,yml,html}'
             run: pnpm exec prettier --write {staged_files}
             stage_fixed: true
           - name: lint staged code
             glob:
-              - 'scripts/**/*.mjs'
-              - 'apps/**/*.{js,jsx,ts,tsx,mjs,cjs}'
-              - 'packages/**/*.{js,jsx,ts,tsx,mjs,cjs}'
+              - 'scripts/**/*.ts'
+              - 'apps/**/*.{ts,tsx,cts}'
+              - 'packages/**/*.{ts,tsx,cts}'
             run: pnpm exec eslint --fix {staged_files}
             stage_fixed: true
           - name: verify architecture rules
             glob:
-              - 'packages/server/scripts/eslint-boundaries*.mjs'
-              - 'eslint.config.mjs'
+              - 'packages/server/scripts/eslint-boundaries*.ts'
+              - 'eslint.config.ts'
             run: pnpm lint && pnpm --filter @origamix/server test:architecture
           - name: verify TypeScript changes
             glob:
-              - 'apps/**/*.{ts,tsx}'
+              - 'scripts/**/*.ts'
+              - 'apps/**/*.{ts,tsx,cts}'
               - 'packages/**/*.{ts,tsx}'
             run: pnpm build:libs && pnpm typecheck:prepared && pnpm test:prepared

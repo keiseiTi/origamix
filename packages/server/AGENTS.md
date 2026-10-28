@@ -62,7 +62,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
 - Materials exposes compiled declarations in the workspace and published package; build it before isolated Server typechecks. Runtime imports remain restricted to the pure-data Manifest entry.
 
-- `scripts/eslint-boundaries.mjs` is loaded by the root ESLint configuration for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
+- `scripts/eslint-boundaries.ts` is loaded by the root ESLint configuration for Server TypeScript. It rejects runtime imports of test/evaluation/UI modules, upward business → HTTP/startup dependencies, direct HTTP/tool persistence dependencies, and value imports of Schema internals outside their named owners. Type-only references to domain contracts are allowed.
 - `src/http/types.ts` exposes only repository reads and the required service methods; tools receive narrow repository/diagnostic interfaces. Keep these capabilities narrow when adding routes/tools.
 - `src/server.ts` exports only local `startServer`; the rule and isolated bundle test enforce this. Update callers together when changing internal APIs.
 - These are static import/type checks, not a security sandbox or proof of all runtime effects. Runtime authorization and persistence tests remain required. The rule covers static imports, re-exports, literal dynamic imports and direct `require`; computed module paths are rejected in checked production files.
@@ -100,7 +100,7 @@ pnpm --filter @origamix/server gate:agent
 
 - `projects/project-upgrade-service.ts` runs explicit whole-project upgrades under ProjectService's project queue, with a durable `project-upgrade.json` plan. It accepts only already-opened, clean saved pages; target writes go through ProjectApplyService with stable per-page request IDs. Ordinary Working/manifest writes and Apply reject pending upgrades. Never auto-resume at startup, execute a package manager, or rewrite page shells. Cancellation requires unchanged targets and configuration.
 
-- `scripts/config.mjs` owns independent Server dev env loading. Hosted startServer remains parameter-injected and must not read environment files. Credentials remain process-injected, relative paths are package-root-relative, and tests disable personal overrides with ORIGAMIX_ENV_LOCAL=0.
+- `scripts/config.ts` owns independent Server dev env loading. Hosted startServer remains parameter-injected and must not read environment files. Credentials remain process-injected, relative paths are package-root-relative, and tests disable personal overrides with ORIGAMIX_ENV_LOCAL=0.
 
 ## Source organization
 
@@ -112,6 +112,6 @@ pnpm --filter @origamix/server gate:agent
 
 - Package `build` compiles only Server; prepare Materials first (or use root `build`). `test` runs schema and architecture checks without an implicit build. Root `test:template` prepares library and Server artifacts for the independent template check; package-local integration/evaluation commands consume existing artifacts.
 
-- Independent Server/Web development and Desktop share `scripts/development-libraries.mjs` for library watch paths and ordered builds. Web/Server prepare libraries on startup and rebuild source changes before replacing the host. Failed builds retain the running host; save a watched source to retry. Tooling script changes require restarting the launcher.
+- Independent Server/Web development and Desktop share `scripts/development-libraries.ts` for library watch paths and ordered builds. Web/Server prepare libraries on startup and rebuild source changes before replacing the host. Failed builds retain the running host; save a watched source to retry. Tooling script changes require restarting the launcher.
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

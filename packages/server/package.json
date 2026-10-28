@@ -13,29 +13,29 @@
       "default": "./dist/tooling.cjs"
     },
     "./utility": "./dist/server.cjs",
-    "./build": "./scripts/build.mjs",
-    "./development": "./scripts/dev-supervisor.mjs",
+    "./build": "./scripts/build.ts",
+    "./development": "./scripts/dev-supervisor.ts",
     "./template": {
       "types": "./src/templates/copy-template.ts",
       "default": "./dist/template.cjs"
     },
     "./template-artifact": {
-      "types": "./scripts/prepare-template-artifact.d.mts",
-      "default": "./scripts/prepare-template-artifact.mjs"
+      "types": "./scripts/prepare-template-artifact.ts",
+      "default": "./scripts/prepare-template-artifact.ts"
     },
-    "./development-libraries": "./scripts/development-libraries.mjs"
+    "./development-libraries": "./scripts/development-libraries.ts"
   },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm check:database-schema && pnpm test:architecture && vitest run --exclude test/eslint-boundaries.test.mjs",
-    "test:architecture": "node --test test/eslint-boundaries.test.mjs",
-    "test:template": "node test/test-template.mjs",
-    "test:dev": "node test/test-development.mjs",
-    "gate:agent": "node scripts/gate-agent.mjs",
-    "build": "node scripts/build.mjs",
-    "dev": "node scripts/dev.mjs",
-    "check:database-schema": "node scripts/check-database-schema.mjs"
+    "test": "pnpm check:database-schema && pnpm test:architecture && vitest run --exclude test/eslint-boundaries.test.ts",
+    "test:architecture": "tsx --test test/eslint-boundaries.test.ts",
+    "test:template": "tsx test/test-template.ts",
+    "test:dev": "tsx test/test-development.ts",
+    "gate:agent": "tsx scripts/gate-agent.ts",
+    "build": "tsx scripts/build.ts",
+    "dev": "tsx scripts/dev.ts",
+    "check:database-schema": "tsx scripts/check-database-schema.ts"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.1.0",
@@ -51,6 +51,9 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "drizzle-kit": "0.31.10",
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.0",
+    "tsx": "4.23.13",
+    "eslint": "^10.9.0",
+    "typescript-eslint": "^8.67.0"
   }
 }

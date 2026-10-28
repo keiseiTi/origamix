@@ -1,0 +1,115 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Electron loads this CommonJS entry through tsx/cjs. */
+delete process.env.NODE_OPTIONS;
+const { app, BrowserWindow, ipcMain, utilityProcess } =
+  require('electron') as typeof import('electron');
+const assert: typeof import('node:assert/strict') = require('node:assert/strict');
+const { existsSync, mkdtempSync, rmSync, readFileSync } =
+  require('node:fs') as typeof import('node:fs');
+const { join, resolve } = require('node:path') as typeof import('node:path');
+const { tmpdir } = require('node:os') as typeof import('node:os');
+const { randomUUID } = require('node:crypto') as typeof import('node:crypto');
+
+const state = mkdtempSync(join(tmpdir(), 'origamix-electron-smoke-'));
+app.setPath('userData', state);
+if (!process.argv[2]) throw new Error('Provide the packaged application Resources directory');
+const resources = resolve(process.argv[2]);
+assert.equal(
+  existsSync(join(resources, 'app.asar', 'node_modules')),
+  false,
+  'Bundled application must not ship a second dependency tree',
+);
+const templatePackage = JSON.parse(
+  readFileSync(join(resources, 'template', 'package.json'), 'utf8'),
+);
+const templateVersion = JSON.parse(
+  readFileSync(join(resources, 'template', 'origamix.project.json'), 'utf8'),
+).version;
+for (const name of ['runtime', 'materials'])
+  assert.equal(templatePackage.dependencies[`@origamix/${name}`], templateVersion);
+assert.equal(existsSync(join(resources, 'template', 'vendor')), false);
+const desktopDist = join(resources, 'app.asar', 'dist');
+assert.ok(existsSync(join(desktopDist, '.env')), 'Missing packaged environment defaults');
+assert.equal(existsSync(join(desktopDist, '.env.local')), false, 'Personal settings must not ship');
+const renderer = join(resources, 'app', 'index.html');
+const template = join(resources, 'template');
+let backend: import('electron').UtilityProcess | undefined;
+let window: import('electron').BrowserWindow | undefined;
+const timer = setTimeout(() => finish(new Error('Electron smoke timed out')), 20000);
+let finished = false;
+const finish = (error?: unknown) => {
+  if (finished) return;
+  finished = true;
+  clearTimeout(timer);
+  window?.destroy();
+  backend?.kill();
+  if (error) console.error(error);
+  else
+    console.info(
+      'Electron smoke passed: file:// renderer, packaged assets, preload IPC and SQLite backend.',
+    );
+  app.exit(error ? 1 : 0);
+};
+process.on('exit', () => rmSync(state, { recursive: true, force: true }));
+
+app
+  .whenReady()
+  .then(async () => {
+    const token = randomUUID();
+    const serviceInstanceId = randomUUID();
+    backend = utilityProcess.fork(join(desktopDist, 'main', 'server.cjs'), [], { stdio: 'pipe' });
+    backend.stderr?.on('data', (data) => process.stderr.write(data));
+    backend.once('exit', (code) => {
+      if (!finished) finish(new Error(`Backend exited: ${code}`));
+    });
+    backend.on('message', async (message) => {
+      if (message.kind === 'error') return finish(new Error(message.message));
+      if (message.kind !== 'ready') return;
+      try {
+        ipcMain.handle('backend:get-connection', () => ({
+          baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
+          token,
+          serviceInstanceId,
+        }));
+        ipcMain.handle('settings:profile:get', () => ({
+          name: 'Smoke Test',
+          iconBackground: '#2563eb',
+        }));
+        ipcMain.handle('settings:model:get', () => ({
+          provider: 'deepseek',
+          model: 'deepseek-flash',
+          hasApiKey: false,
+        }));
+        window = new BrowserWindow({
+          show: false,
+          webPreferences: {
+            preload: join(desktopDist, 'preload', 'index.cjs'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+          },
+        });
+        await window.loadFile(renderer);
+        const deadline = Date.now() + 10000;
+        while (Date.now() < deadline) {
+          const ready = await window.webContents.executeJavaScript(
+            `Boolean(document.querySelector('main') && !document.querySelector('[aria-label="恢复工作区"]'))`,
+          );
+          if (ready) return finish();
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(await window.webContents.executeJavaScript('document.body.innerText'));
+      } catch (error) {
+        finish(error);
+      }
+    });
+    backend.once('spawn', () =>
+      backend!.postMessage({
+        kind: 'initialize',
+        databasePath: ':memory:',
+        templatePath: template,
+        desktopToken: token,
+        serviceInstanceId,
+      }),
+    );
+  })
+  .catch(finish);

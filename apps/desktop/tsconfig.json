@@ -2,10 +2,17 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution":
-    "Bundler",
+    "moduleResolution": "Bundler",
     "noEmit": true,
-    "types": ["node", "electron"]
+    "types": [
+      "node",
+      "electron"
+    ]
   },
-  "include": ["src", "test/**/*.ts"]
+  "include": [
+    "src",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "test/**/*.cts"
+  ]
 }
