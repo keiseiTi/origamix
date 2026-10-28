@@ -52,7 +52,7 @@ Desktop、App 和独立 Server 各自在包目录维护 `.env`，可选个人覆
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-把示例路径替换为已有项目的绝对路径。浏览器没有原生目录选择器，宿主环境变量提供目录授权。默认开发数据在 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。Key 不通过前端环境变量传递。
+把示例路径替换为已有项目的绝对路径。浏览器没有原生目录选择器，宿主环境变量提供目录授权。默认开发数据在 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。Key 不通过前端环境变量传递。根启动命令先构建库；独立 Web／Server 开发期间修改 Shared、Runtime 或 Materials 后，需重新构建库（`pnpm build:libs`），必要时重启宿主。Desktop 的源码自动重建流程不等同于独立 Web 开发流程。
 
 ## 仓库检查
 
@@ -63,7 +63,7 @@ pnpm test
 pnpm build
 ```
 
-根 `pnpm typecheck` 会先构建 Materials；单独检查 App、Server 等消费包之前也需要先构建 Materials 的声明。
+根 `pnpm typecheck` 会先按依赖顺序构建库；单独检查 App、Server 等消费包前，可用 `pnpm --filter @origamix/materials... build` 准备 Materials 及其上游产物。
 
 单包 `build` 只构建本包，调用前需准备其上游产物；根命令负责依赖顺序。Desktop 的 `build` 还组装已有 Server 与模板产物，包内 `package:*` 只消费已有资源。
 

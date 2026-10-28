@@ -63,7 +63,7 @@ pnpm test
 pnpm build
 ```
 
-根 lint 包含跨包接口规则，根 typecheck 会先构建 Materials 的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
+根 lint 包含跨包接口规则，根 typecheck 会先构建库 的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
 
 核心链路与独立项目验证方式见 [Server 集成说明](packages/server/README.md#开发宿主与模板集成)，真实桌面运行检查见 [Desktop README](apps/desktop/README.md)。
 
@@ -78,7 +78,7 @@ pnpm build
 | `pnpm pack:npm`      | 库构建与本地 npm tarball，不发布到 registry              |
 | `pnpm gate:internal` | 固定评测数据与门槛计算检查，不证明真实模型质量           |
 
-包内 `build` 只构建本包，所需上游产物须先准备；根命令负责依赖顺序，避免重复构建。Desktop 的 `build` 还组装已构建的 Server 和模板资源，包内 `package:*` 只消费这些产物。Shared、Runtime 在工作区使用源码出口、打包时切换到 dist；Materials 始终使用 dist；Editor、UI 保持私有源码出口以支持 HMR。
+包内 `build` 只构建本包，所需上游产物须先准备；根命令负责依赖顺序，避免重复构建。Desktop 的 `build` 还组装已构建的 Server 和模板资源，包内 `package:*` 只消费这些产物。Shared、Runtime 在工作区与发布包统一使用 dist 出口；Materials 始终使用 dist；Editor、UI 保持私有源码出口以支持 HMR。
 
 集成入口：`pnpm test:template` 验证独立模板，`pnpm test:web` 验证浏览器宿主，`pnpm test:desktop` 验证真实 Main，`pnpm test:dev` 验证 Desktop／Server 开发更新。前三项自动准备构建输入，开发更新检查使用临时工作区。桌面检查需要图形会话。
 

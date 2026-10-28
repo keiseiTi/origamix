@@ -11,7 +11,7 @@ description: Runtime：页面渲染的职责、使用与开发说明
 
 ## 关键入口
 
-`src/index.ts` 提供唯一根入口 `@origamix/runtime`，导出运行态 `OrigamixPage`、编辑态 `DesignRenderer`、未知物料检测和诊断契约。两种模式复用 `src/core/` 中的渲染与流程核心；编辑态不创建业务执行会话。工作区使用源码出口，发布归档使用 `dist`，生成项目不依赖编辑宿主。
+`src/index.ts` 提供唯一根入口 `@origamix/runtime`，导出运行态 `OrigamixPage`、编辑态 `DesignRenderer`、未知物料检测和诊断契约。两种模式复用 `src/core/` 中的渲染与流程核心；编辑态不创建业务执行会话。工作区与发布归档统一使用 `dist`，生成项目不依赖编辑宿主。
 
 ## 协作边界
 

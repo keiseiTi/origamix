@@ -17,8 +17,12 @@ export default defineConfig({
         '@': [fileURLToPath(new URL('./src/index.ts', import.meta.url))],
         '@/*': [fileURLToPath(new URL('./src/*', import.meta.url))],
         // Resolve the declared Shared entry for tsup's declaration bundler.
-        '@origamix/shared': [fileURLToPath(import.meta.resolve('@origamix/shared'))],
-        '@origamix/runtime': [fileURLToPath(import.meta.resolve('@origamix/runtime'))],
+        '@origamix/shared': [
+          fileURLToPath(new URL('./index.d.ts', import.meta.resolve('@origamix/shared'))),
+        ],
+        '@origamix/runtime': [
+          fileURLToPath(new URL('./index.d.ts', import.meta.resolve('@origamix/runtime'))),
+        ],
       },
     },
   },

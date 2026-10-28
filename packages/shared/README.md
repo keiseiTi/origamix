@@ -18,7 +18,7 @@ import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
 | [transport/](src/transport/) | HTTP 结果封套、桌面桥、凭据网关与预览消息                         |
 | [version.ts](src/version.ts) | 统一发布版本与支持序列                                            |
 
-统一从 `@origamix/shared` 导入。`src/index.ts` 显式列举公共值与类型导出；上表中的模块路径只描述内部职责，不是公开子路径。测试按领域放在 `test/`，文件名与被验证模块对应；内部新增文件不会自动变成公共 API。工作区解析源码，发布包解析 `dist` 的 ESM 和类型声明。Ajv 实例和各个校验器在首次调用对应校验函数时初始化并缓存，导入根入口不会编译校验器。内部模块之间直接引用，不反向引用根入口。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
+统一从 `@origamix/shared` 导入。`src/index.ts` 显式列举公共值与类型导出；上表中的模块路径只描述内部职责，不是公开子路径。测试按领域放在 `test/`，文件名与被验证模块对应；内部新增文件不会自动变成公共 API。工作区与发布包统一解析 `dist` 的 ESM 和类型声明；消费前先构建 Shared。Ajv 实例和各个校验器在首次调用对应校验函数时初始化并缓存，导入根入口不会编译校验器。内部模块之间直接引用，不反向引用根入口。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
 `project/project-stack.ts` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，匹配 Runtime 与模板均为 `1.0.0`。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
 

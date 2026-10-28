@@ -7,7 +7,11 @@ export default defineConfig({
   dts: {
     resolve: ['@origamix/shared'],
     compilerOptions: {
-      paths: { '@origamix/shared': [fileURLToPath(import.meta.resolve('@origamix/shared'))] },
+      paths: {
+        '@origamix/shared': [
+          fileURLToPath(new URL('./index.d.ts', import.meta.resolve('@origamix/shared'))),
+        ],
+      },
     },
   },
   clean: true,

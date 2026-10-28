@@ -7,7 +7,9 @@ await build({
   ...options,
   clean: !watch,
   watch: watch
-    ? ['src', 'test/fixtures', 'test/helpers', '../shared/src'].map((path) => resolve(root, path))
+    ? ['src', 'test/fixtures', 'test/helpers', '../shared/dist', '../materials/dist'].map((path) =>
+        resolve(root, path),
+      )
     : false,
   onSuccess: async () => {
     process.send?.({ kind: 'built' });

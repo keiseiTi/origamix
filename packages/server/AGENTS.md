@@ -73,7 +73,7 @@ From the repository root:
 
 ```sh
 pnpm --filter @origamix/server lint
-pnpm --filter @origamix/materials build
+pnpm --filter @origamix/materials... build
 pnpm --filter @origamix/server typecheck
 pnpm --filter @origamix/server test
 pnpm --filter @origamix/server build
@@ -111,3 +111,5 @@ pnpm --filter @origamix/server gate:agent
 - Root `scripts/` owns build/development tools; `test/fixtures/` and `test/helpers/` own test fixtures and utilities within `test/`. Do not import them from production business code. Directory moves must update the architecture rule and its fixtures, release-version script, build/watch entries and Drizzle schema paths together.
 
 - Package `build` compiles only Server; prepare Materials first (or use root `build`). `test` runs schema and architecture checks without an implicit build. Root `test:template` prepares library and Server artifacts for the independent template check; package-local integration/evaluation commands consume existing artifacts.
+
+- Independent Server/Web development consumes compiled Shared and Materials. Rebuild changed library sources before checking the host; the Server compiler watches their dist artifacts rather than treating source changes as fresh compiled code. Root `pnpm dev:web` prepares library artifacts initially; Desktop coordinates source rebuilds automatically.

@@ -28,7 +28,7 @@ Server 负责已登记的页面 Schema 迁移、数据库存储版本检查及�
 从仓库根目录执行：
 
 ```sh
-pnpm --filter @origamix/materials build
+pnpm --filter @origamix/materials... build
 pnpm --filter @origamix/server lint
 pnpm --filter @origamix/server typecheck
 pnpm --filter @origamix/server test

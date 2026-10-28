@@ -134,7 +134,7 @@ pnpm dev:web
 pnpm dev
 ```
 
-Server 单包检查（先运行 `pnpm --filter @origamix/materials build` 准备物料声明和清单）：
+Server 单包检查（先运行 `pnpm --filter @origamix/materials... build` 准备物料声明和清单）：
 
 ```sh
 pnpm --filter @origamix/server lint

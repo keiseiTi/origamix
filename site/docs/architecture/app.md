@@ -23,7 +23,7 @@ React 工作台承载项目导航、Agent 会话、版本操作与预览，并�
 
 ```sh
 pnpm --filter @origamix/app lint
-pnpm --filter @origamix/materials build
+pnpm --filter @origamix/materials... build
 pnpm --filter @origamix/app typecheck
 pnpm --filter @origamix/app test
 pnpm --filter @origamix/app build

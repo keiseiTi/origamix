@@ -2,7 +2,7 @@
 
 Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 
-- `src/index.ts` is the sole public entry, exporting OrigamixPage, DesignRenderer and their contracts. `src/react.tsx` owns run-mode sessions; `src/design.tsx` owns declarative design rendering; `src/renderer.tsx` shares stable material rendering and layout traversal. `src/core/` owns local element subscriptions, layout parsing and flow dispatch. Workspace exports use source; published exports use compiled dist.
+- `src/index.ts` is the sole public entry, exporting OrigamixPage, DesignRenderer and their contracts. `src/react.tsx` owns run-mode sessions; `src/design.tsx` owns declarative design rendering; `src/renderer.tsx` shares stable material rendering and layout traversal. `src/core/` owns local element subscriptions, layout parsing and flow dispatch. Workspace and published exports both use compiled dist; build Shared before Runtime, and Runtime before consumers.
 - This adapter is the shared rendering core for generated projects and App preview. Preview-specific refresh, diagnostics and last-known-good presentation stay in App and must not duplicate engine/material setup.
 - Keep engine creation, unknown-material detection and render error capture inside the Runtime boundary. Expose framework-neutral diagnostic outcomes and optional presentation hooks; App owns styled recovery UI and diagnostic transport.
 - Runtime renders a supplied Schema with an explicit material registry. It must not import App, Server, Desktop, persistence, routing or credentials.
