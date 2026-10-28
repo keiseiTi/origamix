@@ -18,7 +18,7 @@ pre-commit:
           - name: verify architecture rules
             glob:
               - 'packages/server/scripts/eslint-boundaries*.ts'
-              - 'eslint.config.ts'
+              - 'eslint.config.mjs'
             run: pnpm lint && pnpm --filter @origamix/server test:architecture
           - name: verify TypeScript changes
             glob:

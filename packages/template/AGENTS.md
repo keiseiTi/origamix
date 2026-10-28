@@ -5,7 +5,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 ## Ownership and entry points
 
 - `src/main.tsx`, `src/router.ts`, and the manifest-configured page directory (default `src/pages/`): portable React/Origamix scaffold.
-- `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.ts`: standalone tools and build configuration.
+- `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.mjs`: standalone tools and build configuration.
 - The template README is also the generated-project usage documentation; ProjectSource only customizes its heading and project code.
 - Copying is owned by `../server/src/templates/copy-template.ts`; coverage starts in `../server/test/templates/copy-template.test.ts` and `../server/test/test-template.ts`.
 - Runtime/Materials package preparation and dependency rewriting use Server template-artifact tooling from template smoke and Desktop resource assembly; do not reintroduce separate packing recipes.
@@ -45,4 +45,4 @@ pnpm --filter @origamix/server test:template
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
 
-- Keep eslint.config.ts and its direct jiti dev dependency in the scaffold copy allowlist and standalone installation checks.
+- Keep eslint.config.mjs in the scaffold copy allowlist and standalone installation checks.

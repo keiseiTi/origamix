@@ -12,7 +12,7 @@
     "build": "pnpm build:libs && pnpm build:prepared",
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
     "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
-    "format": "prettier --write \"{packages,apps,scripts}/**/*.{js,jsx,ts,tsx,cts,json,mjs,css,md}\" \"eslint.config.ts\"",
+    "format": "prettier --write \"{packages,apps,scripts}/**/*.{js,jsx,ts,tsx,cts,json,mjs,css,md}\" \"eslint.config.mjs\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
     "lint": "pnpm release:version --check && eslint scripts && pnpm -r lint",
@@ -57,8 +57,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.0",
-    "tsx": "4.23.13",
-    "jiti": "2.7.0"
+    "tsx": "4.23.13"
   },
   "engines": {
     "node": ">=24.15.0 <25"

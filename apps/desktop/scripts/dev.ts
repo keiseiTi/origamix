@@ -184,7 +184,7 @@ for (const [name, paths] of Object.entries({
     'packages/template/tsconfig.json',
     'packages/template/tsconfig.app.json',
     'packages/template/tsconfig.node.json',
-    'packages/template/eslint.config.ts',
+    'packages/template/eslint.config.mjs',
   ],
 })) {
   for (const path of paths) {
