@@ -1,4 +1,8 @@
 import { fork } from 'node:child_process';
+import { watch } from 'node:fs';
+import { once } from 'node:events';
+import { join } from 'node:path';
+import { libraryNames, libraryWatchPaths, buildLibraries } from './development-libraries.mjs';
 import { fileURLToPath } from 'node:url';
 
 export async function stopChild(child) {
@@ -13,51 +17,106 @@ export async function stopChild(child) {
   });
 }
 
-// Run Node entrypoints directly: no shell/pnpm grandchildren to orphan on exit.
-export function runDevelopment({ entry, args = [], watchServer = true }) {
-  let worker;
-  let compiler;
-  let stopping = false;
-  let queue = Promise.resolve();
-  const shutdown = async (code = 0) => {
-    if (stopping) return;
-    stopping = true;
-    await Promise.all([stopChild(compiler), stopChild(worker)]);
-    await queue;
-    process.exitCode = code;
+// Rebuild complete dependency batches before replacing the running host.
+export const runDevelopment = ({ entry, args = [], watchServer = true }) => {
+  let worker, builder, timer;
+  let stopping = false,
+    running = false;
+  const dirty = new Set(watchServer ? libraryNames : []);
+  const root = fileURLToPath(new URL('../../../', import.meta.url));
+  const watchers = [];
+  const run = async (script, cwd) => {
+    const child = fork(script, [], { cwd, stdio: 'inherit' });
+    builder = child;
+    const [code] = await once(child, 'exit');
+    builder = undefined;
+    if (code !== 0 || stopping) throw new Error(`Build failed: ${script}`);
   };
-  const fail = (error) => {
-    console.error(error);
-    void shutdown(1);
-  };
-  const restart = () => {
-    queue = queue
-      .then(async () => {
-        const old = worker;
+  const update = async () => {
+    if (running || stopping) return;
+    running = true;
+    const batch = new Set(dirty);
+    dirty.clear();
+    let completed = false;
+    try {
+      if (watchServer) {
+        await buildLibraries(batch, root, run);
+        await run(fileURLToPath(new URL('./build.mjs', import.meta.url)), root);
+      }
+      if (stopping) return;
+      if (!dirty.size) {
+        const previous = worker;
         worker = undefined;
-        await stopChild(old);
+        await stopChild(previous);
         if (stopping) return;
-        const next = fork(entry, args, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
-        worker = next;
-        next.once('error', fail);
+        worker = fork(entry, args, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+        worker.once('error', (error) => {
+          console.error(error);
+          void shutdown(1);
+        });
+        const next = worker;
         next.once('exit', (code) => {
           if (!stopping && worker === next) void shutdown(code ?? 1);
         });
-      })
-      .catch(fail);
+      }
+      completed = true;
+    } catch (error) {
+      for (const name of batch) dirty.add(name);
+      console.error('Development build failed; save a watched source to retry:', error);
+    } finally {
+      running = false;
+      if (completed && dirty.size && !stopping) schedule();
+    }
   };
+  const schedule = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => void update(), 400);
+  };
+  const shutdown = async (code = 0) => {
+    if (stopping) return;
+    stopping = true;
+    clearTimeout(timer);
+    watchers.forEach((watcher) => watcher.close());
+    await Promise.all([stopChild(builder), stopChild(worker)]);
+    process.exitCode = code;
+  };
+  if (watchServer)
+    for (const [name, paths] of Object.entries({
+      ...libraryWatchPaths,
+      server: ['packages/server/src'],
+    }))
+      for (const path of paths)
+        watchers.push(
+          watch(join(root, path), { recursive: true }, () => {
+            dirty.add(name);
+            schedule();
+          }),
+        );
+  for (const directory of ['apps/desktop', 'packages/server']) {
+    try {
+      watchers.push(
+        watch(join(root, directory), (_event, filename) => {
+          if (['package.json', 'tsconfig.json'].includes(filename))
+            console.info('[开发环境] 宿主配置已变化，请重新运行开发命令。');
+        }),
+      );
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  // Tooling modules are cached by Node; changing them requires restarting the launcher.
+  for (const directory of ['packages/server/scripts', 'apps/desktop/scripts']) {
+    try {
+      watchers.push(
+        watch(join(root, directory), () =>
+          console.info('[开发环境] 启动工具已变化，请重新运行开发命令。'),
+        ),
+      );
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
   process.once('SIGINT', () => void shutdown());
   process.once('SIGTERM', () => void shutdown());
-  if (watchServer) {
-    compiler = fork(fileURLToPath(new URL('./build.mjs', import.meta.url)), ['--watch'], {
-      stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
-    });
-    compiler.on('message', (message) => {
-      if (message?.kind === 'built') restart();
-    });
-    compiler.once('error', fail);
-    compiler.once('exit', (code) => {
-      if (!stopping) void shutdown(code ?? 1);
-    });
-  } else restart();
-}
+  void update();
+};

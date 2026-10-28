@@ -94,7 +94,7 @@ export const assertProjectApplyVersion = async (
   }
 };
 
-/** Only fixed project files and versioned vendor files are used by the upgrade service. */
+/** Only fixed project configuration files are used by the upgrade service. */
 export const upgradeFilePath = async (
   projectPath: string,
   ...segments: string[]

@@ -2,12 +2,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
+const options: import('tsup').Options = {
   entry: {
-    'antd/runtime': 'antd/runtime.ts',
     index: 'src/index.ts',
     'antd/editor': 'antd/editor.ts',
-    'antd/manifest': 'antd/manifest.ts',
   },
   format: ['esm'],
   dts: {
@@ -31,4 +29,12 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   external: ['@origamix/ui', 'antd', 'react', 'react/jsx-runtime'],
-});
+};
+export default defineConfig([
+  { ...options, outDir: 'dist/internal' },
+  {
+    ...options,
+    entry: { 'antd/runtime': 'antd/runtime.ts', 'antd/manifest': 'antd/manifest.ts' },
+    outDir: 'dist/public',
+  },
+]);

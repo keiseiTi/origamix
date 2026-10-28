@@ -15,7 +15,7 @@ description: Template：生成项目骨架的职责、使用与开发说明
 
 ## 协作边界
 
-生成项目不依赖 App、Server 或 Electron。Server 打包步骤把工作区依赖替换为随项目提供的 vendor 归档；不要直接复制原始 Template 当作已生成项目。
+生成项目不依赖 App、Server 或 Electron。Server 模板准备步骤把工作区依赖替换为固定 npm 版本；不要直接复制原始 Template 当作已生成项目。
 
 ## 开发与验证
 
@@ -29,8 +29,10 @@ pnpm --filter @origamix/template build
 
 Template 没有独立 test 脚本；生成项目集成由 根 `pnpm test:template` 验证。
 
-Runtime／Materials 源码变化会更新开发宿主准备的模板归档，不会改写已生成项目的依赖。已有项目使用[显式升级](/guide/projects#升级项目)，完成后重新安装依赖并验证。
+Runtime／Materials 源码变化会更新开发宿主准备的模板版本配置，不会改写已生成项目的依赖。已有项目使用[显式升级](/guide/projects#升级项目)，完成后重新安装依赖并验证。
 
 源码目录：`packages/template`。详细接口、维护规则与集成命令见[包 README](https://github.com/keiseiTi/origamix/tree/main/packages/template)。
 
 返回[整体架构](/architecture/index)。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

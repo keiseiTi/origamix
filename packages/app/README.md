@@ -30,7 +30,7 @@ pnpm build:web
 pnpm --filter @origamix/app test:web
 ```
 
-`dev:web` 先编译并启动本地 Server，通过同源 `/api/v1` 代理认证；Server/Shared 改动重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认 `.origamix-web/` 数据位置。认证信息不注入浏览器配置。
+`dev:web` 先编译并启动本地 Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认 `.origamix-web/` 数据位置。认证信息不注入浏览器配置。
 
 浏览器开发模式没有原生目录选择器和凭据存储。Desktop 通过 Shared 中的命名桥提供这些能力。修改可见界面需实际验证亮暗主题；修改开发进程管理还需 Server `test:dev`。
 
@@ -92,7 +92,7 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 目前不是完整隔离编辑器：画布内移动、复杂弹层/IME、失联检测、flush/Working 队列与完整保存交付仍需验证/接入。不能据此宣称已支持第三方物料或安全执行任意代码。协议暂为 App 内部原型，不是 Shared 的稳定公开协议。
 
-开发宿主会通过 Server 的模板准备工具，在本地状态目录生成带 Runtime/Materials 归档的模板，供新建项目与显式项目升级共用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
+开发宿主会通过 Server 的模板准备工具，在本地状态目录生成固定 Runtime/Materials npm 版本的模板，供新建项目与显式项目升级共用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
 
 ## 开发环境配置
 
@@ -108,3 +108,5 @@ ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/authorized-project
 Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默认 ORIGAMIX_DESKTOP=0。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；不会把整个环境对象或 VITE_* 配置注入前端。浏览器的开发代理仍使用原有 DEV 边界，不新增生产远程连接能力。
 
 这些文件不保存凭据。Web 开发模型密钥仍通过进程环境 DEEPSEEK_API_KEY 注入，仅在后端凭据回调使用；不得写入 VITE_*、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

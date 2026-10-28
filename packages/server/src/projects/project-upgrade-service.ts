@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
 import type { ProjectRepository } from './project-repository';
 import { ProjectManifestStore } from './project-manifest-store';
@@ -155,20 +155,10 @@ export class ProjectUpgradeService {
     )
       throw invalid('项目 package.json 依赖配置无效');
     const dependencies = { ...packageJson.dependencies } as Record<string, unknown>;
-    const artifacts: Array<{ source: Buffer; filename: string }> = [];
     const template = await manifests.readManifest(this.templatePath);
     if (template.version !== ORIGAMIX_VERSION) throw invalid('内置模板版本不匹配');
-    for (const kind of ['runtime', 'materials']) {
-      const filename = `origamix-${kind}-${ORIGAMIX_VERSION}.tgz`;
-      await upgradeFilePath(project.path, 'vendor', filename);
-      artifacts.push({
-        source: await readFile(join(this.templatePath, 'vendor', `${kind}.tgz`)).catch(() => {
-          throw invalid('当前运行环境缺少升级依赖归档，请构建完整桌面应用后重试');
-        }),
-        filename,
-      });
-      dependencies[`@origamix/${kind}`] = `file:vendor/${filename}`;
-    }
+    for (const kind of ['runtime', 'materials'])
+      dependencies[`@origamix/${kind}`] = ORIGAMIX_VERSION;
     const nextPackage = json({ ...packageJson, dependencies });
     const originalManifest = JSON.parse(journal.manifestSource) as Record<string, unknown>;
     if (originalManifest.projectId !== projectId) throw invalid('升级记录归属不匹配');
@@ -228,21 +218,6 @@ export class ProjectUpgradeService {
     for (const page of journal.pages) {
       if (hashSchema(await readTargetSchema(reference(page.pageId))) !== page.schemaHash)
         throw conflict('升级期间目标页面被外部修改，请检查后重试');
-    }
-    for (const artifact of artifacts) {
-      const artifactPath = await upgradeFilePath(project.path, 'vendor', artifact.filename);
-      await mkdir(dirname(artifactPath), { recursive: true });
-      await upgradeFilePath(project.path, 'vendor', artifact.filename);
-      try {
-        if (!(await readFile(artifactPath)).equals(artifact.source))
-          throw conflict('目标版本依赖归档已存在但内容不一致');
-      } catch (error) {
-        if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
-        await writeFileAtomically(
-          await upgradeFilePath(project.path, 'vendor', artifact.filename),
-          artifact.source,
-        );
-      }
     }
     await requireUnchanged('package.json', journal.packageSource, nextPackage);
     await writeFileAtomically(await upgradeFilePath(project.path, 'package.json'), nextPackage);

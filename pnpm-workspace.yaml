@@ -1,12 +1,10 @@
 allowBuilds:
-  '@google/genai': set this to true or false
+  '@google/genai': false
   electron: true
   electron-winstaller: true
   esbuild: true
   lefthook: true
-  protobufjs: set this to true or false
-
-minimumReleaseAgeExclude:
+  protobufjs: false
 
 packages:
   - apps/*

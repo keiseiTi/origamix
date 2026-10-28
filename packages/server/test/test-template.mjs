@@ -1,7 +1,7 @@
 import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -168,6 +168,23 @@ try {
   );
   await backend.close();
   backend = undefined;
+  // Test unpublished release artifacts through npm-compatible package overrides.
+  const projectPackagePath = join(project, 'package.json');
+  const testPackage = JSON.parse(await readFile(projectPackagePath, 'utf8'));
+  const archives = join(directory, 'archives');
+  for (const kind of ['runtime', 'materials']) {
+    const packed = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('../../../scripts/pack-public.mjs', import.meta.url)), kind],
+      { env: { ...process.env, ORIGAMIX_PACK_DIR: archives }, stdio: 'inherit' },
+    );
+    assert.equal(packed.status, 0);
+    const version = testPackage.dependencies[`@origamix/${kind}`];
+    testPackage.pnpm ??= { overrides: {} };
+    testPackage.pnpm.overrides[`@origamix/${kind}`] =
+      `file:${join(archives, `origamix-${kind}-${version}.tgz`)}`;
+  }
+  await writeFile(projectPackagePath, JSON.stringify(testPackage, null, 2));
   for (const args of [['install', '--ignore-scripts'], ['typecheck'], ['build']]) {
     const child = spawnSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args, {
       cwd: project,
@@ -182,7 +199,7 @@ try {
   assert.ok(!JSON.stringify(installed).includes('@tangramino/'));
   assert.equal(installed.peerDependencies?.['@heroui/react'], undefined);
   assert.equal(installed.dependencies?.['@origamix/ui'], undefined);
-  assert.equal(installed.peerDependenciesMeta?.['@origamix/ui']?.optional, true);
+  assert.equal(installed.peerDependencies?.['@origamix/ui'], undefined);
   const materialDist = join(project, 'node_modules/@origamix/materials/dist');
   for (const file of await readdir(materialDist, { recursive: true })) {
     if (!file.endsWith('.d.ts')) continue;

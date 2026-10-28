@@ -55,7 +55,7 @@ Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 - **No `FOREIGN KEY`, `REFERENCES`, cascading deletes or updates in the schema.** Keep generated-DDL and live-database safety checks effective; do not disable checks or hide equivalent relationships in triggers.
 - Services enforce parent existence, ownership, deletion order and orphan handling. Use indexes, uniqueness constraints and SQL transactions for related database changes.
 - `src/database/schema.ts` is the table-model source of truth. All six business tables have autoincrement integer `id` primary keys, and inter-table references use those keys. Projects, pages and Agent Runs also keep unique string `project_id`, `page_id` and `run_id` for project files and external requests. Conversation and message API IDs are derived from their integer keys. Database startup uses `src/database/migrations.ts`: current-schema initialization, pre-upgrade backup, transactional ordered steps and newer-version rejection; unknown structures fail without reset.
-- `src/templates/copy-template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. Only the two prepared `vendor/runtime.tgz` and `vendor/materials.tgz` archives are copied from vendor; new scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
+- `src/templates/copy-template.ts` uses an allowlist. Exclude dependencies, generated output, secrets, caches and symlinks. Do not copy vendor archives; new scaffold assets require deliberate allowlist changes/tests, not copying the entire tree.
 - Stop listeners and close databases on failed startup, restart and exit. Use package-owned build scripts/exports; generated artifacts are not source.
 
 ## Mechanical boundaries
@@ -112,4 +112,6 @@ pnpm --filter @origamix/server gate:agent
 
 - Package `build` compiles only Server; prepare Materials first (or use root `build`). `test` runs schema and architecture checks without an implicit build. Root `test:template` prepares library and Server artifacts for the independent template check; package-local integration/evaluation commands consume existing artifacts.
 
-- Independent Server/Web development consumes compiled Shared and Materials. Rebuild changed library sources before checking the host; the Server compiler watches their dist artifacts rather than treating source changes as fresh compiled code. Root `pnpm dev:web` prepares library artifacts initially; Desktop coordinates source rebuilds automatically.
+- Independent Server/Web development and Desktop share `scripts/development-libraries.mjs` for library watch paths and ordered builds. Web/Server prepare libraries on startup and rebuild source changes before replacing the host. Failed builds retain the running host; save a watched source to retry. Tooling script changes require restarting the launcher.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

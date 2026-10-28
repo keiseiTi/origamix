@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsup",
-    "pack:npm": "pnpm pack --pack-destination ../../release/npm"
+    "pack:npm": "node ../../scripts/pack-public.mjs runtime"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.52"

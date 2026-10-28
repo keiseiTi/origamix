@@ -6,28 +6,36 @@
   "author": "yupeilin <yuchacha250@gmail.com>",
   "scripts": {
     "dev": "pnpm --filter @origamix/desktop dev",
-    "dev:web": "pnpm build:libs && pnpm --filter @origamix/app dev",
+    "dev:web": "pnpm --filter @origamix/app dev",
     "site": "pnpm --filter @origamix/site dev",
     "site:build": "pnpm --filter @origamix/site build",
-    "build": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/app build && pnpm --filter @origamix/desktop build",
+    "build": "pnpm build:libs && pnpm build:prepared",
     "build:web": "pnpm build:libs && pnpm --filter @origamix/app build",
-    "build:libs": "pnpm --filter @origamix/ui --filter @origamix/shared --filter @origamix/editor --filter @origamix/runtime --filter @origamix/materials build",
+    "build:libs": "pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials build",
     "format": "prettier --write \"{packages, apps}/**/*.{js,jsx,ts,tsx,json,mjs,css,md}\"",
     "hooks:install": "lefthook install",
     "hooks:run": "lefthook run pre-commit",
-    "lint": "pnpm release:version --check && pnpm -r lint",
-    "typecheck": "pnpm build:libs && pnpm -r typecheck",
-    "test": "pnpm build:libs && pnpm -r test",
+    "lint": "pnpm release:version --check && eslint scripts && pnpm -r lint",
+    "typecheck": "pnpm build:libs && pnpm typecheck:prepared",
+    "test": "pnpm build:libs && pnpm test:prepared",
     "gate:internal": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/server gate:agent",
-    "package:dir": "pnpm build && pnpm --filter @origamix/desktop package:dir",
+    "package:dir": "pnpm release:registry && pnpm build && pnpm --filter @origamix/desktop package:dir",
     "package": "pnpm package:mac",
-    "package:mac": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @origamix/desktop package:mac",
+    "package:mac": "pnpm release:registry && pnpm check && pnpm --filter @origamix/desktop package:mac",
     "release:version": "node scripts/release-version.mjs",
     "pack:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
     "test:template": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/server test:template",
     "test:web": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/app test:web",
     "test:desktop": "pnpm build && pnpm --filter @origamix/desktop test:main",
-    "test:dev": "pnpm --filter @origamix/desktop test:dev && pnpm --filter @origamix/server test:dev"
+    "test:dev": "pnpm --filter @origamix/desktop test:dev && pnpm --filter @origamix/server test:dev",
+    "build:verify": "pnpm build:libs && pnpm --filter @origamix/ui --filter @origamix/editor build",
+    "release:check": "pnpm release:version --check && pnpm pack:npm && node scripts/check-public-packages.mjs",
+    "publish:npm": "pnpm release:check && node scripts/publish-public.mjs",
+    "release:registry": "node scripts/check-registry.mjs",
+    "build:prepared": "pnpm --filter @origamix/server build && pnpm --filter @origamix/app build && pnpm --filter @origamix/desktop build",
+    "typecheck:prepared": "pnpm -r typecheck",
+    "test:prepared": "pnpm -r test",
+    "check": "pnpm lint && pnpm build:libs && pnpm typecheck:prepared && pnpm test:prepared && pnpm build:prepared"
   },
   "keywords": [
     "lowCode",
@@ -50,11 +58,8 @@
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "esbuild",
-      "lefthook"
-    ]
-  }
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "packageManager": "pnpm@10.33.4"
 }

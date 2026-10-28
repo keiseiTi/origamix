@@ -26,7 +26,7 @@ pnpm package:dir
 pnpm package:mac
 ```
 
-开发脚本按依赖顺序构建库、Server、Main/Preload 和带 vendor 的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。Shared、Runtime、Materials、Server、Main/Preload、模板或 Desktop 环境文件变化时，自动按依赖顺序构建，准备好新后端和模板后，正常退出并重启 Vite 与 Electron。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
+开发脚本按依赖顺序构建库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。Shared、Runtime、Materials、Server、Main/Preload、模板或 Desktop 环境文件变化时，自动按依赖顺序构建，准备好新后端和模板后，正常退出并重启 Vite 与 Electron。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
 
 多次保存会合并处理，构建期间的新变化进入下一轮；构建或资源准备失败时保留当前实例，修复源码后重试，也可在终端按 Enter 重试。输入 `p` 并回车可暂停／恢复自动重启，适合调试 Agent 或长时间编辑；暂停时可以继续构建，恢复后应用待更新内容。退出超时则暂停更新，不强制杀掉桌面实例。
 
@@ -77,7 +77,7 @@ pnpm --filter @origamix/desktop evaluate:agent --case customer-form --model deep
 
 预览检查只操作当前可见、非 inert 的页面；点击前先在合法滚动容器中显示按钮，再核对点击命中，报告记录是否需要滚动。样本交互聚焦声明式属性更新，不代表真实业务接口、条件分支或全部流程节点已经通过模型验收。
 
-默认在本地忽略目录 `_doc/verification/reports/agent-quality-<timestamp>/` 写入 `report.json`、合成页面 Working 快照、生成项目源文件和截图；`--output /absolute/path` 可指定其他证据目录。临时数据库、加密凭据副本和依赖目录在退出时清理。报告保留应用提交、未提交变更标记、实际 Main／Server 产物哈希、模型和协议版本、Run／页面／Revision 标识、耗时、持久化用量、工具活动和失败阶段；不保存推理内容或完整工具参数。首次模型事件时间未采集时为 `null`，不填入模拟值；现有持久化 Token 统计不含完整计费信息，失败调用可能缺少用量，`executorCalls` 也不等于每次供应商请求数，不能据此计算真实费用。
+通过 `--output /absolute/path/to/reports` 显式指定证据目录，保存 `report.json`、合成页面 Working 快照、生成项目源文件和截图。临时数据库、加密凭据副本和依赖目录在退出时清理。报告保留应用提交、未提交变更标记、实际 Main／Server 产物哈希、模型和协议版本、Run／页面／Revision 标识、耗时、持久化用量、工具活动和失败阶段；不保存推理内容或完整工具参数。首次模型事件时间未采集时为 `null`，不填入模拟值；现有持久化 Token 统计不含完整计费信息，失败调用可能缺少用量，`executorCalls` 也不等于每次供应商请求数，不能据此计算真实费用。
 
 缺少凭据、执行失败或样本未完成均不会报告通过，并返回非零退出码。全部自动检查通过后，报告状态仍为 `awaiting-visual-review`，`modelQualityAccepted` 保持 `false`：需要另行检查截图布局、真实需求准确性与人工编辑体验。局部样本通过也不代表三项完整套件或模型普遍质量通过。报告保留每轮失败，修复后应产生新的一轮证据，不覆盖旧结果。
 
@@ -127,3 +127,8 @@ ORIGAMIX_DEBUG=1
 构建只将受版本管理的 `.env` 复制到 `dist/.env`，不复制 `.env.local`。正式安装包忽略开发进程环境覆盖，按自身 resourcesPath 解析 ORIGAMIX_PACKAGED_RENDERER_FILE 和 ORIGAMIX_PACKAGED_TEMPLATE_DIR；preload 与 Server 程序位置固定在构建布局中。用户数据库仍使用 Electron userData。
 
 配置不保存 API Key、后端令牌或服务实例 ID；桌面凭据仍由 safeStorage 管理。测试启动器用 ORIGAMIX_ENV_LOCAL=0 隔离个人文件。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
+
+开发依赖更新由 Server 的 `development-libraries.mjs` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
+公开包的名单、版本和归档路径由根 `scripts/public-packages.mjs` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。

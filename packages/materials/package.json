@@ -7,31 +7,42 @@
   ],
   "exports": {
     "./antd/manifest": {
-      "types": "./dist/antd/manifest.d.ts",
-      "import": "./dist/antd/manifest.js"
+      "types": "./dist/public/antd/manifest.d.ts",
+      "import": "./dist/public/antd/manifest.js"
     },
     "./antd/runtime": {
-      "types": "./dist/antd/runtime.d.ts",
-      "import": "./dist/antd/runtime.js"
+      "types": "./dist/public/antd/runtime.d.ts",
+      "import": "./dist/public/antd/runtime.js"
     },
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/internal/index.d.ts",
+      "import": "./dist/internal/index.js"
     },
     "./antd/editor": {
-      "types": "./dist/antd/editor.d.ts",
-      "import": "./dist/antd/editor.js"
+      "types": "./dist/internal/antd/editor.d.ts",
+      "import": "./dist/internal/antd/editor.js"
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./antd/runtime": {
+        "types": "./dist/public/antd/runtime.d.ts",
+        "import": "./dist/public/antd/runtime.js"
+      },
+      "./antd/manifest": {
+        "types": "./dist/public/antd/manifest.d.ts",
+        "import": "./dist/public/antd/manifest.js"
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsup",
-    "pack:npm": "pnpm pack --pack-destination ../../release/npm"
+    "pack:npm": "node ../../scripts/pack-public.mjs materials",
+    "prepack": "node -e \"throw new Error('Use pnpm pack:npm to prepare isolated public artifacts')\""
   },
   "dependencies": {
     "clsx": "^2.1.1",

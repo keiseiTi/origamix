@@ -19,7 +19,7 @@ pnpm preview
 
 项目清单记录 `framework: react`、`uiLibrary: antd`、`materialSet: "official-antd"` 和统一的 `version: "1.0.0"`。打开页面时，Origamix 将支持的旧 Schema 转换为当前 Working 草稿；用户保存版本并 Apply 后才更新目标文件。依赖与项目版本不会随打开页面自动升级。Runtime 只接受与已安装发布版本一致的 Schema。
 
-模板必须保留自己的依赖、TypeScript、Vite 和 ESLint 配置，才能脱离工作区运行。源码工作区中的 `workspace:*` 由模板打包步骤替换为随项目提供的 `vendor/*.tgz`，打包后的项目不需要 monorepo。
+模板必须保留自己的依赖、TypeScript、Vite 和 ESLint 配置，才能脱离工作区运行。源码工作区中的 `workspace:*` 由模板准备步骤替换为固定 npm 版本，打包后的项目不需要 monorepo。
 
 ## 验证
 
@@ -42,8 +42,6 @@ src/router.ts               清单驱动的浏览器路由
 src/index.css               全局样式
 src/pages/<slug>/index.tsx   页面渲染入口
 src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
-vendor/runtime.tgz          随项目提供的 Runtime 包
-vendor/materials.tgz        随项目提供的 Materials 包
 .origamix/                  本机编辑状态与恢复证据
 ```
 
@@ -56,9 +54,11 @@ vendor/materials.tgz        随项目提供的 Materials 包
 - 工作台预览已变化，独立项目仍显示旧内容：确认已“保存版本”并“应用到项目”，然后检查目标页面的 Schema。
 - 页面入口不存在：核对清单 `pageDirectory`、slug 与对应 `index.tsx`，不要以重建整个项目覆盖本地源码。
 - 独立安装报告 `workspace:*`：确认使用的是 Origamix 生成的项目；仓库内原始模板依赖尚未经过打包替换。
-- 找不到 `vendor/*.tgz`：保留生成项目自带归档，它们是安装依赖，不是缓存；不要只复制 `src/`。
+- npm 提示找不到指定版本：确认该版本已发布到所用 registry，并检查 registry 和网络配置；不要改成工作区路径。
 - 部署后刷新子路由返回 404：为静态服务器配置 SPA 回退到 `index.html`。例如 Nginx 根路径部署可使用 `try_files $uri $uri/ /index.html;`。
 
 当前路由使用浏览器历史模式，子路径部署需要同时考虑 Vite 资源基路径和路由 basename，不能只修改资源地址。`.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
 
-项目菜单的“升级项目”会应用所有已保存页面并更新依赖归档与统一版本。请先打开并验证所有页面、保存版本，升级时停止目标项目运行；完成后在项目目录重新执行 `pnpm install`，再启动验证。升级中断后返回同一入口继续，不能直接删除升级记录或手改版本跳过校验。
+项目菜单的“升级项目”会应用所有已保存页面并更新 npm 依赖与统一版本。请先打开并验证所有页面、保存版本，升级时停止目标项目运行；完成后在项目目录重新执行 `pnpm install`，再启动验证。升级中断后返回同一入口继续，不能直接删除升级记录或手改版本跳过校验。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

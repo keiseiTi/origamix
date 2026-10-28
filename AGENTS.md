@@ -15,8 +15,8 @@ This file is a repository map and durable guardrails, not a product specificatio
 | ----------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                                   |
 | [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                                    |
-| [Editor](packages/editor/AGENTS.md)       | 画布、FlowEditor、编辑公共组件与契约                          | `packages/editor/src/`、`packages/editor/src/flow-editor/`、`packages/editor/src/contracts/` |
-| [UI](packages/ui/AGENTS.md)               | 公共基础控件、工具与主题基础                                  | `packages/ui/src/components/`、`packages/ui/src/styles/styles.css`                           |
+| [Editor](packages/editor/AGENTS.md)       | Canvas, FlowEditor, reusable editing components and contracts | `packages/editor/src/`, `packages/editor/src/flow-editor/`, `packages/editor/src/contracts/` |
+| [UI](packages/ui/AGENTS.md)               | Shared base controls, utilities and theme foundations         | `packages/ui/src/components/`, `packages/ui/src/styles/styles.css`                           |
 | [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`          |
 | [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                   |
 | [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/src/index.ts`                                                              |
@@ -26,7 +26,6 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.
-- `_doc/` is Git-ignored historical planning and may be absent in a clean checkout. Do not treat plans as current implementation or change ignore rules to publish them.
 - Preview is rendered by App in a sandboxed iframe with page snapshots sent by the trusted workbench via postMessage, without a Desktop bridge or backend credentials; Agent HTTP/SSE is implemented. Preview capability sessions remain future work.
 
 ## Architecture invariants
@@ -112,3 +111,5 @@ pnpm build
 - When changing a boundary, command or directory, update its owning guide in the same change. Link to code/tests instead of copying implementation inventories; remove stale guidance.
 - Debug with reproducible inputs, request/revision identifiers and redacted errors. Close temporary servers/listeners after checks. Leave better verification evidence, not only a workaround.
 - This harness applies concise layered guidance and verification loops from [OpenAI's AGENTS.md guide](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and [Codex best practices](https://learn.chatgpt.com/guides/best-practices). Package boundaries and checks above are Origamix-specific engineering decisions.
+
+- Root `pnpm check` prepares libraries once and runs all four gates. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.

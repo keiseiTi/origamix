@@ -34,7 +34,7 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials... build
 ```
 
-tsup 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区和发布包统一消费 `dist` 中的 JavaScript 与类型声明，两套出口保持一致。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；`@origamix/ui` 为可选编辑 peer，编辑宿主显式安装，纯运行项目无需安装。模板自身使用 HeroUI 基础控件。
+tsup 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档只公开 runtime／Manifest。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -89,3 +89,9 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 ## 契约版本
 
 所有内置物料、物料集、Materials、Runtime 与 Template 随 Origamix 统一发布，版本由 Shared 的 `ORIGAMIX_VERSION` 提供；旧 Schema 通过 Server 迁移链转换，物料运行组件只处理当前契约。项目清单只记录一个版本及物料集 ID，Manifest、编辑器、运行时与生成模板使用同一套当前契约。页面字段与能力仍按 Manifest 校验。
+
+## 单包与入口隔离
+
+Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd/runtime`，Server 只导入 Manifest；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
+
+归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。

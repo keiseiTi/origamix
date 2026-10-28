@@ -11,3 +11,5 @@ Applies to `packages/ui/`. Read the [root guide](../../AGENTS.md) first.
 - App owns product status colors, scrollbar, window layout and theme preference. Preview theme is explicitly delivered to its separate iframe document; generated pages do not import workbench styles.
 - Both App and UI `components.json` route primitives to this package. Run the installed shadcn CLI from this package for shared primitives; normalize generated consumer imports to the root entry and internal imports to relative paths. Do not reinitialize App-local UI.
 - Run `pnpm --filter @origamix/ui lint`, `typecheck`, `build` and the root gates. No component/composition tests for a behavior-preserving move; verify actual consuming interfaces in light and dark mode, including portals and focus restoration.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

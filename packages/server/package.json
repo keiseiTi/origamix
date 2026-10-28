@@ -22,7 +22,8 @@
     "./template-artifact": {
       "types": "./scripts/prepare-template-artifact.d.mts",
       "default": "./scripts/prepare-template-artifact.mjs"
-    }
+    },
+    "./development-libraries": "./scripts/development-libraries.mjs"
   },
   "scripts": {
     "lint": "eslint .",

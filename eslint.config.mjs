@@ -184,6 +184,7 @@ export default defineConfig([
   },
   {
     files: [
+      'scripts/**/*.mjs',
       'apps/desktop/scripts/**/*.{mjs,cjs}',
       'apps/desktop/test/**/*.{mjs,cjs}',
       'packages/server/scripts/**/*.mjs',

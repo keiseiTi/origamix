@@ -14,7 +14,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` 先准备库、Server、Main/Preload 和带 vendor 的模板，再启动 Vite 与 Electron。默认前端地址为 `http://127.0.0.1:5173`；后端使用系统分配的动态端口，由 Main 向工作台提供连接。
+`pnpm dev` 先准备库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。默认前端地址为 `http://127.0.0.1:5173`；后端使用系统分配的动态端口，由 Main 向工作台提供连接。
 
 ### 源码更新与自动重启
 
@@ -31,7 +31,7 @@ pnpm dev
 
 自动重启会重新创建窗口，可能中断活动 Agent、未提交编辑和聊天输入；已持久化的 Working 由原有机制恢复，不提供窗口临时状态的无损交接。调试 Agent 或长时间编辑时可先暂停自动重启。此流程只在开发启动器中协调，没有新增 App 业务会话协议或公共桌面重启桥接。
 
-Materials 更新时会构建新的编辑／运行入口和 Manifest，再构建使用 Manifest 的 Server，并准备模板中的物料归档。开发中的 App 随 Vite／Electron 重启加载新物料，无需先打包 App；正式产物使用根 `pnpm build` 重新构建 App。已有用户项目的依赖不会随源码变化自动升级，见[项目与页面](/guide/projects#升级项目)。
+Materials 更新时会构建新的编辑／运行入口和 Manifest，再构建使用 Manifest 的 Server，并准备模板 npm 版本。开发中的 App 随 Vite／Electron 重启加载新物料，无需先打包 App；正式产物使用根 `pnpm build` 重新构建 App。已有用户项目的依赖不会随源码变化自动升级，见[项目与页面](/guide/projects#升级项目)。
 
 ### 环境文件
 
@@ -100,3 +100,5 @@ pnpm site:build
 先阅读根 `AGENTS.md` 与要修改目录的包级指导，保持公开导入边界。业务规则放在 Server 服务，持久化放在 Repository 或文件服务；不要在 UI 或 Main 新增目标 Schema 写入路径。
 
 [仓库 README](https://github.com/keiseiTi/origamix/blob/main/README.md) 是当前命令总览，包 README 提供详细接口与验证说明。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

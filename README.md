@@ -28,7 +28,7 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 4. 预览当前草稿，确认后点击“保存版本”创建 Revision，再点击“应用到项目”更新生成项目的 `schema.json`。
 5. 在生成项目目录运行 `pnpm install`、`pnpm dev`；部署说明见生成项目的 README。
 
-开发模式需要当前库构建产物；首次启动前运行 `pnpm build:libs`。开发宿主会准备带版本归档的模板，供新建与升级项目共用。
+根开发命令会自动准备当前库构建产物。开发宿主会准备使用固定 npm 版本的模板，供新建与升级项目共用。
 
 浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
 
@@ -38,21 +38,21 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 
 项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd/runtime` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。第五阶段的专属属性编辑器按需延期，现有结构化字段继续使用 JSON 编辑。
 
-| 包                                        | 唯一职责                                        | 对外接口                                     |
-| ----------------------------------------- | ----------------------------------------------- | -------------------------------------------- |
-| [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装 | 命名 IPC 桥与桌面程序                        |
-| [App](packages/app/README.md)             | 工作台交互、HTTP 客户端和窗口内状态             | Renderer 构建产物                            |
-| [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                    | 单控件入口、`utils`、`styles.css`            |
-| [Editor](packages/editor/README.md)       | 画布、FlowEditor、通用编辑组件与契约            | `visual`、`flow`、`components`、`core`、契约 |
-| [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口               |
-| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 单一根入口                                   |
-| [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest        |
-| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime`                          |
-| [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                           |
+| 包                                        | 唯一职责                                        | 对外接口                              |
+| ----------------------------------------- | ----------------------------------------------- | ------------------------------------- |
+| [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装 | 命名 IPC 桥与桌面程序                 |
+| [App](packages/app/README.md)             | 工作台交互、HTTP 客户端和窗口内状态             | Renderer 构建产物                     |
+| [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                    | 根入口、`styles.css`                  |
+| [Editor](packages/editor/README.md)       | 画布、FlowEditor、通用编辑组件与契约            | 根入口、`styles.css`                  |
+| [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口        |
+| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 单一根入口                            |
+| [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest |
+| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime`                   |
+| [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                    |
 
 自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
 
-包内使用方法放在各自 README；维护约束放在对应 `AGENTS.md`。忽略目录 `_doc/` 是历史产品规划，不作为当前实现说明，也不是新贡献者的必需文件。
+包内使用方法放在各自 README；维护约束放在对应 `AGENTS.md`。
 
 ## 验证与产物
 
@@ -63,13 +63,13 @@ pnpm test
 pnpm build
 ```
 
-根 lint 包含跨包接口规则，根 typecheck 会先构建库 的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
+根 lint 包含跨包接口规则，根 typecheck 会先构建库的公共声明再检查各包，根 test 包含规则回归及各包测试。集成检查按变更边界运行，见包 README；Template 的独立安装构建由 Server `test:template` 验证，根 test 不替代它。
 
 核心链路与独立项目验证方式见 [Server 集成说明](packages/server/README.md#开发宿主与模板集成)，真实桌面运行检查见 [Desktop README](apps/desktop/README.md)。
 
 | 命令                 | 产物/用途                                                |
 | -------------------- | -------------------------------------------------------- |
-| `pnpm build:libs`    | UI、Shared、Editor、Runtime、Materials 构建产物          |
+| `pnpm build:libs`    | Shared、Runtime、Materials 必需构建产物                  |
 | `pnpm build:web`     | 上述依赖及 App 的静态资源                                |
 | `pnpm build`         | 库 → Server → App → Desktop 编译和资源组装，不制作安装包 |
 | `pnpm package:dir`   | 构建后生成 macOS arm64 应用目录，使用本地 ad-hoc 签名    |
@@ -95,3 +95,16 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 ## 开发环境文件
 
 Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量。Desktop 开发启动器监听自身环境文件并自动重启开发实例；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
+
+公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 不发布；`pnpm publish:npm` 才实际发布。模板使用的版本必须先在 npm 可安装。
+
+### 组合检查与工具版本
+
+使用 Node.js 24.15+（24.x）和 pnpm 10.33.4，版本约束见根 package.json。
+`pnpm check` 依次执行 lint、一次库构建、类型检查、测试和应用构建；`package:mac` 复用该流程。
+独立 `typecheck`、`test`、`build` 仍自动准备库；`*:prepared` 是组合流程内部入口，要求当前库产物已经构建，不能与库清理构建并行运行。
+pre-commit 对 TypeScript 变更先构建一次库，再顺序检查类型和测试，避免同时清理同一 dist。
+根 lint 和暂存 lint 均覆盖根 scripts 下的发布工具。
+
+开发依赖更新由 Server 的 `development-libraries.mjs` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
+公开包的名单、版本和归档路径由根 `scripts/public-packages.mjs` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。

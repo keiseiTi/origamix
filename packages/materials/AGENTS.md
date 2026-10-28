@@ -22,7 +22,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Material rules
 
-- 内置物料、物料集及 Materials 包随 Origamix 统一发布；`material-set.ts` 使用 Shared 的 `ORIGAMIX_VERSION`。旧页面转换只归 Server 的 Schema 迁移链，物料不保留旧属性分支。
+- Built-in materials, material sets and the Materials package share the Origamix release version; `material-set.ts` uses Shared ORIGAMIX_VERSION. Legacy page conversion belongs exclusively to the Server Schema migration chain; materials must not retain legacy property branches.
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.
@@ -64,3 +64,7 @@ pnpm --filter @origamix/materials build
 
 - `context.variables` is the read whitelist, `context.writable` the runtime-write whitelist, `context.values` callable methods, and `context.methods` events. Keep them independent of propsSchema. Built-in runtime metadata is attached only in `antd/runtime.ts`; never add editor imports there. `basicPage` is registered separately as a hidden root material, not a draggable palette entry; FloatButton stays unregistered.
 - `antd/runtime-state.tsx` owns canonical input values, event payload projection and Form field binding. User changes publish through om_setRuntimeState before invoking events. Form methods/programmatic field writes must update both field and form projections. Shared/Server/Runtime enforce capabilities; do not fix a failed capability check by adding all props to variables/writable.
+
+- Keep Materials as one package. Separate runtime, editor and pure-data Manifest entry points; never import editor controls or UI from runtime/Manifest. UI remains private and is used only by the internal editor host. Do not introduce a separate materials-internal package. Runtime-only consumers must install without UI or editor engines.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

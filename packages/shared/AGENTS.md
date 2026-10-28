@@ -45,3 +45,5 @@ pnpm --filter @origamix/shared build
 - Material context keeps independent variables (read), writable (runtime write), values (callable methods) and methods (events) declarations. Optional pure linkage metadata can control event visibility; it does not grant runtime access. `propsSchema` remains design-time validation, not a fallback capability source.
 
 - Public page validation accepts only the current release contract; never loosen it to implement persisted-data migration.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

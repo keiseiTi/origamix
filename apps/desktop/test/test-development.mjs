@@ -173,6 +173,15 @@ try {
     );
     await writeFile(source, (await readFile(source, 'utf8')) + '\n// development-source-update\n');
   }
+  // Resource preparation must load the newly compiled template copier, not a cached module.
+  const copierSource = join(root, 'packages/server/src/templates/copy-template.ts');
+  const copier = (await readFile(copierSource, 'utf8'))
+    .replace('cp, lstat', 'cp, lstat, writeFile')
+    .replace(
+      '  });\n};',
+      "  });\n  await writeFile(target + '/development-copy-proof', 'fresh copier');\n};",
+    );
+  await writeFile(copierSource, copier);
   const mainSource = join(desktop, 'src/main/index.ts');
   await writeFile(
     mainSource,
@@ -192,6 +201,10 @@ try {
   await waitFor(connect);
   await waitFor(() => connection());
   const second = await connection();
+  assert.equal(
+    await readFile(join(desktop, 'dist/template/development-copy-proof'), 'utf8'),
+    'fresh copier',
+  );
   assert.notEqual(second.serviceInstanceId, first.serviceInstanceId);
   assert.ok(output.includes('Development Main refreshed'));
   assert.match(await readFile(join(desktop, 'dist/main/server.cjs'), 'utf8'), /Development button/);

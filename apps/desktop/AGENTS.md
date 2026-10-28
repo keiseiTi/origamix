@@ -6,7 +6,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/main/index.ts`: application lifecycle, directory grants, settings/credentials and backend bootstrap.
 - `src/preload/index.ts`: workbench bridge. Page previews are Renderer-owned sandboxed iframe documents and do not have a Desktop bridge.
-- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/build-options.mjs`, `scripts/assemble-resources.mjs`, `scripts/copy-server-artifact.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template vendor preparation comes from Server tooling rather than a Desktop-owned recipe.
+- `scripts/dev.mjs`, `scripts/build.mjs`, `scripts/build-options.mjs`, `scripts/assemble-resources.mjs`, `scripts/copy-server-artifact.mjs`, `electron-builder.yml`: supervision, compilation and resource assembly. Template npm-version preparation comes from Server tooling rather than a Desktop-owned recipe.
 
 ## Boundaries
 
@@ -45,10 +45,12 @@ pnpm --filter @origamix/desktop test:main
 - For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.
 
-- `test:main` 还验证 `/canvas-prototype` 在 file 模式下实际渲染、opaque origin、无法访问 parent DOM 且没有 Desktop bridge；这仅证明原型资源与权限边界，不代表完整编辑器隔离交付。
+- `test:main` also verifies actual `/canvas-prototype` rendering in file mode, an opaque origin, no parent DOM access and no Desktop bridge. This proves prototype resource and permission boundaries, not delivery of a fully isolated editor.
 
-- Desktop development prepares the same vendored template as packaged builds before launching Electron and points ORIGAMIX_TEMPLATE_DIR at dist/template. Keep preparation delegated to Server tooling; source templates do not contain upgrade archives.
+- Desktop development prepares the same npm-pinned template as packaged builds before launching Electron and points ORIGAMIX_TEMPLATE_DIR at dist/template. Keep preparation delegated to Server tooling; source templates use workspace dependencies, which preparation pins to registry versions.
 
 - `src/main/config.ts` owns Desktop env parsing and resolved paths. Dev scripts load package `.env` then optional `.env.local`, with process overrides; the packaged Main reads only shipped `dist/.env`. Build/resource assembly must copy only `.env`, never personal files. Renderer navigation and IPC authority must use the same resolved entry.
 
 - Desktop development watches Shared/Runtime/Materials/Server/Main/Preload sources and build configurations, rebuilding dependencies in order. App/Editor/UI retain HMR. Stage fresh resources after ordered builds, then gracefully stop Electron and Vite before replacing artifacts and restarting. Build failures preserve the live instance; exit timeout pauses updates without force-killing Electron. The terminal p command pauses/resumes automatic restart. Do not promise transient draft or Agent continuity across a development restart. Keep development tooling out of Renderer business sessions and the public desktop bridge. `pnpm test:dev` checks this lifecycle and listener cleanup. Main passes the trusted document origin to Server, including configured development ports.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

@@ -151,7 +151,7 @@ pnpm --filter @origamix/server build
 | Agent 执行与权限  | `test/agent/run-executor.test.ts`、`test/agent/tools/*.test.ts`、`test/http/agent-server.test.ts`、`test/http/agent-schema-flow.test.ts`；运行 `pnpm --filter @origamix/server gate:agent` |
 | 数据库            | `test/database/database.test.ts`；保持无外键检查                                                                                                                                           |
 | 开发与构建        | `test/build-options.test.mjs`；运行 `pnpm --filter @origamix/server test:dev`                                                                                                              |
-| 模板复制          | `test/template.test.ts`；运行 `pnpm --filter @origamix/server test:template`                                                                                                               |
+| 模板复制          | `test/templates/copy-template.test.ts`；运行 `pnpm --filter @origamix/server test:template`                                                                                                |
 
 交付前运行根目录的 `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。完整约束见 [AGENTS.md](AGENTS.md)。
 
@@ -185,7 +185,7 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 设置 `ORIGAMIX_KEEP_TEMPLATE_SMOKE=1` 可保留本次新建的临时目录，结束时输出项目路径，便于后续浏览器交互验证。默认总会清理；该选项不接受或操作已有用户项目。构建通过不代表页面已经渲染，仍需在生成项目中确认实际运行结果。
 
-模板 README 是生成项目使用说明的唯一来源，创建时只替换标题并附加项目标识。复制白名单只允许两份已准备的 vendor 归档，不能复制任意 vendor 内容。字段形状由 Shared 校验，项目服务保留页面 ID/slug 唯一性检查；HTTP 错误统一由 Fastify 错误处理器转换。
+模板 README 是生成项目使用说明的唯一来源，创建时只替换标题并附加项目标识。模板准备将依赖锁定为 npm 发布版本，复制白名单不允许 vendor 归档。字段形状由 Shared 校验，项目服务保留页面 ID/slug 唯一性检查；HTTP 错误统一由 Fastify 错误处理器转换。
 
 ## 宿主配置与本地 HTTP
 
@@ -252,7 +252,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 发布时执行 `pnpm release:version --set <版本>`，同步所有包、Shared 版本和模板清单；然后为相邻发布声明 Schema 转换，无变化也显式声明原样转换。`pnpm release:version --check` 已接入根 lint。数据库结构有变化时另外增加迁移步骤和存储版本，更新当前结构与验证规则。
 
-打开页面不切换项目依赖。项目菜单的“升级项目”显式调用 `POST /api/v1/projects/upgrade`，提交 `projectId`、`expectedVersion` 和稳定的 `clientRequestId`。所有页面必须已打开、迁移并显式保存；升级按计划中的版本逐页调用原 Apply 服务，然后安装独立命名的版本归档、更新 package.json 依赖和项目清单。不会执行依赖安装命令，用户完成后需重新安装依赖并验证项目。
+打开页面不切换项目依赖。项目菜单的“升级项目”显式调用 `POST /api/v1/projects/upgrade`，提交 `projectId`、`expectedVersion` 和稳定的 `clientRequestId`。所有页面必须已打开、迁移并显式保存；升级按计划中的版本逐页调用原 Apply 服务，然后更新 package.json 依赖和项目清单。不会执行依赖安装命令，用户完成后需重新安装依赖并验证项目。
 
 `.origamix/project-upgrade.json` 保留原配置、计划中的 Revision/Working 版本及结果；升级期间阻止普通编辑和 Apply。状态通过 `/projects/upgrade-state/get` 读取，显式重试复用原请求，不在启动时自动重放。项目配置、目标页或草稿出现冲突时停止并保留记录。目标页和配置尚未改变时，可通过 `/projects/upgrade/cancel` 撤销；已经写入时需继续完成。此流程不是跨文件原子替换，升级期间应停止目标项目运行。
 
@@ -263,3 +263,5 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 ORIGAMIX_WEB_STATE_DIR 控制独立开发数据目录，ORIGAMIX_WEB_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-web/template`），先通过 Web 开发宿主准备，或显式指定已组装的 Desktop `dist/template` 绝对路径。
 
 ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

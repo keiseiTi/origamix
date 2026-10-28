@@ -2,7 +2,7 @@ import { fork, spawn } from 'node:child_process';
 import { watch } from 'node:fs';
 import { mkdtemp, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { build } from 'tsup';
@@ -12,8 +12,7 @@ import { copyServerArtifact } from './copy-server-artifact.mjs';
 import { stopChild } from '@origamix/server/development';
 
 const require = createRequire(import.meta.url);
-const tsupManifest = require('tsup/package.json');
-const tsupCli = join(dirname(require.resolve('tsup/package.json')), tsupManifest.bin.tsup);
+import { libraryWatchPaths, buildLibraries } from '@origamix/server/development-libraries';
 const dirty = new Set(['shared', 'runtime', 'materials', 'server', 'desktop', 'template']);
 const watchers = [];
 let electron;
@@ -26,8 +25,8 @@ let generation = 0;
 let started = false;
 let paused = false;
 
-const run = async (entry, cwd) => {
-  const child = fork(entry, [], { cwd, stdio: 'inherit' });
+const run = async (entry, cwd, args = []) => {
+  const child = fork(entry, args, { cwd, stdio: 'inherit' });
   builder = child;
   const [code] = await once(child, 'exit');
   if (builder === child) builder = undefined;
@@ -121,29 +120,13 @@ const update = async () => {
     const env = config.loadDesktopEnvironment(desktopRoot);
     const rendererUrl = config.desktopRendererUrl(env);
     config.desktopDebug(env);
-    if (batch.has('shared')) {
-      batch.add('runtime');
-      batch.add('materials');
-      batch.add('server');
-      batch.add('desktop');
-      batch.add('template');
-    }
-    if (batch.has('runtime')) {
-      batch.add('materials');
-      batch.add('template');
-    }
-    if (batch.has('materials')) {
-      batch.add('server');
-      batch.add('template');
-    }
-    for (const name of ['shared', 'runtime', 'materials'])
-      if (batch.has(name)) await run(tsupCli, `${workspaceRoot}packages/${name}`);
+    if (batch.has('shared')) batch.add('desktop');
+    await buildLibraries(batch, workspaceRoot, run);
     if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
     if (batch.has('desktop')) await build({ ...options, clean: false });
     if (stopping) return;
-    const { assembleResources } = await import('./assemble-resources.mjs');
     stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
-    await assembleResources({ templatePath: stagedTemplate });
+    await run(`${desktopRoot}scripts/assemble-resources.mjs`, workspaceRoot, [stagedTemplate]);
     if (stopping) return;
     if (!initial && (paused || dirty.size)) {
       for (const name of batch) dirty.add(name);
@@ -177,26 +160,7 @@ const schedule = () => {
   timer = setTimeout(() => void update(), 400);
 };
 for (const [name, paths] of Object.entries({
-  shared: [
-    'packages/shared/src',
-    'packages/shared/package.json',
-    'packages/shared/tsup.config.ts',
-    'packages/shared/tsconfig.json',
-    'tsconfig.base.json',
-  ],
-  runtime: [
-    'packages/runtime/src',
-    'packages/runtime/package.json',
-    'packages/runtime/tsup.config.ts',
-    'packages/runtime/tsconfig.json',
-  ],
-  materials: [
-    'packages/materials/src',
-    'packages/materials/antd',
-    'packages/materials/package.json',
-    'packages/materials/tsup.config.ts',
-    'packages/materials/tsconfig.json',
-  ],
+  ...libraryWatchPaths,
   server: [
     'packages/server/src',
     'packages/server/package.json',
@@ -244,6 +208,30 @@ watchers.push(
     }
   }),
 );
+for (const directory of ['apps/desktop', 'packages/server']) {
+  try {
+    watchers.push(
+      watch(join(workspaceRoot, directory), (_event, filename) => {
+        if (['package.json', 'tsconfig.json'].includes(filename))
+          console.info('[开发环境] 宿主配置已变化，请重新运行开发命令。');
+      }),
+    );
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
+// Tooling modules are cached by Node; changing them requires restarting the launcher.
+for (const directory of ['packages/server/scripts', 'apps/desktop/scripts']) {
+  try {
+    watchers.push(
+      watch(join(workspaceRoot, directory), () =>
+        console.info('[开发环境] 启动工具已变化，请重新运行开发命令。'),
+      ),
+    );
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
 const terminal = createInterface({ input: process.stdin });
 terminal.on('line', (line) => {
   if (line.trim().toLowerCase() === 'p') {

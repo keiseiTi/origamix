@@ -7,7 +7,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - `src/main.tsx`, `src/router.ts`, and the manifest-configured page directory (default `src/pages/`): portable React/Origamix scaffold.
 - `package.json`, `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`: standalone tools and build configuration.
 - The template README is also the generated-project usage documentation; ProjectSource only customizes its heading and project code.
-- Copying is owned by `../server/template.ts`; coverage starts in `../server/test/template.test.ts` and `../server/test/test-template.mjs`.
+- Copying is owned by `../server/src/templates/copy-template.ts`; coverage starts in `../server/test/templates/copy-template.test.ts` and `../server/test/test-template.mjs`.
 - Runtime/Materials package preparation and dependency rewriting use Server template-artifact tooling from template smoke and Desktop resource assembly; do not reintroduce separate packing recipes.
 
 ## Portability contract
@@ -42,3 +42,5 @@ pnpm --filter @origamix/server test:template
 - This package has no `test` script; root `pnpm test` does not establish template behavior coverage. Do not invent a test command. Prefer the existing Server copy flow and standalone smoke checks; add a scenario only for a distinct portability or packaging risk those checks cannot express.
 - `test:template` installs dependencies into an isolated generated project and needs registry access or populated cache. Report missing prerequisites; never substitute a real user project.
 - For UI changes run the template dev server and verify both themes. Run root gates for source changes; coordinate Desktop resource checks when scaffold packaging changes.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

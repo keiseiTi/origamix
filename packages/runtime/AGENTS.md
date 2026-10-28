@@ -16,3 +16,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - DesignRenderer never creates an execution engine or binds business events, evaluates code, initializes runtime variables or provides runtime state/method callbacks. Editor owns selection, dragging, history and Schema mutations. Runtime cannot import Editor or Materials. Runtime sessions abort requests and ignore late writes on disposal; async event invocations own separate payload/result context.
 
 - Runtime accepts only Schema tagged with Shared `ORIGAMIX_VERSION`; it never migrates project data. Older pages must be opened, saved and explicitly applied by Server before rendering with the new runtime.
+
+- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.

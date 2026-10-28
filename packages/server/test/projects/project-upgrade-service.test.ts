@@ -52,14 +52,13 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
       },
     });
     const template = join(directory, 'prepared-template');
-    await mkdir(join(template, 'vendor'), { recursive: true });
+    await mkdir(template);
+
     await writeFile(
       join(template, 'origamix.project.json'),
       JSON.stringify({ ...manifest, version: ORIGAMIX_VERSION, materialSet: 'official-antd' }),
     );
-    // Archive bytes are opaque to this persistence test; the template smoke installs real archives.
-    await writeFile(join(template, 'vendor/runtime.tgz'), 'runtime artifact');
-    await writeFile(join(template, 'vendor/materials.tgz'), 'materials artifact');
+
     const input = { expectedVersion: ORIGAMIX_VERSION, clientRequestId: 'upgrade_once' };
     const interrupted = new ProjectUpgradeService(projects, template, (stage) => {
       if (stage === 'package') throw new Error('interrupted');
@@ -95,14 +94,8 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
       materialSet: 'official-antd',
     });
     expect(JSON.parse(await readFile(packagePath, 'utf8')).dependencies['@origamix/runtime']).toBe(
-      `file:vendor/origamix-runtime-${ORIGAMIX_VERSION}.tgz`,
+      ORIGAMIX_VERSION,
     );
-    expect(
-      await readFile(
-        join(project.path, 'vendor', `origamix-runtime-${ORIGAMIX_VERSION}.tgz`),
-        'utf8',
-      ),
-    ).toBe('runtime artifact');
     expect((await getWorkingSchemaState(ref)).workingVersion).toBe(saved.workingVersion);
 
     // When targets/configuration are unchanged, cancellation releases the edit freeze.

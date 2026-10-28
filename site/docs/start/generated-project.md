@@ -38,3 +38,5 @@ pnpm preview
 页面目录由清单中的 `pageDirectory` 指定，默认 `pages`，实际位置在 `src/` 下。保留生成项目的依赖配置与 `vendor` 文件，不要只复制 `src/`。
 
 工作台中的草稿与历史仍可能有价值，清理 `.origamix/` 前先确认无需继续编辑。更多结构说明见 [Template](/architecture/template)。
+
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。

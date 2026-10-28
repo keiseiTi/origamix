@@ -14,7 +14,7 @@ const root = await mkdtemp(join(tmpdir(), 'origamix-dev-smoke-'));
 let child;
 let output = '';
 async function waitFor(check) {
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
     if (child?.exitCode !== null && child?.exitCode !== undefined) throw new Error(output);
     try {
@@ -100,6 +100,16 @@ try {
     const next = (await (await fetch(api)).json()).data.serviceInstanceId;
     return next !== first && output.includes('dev-smoke-recompiled');
   });
+  // A Shared source change must rebuild its inlined consumers before host replacement.
+  const beforeLibraryChange = (await (await fetch(api)).json()).data.serviceInstanceId;
+  const sharedSource = join(root, 'packages/shared/src/version.ts');
+  await writeFile(
+    sharedSource,
+    `${await readFile(sharedSource, 'utf8')}\n// dependency rebuild smoke\n`,
+  );
+  await waitFor(
+    async () => (await (await fetch(api)).json()).data.serviceInstanceId !== beforeLibraryChange,
+  );
   await stopChild(child);
   child = undefined;
   await assert.rejects(fetch(api));
