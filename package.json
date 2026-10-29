@@ -53,11 +53,11 @@
     "globals": "^17.11.0",
     "lefthook": "^2.1.12",
     "prettier": "^3.9.6",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.23.3",
+    "tsx": "4.23.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.0",
-    "tsx": "4.23.13"
+    "vitest": "^4.1.0"
   },
   "engines": {
     "node": ">=24.15.0 <25"

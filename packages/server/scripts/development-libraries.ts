@@ -8,7 +8,7 @@ export const libraryWatchPaths = Object.fromEntries(
     [
       `packages/${name}/src`,
       `packages/${name}/package.json`,
-      `packages/${name}/tsup.config.ts`,
+      `packages/${name}/tsdown.config.ts`,
       `packages/${name}/tsconfig.json`,
       ...(name === 'shared' ? ['tsconfig.base.json'] : []),
       ...(name === 'materials' ? ['packages/materials/antd'] : []),
@@ -28,8 +28,8 @@ export const buildLibraries = async (
 ) => {
   const require = createRequire(import.meta.url);
   const cli = join(
-    dirname(require.resolve('tsup/package.json')),
-    require('tsup/package.json').bin.tsup,
+    dirname(require.resolve('tsdown/package.json')),
+    require('tsdown/package.json').bin.tsdown,
   );
   expandLibraryChanges(batch);
   for (const name of libraryNames)

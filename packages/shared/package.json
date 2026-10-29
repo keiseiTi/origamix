@@ -18,7 +18,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "tsup",
+    "build": "tsdown",
     "pack:npm": "tsx ../../scripts/pack-public.ts shared"
   },
   "dependencies": {
@@ -27,7 +27,7 @@
     "ajv-formats": "^3.0.1"
   },
   "devDependencies": {
-    "tsup": "^8.5.0",
+    "tsdown": "^0.23.3",
     "tsx": "4.23.13"
   },
   "sideEffects": false

@@ -11,13 +11,11 @@ export const options = {
   },
   outDir: `${desktopRoot}dist`,
   format: ['cjs' as const],
-  outExtension: () => ({ js: '.cjs' }),
+  outExtensions: () => ({ js: '.cjs' }),
   platform: 'node' as const,
   // Prefix-only builtins such as node:sqlite cannot be loaded as "sqlite".
-  removeNodeProtocol: false,
   target: 'node24',
-  bundle: true,
-  splitting: false,
+  outputOptions: { codeSplitting: false },
   sourcemap: true,
   dts: false,
   // Keep sandboxed preloads self-contained; Electron is provided by the host.

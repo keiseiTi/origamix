@@ -12,6 +12,6 @@
   "include": [
     "src",
     "test",
-    "tsup.config.ts"
+    "tsdown.config.ts"
   ]
 }

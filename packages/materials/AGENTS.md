@@ -16,8 +16,8 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - `antd/*/material-config.ts`: stable material metadata, defaults, context and editor controls.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.
 
-- `tsconfig.json` and `tsup.config.ts` DTS paths must both retain `@` → `src/index.ts` and `@/*` → `src/*`; DTS path overrides replace rather than merge the package tsconfig mappings. Built JavaScript/declarations must not retain these private aliases.
-- Build-only Shared imports are inlined in both JavaScript and declarations. The DTS build resolves the declared Shared export dynamically because tsup’s legacy resolver does not handle package export maps; do not replace it with a hardcoded cross-package source path. Verify packed runtime entries remain standalone.
+- `tsconfig.json` retains `@` → `src/index.ts` and `@/*` → `src/*`; tsdown resolves these aliases for JavaScript and declarations. Built artifacts must not retain private aliases.
+- Build-only Shared imports are inlined in JavaScript and declarations. `tsdown.config.ts` explicitly bundles Shared/Runtime declaration dependencies while leaving their third-party dependencies external. Verify packed runtime entries remain standalone.
 - Manifest format types live in `@origamix/shared`; import them directly. `src/material-manifest.ts` contains only material-owned conversion helpers. No historical exports or data-shape conversions are provided.
 
 ## Material rules

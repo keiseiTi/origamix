@@ -1,14 +1,15 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   tsconfig: 'tsconfig.json',
   entry: { index: 'src/index.ts' },
   outDir: 'dist',
-  outExtension: () => ({ js: '.js' }),
+  outExtensions: () => ({ js: '.js' }),
   format: ['esm'],
+  fixedExtension: false,
   dts: true,
   clean: true,
-  splitting: false,
+  outputOptions: { codeSplitting: false },
   sourcemap: true,
   external: ['@sinclair/typebox', 'ajv', 'ajv-formats'],
 });

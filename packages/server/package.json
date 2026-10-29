@@ -51,7 +51,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "drizzle-kit": "0.31.10",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.23.3",
     "tsx": "4.23.13",
     "eslint": "^10.9.0",
     "typescript-eslint": "^8.67.0"
