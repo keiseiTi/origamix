@@ -176,6 +176,7 @@ const spawnBackend = async (): Promise<BackendConnection> => {
     backend.once('spawn', () => {
       backend.postMessage({
         kind: 'initialize',
+        port: desktopConfig.serverPort,
         workbenchOrigin: new URL(workbenchEntryUrl()).origin,
         databasePath: desktopConfig.databasePath,
         templatePath: desktopConfig.templatePath,

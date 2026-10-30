@@ -57,3 +57,5 @@ pnpm --filter @origamix/desktop test:main
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
 
 - Development/build and Node integration launchers are TypeScript run with package-local tsx. Electron-hosted TypeScript fixtures use .cts and are loaded through tsx/cjs registered by the Node launcher. Clear inherited NODE_OPTIONS before starting the application/backend so resource isolation checks do not depend on the test loader.
+
+- Default backend port is 1029 and Renderer development port is 9685. Hosts parse ORIGAMIX_SERVER_PORT and pass it into startServer; explicit 0 is reserved for OS-assigned ports in isolated integrations. Keep loopback-only binding and fail on occupied ports; never connect to or kill the occupying process. Fixed ports do not change the existing development restart policy.

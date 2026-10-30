@@ -29,6 +29,7 @@ export const localWebServer = (): Plugin => {
       const port = vite.config.server.port ?? config.port;
       const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
       const backend = await startServer({
+        port: config.serverPort,
         databasePath: resolve(stateDir, 'origamix.db'),
         templatePath,
         desktopToken: token,

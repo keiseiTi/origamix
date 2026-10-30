@@ -6,7 +6,7 @@ import electron from 'electron';
 process.env.ORIGAMIX_ENV_LOCAL = '0';
 
 const require = createRequire(import.meta.url);
-const env = { ...process.env };
+const env: NodeJS.ProcessEnv = { ...process.env, ORIGAMIX_SERVER_PORT: '0' };
 // Electron runs CommonJS fixtures; register tsx before loading their .cts entry.
 env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ''} --require=${JSON.stringify(require.resolve('tsx/cjs'))}`;
 delete env.ELECTRON_RUN_AS_NODE;

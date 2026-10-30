@@ -12,7 +12,7 @@ pnpm dev       # Electron
 pnpm dev:web   # 浏览器开发宿主
 ```
 
-开发默认占用 Renderer 端口 5173。Web 开发数据保存在忽略的 `.origamix-web/`；已有项目由宿主显式授权：
+开发默认占用 Renderer 端口 9685，后端端口 1029。Web 开发数据保存在忽略的 `.origamix-web/`；已有项目由宿主显式授权：
 
 ```sh
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web

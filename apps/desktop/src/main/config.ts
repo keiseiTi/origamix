@@ -66,7 +66,11 @@ export const resolveDesktopConfig = (input: {
     if (url.origin !== desktopRendererUrl(env) || url.pathname !== '/' || url.search || url.hash)
       throw new Error('开发页面地址与 Desktop 配置不一致');
   }
+  const serverPort = env.ORIGAMIX_SERVER_PORT ?? '1029';
+  if (!/^\d+$/.test(serverPort) || Number(serverPort) > 65535)
+    throw new Error('ORIGAMIX_SERVER_PORT 必须为 0 到 65535 的整数');
   return {
+    serverPort: Number(serverPort),
     rendererPath,
     rendererUrl,
     preloadPath: resolve(input.mainDirectory, '../preload/index.cjs'),

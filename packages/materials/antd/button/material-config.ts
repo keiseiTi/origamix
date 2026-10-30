@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
+
 const ButtonMaterial = defineMaterial({
   type: 'button',
   layout: { display: 'inline', blockWhen: { prop: 'block', values: ['true'] } },
@@ -91,27 +92,6 @@ const ButtonMaterial = defineMaterial({
             },
           },
           {
-            label: '形状',
-            field: 'shape',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '圆形',
-                  value: 'circle',
-                },
-                {
-                  label: '圆角',
-                  value: 'round',
-                },
-              ],
-            },
-          },
-          {
             label: '禁用',
             field: 'disabled',
             uiType: 'checkbox',
@@ -163,27 +143,6 @@ const ButtonMaterial = defineMaterial({
                 isNotEmpty: true,
               },
             ],
-          },
-          {
-            label: '原生按钮类型',
-            field: 'htmlType',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '普通按钮',
-                  value: 'button',
-                },
-                {
-                  label: '提交',
-                  value: 'submit',
-                },
-                {
-                  label: '重置',
-                  value: 'reset',
-                },
-              ],
-            },
           },
         ],
       },

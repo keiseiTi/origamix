@@ -23,7 +23,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` 会准备本地后端、启动前端开发服务并打开 Electron 工作台。开发 Renderer 默认使用端口 5173；后端使用自动分配的本机端口。
+`pnpm dev` 会准备本地后端、启动前端开发服务并打开 Electron 工作台。开发 Renderer 默认使用端口 9685；后端默认使用本机端口 1029。
 
 启动成功后应看到工作台。保持终端运行，完成首次使用后停止开发命令，并关闭本次启动的应用。
 

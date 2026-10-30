@@ -105,6 +105,7 @@ app
     backend.once('spawn', () =>
       backend!.postMessage({
         kind: 'initialize',
+        port: 0,
         databasePath: ':memory:',
         templatePath: template,
         desktopToken: token,

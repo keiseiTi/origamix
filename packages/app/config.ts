@@ -31,7 +31,11 @@ export const loadAppConfig = () => {
   if (host !== 'localhost' && host !== '127.0.0.1') throw new Error('开发宿主必须监听本机地址');
   const stateDir = env.ORIGAMIX_WEB_STATE_DIR?.trim();
   if (!stateDir) throw new Error('缺少 ORIGAMIX_WEB_STATE_DIR');
+  const serverPort = env.ORIGAMIX_SERVER_PORT ?? '1029';
+  if (!/^\d+$/.test(serverPort) || Number(serverPort) > 65535)
+    throw new Error('ORIGAMIX_SERVER_PORT 必须为 0 到 65535 的整数');
   return {
+    serverPort: Number(serverPort),
     desktop: desktop === '1',
     host,
     port: Number(port),

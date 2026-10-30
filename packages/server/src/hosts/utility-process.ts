@@ -85,6 +85,11 @@ controlPort.on('message', async ({ data }) => {
   }
   if (input.kind !== 'initialize' || starting || backend || shuttingDown) return;
   if (
+    (input.port !== undefined &&
+      (typeof input.port !== 'number' ||
+        !Number.isInteger(input.port) ||
+        input.port < 0 ||
+        input.port > 65535)) ||
     typeof input.databasePath !== 'string' ||
     typeof input.templatePath !== 'string' ||
     typeof input.desktopToken !== 'string' ||
@@ -96,6 +101,7 @@ controlPort.on('message', async ({ data }) => {
   starting = true;
   try {
     backend = await startServer({
+      port: typeof input.port === 'number' ? input.port : undefined,
       databasePath: input.databasePath,
       allowedOrigins:
         typeof input.workbenchOrigin === 'string' ? [input.workbenchOrigin] : undefined,

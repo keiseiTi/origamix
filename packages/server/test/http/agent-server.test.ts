@@ -183,7 +183,7 @@ describe('Agent HTTP API', () => {
       const streamPromise = fixture.server.inject({
         method: 'GET',
         url: `/api/v1/projects/project_a/agent/runs/${runId}/events`,
-        headers: { ...headers, origin: 'http://127.0.0.1:5173' },
+        headers: { ...headers, origin: 'http://127.0.0.1:9685' },
       });
       await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(1));
       fixture.events.publish({
@@ -203,7 +203,7 @@ describe('Agent HTTP API', () => {
       const stream = await streamPromise;
       expect(stream.statusCode).toBe(200);
       expect(stream.headers['content-type']).toContain('text/event-stream');
-      expect(stream.headers['access-control-allow-origin']).toBe('http://127.0.0.1:5173');
+      expect(stream.headers['access-control-allow-origin']).toBe('http://127.0.0.1:9685');
       expect(stream.headers['vary']).toBe('Origin');
       expect(stream.payload).toContain('event: run.queued');
       expect(stream.payload).toContain('event: tool.activity');

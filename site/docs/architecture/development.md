@@ -14,7 +14,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-`pnpm dev` 先准备库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。默认前端地址为 `http://127.0.0.1:5173`；后端使用系统分配的动态端口，由 Main 向工作台提供连接。
+`pnpm dev` 先准备库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。默认前端地址为 `http://127.0.0.1:9685`；后端默认监听本机端口 1029，由 Main 向工作台提供连接。
 
 ### 源码更新与自动重启
 

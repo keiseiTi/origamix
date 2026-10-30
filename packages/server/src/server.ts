@@ -29,6 +29,7 @@ import { progressPayload } from './agent/progress';
 import { AgentToolAuditRepository } from './agent/tool-audit-repository';
 
 export const startServer = async (input: {
+  port?: number;
   databasePath: string;
   templatePath: string;
   desktopToken: string;
@@ -38,6 +39,9 @@ export const startServer = async (input: {
   getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
   getModelReference?: () => Promise<string | undefined>;
 }) => {
+  const port = input.port ?? 1029;
+  if (!Number.isInteger(port) || port < 0 || port > 65535)
+    throw new Error('后端端口必须为 0 到 65535 的整数');
   const database = new ApplicationDatabase(input.databasePath);
   const projects = new ProjectRepository(database);
   const conversations = new ConversationRepository(database);
@@ -175,7 +179,7 @@ export const startServer = async (input: {
       await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
     await recoverAgentRunsOnStartup(runs, projects, conversationService);
-    await server.listen({ host: '127.0.0.1', port: 0 });
+    await server.listen({ host: '127.0.0.1', port });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');
     return {

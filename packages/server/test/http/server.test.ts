@@ -26,7 +26,7 @@ describe('HTTP authentication and responses', () => {
       projectService: new ProjectService(projects, templatePath),
     });
     try {
-      for (const origin of ['http://127.0.0.1:5173', 'http://localhost:5173', 'null']) {
+      for (const origin of ['http://127.0.0.1:9685', 'http://localhost:9685', 'null']) {
         const preflight = await server.inject({
           method: 'OPTIONS',
           url: '/api/v1/health',
@@ -72,7 +72,7 @@ describe('HTTP authentication and responses', () => {
       for (const origin of [
         'https://example.com',
         'http://127.0.0.1:5174',
-        'http://localhost:5173.evil.example',
+        'http://localhost:9685.evil.example',
       ]) {
         for (const method of ['OPTIONS', 'GET'] as const) {
           const denied = await server.inject({

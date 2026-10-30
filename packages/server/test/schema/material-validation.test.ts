@@ -72,7 +72,6 @@ describe('Manifest-driven Schema validation', () => {
       size: 'small',
       danger: true,
       block: true,
-      htmlType: 'button',
       layoutWidth: 'fixed',
       layoutFixedWidth: 240,
       layoutGrow: 1,

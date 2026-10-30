@@ -27,9 +27,9 @@ it('authorizes only the workbench main frame at the trusted document', () => {
   expect(() => assertWorkbenchCaller(event, sender, entry)).toThrow('不受信任');
   expect(isTrustedWorkbenchUrl('file:///Applications/Other/index.html', entry)).toBe(false);
   expect(
-    isTrustedWorkbenchUrl('http://localhost:5173.evil.example/', 'http://localhost:5173/'),
+    isTrustedWorkbenchUrl('http://localhost:9685.evil.example/', 'http://localhost:9685/'),
   ).toBe(false);
-  expect(isTrustedWorkbenchUrl('http://localhost:5173/', 'http://localhost:5173')).toBe(true);
+  expect(isTrustedWorkbenchUrl('http://localhost:9685/', 'http://localhost:9685')).toBe(true);
 });
 
 it('keeps packaged IPC authority on its shipped document despite development overrides', () => {

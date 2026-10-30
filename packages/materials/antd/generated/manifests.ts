@@ -131,10 +131,6 @@ export const buttonManifest = withMaterialManifestDefaults({
         type: 'string',
         enum: ['large', 'medium', 'small'],
       },
-      shape: {
-        type: 'string',
-        enum: ['circle', 'round'],
-      },
       disabled: {
         type: 'boolean',
       },
@@ -156,10 +152,6 @@ export const buttonManifest = withMaterialManifestDefaults({
       target: {
         type: 'string',
         enum: ['_self', '_blank'],
-      },
-      htmlType: {
-        type: 'string',
-        enum: ['button', 'submit', 'reset'],
       },
     },
     required: [],

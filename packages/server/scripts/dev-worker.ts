@@ -8,6 +8,7 @@ const config = loadServerConfig();
 await mkdir(config.stateDir, { recursive: true });
 const serviceInstanceId = config.serviceInstanceId ?? randomUUID();
 const server = await startServer({
+  port: config.serverPort,
   databasePath: resolve(config.stateDir, 'origamix.db'),
   templatePath: config.templatePath,
   desktopToken: config.token,

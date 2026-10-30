@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
+process.env.ORIGAMIX_SERVER_PORT = '0';
 
 const directory = await mkdtemp(join(tmpdir(), 'origamix-web-smoke-'));
 const root = fileURLToPath(new URL('../', import.meta.url));

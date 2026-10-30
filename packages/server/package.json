@@ -29,13 +29,13 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm check:database-schema && pnpm test:architecture && vitest run --exclude test/eslint-boundaries.test.ts",
-    "test:architecture": "tsx --test test/eslint-boundaries.test.ts",
+    "test:architecture": "node --import tsx --test test/eslint-boundaries.test.ts",
     "test:template": "tsx test/test-template.ts",
     "test:dev": "tsx test/test-development.ts",
     "gate:agent": "tsx scripts/gate-agent.ts",
     "build": "tsx scripts/build.ts",
     "dev": "tsx scripts/dev.ts",
-    "check:database-schema": "tsx scripts/check-database-schema.ts"
+    "check:database-schema": "node --import tsx scripts/check-database-schema.ts"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.1.0",

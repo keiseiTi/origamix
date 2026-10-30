@@ -150,6 +150,7 @@ try {
         ...process.env,
         ORIGAMIX_ENV_LOCAL: '0',
         ORIGAMIX_RENDERER_PORT: '5196',
+        ORIGAMIX_SERVER_PORT: '0',
         ORIGAMIX_DEBUG: '1',
         ORIGAMIX_DEBUG_PORT: '9236',
         ORIGAMIX_INSPECT_PORT: '9237',

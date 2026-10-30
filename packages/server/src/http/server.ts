@@ -39,7 +39,7 @@ const failure = (error: unknown, fallbackStatus = 500): ApiResult<never> => {
 
 const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput): void => {
   const allowedOrigins = new Set(
-    input.allowedOrigins ?? ['null', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    input.allowedOrigins ?? ['null', 'http://localhost:9685', 'http://127.0.0.1:9685'],
   );
   server.addHook('onRequest', async (request, reply) => {
     const id = requestId(request.headers['x-request-id']);

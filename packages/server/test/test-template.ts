@@ -13,6 +13,7 @@ const project = join(directory, 'project');
 const template = join(directory, 'template');
 const keepProject = process.env.ORIGAMIX_KEEP_TEMPLATE_SMOKE === '1';
 const backendOptions = {
+  port: 0,
   databasePath: join(directory, 'test.db'),
   templatePath: template,
   desktopToken: 'template-test-token',

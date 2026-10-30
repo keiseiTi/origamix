@@ -116,3 +116,5 @@ pnpm --filter @origamix/server gate:agent
 - Independent Server/Web development and Desktop share `scripts/development-libraries.ts` for library watch paths and ordered builds. Web/Server prepare libraries on startup and rebuild source changes before replacing the host. Failed builds retain the running host; save a watched source to retry. Tooling script changes require restarting the launcher.
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
+
+- Default backend port is 1029 and Renderer development port is 9685. Hosts parse ORIGAMIX_SERVER_PORT and pass it into startServer; explicit 0 is reserved for OS-assigned ports in isolated integrations. Keep loopback-only binding and fail on occupied ports; never connect to or kill the occupying process. Fixed ports do not change the existing development restart policy.

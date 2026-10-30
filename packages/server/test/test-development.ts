@@ -34,6 +34,7 @@ const start = (entry: string, cwd: string, args: string[] = []) => {
     env: {
       ...process.env,
       ORIGAMIX_DESKTOP: '0',
+      ORIGAMIX_SERVER_PORT: '0',
       ORIGAMIX_SERVER_TOKEN: 'development-smoke-token',
       ORIGAMIX_WEB_PROJECT_DIR: '',
       ORIGAMIX_WEB_STATE_DIR: join(root, 'state'),
