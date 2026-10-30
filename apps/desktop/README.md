@@ -39,7 +39,7 @@ pnpm package:mac
 macOS 打包后资源检查：
 
 ```sh
-pnpm --filter @origamix/desktop test:resources /absolute/path/to/origamix.app/Contents/Resources
+pnpm --filter @origamix/desktop test:resources /absolute/path/to/OrigaMix.app/Contents/Resources
 ```
 
 资源检查不等同于签名安装器启动。安装包与签名范围见下文；本地构建使用显式 ad-hoc 签名，不依赖本机发行证书。维护约束见 [AGENTS.md](AGENTS.md)。
@@ -94,9 +94,9 @@ pnpm package:mac
 
 | 产物                                         | 用途                                    |
 | -------------------------------------------- | --------------------------------------- |
-| `release/origamix-<version>-macOS-arm64.dmg` | 打开后将 origamix.app 拖入 Applications |
-| `release/origamix-<version>-macOS-arm64.zip` | 同一应用的 ZIP 归档                     |
-| `release/mac-arm64/origamix.app`             | 解包的应用目录，供本地资源验证          |
+| `release/OrigaMix-<version>-macOS-arm64.dmg` | 打开后将 OrigaMix.app 拖入 Applications |
+| `release/OrigaMix-<version>-macOS-arm64.zip` | 同一应用的 ZIP 归档                     |
+| `release/mac-arm64/OrigaMix.app`             | 解包的应用目录，供本地资源验证          |
 
 `pnpm package:dir` 构建同一 macOS arm64 应用目录，不制作 DMG／ZIP。包内 `package:dir`、`package:mac` 只消费已构建资源，完整构建使用根命令。暂不交付 Intel、Windows 或 Linux 安装包。
 
@@ -105,9 +105,9 @@ pnpm package:mac
 打包后核对代码签名、资源和磁盘映像：
 
 ```sh
-codesign --verify --deep --strict release/mac-arm64/origamix.app
-pnpm --filter @origamix/desktop test:resources "$PWD/release/mac-arm64/origamix.app/Contents/Resources"
-hdiutil verify release/origamix-1.0.0-macOS-arm64.dmg
+codesign --verify --deep --strict release/mac-arm64/OrigaMix.app
+pnpm --filter @origamix/desktop test:resources "$PWD/release/mac-arm64/OrigaMix.app/Contents/Resources"
+hdiutil verify release/OrigaMix-1.0.0-macOS-arm64.dmg
 ```
 
 版本号来自 Desktop `package.json`，命令中的 `1.0.0` 应与实际产物一致。资源检查不等同于真实安装包的 Main 启动，更不等同于 Developer ID／公证验收。SHA-256 和本轮验证范围应随构建交付记录一起保留。

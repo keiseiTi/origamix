@@ -11,6 +11,7 @@ import {
 } from 'electron';
 import { join } from 'path';
 import { resolveDesktopConfig } from './config';
+import { installApplicationMenu } from './menu';
 import { pathToFileURL } from 'node:url';
 import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from './workbench-security';
 import { writeFile, readFile } from 'fs/promises';
@@ -37,7 +38,7 @@ const createWindow = (): BrowserWindow => {
     minWidth: 1280,
     minHeight: 768,
     resizable: true,
-    title: 'origamix',
+    title: 'OrigaMix',
     autoHideMenuBar: true,
     ...(process.platform === 'darwin'
       ? {
@@ -328,6 +329,14 @@ app
   .then(async () => {
     // Set app user model id for windows
     app.setAppUserModelId('com.origamix');
+
+    // Keep the existing data directory across the display-name change.
+    const userDataPath = app.isPackaged
+      ? join(app.getPath('appData'), 'origamix')
+      : app.getPath('userData');
+    app.setPath('userData', userDataPath);
+    app.setName('OrigaMix');
+    installApplicationMenu();
 
     desktopConfig = resolveDesktopConfig({
       packaged: app.isPackaged,
