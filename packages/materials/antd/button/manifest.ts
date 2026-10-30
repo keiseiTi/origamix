@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const buttonManifest = defineManifest({
   type: 'button',
+  layout: { display: 'inline', blockWhen: { prop: 'block', values: ['true'] } },
   title: '按钮',
   defaultProps: {
     text: '按钮',

@@ -2,6 +2,7 @@ import { defineManifest, emptyContext, objectSchema } from '../manifest-definiti
 
 export const floatButtonManifest = defineManifest({
   type: 'floatButton',
+  layout: { display: 'inline' },
   title: '悬浮按钮',
   defaultProps: { type: 'default', shape: 'circle' },
   context: emptyContext,

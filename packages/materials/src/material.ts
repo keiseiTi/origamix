@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { MaterialManifest } from '@origamix/shared';
+import type { MaterialManifest, MaterialLayout } from '@origamix/shared';
 
 type BasicAttributeConfig = {
   label?: React.ReactNode;
@@ -18,8 +18,8 @@ type BasicMaterial = {
   icon?: React.ReactNode;
   dropTypes?: string[];
   defaultProps?: Record<string, unknown>;
-  isContainer?: boolean;
-  isBlock?: boolean;
+  acceptsChildren?: boolean;
+  layout?: MaterialLayout;
   contextConfig?: {
     variables?: MaterialManifest['context']['variables'];
     contextValues?: MaterialManifest['context']['values'];

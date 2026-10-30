@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const tabsManifest = defineManifest({
   type: 'tabs',
+  layout: { display: 'block' },
   title: '标签选项卡',
   defaultProps: {
     type: 'line',

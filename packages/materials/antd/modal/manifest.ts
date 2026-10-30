@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const modalManifest = defineManifest({
   type: 'modal',
+  layout: { display: 'block' },
   title: '弹窗容器',
   defaultProps: {
     open: false,

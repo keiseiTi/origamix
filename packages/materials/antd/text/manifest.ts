@@ -2,6 +2,10 @@ import { defineManifest } from '../manifest-definition';
 
 export const textManifest = defineManifest({
   type: 'text',
+  layout: {
+    display: 'inline',
+    blockWhen: { prop: 'type', values: ['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5'] },
+  },
   title: '文本',
   defaultProps: {
     text: '文本',

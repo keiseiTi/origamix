@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const formManifest = defineManifest({
   type: 'form',
+  layout: { display: 'block' },
   title: '表单容器',
   defaultProps: {
     layout: 'horizontal',

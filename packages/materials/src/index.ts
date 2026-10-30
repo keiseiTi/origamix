@@ -43,3 +43,6 @@ export {
 } from './origamix-material';
 
 export type { RuntimeMaterialProps } from './runtime-material';
+
+export { layoutProperties } from './layout-properties';
+export { layoutPanel } from './layout-panel';

@@ -1,7 +1,9 @@
+import { containerLayoutProperties } from '../container-layout-definition';
 import { defineManifest } from '../manifest-definition';
 
 export const containerManifest = defineManifest({
   type: 'container',
+  layout: { display: 'block' },
   title: '容器',
   defaultProps: {
     heightConfig: 'fixed',
@@ -21,6 +23,7 @@ export const containerManifest = defineManifest({
     type: 'object',
     additionalProperties: false,
     properties: {
+      ...containerLayoutProperties,
       margin: { type: 'number' },
       padding: { type: 'number' },
       heightConfig: {

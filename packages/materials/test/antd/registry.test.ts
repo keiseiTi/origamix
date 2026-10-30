@@ -10,6 +10,13 @@ describe('material boundary used by editing and preview', () => {
     for (const material of materialGroups.flatMap((group) => group.children)) {
       expect(antdValidationMaterialRegistry[material.type]).toBeDefined();
       expect(material.type in materialComponents).toBe(true);
+      const manifest = antdMaterialManifest.materials.find((item) => item.type === material.type)!;
+      expect(material.acceptsChildren).toBe(manifest.acceptsChildren);
+      expect(material.layout).toEqual(manifest.layout);
+      expect((material.Component as { origamixLayout?: unknown }).origamixLayout).toEqual(
+        manifest.layout,
+      );
+      expect(materialComponents[material.type]?.origamixLayout).toEqual(manifest.layout);
     }
     expect(materialSet).toEqual({ id: 'official-antd', version: '1.0.0' });
     expect(antdMaterialManifest.materialSet).toEqual(materialSet);

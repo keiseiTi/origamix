@@ -44,7 +44,7 @@ tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作�
 
 1. 在 `antd/<material>/index.tsx` 编写 Ant Design 适配组件，参考 [按钮组件](antd/button/index.tsx)。使用包内运行属性契约，剥离引擎注入属性，避免传入 DOM。
 2. 在 `manifest.ts` 使用 `defineManifest({ ... })` 定义稳定的 `type`、默认值、上下文和属性 Schema，参考 [按钮清单](antd/button/manifest.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)，每个组件不单独声明版本。
-3. 在 `material-config.ts` 使用 `defineMaterial({ manifest, Component, editorConfig, isContainer })` 一次装配，参考 [按钮编辑配置](antd/button/material-config.ts)。无需中间定义或转换；标题、类型、默认值和上下文直接来自 Manifest。组件和自定义渲染函数不进入 Manifest。
+3. 在 `material-config.ts` 使用 `defineMaterial({ manifest, Component, editorConfig })` 一次装配，参考 [按钮编辑配置](antd/button/material-config.ts)。无需中间定义或转换；标题、类型、默认值和上下文直接来自 Manifest。组件和自定义渲染函数不进入 Manifest。
 4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)，清单加入 [antd/manifest.ts](antd/manifest.ts)。三处类型必须一致；已有但未向编辑器开放的类型不应顺手移除。
 5. 运行包检查与根检查，在编辑器、预览和生成项目中验证属性、上下文及亮暗主题。自动测试只补已有清单一致性场景中的必要约束。
 
@@ -95,3 +95,5 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd/runtime`，Server 只导入 Manifest；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
 
 归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。
+
+布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。详见[物料与画布布局方案](../editor/docs/material-layout.md)。

@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const switchManifest = defineManifest({
   type: 'switch',
+  layout: { display: 'inline' },
   title: '开关',
   defaultProps: {},
   context: {

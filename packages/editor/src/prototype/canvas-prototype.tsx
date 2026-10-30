@@ -1,3 +1,4 @@
+import { getInsertionAxis } from '../canvas/layout-axis';
 import {
   useCallback,
   forwardRef,
@@ -48,7 +49,12 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
     const store = useEditorStoreApi();
     const history = store.getState();
     const viewport = useRef<HTMLDivElement>(null);
-    const [marker, setMarker] = useState<{ x: number; y: number; width: number } | null>(null);
+    const [marker, setMarker] = useState<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>(null);
     const snapshot = useCallback(
       (): CanvasPrototypeSnapshot => ({
         schema: store.getState().schema as OrigamixPageSchema,
@@ -75,8 +81,16 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
         (item) => item.type === state.schema.elements[id]!.type,
       );
       const rect = hit.getBoundingClientRect();
-      const inside = Boolean(material?.isContainer);
-      const position = y < rect.top + rect.height / 2 ? 'up' : 'down';
+      const inside = Boolean(material?.acceptsChildren);
+      const vertical =
+        getInsertionAxis(state.schema, state.materials, id, state.canvasRoot) === 'vertical';
+      const position = vertical
+        ? y < rect.top + rect.height / 2
+          ? 'up'
+          : 'down'
+        : x < rect.left + rect.width / 2
+          ? 'before'
+          : 'after';
       const parent = inside
         ? id
         : Object.entries(state.schema.layout.structure).find(([, children]) =>
@@ -122,13 +136,20 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
           const hit = locate(command.x, command.y);
           if (command.kind === 'hover')
             setMarker({
-              x: hit.rect.left,
+              x: hit.position === 'after' ? hit.rect.right : hit.rect.left,
               y: hit.inside
                 ? Math.min(innerHeight - 4, hit.rect.bottom - 3)
-                : hit.position === 'up'
-                  ? hit.rect.top
-                  : hit.rect.bottom,
-              width: hit.rect.width,
+                : hit.position === 'down'
+                  ? hit.rect.bottom
+                  : hit.rect.top,
+              width:
+                !hit.inside && (hit.position === 'before' || hit.position === 'after')
+                  ? 4
+                  : hit.rect.width,
+              height:
+                !hit.inside && (hit.position === 'before' || hit.position === 'after')
+                  ? hit.rect.height
+                  : 4,
             });
           else {
             setMarker(null);
@@ -184,7 +205,7 @@ const Surface = forwardRef<CanvasPrototypeHandle, Omit<Props, 'schema'>>(
         {marker && (
           <div
             className='pointer-events-none fixed z-50 h-1 bg-blue-600'
-            style={{ left: marker.x, top: marker.y, width: marker.width }}
+            style={{ left: marker.x, top: marker.y, width: marker.width, height: marker.height }}
           />
         )}
       </div>

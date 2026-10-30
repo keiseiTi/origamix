@@ -1,8 +1,9 @@
+import { layoutPanel } from './layout-panel';
 import type { Material, PanelConfig, InputAttributeConfig, AttributeConfig } from './material';
 import type { MaterialManifest } from '@origamix/shared';
 import { withCommonMaterialManifest } from './material-manifest';
 
-export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig' | 'isContainer'> & {
+export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig'> & {
   manifest: MaterialManifest;
 };
 
@@ -13,10 +14,9 @@ export const defineMaterial = ({
   manifest: inputManifest,
   Component,
   editorConfig,
-  isContainer,
 }: MaterialDefinition): Material => {
   const manifest = withCommonMaterialManifest(inputManifest);
-  const panels = (editorConfig?.panels ?? []) as PanelConfig[];
+  const panels = [...(editorConfig?.panels ?? []), layoutPanel] as PanelConfig[];
   const aliasConfig: InputAttributeConfig = {
     label: '别名',
     field: 'alias',
@@ -24,7 +24,7 @@ export const defineMaterial = ({
     required: false,
   };
   const editorMaterial: Material = {
-    Component,
+    Component: Object.assign(Component, { origamixLayout: manifest.layout }),
     title: manifest.title,
     type: manifest.type,
     defaultProps: manifest.defaultProps,
@@ -37,6 +37,8 @@ export const defineMaterial = ({
         params: method.params?.map((param) => ({ description: param.description ?? '' })),
       })),
     },
+    acceptsChildren: manifest.acceptsChildren,
+    layout: manifest.layout,
     editorConfig: {
       ...editorConfig,
       panels: panels.some((panel) => panel.title === '属性')
@@ -73,7 +75,6 @@ export const defineMaterial = ({
           )
         : [{ title: '属性', configs: [aliasConfig] }, ...panels],
     },
-    isContainer,
   };
   editorMaterials.add(editorMaterial);
   return editorMaterial;

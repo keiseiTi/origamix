@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const datePickerManifest = defineManifest({
   type: 'datePicker',
+  layout: { display: 'inline' },
   title: '日期选择器',
   defaultProps: {
     picker: 'date',

@@ -47,3 +47,5 @@ pnpm --filter @origamix/shared build
 - Public page validation accepts only the current release contract; never loosen it to implement persisted-data migration.
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
+
+- MaterialLayout declares serializable default occupancy independently of acceptsChildren. getMaterialDisplay resolves only static property values; never evaluate expressions for design layout. Instance layout properties remain validated material props and use the existing version-checked operation pipeline.

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode, type HTMLAttributes, type RefAttributes } from 'react';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { parseLayout } from './core/layout';
 import type { MaterialRegistry, RuntimeSchema } from './core/types';
@@ -10,7 +10,11 @@ export interface DesignElementProps {
   props: Readonly<Record<string, unknown>>;
   children?: ReactNode;
   tabKey?: unknown;
-  renderMaterial: (extraProps?: Record<string, unknown>) => React.JSX.Element;
+  root?: boolean;
+  renderMaterial: (
+    extraProps?: Record<string, unknown>,
+    frameProps?: HTMLAttributes<HTMLDivElement> & RefAttributes<HTMLDivElement>,
+  ) => React.JSX.Element;
 }
 export interface DesignRendererProps {
   schema: RuntimeSchema;
@@ -38,6 +42,7 @@ export const DesignRenderer = ({
         return (
           <DesignElement
             key={node.id}
+            root={node.id === schema.layout.root}
             id={node.id}
             type={element.type}
             props={element.props}
@@ -58,6 +63,7 @@ const DesignElement = ({
   children,
   materials,
   renderElement,
+  root,
 }: Omit<DesignElementProps, 'renderMaterial'> &
   Pick<DesignRendererProps, 'materials' | 'renderElement'>): ReactNode => {
   // Business event props never reach materials in design mode.
@@ -67,12 +73,15 @@ const DesignElement = ({
     ),
   );
   return renderElement({
+    root,
     id,
     type,
     props: designProps,
     children,
-    renderMaterial: (extraProps = {}) => (
+    renderMaterial: (extraProps = {}, frameProps) => (
       <MaterialView
+        root={root}
+        frameProps={frameProps}
         id={id}
         type={type}
         components={materials}

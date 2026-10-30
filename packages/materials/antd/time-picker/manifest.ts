@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const timePickerManifest = defineManifest({
   type: 'timePicker',
+  layout: { display: 'inline' },
   title: '时间选择器',
   defaultProps: {
     allowClear: true,

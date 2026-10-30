@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const treeSelectManifest = defineManifest({
   type: 'treeSelect',
+  layout: { display: 'inline' },
   title: '树选择器',
   defaultProps: {
     allowClear: true,

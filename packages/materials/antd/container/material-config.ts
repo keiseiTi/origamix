@@ -1,3 +1,4 @@
+import { containerLayoutConfigs } from '../container-layout-panel';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 import { containerManifest } from './manifest';
@@ -9,6 +10,7 @@ const ContainerMaterial = defineMaterial({
       {
         title: '属性',
         configs: [
+          ...containerLayoutConfigs,
           {
             label: '高度配置',
             field: 'heightConfig',
@@ -31,6 +33,5 @@ const ContainerMaterial = defineMaterial({
       },
     ],
   },
-  isContainer: true,
 });
 export default ContainerMaterial;

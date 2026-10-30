@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const tableManifest = defineManifest({
   type: 'table',
+  layout: { display: 'block' },
   title: '表格',
   defaultProps: {
     rowKey: 'id',

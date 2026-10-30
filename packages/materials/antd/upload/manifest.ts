@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const uploadManifest = defineManifest({
   type: 'upload',
+  layout: { display: 'block' },
   title: '上传',
   defaultProps: {
     text: '选择文件',

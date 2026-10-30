@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const checkboxManifest = defineManifest({
   type: 'checkbox',
+  layout: { display: 'inline' },
   title: '复选框',
   defaultProps: {
     options: [

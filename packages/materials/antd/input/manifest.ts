@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const inputManifest = defineManifest({
   type: 'input',
+  layout: { display: 'inline' },
   title: '输入框',
   defaultProps: {
     placeholder: '请输入内容',

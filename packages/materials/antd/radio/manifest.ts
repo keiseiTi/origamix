@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const radioManifest = defineManifest({
   type: 'radio',
+  layout: { display: 'inline' },
   title: '单选框',
   defaultProps: {
     options: [

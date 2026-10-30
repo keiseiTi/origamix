@@ -5,7 +5,6 @@ import { tabsManifest } from './manifest';
 const material = defineMaterial({
   manifest: tabsManifest,
   Component: lazy(() => import('./index')),
-  isContainer: true,
   editorConfig: {
     panels: [
       {

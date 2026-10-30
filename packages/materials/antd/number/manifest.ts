@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const numberManifest = defineManifest({
   type: 'number',
+  layout: { display: 'inline' },
   title: '数字框',
   defaultProps: {
     placeholder: '请输入',

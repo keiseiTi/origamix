@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const treeManifest = defineManifest({
   type: 'tree',
+  layout: { display: 'block' },
   title: '树',
   defaultProps: {
     treeData: [

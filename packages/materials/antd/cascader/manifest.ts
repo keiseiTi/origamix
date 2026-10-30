@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const cascaderManifest = defineManifest({
   type: 'cascader',
+  layout: { display: 'inline' },
   title: '级联选择',
   defaultProps: {
     multiple: false,

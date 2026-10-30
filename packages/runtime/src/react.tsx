@@ -124,6 +124,7 @@ const RuntimeElement = ({
   if (!element || element.hidden) return null;
   return (
     <MaterialView
+      root={engine.layouts.some((node) => node.id === id)}
       id={id}
       type={element.type}
       components={components}

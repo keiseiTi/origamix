@@ -1,3 +1,4 @@
+import { useToastManager } from '@origamix/ui';
 import { getElementLabel } from '@origamix/shared';
 import LogicFlow from '@logicflow/core';
 import { SelectionSelect } from '@logicflow/extension';
@@ -31,7 +32,7 @@ export const FlowEditor = ({
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
-  const [error, setError] = useState<string | null>(null);
+  const notifications = useToastManager();
   const schemaRef = useRef(schema);
   useEffect(() => {
     schemaRef.current = schema;
@@ -62,10 +63,15 @@ export const FlowEditor = ({
       );
       schemaRef.current = candidate;
       onChange(candidate);
-      setError(null);
     } catch (reason) {
       lf.render(JSON.parse(lastGraph.current) as LogicFlow.GraphData);
-      setError(reason instanceof Error ? reason.message : '流程更新失败');
+      notifications.add({
+        id: 'editor-flow-error',
+        type: 'error',
+        priority: 'high',
+        title: reason instanceof Error ? reason.message : '流程更新失败',
+        description: '已保留上一次有效流程。',
+      });
     }
   };
   const initialGraph = useRef(target ? readGraph(schema, target) : null);
@@ -200,11 +206,6 @@ export const FlowEditor = ({
       className='flex min-h-0 flex-1 flex-col bg-white text-foreground dark:bg-zinc-950'
       aria-label='逻辑编辑器'
     >
-      {error && (
-        <div role='alert' className='border-b bg-destructive/10 px-4 py-2 text-sm text-destructive'>
-          {error}，已保留上一次有效流程。
-        </div>
-      )}
       <div className='flex min-h-0 flex-1 overflow-x-auto'>
         <aside
           aria-label='流程节点面板'

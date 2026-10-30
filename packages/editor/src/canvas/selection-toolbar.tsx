@@ -1,4 +1,4 @@
-import { getElementLabel } from '@origamix/shared';
+import { getElementLabel, getMaterialDisplay } from '@origamix/shared';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
 import { Move, Trash2 } from 'lucide-react';
 import { Movable } from './canvas-drag-controls';
@@ -12,7 +12,7 @@ export const SelectionToolbar = (): React.JSX.Element | null => {
 
   const { id, material } = activeElement;
   const isRoot = schema.layout.root === id;
-  const isBlock = material.isBlock || material.isContainer;
+  const isBlock = getMaterialDisplay(material.layout, schema.elements[id]?.props ?? {}) === 'block';
 
   const remove = (): void => {
     if (isRoot) return;

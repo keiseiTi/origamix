@@ -294,6 +294,7 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
     );
   };
   return Object.assign(BoundMaterial, {
+    origamixLayout: manifest.layout,
     origamixRuntime: {
       context: manifest.context,
       defaultProps: manifest.defaultProps,

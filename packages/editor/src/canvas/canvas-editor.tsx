@@ -111,33 +111,24 @@ const ElementWrapper = ({
   'renderDropIndicator'
 >): ReactNode => {
   const { setNodeRef } = useDroppable({ id: element.id, data: { id: element.id, material } });
-  const extra = {
-    om_readonly: true,
-    onClick: select,
-    ...(material.isContainer
-      ? {
-          ref: setNodeRef,
-          om_dropPlaceholder: (
-            <Placeholder
-              element={element}
-              material={material}
-              select={select}
-              renderDropIndicator={renderDropIndicator}
-            />
-          ),
-        }
-      : {}),
-  };
-  // eslint-disable-next-line react-hooks/refs -- renderMaterial forwards this callback ref as a React prop; it never reads a ref value.
-  if (material.isContainer) return element.renderMaterial(extra);
-  return (
-    <div
-      ref={setNodeRef}
-      className={material.isBlock ? 'block' : 'inline-block align-top'}
-      onClick={select}
-    >
-      {element.renderMaterial({ om_readonly: true })}
-    </div>
+  // The shared Runtime layout node owns geometry in both design and run modes.
+  return element.renderMaterial(
+    {
+      om_readonly: true,
+      ...(material.acceptsChildren
+        ? {
+            om_dropPlaceholder: (
+              <Placeholder
+                element={element}
+                material={material}
+                select={select}
+                renderDropIndicator={renderDropIndicator}
+              />
+            ),
+          }
+        : {}),
+    },
+    { ref: setNodeRef, onClick: select },
   );
 };
 const Placeholder = ({

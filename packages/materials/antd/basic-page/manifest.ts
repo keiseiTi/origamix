@@ -1,7 +1,9 @@
+import { containerLayoutProperties } from '../container-layout-definition';
 import { defineManifest, emptyContext, objectSchema } from '../manifest-definition';
 
 export const basicPageManifest = defineManifest({
   type: 'basicPage',
+  layout: { display: 'block' },
   title: '页面',
   defaultProps: { display: 'flow', flexDirection: 'column' },
   context: emptyContext,
@@ -9,8 +11,9 @@ export const basicPageManifest = defineManifest({
   keywords: ['页面', '根容器', '布局'],
   role: 'layout',
   propsSchema: objectSchema({
-    display: { type: 'string', enum: ['flow', 'flex'] },
-    flexDirection: { type: 'string', enum: ['column', 'row'] },
+    ...containerLayoutProperties,
+    margin: { type: 'number' },
+    padding: { type: 'number', minimum: 0 },
   }),
   acceptsChildren: true,
   usage: '作为页面 Schema 的根节点承载其他物料。',

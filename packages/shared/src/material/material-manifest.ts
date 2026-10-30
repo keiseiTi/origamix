@@ -1,3 +1,17 @@
+export type MaterialLayout = Readonly<{
+  display: 'inline' | 'block';
+  blockWhen?: Readonly<{ prop: string; values: readonly string[] }>;
+}>;
+
+/** Resolve static material props only; never evaluate expressions in the editor. */
+export const getMaterialDisplay = (
+  layout: MaterialLayout | undefined,
+  props: Readonly<Record<string, unknown>>,
+): 'inline' | 'block' =>
+  layout?.blockWhen?.values.includes(String(props[layout.blockWhen.prop]))
+    ? 'block'
+    : (layout?.display ?? 'inline');
+
 export const MATERIAL_MANIFEST_FORMAT_VERSION = '1.0' as const;
 
 export type MaterialRole = 'layout' | 'input' | 'display' | 'action' | 'overlay';
@@ -22,6 +36,7 @@ export type MaterialManifest = Readonly<{
   propsSchema: JsonSchema;
   defaultProps: Readonly<Record<string, unknown>>;
   acceptsChildren: boolean;
+  layout?: MaterialLayout;
   allowedParentTypes?: readonly string[];
   context: Readonly<{
     variables: readonly MaterialContextEntry[];
@@ -39,6 +54,7 @@ export type ValidationMaterialManifest = Readonly<{
   version: string;
   propsSchema: JsonSchema;
   acceptsChildren: boolean;
+  layout?: MaterialLayout;
   allowedParentTypes?: readonly string[];
   context: MaterialManifest['context'];
 }>;
@@ -60,6 +76,7 @@ export type AgentMaterialSummary = Readonly<{
   keywords: readonly string[];
   defaultProps: Readonly<Record<string, unknown>>;
   acceptsChildren: boolean;
+  layout?: MaterialLayout;
   allowedParentTypes?: readonly string[];
   usage: string;
   constraints: readonly string[];

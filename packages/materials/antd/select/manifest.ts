@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const selectManifest = defineManifest({
   type: 'select',
+  layout: { display: 'inline' },
   title: '选择器',
   defaultProps: {
     placeholder: '请选择',

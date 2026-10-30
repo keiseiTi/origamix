@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const drawerManifest = defineManifest({
   type: 'drawer',
+  layout: { display: 'block' },
   title: '抽屉容器',
   defaultProps: {
     open: false,

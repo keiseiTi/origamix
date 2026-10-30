@@ -1,5 +1,5 @@
 import type { ComponentType, LazyExoticComponent, ReactNode } from 'react';
-import type { MaterialManifest } from '@origamix/shared';
+import type { MaterialManifest, MaterialLayout } from '@origamix/shared';
 
 export interface AttributeConfig {
   label?: ReactNode;
@@ -25,8 +25,8 @@ export interface Material {
   icon?: ReactNode;
   dropTypes?: string[];
   defaultProps?: Record<string, unknown>;
-  isContainer?: boolean;
-  isBlock?: boolean;
+  acceptsChildren?: boolean;
+  layout?: MaterialLayout;
   editorConfig?: EditorConfig;
   contextConfig?: {
     variables?: MaterialManifest['context']['variables'];

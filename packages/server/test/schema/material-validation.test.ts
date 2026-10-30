@@ -73,6 +73,9 @@ describe('Manifest-driven Schema validation', () => {
       danger: true,
       block: true,
       htmlType: 'button',
+      layoutWidth: 'fixed',
+      layoutFixedWidth: 240,
+      layoutGrow: 1,
     };
     schema.elements.input_name!.props = { defaultValue: '姓名', readOnly: true, variant: 'filled' };
     const inputs = {
@@ -151,6 +154,7 @@ describe('Manifest-driven Schema validation', () => {
     const schema = page();
     schema.elements.input_name = { type: 'mystery', props: {} };
     schema.elements.button_save!.props.extra = true;
+    schema.elements.form_main!.props.layoutFixedWidth = -1;
     schema.elements.tabs_test = {
       type: 'tabs',
       props: { items: [{ key: '1', label: { unsafe: 'object' } }] },
@@ -172,6 +176,11 @@ describe('Manifest-driven Schema validation', () => {
           materialType: 'button',
         }),
         expect.objectContaining({ code: 'INVALID_MATERIAL_PROPS', elementId: 'tabs_test' }),
+        expect.objectContaining({
+          code: 'INVALID_MATERIAL_PROPS',
+          elementId: 'form_main',
+          path: '/elements/form_main/props/layoutFixedWidth',
+        }),
       ]),
     );
   });

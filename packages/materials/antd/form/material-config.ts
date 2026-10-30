@@ -5,7 +5,6 @@ import { formManifest } from './manifest';
 const material = defineMaterial({
   manifest: formManifest,
   Component: lazy(() => import('./index')),
-  isContainer: true,
   editorConfig: {
     panels: [
       {

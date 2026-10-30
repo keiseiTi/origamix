@@ -4,7 +4,6 @@ import { modalManifest } from './manifest';
 const material = defineMaterial({
   manifest: modalManifest,
   Component: lazy(() => import('./index')),
-  isContainer: true,
   editorConfig: {
     panels: [
       {

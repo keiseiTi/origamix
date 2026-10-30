@@ -5,7 +5,6 @@ import { drawerManifest } from './manifest';
 const material = defineMaterial({
   manifest: drawerManifest,
   Component: lazy(() => import('./index')),
-  isContainer: true,
   editorConfig: {
     panels: [
       {

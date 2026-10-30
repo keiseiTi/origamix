@@ -171,9 +171,13 @@ export type { PageFlow, PageFlowNode, ElementEventBinding } from './flow/flow-sc
 export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './flow/hyper-value.ts';
 export type { HyperValue, FunctionValue } from './flow/hyper-value.ts';
 
-export { MATERIAL_MANIFEST_FORMAT_VERSION } from './material/material-manifest.ts';
+export {
+  MATERIAL_MANIFEST_FORMAT_VERSION,
+  getMaterialDisplay,
+} from './material/material-manifest.ts';
 export type {
   MaterialRole,
+  MaterialLayout,
   JsonSchema,
   MaterialContextEntry,
   MaterialManifest,

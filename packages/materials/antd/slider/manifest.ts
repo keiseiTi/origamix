@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const sliderManifest = defineManifest({
   type: 'slider',
+  layout: { display: 'block' },
   title: '滑动输入条',
   defaultProps: {
     min: 0,

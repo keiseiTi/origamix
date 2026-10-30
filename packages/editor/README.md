@@ -83,3 +83,9 @@ pnpm --filter @origamix/editor build
 `schema/schema-utils.ts` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`session/editor-session.tsx` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。
 
 `canvas/` 使用 dnd-kit 处理拖拽和占位；调用 `@origamix/runtime` 的 DesignRenderer 展示物料。设计态只允许设计交互，不绑定页面流程或执行函数。选中框和插入指示器只查询当前会话画布。
+
+## 画布布局
+
+[物料与画布布局方案](docs/material-layout.md)记录默认占位、容器能力、实例尺寸、共享渲染和拖放规则。编辑器不再通过额外 inline-block 包装改变物料布局。
+
+编辑器拖放、视图切换和流程更新失败通过共享 shadcn/ui Toast 展示，不占用画布布局。每个 EditorProvider 创建独立通知管理器，切换编辑会话时不会显示上一会话的通知；字段校验提示仍由对应属性控件管理。

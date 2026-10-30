@@ -1,7 +1,8 @@
+import { getContainerStyle, type ContainerLayoutProps } from '../container-layout';
 import React from 'react';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export interface IProps extends MaterialComponentProps {
+export interface IProps extends MaterialComponentProps, ContainerLayoutProps {
   children?: React.ReactNode;
   margin?: number | string;
   padding?: number | string;
@@ -9,7 +10,7 @@ export interface IProps extends MaterialComponentProps {
   height?: number | string;
 }
 
-// 容器组件必须使用 React.forwardRef 以支持拖放功能
+// Ref remains available to component consumers; Editor targets the shared layout frame.
 export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) => {
   const {
     children,
@@ -22,19 +23,26 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
     om_setRuntimeState,
     om_mode,
     om_readonly,
+    display,
+    flexDirection,
+    gap,
+    flexWrap,
+    alignItems,
+    justifyContent,
     ...rest
   } = props;
 
   const style: React.CSSProperties = {
+    ...getContainerStyle({ display, flexDirection, gap, flexWrap, alignItems, justifyContent }),
     margin,
     padding,
     overflow: 'auto',
   };
 
   if (heightConfig === 'auto') {
-    style.flex = 1;
+    style.height = 'auto';
   } else {
-    style.height = height || 200;
+    style.height = height ?? 200;
   }
 
   return (

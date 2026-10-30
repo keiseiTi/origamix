@@ -1,3 +1,4 @@
+import { useToastManager } from '@origamix/ui';
 import { useEffect, useRef, useState } from 'react';
 import { FlowEditorLoader } from '../flow-editor/flow-editor-loader';
 import type { EditorMode } from '../contracts/editor-contracts';
@@ -21,7 +22,7 @@ export const EditorLayout = ({
   mode: EditorMode;
   onModeChange: (mode: EditorMode) => Promise<void>;
 }): React.JSX.Element => {
-  const [error, setError] = useState<string | null>(null);
+  const notifications = useToastManager();
   const [eventTarget, setEventTarget] = useState<EventTarget | null>(null);
   const view = useRef<HTMLDivElement>(null);
   const restoreEvent = useRef<string | null>(null);
@@ -34,23 +35,22 @@ export const EditorLayout = ({
     restoreEvent.current = null;
   }, [mode]);
   const editEvent = (target: EventTarget): void => {
-    setError(null);
     void onModeChange('logic')
       .then(() => {
         restoreEvent.current = target.event;
         setEventTarget(target);
       })
       .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : '切换失败，编辑内容已保留'),
+        notifications.add({
+          id: 'editor-view-error',
+          type: 'error',
+          priority: 'high',
+          title: reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
+        }),
       );
   };
   return (
     <div className='relative flex min-h-0 flex-1 flex-col'>
-      {error && (
-        <p role='alert' className='border-b border-border px-3 py-2 text-xs text-danger'>
-          {error}
-        </p>
-      )}
       {mode === 'logic' ? (
         <FlowEditorLoader
           key={eventTarget ? `${eventTarget.elementId}:${eventTarget.event}` : 'empty'}

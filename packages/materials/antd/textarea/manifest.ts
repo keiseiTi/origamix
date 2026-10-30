@@ -2,6 +2,7 @@ import { defineManifest } from '../manifest-definition';
 
 export const textareaManifest = defineManifest({
   type: 'textarea',
+  layout: { display: 'block' },
   title: '文本域',
   defaultProps: {
     placeholder: '请输入内容',

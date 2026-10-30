@@ -1,3 +1,4 @@
+import { layoutProperties } from './layout-properties';
 import type {
   AgentMaterialSummary,
   JsonSchema,
@@ -12,6 +13,7 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
     ...manifest.propsSchema,
     properties: {
       ...(manifest.propsSchema.properties as Readonly<Record<string, JsonSchema>>),
+      ...layoutProperties,
       alias: { type: 'string', description: '元素别名，用于说明元素用途。' },
       tabKey: { type: 'string', description: '父级页签内容归属。' },
     },
@@ -37,6 +39,7 @@ export const toAgentMaterialSummary = (manifest: MaterialManifest): AgentMateria
     keywords: manifest.keywords,
     defaultProps: manifest.defaultProps,
     acceptsChildren: manifest.acceptsChildren,
+    layout: manifest.layout,
     allowedParentTypes: manifest.allowedParentTypes,
     usage: manifest.usage,
     constraints: manifest.constraints,
@@ -51,6 +54,7 @@ export const toValidationMaterialManifest = (
     version: manifest.version,
     propsSchema: manifest.propsSchema,
     acceptsChildren: manifest.acceptsChildren,
+    layout: manifest.layout,
     allowedParentTypes: manifest.allowedParentTypes,
     context: manifest.context,
   } as const;
