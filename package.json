@@ -35,7 +35,8 @@
     "build:prepared": "pnpm --filter @origamix/server build && pnpm --filter @origamix/app build && pnpm --filter @origamix/desktop build",
     "typecheck:prepared": "tsc --noEmit -p tsconfig.scripts.json && pnpm -r typecheck",
     "test:prepared": "pnpm -r test",
-    "check": "pnpm lint && pnpm build:libs && pnpm typecheck:prepared && pnpm test:prepared && pnpm build:prepared"
+    "check": "pnpm build:libs:check && pnpm lint && pnpm typecheck:prepared && pnpm test:prepared && pnpm build:prepared",
+    "build:libs:check": "pnpm --filter @origamix/shared --filter @origamix/runtime build && pnpm --filter @origamix/materials manifest:check && pnpm --filter @origamix/materials build"
   },
   "keywords": [
     "lowCode",

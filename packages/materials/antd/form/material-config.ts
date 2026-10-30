@@ -1,9 +1,51 @@
 import { FormValuesEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { formManifest } from './manifest';
 const material = defineMaterial({
-  manifest: formManifest,
+  type: 'form',
+  layout: { display: 'block' },
+  title: '表单容器',
+  defaultProps: {
+    layout: 'horizontal',
+    labelAlign: 'right',
+    colon: true,
+    preserve: true,
+    requiredMark: true,
+    initialValues: {},
+  },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [],
+    values: [
+      { name: 'validateFields', description: '校验字段', isMethod: true },
+      { name: 'resetFields', description: '重置字段', isMethod: true },
+      { name: 'setFieldsValue', description: '设置字段值', isMethod: true },
+    ],
+    methods: [
+      {
+        name: 'onValuesChange',
+        description: '字段值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onFinish',
+        description: '校验成功提交',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onFinishFailed',
+        description: '提交校验失败',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '表单容器的结构与展示属性。',
+  keywords: ['表单容器', 'layout'],
+  role: 'layout',
+  acceptsChildren: true,
+  allowedParentTypes: ['basicPage', 'container', 'tabs', 'modal', 'drawer'],
+  usage: '配置表单容器的属性与展示行为。',
+  constraints: ['不将实例或回调写入 Schema。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -75,6 +117,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'integer', minimum: 0, maximum: 24 },
             field: 'labelColVal',
             label: '标签栅格跨度',
             uiType: 'number',
@@ -91,6 +134,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'integer', minimum: 0, maximum: 24 },
             field: 'wrapperColVal',
             label: '控件栅格跨度',
             uiType: 'number',
@@ -116,7 +160,6 @@ const material = defineMaterial({
             field: 'colon',
             label: '显示冒号',
             uiType: 'checkbox',
-            defaultValue: true,
             linkageShow: [
               {
                 field: 'layout',
@@ -134,9 +177,9 @@ const material = defineMaterial({
             field: 'preserve',
             label: '保留移除字段的值',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
+            schema: { anyOf: [{ type: 'boolean' }, { type: 'string', enum: ['optional'] }] },
             field: 'requiredMark',
             label: '必填标记',
             uiType: 'select',
@@ -181,6 +224,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'string', enum: ['outlined', 'borderless', 'filled', 'underlined'] },
             field: 'variant',
             label: '控件外观',
             uiType: 'select',
@@ -206,6 +250,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'object' },
             field: 'initialValues',
             label: '初始字段值',
             uiType: 'custom',

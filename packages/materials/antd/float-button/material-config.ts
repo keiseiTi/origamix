@@ -1,8 +1,17 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { floatButtonManifest } from './manifest';
 const FloatButtonMaterial = defineMaterial({
-  manifest: floatButtonManifest,
+  type: 'floatButton',
+  layout: { display: 'inline' },
+  title: '悬浮按钮',
+  defaultProps: { type: 'default', shape: 'circle' },
+  context: { variables: [], writable: [], values: [], methods: [] },
+  description: '悬浮在页面边缘的快捷操作按钮。',
+  keywords: ['悬浮按钮', '快捷操作'],
+  role: 'action',
+  acceptsChildren: false,
+  usage: '为页面提供悬浮的快捷操作入口。',
+  constraints: [],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -35,6 +44,19 @@ const FloatButtonMaterial = defineMaterial({
             label: '禁用',
             field: 'disabled',
             uiType: 'checkbox',
+          },
+          { field: 'href', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          {
+            field: 'target',
+            hidden: true,
+            schema: { type: 'string', enum: ['_self', '_blank'] },
+            uiType: 'input',
+          },
+          {
+            field: 'htmlType',
+            hidden: true,
+            schema: { type: 'string', enum: ['button', 'submit', 'reset'] },
+            uiType: 'input',
           },
         ],
       },

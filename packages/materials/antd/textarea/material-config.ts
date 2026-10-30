@@ -1,8 +1,34 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { textareaManifest } from './manifest';
 const material = defineMaterial({
-  manifest: textareaManifest,
+  type: 'textarea',
+  layout: { display: 'block' },
+  title: '文本域',
+  defaultProps: { placeholder: '请输入内容', size: 'medium', autoSize: false },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [{ name: 'value', description: '当前值' }],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onPressEnter',
+        description: '回车',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '录入多行文本。',
+  keywords: ['文本域', '多行文本', '备注'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于描述、备注等多行字段。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -49,9 +75,22 @@ const material = defineMaterial({
             uiType: 'checkbox',
           },
           {
+            schema: {
+              anyOf: [
+                { type: 'boolean' },
+                {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    minRows: { type: 'integer', minimum: 1 },
+                    maxRows: { type: 'integer', minimum: 1 },
+                  },
+                },
+              ],
+            },
             label: '自动高度',
             field: 'autoSize',
-            defaultValue: false,
+
             uiType: 'checkbox',
           },
           {
@@ -116,6 +155,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'integer', minimum: 1 },
             field: 'minRows',
             label: '最小行数',
             uiType: 'number',
@@ -123,12 +163,22 @@ const material = defineMaterial({
             linkageShow: [{ field: 'autoSize', value: true }],
           },
           {
+            schema: { type: 'integer', minimum: 1 },
             field: 'maxRows',
             label: '最大行数',
             uiType: 'number',
             props: { min: 1, step: 1 },
             linkageShow: [{ field: 'autoSize', value: true }],
           },
+          {
+            field: 'size',
+            hidden: true,
+            schema: { type: 'string', enum: ['large', 'medium', 'small'] },
+            uiType: 'input',
+          },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

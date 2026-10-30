@@ -1,16 +1,66 @@
 import { SelectOptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { selectManifest } from './manifest';
 const material = defineMaterial({
-  manifest: selectManifest,
+  type: 'select',
+  layout: { display: 'inline' },
+  title: '选择器',
+  defaultProps: {
+    placeholder: '请选择',
+    size: 'medium',
+    options: [
+      { label: '选项一', value: 'option1' },
+      { label: '选项二', value: 'option2' },
+    ],
+  },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [
+      { name: 'value', description: '当前值' },
+      { name: 'options', description: '选项' },
+      { name: 'loading', description: '加载中' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '从预定义选项中选择一个或多个值。',
+  keywords: ['选择器', '下拉框', '选项'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于枚举值、分类或状态字段。',
+  constraints: ['必须置于 form 中。', '每个选项必须包含 label 和 value。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
       {
         title: '属性',
         configs: [
-          { field: 'options', label: '选项配置', uiType: 'custom', render: SelectOptionsEditor },
+          {
+            schema: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  label: { type: 'string' },
+                  value: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                  disabled: { type: 'boolean' },
+                },
+                required: ['label', 'value'],
+              },
+            },
+            field: 'options',
+            label: '选项配置',
+            uiType: 'custom',
+            render: SelectOptionsEditor,
+          },
           {
             label: '占位符',
             field: 'placeholder',
@@ -174,6 +224,9 @@ const material = defineMaterial({
               ],
             },
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

@@ -231,12 +231,18 @@ importers:
       '@origamix/ui':
         specifier: workspace:*
         version: link:../ui
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
       '@types/react':
         specifier: ^19.2.18
         version: 19.2.18
       antd:
         specifier: ^6.0.0
         version: 6.6.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
       react:
         specifier: ^19.2.8
         version: 19.2.8

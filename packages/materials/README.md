@@ -17,7 +17,7 @@ Origamix 页面物料包，当前只提供 Ant Design。它拥有页面组件、
 
 `runtime` 同时导出轻量的 `materialSet` 身份/版本，供按需加载时核对安装包；它与 Manifest 引用同一份包内声明，不会因此加载编辑配置。
 
-根入口显式导出 `src/` 下全部公共 API：物料与属性配置类型、物料定义/转换、Manifest 辅助、运行属性适配、值类型、参数类型及 `cn`。根入口不汇总具体物料或编辑分组；包内模块仍直接引用内部实现，避免反向依赖根入口。运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件、清单和配置放在 `antd/<material>/`；公共声明辅助位于 `antd/manifest-definition.ts`。
+根入口显式导出 `src/` 下全部公共 API：物料与属性配置类型、物料定义/转换、Manifest 辅助、运行属性适配、值类型、参数类型及 `cn`。根入口不汇总具体物料或编辑分组；包内模块仍直接引用内部实现，避免反向依赖根入口。运行组件、编辑器配置和纯数据入口分别服务不同消费者，不能合并成让 Server 加载 React 的总入口。单个物料的组件和配置放在 `antd/<material>/`；Manifest 由配置生成到随源码提交的 `antd/generated/manifests.ts`。
 
 消费页面需要 Ant Design 样式及 Tailwind；Tailwind v4 应通过 `@source` 显式扫描已安装的 `@origamix/materials/dist`。App 与生成项目模板已配置各自的源码/安装包路径。
 
@@ -34,6 +34,8 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials... build
 ```
 
+`build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 TypeScript 提交检查在 Materials 构建前检查，避免构建自动生成掩盖遗漏提交。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
+
 tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档只公开 runtime／Manifest。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
@@ -43,9 +45,9 @@ tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作�
 以已经迁移的按钮物料为参考，按以下顺序维护同一份类型和默认值：
 
 1. 在 `antd/<material>/index.tsx` 编写 Ant Design 适配组件，参考 [按钮组件](antd/button/index.tsx)。使用包内运行属性契约，剥离引擎注入属性，避免传入 DOM。
-2. 在 `manifest.ts` 使用 `defineManifest({ ... })` 定义稳定的 `type`、默认值、上下文和属性 Schema，参考 [按钮清单](antd/button/manifest.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)，每个组件不单独声明版本。
-3. 在 `material-config.ts` 使用 `defineMaterial({ manifest, Component, editorConfig })` 一次装配，参考 [按钮编辑配置](antd/button/material-config.ts)。无需中间定义或转换；标题、类型、默认值和上下文直接来自 Manifest。组件和自定义渲染函数不进入 Manifest。
-4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)，清单加入 [antd/manifest.ts](antd/manifest.ts)。三处类型必须一致；已有但未向编辑器开放的类型不应顺手移除。
+2. 在 `material-config.ts` 使用 `defineMaterial({ type, title, ..., Component, editorConfig })` 定义元信息、默认值、上下文和 panels，参考 [按钮配置](antd/button/material-config.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)。
+3. 普通属性从 `uiType`、静态 `options`、数值 `min/max`、`required` 和 `defaultValue` 推导协议；自定义组件和复杂属性显式补充 `schema`，参考 [表格配置](antd/table/material-config.ts)。`schema` 是完整覆盖，内部 `#` 引用相对于该字段的 Schema，生成时自动调整嵌入位置；`hidden: true` 声明协议支持但不在面板显示的字段。顶层 `defaultProps` 可定义复杂初值，同字段不要再重复定义默认值。
+4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)；生成器自动发现 `antd/*/material-config.ts`。公开清单仍由 [antd/manifest.ts](antd/manifest.ts) 明确选择，保留根物料和未开放物料的区别。
 5. 运行包检查与根检查，在编辑器、预览和生成项目中验证属性、上下文及亮暗主题。自动测试只补已有清单一致性场景中的必要约束。
 
 转换辅助的公开导入方式：

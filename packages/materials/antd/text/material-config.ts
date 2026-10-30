@@ -1,8 +1,31 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { textManifest } from './manifest';
 const material = defineMaterial({
-  manifest: textManifest,
+  type: 'text',
+  layout: {
+    display: 'inline',
+    blockWhen: { prop: 'type', values: ['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5'] },
+  },
+  title: '文本',
+  defaultProps: { text: '文本' },
+  context: {
+    variables: [{ name: 'text', description: '文本内容' }],
+    writable: [{ name: 'text', description: '文本内容' }],
+    values: [],
+    methods: [
+      {
+        name: 'onClick',
+        description: '点击',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '显示标题、段落或普通文本。',
+  keywords: ['文本', '标题', '段落'],
+  role: 'display',
+  acceptsChildren: false,
+  usage: '用于页面标题、说明和静态文本。',
+  constraints: [],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [

@@ -1,5 +1,5 @@
 import BasicPage from './basic-page/material-config';
-import { basicPageManifest } from './basic-page/manifest';
+import { basicPageManifest } from './manifest';
 import Button from './button/material-config';
 import Input from './input/material-config';
 import Select from './select/material-config';

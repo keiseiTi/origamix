@@ -95,13 +95,23 @@ export const runDevelopment = ({
       ...libraryWatchPaths,
       server: ['packages/server/src'],
     }))
-      for (const path of paths)
-        watchers.push(
-          watch(join(root, path), { recursive: true }, () => {
-            dirty.add(name);
-            schedule();
-          }),
-        );
+      for (const path of paths) {
+        try {
+          watchers.push(
+            watch(join(root, path), { recursive: true }, (_event, filename) => {
+              if (
+                path === 'packages/materials/antd' &&
+                filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
+              )
+                return;
+              dirty.add(name);
+              schedule();
+            }),
+          );
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        }
+      }
   for (const directory of ['apps/desktop', 'packages/server']) {
     try {
       watchers.push(

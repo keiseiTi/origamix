@@ -1,8 +1,34 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { inputManifest } from './manifest';
 const InputMaterial = defineMaterial({
-  manifest: inputManifest,
+  type: 'input',
+  layout: { display: 'inline' },
+  title: '输入框',
+  defaultProps: { placeholder: '请输入内容' },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [{ name: 'value', description: '当前值' }],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onPressEnter',
+        description: '回车',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '录入单行文本。',
+  keywords: ['输入框', '文本', '字段'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于姓名、标题、账号、邮箱或密码等单行字段；密码字段使用 type=password。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -85,6 +111,7 @@ const InputMaterial = defineMaterial({
             uiType: 'checkbox',
           },
           {
+            schema: { type: 'number', minimum: 0, maximum: 1000 },
             label: '最大长度',
             field: 'maxLength',
             uiType: 'number',
@@ -165,6 +192,9 @@ const InputMaterial = defineMaterial({
               ],
             },
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

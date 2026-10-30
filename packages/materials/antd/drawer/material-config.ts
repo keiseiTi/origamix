@@ -1,9 +1,44 @@
 import { DrawerSizeEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { drawerManifest } from './manifest';
 const material = defineMaterial({
-  manifest: drawerManifest,
+  type: 'drawer',
+  layout: { display: 'block' },
+  title: '抽屉容器',
+  defaultProps: {
+    open: false,
+    placement: 'right',
+    closable: true,
+    mask: true,
+    maskClosable: true,
+    keyboard: true,
+  },
+  context: {
+    variables: [{ name: 'open', description: '是否打开' }],
+    writable: [
+      { name: 'open', description: '是否打开' },
+      { name: 'loading', description: '加载中' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onClose',
+        description: '关闭请求',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'afterOpenChange',
+        description: '可见状态改变完成',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '抽屉容器的结构与展示属性。',
+  keywords: ['抽屉容器', 'overlay'],
+  role: 'overlay',
+  acceptsChildren: true,
+  usage: '配置抽屉容器的属性与展示行为。',
+  constraints: ['不将实例或回调写入 Schema。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -14,7 +49,6 @@ const material = defineMaterial({
             field: 'open',
             label: '显示抽屉',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             field: 'placement',
@@ -42,6 +76,12 @@ const material = defineMaterial({
             },
           },
           {
+            schema: {
+              anyOf: [
+                { type: 'string', enum: ['default', 'large'] },
+                { type: 'number', minimum: 1 },
+              ],
+            },
             field: 'size',
             linkageShow: [{ field: 'customSize', value: undefined }],
             label: '预设尺寸',
@@ -59,24 +99,27 @@ const material = defineMaterial({
               ],
             },
           },
-          { field: 'customSize', label: '自定义尺寸', uiType: 'custom', render: DrawerSizeEditor },
+          {
+            schema: { type: 'number', minimum: 1 },
+            field: 'customSize',
+            label: '自定义尺寸',
+            uiType: 'custom',
+            render: DrawerSizeEditor,
+          },
           {
             field: 'closable',
             label: '显示关闭按钮',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'mask',
             label: '显示遮罩',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'maskClosable',
             label: '点击遮罩关闭',
             uiType: 'checkbox',
-            defaultValue: true,
             linkageShow: [
               {
                 field: 'mask',
@@ -88,7 +131,6 @@ const material = defineMaterial({
             field: 'keyboard',
             label: 'Esc 关闭',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'loading',
@@ -121,6 +163,7 @@ const material = defineMaterial({
             defaultValue: false,
           },
           {
+            schema: { type: 'integer', minimum: 0 },
             field: 'zIndex',
             label: '浮层层级',
             uiType: 'number',

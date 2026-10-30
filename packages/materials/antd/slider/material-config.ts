@@ -1,8 +1,34 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { sliderManifest } from './manifest';
 const material = defineMaterial({
-  manifest: sliderManifest,
+  type: 'slider',
+  layout: { display: 'block' },
+  title: '滑动输入条',
+  defaultProps: { min: 0, max: 100, step: 1, range: false, keyboard: true, included: true },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [{ name: 'value', description: '当前值' }],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onChangeComplete',
+        description: '调整完成',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '滑动输入条属性配置。',
+  keywords: ['滑动输入条'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于表单中的滑动输入条。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -26,6 +52,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'number', exclusiveMinimum: 0 },
             label: '步长',
             field: 'step',
             uiType: 'number',
@@ -38,9 +65,14 @@ const material = defineMaterial({
             label: '范围模式',
             field: 'range',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
+            schema: {
+              anyOf: [
+                { type: 'number' },
+                { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 },
+              ],
+            },
             label: '初始值',
             field: 'defaultValue',
             uiType: 'number',
@@ -92,7 +124,6 @@ const material = defineMaterial({
             label: '键盘调整',
             field: 'keyboard',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '反向',
@@ -116,7 +147,6 @@ const material = defineMaterial({
             label: '显示选中区间',
             field: 'included',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '范围可拖动',
@@ -182,6 +212,9 @@ const material = defineMaterial({
               { field: 'tooltipMode', value: undefined },
             ],
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

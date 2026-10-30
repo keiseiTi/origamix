@@ -2,15 +2,32 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@": ["./src/index.ts"],
-      "@/*": ["./src/*"]
+      "@": [
+        "./src/index.ts"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["antd", "components", "antd/interfaces", "utils", "*.ts", "src", "test"]
+  "include": [
+    "antd",
+    "components",
+    "antd/interfaces",
+    "utils",
+    "*.ts",
+    "src",
+    "test",
+    "scripts"
+  ]
 }

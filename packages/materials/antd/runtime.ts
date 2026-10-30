@@ -1,6 +1,6 @@
 import { registerRuntimeMaterial } from './runtime-state';
 import { antdMaterialManifest } from './manifest';
-import { basicPageManifest } from './basic-page/manifest';
+import { basicPageManifest } from './manifest';
 export { RuntimeProvider } from './runtime-provider';
 export { materialSet } from './material-set';
 import { Button } from './button';

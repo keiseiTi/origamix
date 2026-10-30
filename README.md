@@ -30,6 +30,8 @@ Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整�
 
 根开发命令会自动准备当前库构建产物。开发宿主会准备使用固定 npm 版本的模板，供新建与升级项目共用。
 
+`pnpm dev` 在首次依赖构建完成后自动启动 Materials `manifest:watch`，退出开发进程时一并停止；无需额外启动该命令。物料源码变化仍通过原有有序构建链更新 Materials 和 Server，生成文件不触发重复构建。
+
 浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
 
 ## 包与接口
@@ -101,9 +103,9 @@ Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感
 ### 组合检查与工具版本
 
 使用 Node.js 24.15+（24.x）和 pnpm 10.33.4，版本约束见根 package.json。
-`pnpm check` 依次执行 lint、一次库构建、类型检查、测试和应用构建；`package:mac` 复用该流程。
+`pnpm check` 先构建 Shared/Runtime，校验已提交的物料 Manifest 与配置一致，再构建 Materials，随后执行 lint、类型检查、测试和应用构建；`package:mac` 复用该流程。
 独立 `typecheck`、`test`、`build` 仍自动准备库；`*:prepared` 是组合流程内部入口，要求当前库产物已经构建，不能与库清理构建并行运行。
-pre-commit 对 TypeScript 变更先构建一次库，再顺序检查类型和测试，避免同时清理同一 dist。
+pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库并在 Materials 生成前校验 Manifest，再检查类型和测试，避免同时清理同一 dist。物料配置变更后运行 `pnpm --filter @origamix/materials manifest:generate`，将 `packages/materials/antd/generated/manifests.ts` 一起提交。
 根 lint 和暂存 lint 均覆盖根 scripts 下的发布工具。
 
 开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。

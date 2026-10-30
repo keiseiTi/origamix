@@ -38,11 +38,14 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
-    "build": "tsdown",
+    "typecheck": "pnpm manifest:generate && tsc --noEmit -p tsconfig.json",
+    "test": "pnpm manifest:generate && vitest run",
+    "build": "pnpm manifest:generate && tsdown",
     "pack:npm": "tsx ../../scripts/pack-public.ts materials",
-    "prepack": "node -e \"throw new Error('Use pnpm pack:npm to prepare isolated public artifacts')\""
+    "prepack": "node -e \"throw new Error('Use pnpm pack:npm to prepare isolated public artifacts')\"",
+    "manifest:generate": "node --import tsx scripts/generate-manifest.ts",
+    "manifest:watch": "node --import tsx scripts/generate-manifest.ts --watch",
+    "manifest:check": "node --import tsx scripts/generate-manifest.ts --check"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -57,7 +60,9 @@
     "@origamix/shared": "workspace:*",
     "@origamix/ui": "workspace:*",
     "@origamix/runtime": "workspace:*",
-    "tsx": "4.23.13"
+    "tsx": "4.23.13",
+    "@types/node": "^24.13.3",
+    "prettier": "^3.9.6"
   },
   "peerDependencies": {
     "antd": "^6",

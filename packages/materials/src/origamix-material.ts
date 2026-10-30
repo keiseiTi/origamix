@@ -1,22 +1,26 @@
 import { layoutPanel } from './layout-panel';
 import type { Material, PanelConfig, InputAttributeConfig, AttributeConfig } from './material';
 import type { MaterialManifest } from '@origamix/shared';
-import { withCommonMaterialManifest } from './material-manifest';
+import { createMaterialManifest } from './material-definition';
 
-export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig'> & {
-  manifest: MaterialManifest;
-};
+export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig'> &
+  Omit<MaterialManifest, 'version' | 'propsSchema' | 'defaultProps'> & {
+    defaultProps?: MaterialManifest['defaultProps'];
+  };
 
 const editorMaterials = new WeakSet<object>();
 
 /** Assemble editor metadata from a Manifest, including context mapping and the alias control. */
 export const defineMaterial = ({
-  manifest: inputManifest,
   Component,
   editorConfig,
+  ...metadata
 }: MaterialDefinition): Material => {
-  const manifest = withCommonMaterialManifest(inputManifest);
-  const panels = [...(editorConfig?.panels ?? []), layoutPanel] as PanelConfig[];
+  const manifest = createMaterialManifest({ ...metadata, Component, editorConfig });
+  const panels = [...(editorConfig?.panels ?? []), layoutPanel].map((panel) => ({
+    ...panel,
+    configs: panel.configs?.filter((config) => !config.hidden),
+  })) as PanelConfig[];
   const aliasConfig: InputAttributeConfig = {
     label: '别名',
     field: 'alias',
@@ -24,6 +28,7 @@ export const defineMaterial = ({
     required: false,
   };
   const editorMaterial: Material = {
+    manifest,
     Component: Object.assign(Component, { origamixLayout: manifest.layout }),
     title: manifest.title,
     type: manifest.type,

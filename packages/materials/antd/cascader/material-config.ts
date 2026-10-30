@@ -1,9 +1,38 @@
 import { CascaderDataEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { cascaderManifest } from './manifest';
 const material = defineMaterial({
-  manifest: cascaderManifest,
+  type: 'cascader',
+  layout: { display: 'inline' },
+  title: '级联选择',
+  defaultProps: {
+    multiple: false,
+    allowClear: true,
+    options: [{ label: '示例1', value: '示例1' }],
+  },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [
+      { name: 'value', description: '当前值' },
+      { name: 'options', description: '选项' },
+      { name: 'loading', description: '加载中' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '级联选择属性配置。',
+  keywords: ['级联选择'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于表单中的级联选择。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -19,7 +48,6 @@ const material = defineMaterial({
             label: '多选',
             field: 'multiple',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             label: '支持搜索',
@@ -120,7 +148,6 @@ const material = defineMaterial({
             label: '允许清除',
             field: 'allowClear',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '校验状态',
@@ -194,11 +221,32 @@ const material = defineMaterial({
             },
           },
           {
+            schema: {
+              type: 'array',
+              items: { $ref: '#/$defs/option' },
+              $defs: {
+                option: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    value: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                    label: { type: 'string' },
+                    disabled: { type: 'boolean' },
+                    isLeaf: { type: 'boolean' },
+                    children: { type: 'array', items: { $ref: '#/$defs/option' } },
+                  },
+                  required: ['value', 'label'],
+                },
+              },
+            },
             field: 'options',
             label: '级联选项',
             uiType: 'custom',
             render: CascaderDataEditor,
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

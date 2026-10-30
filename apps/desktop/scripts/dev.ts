@@ -40,6 +40,7 @@ const watchers: import('node:fs').FSWatcher[] = [];
 let electron: import('node:child_process').ChildProcess | undefined;
 let vite: import('node:child_process').ChildProcess | undefined;
 let builder: import('node:child_process').ChildProcess | undefined;
+let manifestWatcher: import('node:child_process').ChildProcess | undefined;
 let running = false;
 let stopping = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,6 +54,29 @@ const run = async (entry: string, cwd: string, args: string[] = []) => {
   const [code] = await once(child, 'exit');
   if (builder === child) builder = undefined;
   if (code !== 0 || stopping) throw new Error(`构建未完成：${cwd}`);
+};
+const startManifestWatch = () => {
+  if (manifestWatcher || stopping) return;
+  const child = fork(
+    `${workspaceRoot}packages/materials/scripts/generate-manifest.ts`,
+    ['--watch'],
+    {
+      cwd: `${workspaceRoot}packages/materials`,
+      stdio: 'inherit',
+    },
+  );
+  manifestWatcher = child;
+  child.once('error', (error) => {
+    console.error('[开发环境] Manifest watch 启动失败：', error.message);
+  });
+  child.once('exit', () => {
+    if (manifestWatcher === child) manifestWatcher = undefined;
+    if (!stopping) {
+      dirty.add('materials');
+      console.error('[开发环境] Manifest watch 已停止，按 Enter 重试。');
+    }
+  });
+  console.info('[开发环境] 已启动 Materials manifest:watch');
 };
 const stopDesktop = async () => {
   const previous = electron;
@@ -144,6 +168,7 @@ const update = async () => {
     config.desktopDebug(env);
     if (batch.has('shared')) batch.add('desktop');
     await buildLibraries(batch, workspaceRoot, run);
+    startManifestWatch();
     if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
     if (batch.has('desktop')) await build({ ...options, clean: false });
     if (stopping) return;
@@ -212,7 +237,12 @@ for (const [name, paths] of Object.entries({
   for (const path of paths) {
     try {
       watchers.push(
-        watch(join(workspaceRoot, path), { recursive: true }, () => {
+        watch(join(workspaceRoot, path), { recursive: true }, (_event, filename) => {
+          if (
+            path === 'packages/materials/antd' &&
+            filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
+          )
+            return;
           dirty.add(name);
           schedule();
         }),
@@ -269,7 +299,12 @@ const shutdown = async () => {
   clearTimeout(timer);
   watchers.forEach((watcher) => watcher.close());
   terminal.close();
-  await Promise.all([stopChild(builder), stopChild(vite), stopChild(electron)]);
+  await Promise.all([
+    stopChild(builder),
+    stopChild(vite),
+    stopChild(electron),
+    stopChild(manifestWatcher),
+  ]);
 };
 process.once('SIGINT', () => void shutdown());
 process.once('SIGTERM', () => void shutdown());

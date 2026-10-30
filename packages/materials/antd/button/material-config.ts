@@ -1,8 +1,34 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { buttonManifest } from './manifest';
 const ButtonMaterial = defineMaterial({
-  manifest: buttonManifest,
+  type: 'button',
+  layout: { display: 'inline', blockWhen: { prop: 'block', values: ['true'] } },
+  title: '按钮',
+  defaultProps: { text: '按钮', type: 'default', size: 'medium' },
+  context: {
+    variables: [
+      { name: 'text', description: '文本内容' },
+      { name: 'loading', description: '加载中' },
+    ],
+    writable: [
+      { name: 'text', description: '文本内容' },
+      { name: 'loading', description: '加载中' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onClick',
+        description: '点击',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '触发提交、重置、跳转或其他页面操作。',
+  keywords: ['按钮', '提交', '操作'],
+  role: 'action',
+  acceptsChildren: false,
+  usage: '为表单或页面提供清晰的用户操作入口。',
+  constraints: ['仅在配置 href 时使用 target。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [

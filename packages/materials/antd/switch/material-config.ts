@@ -1,8 +1,29 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { switchManifest } from './manifest';
 const material = defineMaterial({
-  manifest: switchManifest,
+  type: 'switch',
+  layout: { display: 'inline' },
+  title: '开关',
+  defaultProps: {},
+  context: {
+    variables: [{ name: 'checked', description: '是否选中' }],
+    writable: [{ name: 'checked', description: '是否选中' }],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '录入开启或关闭两种状态。',
+  keywords: ['开关', '布尔值', '启用'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于启用、停用等布尔字段。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -25,6 +46,7 @@ const material = defineMaterial({
             uiType: 'checkbox',
           },
           {
+            schema: { type: 'string', enum: ['medium', 'small'] },
             label: '尺寸',
             field: 'size',
             uiType: 'select',
@@ -41,6 +63,9 @@ const material = defineMaterial({
               ],
             },
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

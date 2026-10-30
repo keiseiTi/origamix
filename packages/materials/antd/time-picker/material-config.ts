@@ -1,8 +1,35 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { timePickerManifest } from './manifest';
 const material = defineMaterial({
-  manifest: timePickerManifest,
+  type: 'timePicker',
+  layout: { display: 'inline' },
+  title: '时间选择器',
+  defaultProps: { allowClear: true, needConfirm: true },
+  context: {
+    variables: [{ name: 'value', description: '当前值' }],
+    writable: [{ name: 'value', description: '当前值' }],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onOk',
+        description: '确认',
+        params: [{ description: '业务参数（event.payload）' }],
+        linkageShow: [{ field: 'needConfirm', value: true }],
+      },
+    ],
+  },
+  description: '时间选择器属性配置。',
+  keywords: ['时间选择器'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于表单中的时间选择器。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -47,6 +74,7 @@ const material = defineMaterial({
             defaultValue: false,
           },
           {
+            schema: { type: 'integer', minimum: 1, maximum: 23 },
             label: '小时间隔',
             field: 'hourStep',
             uiType: 'number',
@@ -57,6 +85,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'integer', minimum: 1, maximum: 59 },
             label: '分钟间隔',
             field: 'minuteStep',
             uiType: 'number',
@@ -67,6 +96,7 @@ const material = defineMaterial({
             },
           },
           {
+            schema: { type: 'integer', minimum: 1, maximum: 59 },
             label: '秒间隔',
             field: 'secondStep',
             uiType: 'number',
@@ -98,7 +128,6 @@ const material = defineMaterial({
             label: '需要确认',
             field: 'needConfirm',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             label: '尺寸',
@@ -131,7 +160,6 @@ const material = defineMaterial({
             label: '允许清除',
             field: 'allowClear',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '校验状态',
@@ -204,6 +232,9 @@ const material = defineMaterial({
               ],
             },
           },
+          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
+          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

@@ -11,7 +11,14 @@ export const libraryWatchPaths = Object.fromEntries(
       `packages/${name}/tsdown.config.ts`,
       `packages/${name}/tsconfig.json`,
       ...(name === 'shared' ? ['tsconfig.base.json'] : []),
-      ...(name === 'materials' ? ['packages/materials/antd'] : []),
+      ...(name === 'materials'
+        ? [
+            'packages/materials/antd',
+            'packages/materials/components',
+            'packages/materials/utils',
+            'packages/materials/scripts',
+          ]
+        : []),
     ],
   ]),
 );
@@ -33,5 +40,9 @@ export const buildLibraries = async (
   );
   expandLibraryChanges(batch);
   for (const name of libraryNames)
-    if (batch.has(name)) await run(cli, join(root, 'packages', name));
+    if (batch.has(name)) {
+      const cwd = join(root, 'packages', name);
+      if (name === 'materials') await run(join(cwd, 'scripts/generate-manifest.ts'), cwd);
+      await run(cli, cwd);
+    }
 };

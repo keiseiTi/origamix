@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { builtinModules } from 'node:module';
 
 export default defineConfig([
-  globalIgnores(['**/dist/**']),
+  globalIgnores(['**/dist/**', 'packages/materials/antd/generated/**']),
   {
     files: ['**/*.{ts,tsx,cts}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
@@ -130,6 +130,7 @@ export default defineConfig([
   },
   {
     files: ['packages/materials/**/*.{ts,tsx}'],
+    ignores: ['packages/materials/scripts/**'],
     languageOptions: { globals: globals.browser },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
@@ -138,6 +139,19 @@ export default defineConfig([
         {
           paths: [...builtinModules, 'electron', '@origamix/app', '@origamix/server'],
           patterns: ['node:*', '@origamix/app/*', '@origamix/server/*', '@origamix/desktop/*'],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/materials/scripts/**/*.ts'],
+    languageOptions: { globals: globals.node },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['electron', '@origamix/app', '@origamix/server', '@origamix/desktop'],
+          patterns: ['@origamix/app/*', '@origamix/server/*', '@origamix/desktop/*'],
         },
       ],
     },

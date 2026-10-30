@@ -1,8 +1,34 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { uploadManifest } from './manifest';
 const material = defineMaterial({
-  manifest: uploadManifest,
+  type: 'upload',
+  layout: { display: 'block' },
+  title: '上传',
+  defaultProps: { text: '选择文件', showUploadList: true, openFileDialogOnClick: true },
+  context: {
+    variables: [{ name: 'fileList', description: '文件列表' }],
+    writable: [],
+    values: [],
+    methods: [
+      {
+        name: 'onChange',
+        description: '值改变',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'onRemove',
+        description: '移除文件',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '上传属性配置。',
+  keywords: ['上传'],
+  role: 'input',
+  acceptsChildren: false,
+  allowedParentTypes: ['form'],
+  usage: '用于表单中的上传。',
+  constraints: ['必须置于 form 中。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -70,7 +96,6 @@ const material = defineMaterial({
             label: '展示文件列表',
             field: 'showUploadList',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '接受文件类型',
@@ -114,7 +139,6 @@ const material = defineMaterial({
             label: '点击选择文件',
             field: 'openFileDialogOnClick',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             label: '粘贴文件',
@@ -122,6 +146,9 @@ const material = defineMaterial({
             uiType: 'checkbox',
             defaultValue: false,
           },
+          { field: 'headers', hidden: true, schema: { type: 'object' }, uiType: 'input' },
+          { field: 'data', hidden: true, schema: { type: 'object' }, uiType: 'input' },
+          { field: 'withCredentials', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

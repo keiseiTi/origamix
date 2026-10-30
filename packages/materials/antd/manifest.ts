@@ -1,30 +1,32 @@
-import { basicPageManifest } from './basic-page/manifest';
+import {
+  basicPageManifest,
+  buttonManifest,
+  cascaderManifest,
+  checkboxManifest,
+  containerManifest,
+  datePickerManifest,
+  datePickerRangeManifest,
+  drawerManifest,
+  formManifest,
+  inputManifest,
+  modalManifest,
+  numberManifest,
+  radioManifest,
+  selectManifest,
+  sliderManifest,
+  switchManifest,
+  tableManifest,
+  tabsManifest,
+  textManifest,
+  textareaManifest,
+  timePickerManifest,
+  treeManifest,
+  treeSelectManifest,
+  uploadManifest,
+} from './generated/manifests';
 import { MATERIAL_MANIFEST_FORMAT_VERSION, type MaterialManifestCatalog } from '@origamix/shared';
 import { materialSet } from './material-set';
 import { toAgentMaterialSummary, toValidationMaterialManifest } from '../src/material-manifest';
-import { buttonManifest } from './button/manifest';
-import { cascaderManifest } from './cascader/manifest';
-import { checkboxManifest } from './checkbox/manifest';
-import { containerManifest } from './container/manifest';
-import { datePickerManifest } from './date-picker/manifest';
-import { datePickerRangeManifest } from './date-picker-range/manifest';
-import { drawerManifest } from './drawer/manifest';
-import { formManifest } from './form/manifest';
-import { inputManifest } from './input/manifest';
-import { modalManifest } from './modal/manifest';
-import { numberManifest } from './number/manifest';
-import { radioManifest } from './radio/manifest';
-import { selectManifest } from './select/manifest';
-import { sliderManifest } from './slider/manifest';
-import { switchManifest } from './switch/manifest';
-import { tableManifest } from './table/manifest';
-import { tabsManifest } from './tabs/manifest';
-import { textManifest } from './text/manifest';
-import { textareaManifest } from './textarea/manifest';
-import { timePickerManifest } from './time-picker/manifest';
-import { treeManifest } from './tree/manifest';
-import { treeSelectManifest } from './tree-select/manifest';
-import { uploadManifest } from './upload/manifest';
 
 export {
   basicPageManifest,

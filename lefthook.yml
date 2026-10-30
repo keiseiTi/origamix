@@ -25,4 +25,4 @@ pre-commit:
               - 'scripts/**/*.ts'
               - 'apps/**/*.{ts,tsx,cts}'
               - 'packages/**/*.{ts,tsx}'
-            run: pnpm build:libs && pnpm typecheck:prepared && pnpm test:prepared
+            run: pnpm build:libs:check && pnpm typecheck:prepared && pnpm test:prepared

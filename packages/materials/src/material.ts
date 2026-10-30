@@ -1,7 +1,9 @@
 import type React from 'react';
-import type { MaterialManifest, MaterialLayout } from '@origamix/shared';
+import type { MaterialManifest, MaterialLayout, JsonSchema } from '@origamix/shared';
 
 type BasicAttributeConfig = {
+  schema?: JsonSchema;
+  hidden?: boolean;
   label?: React.ReactNode;
   field: string;
   uiType?: string;
@@ -118,6 +120,7 @@ export type PanelConfig = BasicPanelConfig & {
 };
 
 export type Material = BasicMaterial & {
+  manifest: MaterialManifest;
   editorConfig?: BasicEditorConfig & {
     panels?: PanelConfig[];
   };

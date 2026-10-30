@@ -6,6 +6,14 @@ import type {
   ValidationMaterialManifest,
 } from '@origamix/shared';
 
+export const commonMaterialProperties = {
+  ...layoutProperties,
+  alias: { type: 'string', description: '元素别名，用于说明元素用途。' },
+  tabKey: { type: 'string', description: '父级页签内容归属。' },
+} as const;
+
+export const commonInitEvent = { name: 'init', description: '初始化' } as const;
+
 /** Platform properties and lifecycle events shared by all material families. */
 export const withCommonMaterialManifest = (manifest: MaterialManifest): MaterialManifest => ({
   ...manifest,
@@ -13,9 +21,7 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
     ...manifest.propsSchema,
     properties: {
       ...(manifest.propsSchema.properties as Readonly<Record<string, JsonSchema>>),
-      ...layoutProperties,
-      alias: { type: 'string', description: '元素别名，用于说明元素用途。' },
-      tabKey: { type: 'string', description: '父级页签内容归属。' },
+      ...commonMaterialProperties,
     },
     required:
       (manifest.propsSchema.required as readonly string[] | undefined)?.filter(
@@ -26,7 +32,7 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
     ...manifest.context,
     methods: manifest.context.methods.some((method) => method.name === 'init')
       ? manifest.context.methods
-      : [{ name: 'init', description: '初始化' }, ...manifest.context.methods],
+      : [commonInitEvent, ...manifest.context.methods],
   },
 });
 

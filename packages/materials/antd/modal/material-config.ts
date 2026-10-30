@@ -1,8 +1,50 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { modalManifest } from './manifest';
 const material = defineMaterial({
-  manifest: modalManifest,
+  type: 'modal',
+  layout: { display: 'block' },
+  title: '弹窗容器',
+  defaultProps: {
+    open: false,
+    width: 520,
+    showFooter: true,
+    closable: true,
+    mask: true,
+    maskClosable: true,
+    keyboard: true,
+  },
+  context: {
+    variables: [{ name: 'open', description: '是否打开' }],
+    writable: [
+      { name: 'open', description: '是否打开' },
+      { name: 'loading', description: '加载中' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onOk',
+        description: '确认',
+        params: [{ description: '业务参数（event.payload）' }],
+        linkageShow: [{ field: 'showFooter', value: true }],
+      },
+      {
+        name: 'onCancel',
+        description: '取消或关闭',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+      {
+        name: 'afterOpenChange',
+        description: '可见状态改变完成',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '弹窗容器的结构与展示属性。',
+  keywords: ['弹窗容器', 'overlay'],
+  role: 'overlay',
+  acceptsChildren: true,
+  usage: '配置弹窗容器的属性与展示行为。',
+  constraints: ['不将实例或回调写入 Schema。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -13,9 +55,9 @@ const material = defineMaterial({
             field: 'open',
             label: '显示弹窗',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
+            schema: { anyOf: [{ type: 'number', minimum: 1 }, { type: 'string' }] },
             field: 'width',
             label: '宽度',
             uiType: 'number',
@@ -33,19 +75,16 @@ const material = defineMaterial({
             field: 'closable',
             label: '显示关闭按钮',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'mask',
             label: '显示遮罩',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'maskClosable',
             label: '点击遮罩关闭',
             uiType: 'checkbox',
-            defaultValue: true,
             linkageShow: [
               {
                 field: 'mask',
@@ -57,7 +96,6 @@ const material = defineMaterial({
             field: 'keyboard',
             label: 'Esc 关闭',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'loading',
@@ -69,7 +107,6 @@ const material = defineMaterial({
             field: 'showFooter',
             label: '显示底部按钮',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'okType',
@@ -155,6 +192,7 @@ const material = defineMaterial({
             defaultValue: false,
           },
           {
+            schema: { type: 'integer', minimum: 0 },
             field: 'zIndex',
             label: '浮层层级',
             uiType: 'number',

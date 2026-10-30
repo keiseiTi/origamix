@@ -112,6 +112,6 @@ pnpm build
 - Debug with reproducible inputs, request/revision identifiers and redacted errors. Close temporary servers/listeners after checks. Leave better verification evidence, not only a workaround.
 - This harness applies concise layered guidance and verification loops from [OpenAI's AGENTS.md guide](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and [Codex best practices](https://learn.chatgpt.com/guides/best-practices). Package boundaries and checks above are Origamix-specific engineering decisions.
 
-- Root `pnpm check` prepares libraries once and runs all four gates. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.
+- Root `pnpm check` uses `build:libs:check` to prepare Shared/Runtime, verify the committed Materials Manifest before regeneration, then build Materials once and run all four gates. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.
 
 - Custom Node command entrypoints and integration launchers use TypeScript executed by tsx. Declare tsx in each invoking package, including public packages that invoke root packing tools; root scripts are checked by tsconfig.scripts.json. Preserve loader arguments for Node child scripts and keep Electron runtime fixtures distinct from Node launchers.

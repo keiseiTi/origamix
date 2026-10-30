@@ -200,7 +200,7 @@ try {
   );
   const templateSource = join(root, 'packages/template/README.md');
   await writeFile(templateSource, templateBefore + '\nDevelopment template refreshed.\n');
-  const materialSource = join(root, 'packages/materials/antd/button/manifest.ts');
+  const materialSource = join(root, 'packages/materials/antd/button/material-config.ts');
   await writeFile(
     materialSource,
     (await readFile(materialSource, 'utf8')).replace(
@@ -219,6 +219,11 @@ try {
   assert.notEqual(second.serviceInstanceId, first.serviceInstanceId);
   assert.ok(output.includes('Development Main refreshed'));
   assert.match(await readFile(join(desktop, 'dist/main/server.cjs'), 'utf8'), /Development button/);
+  assert.match(
+    await readFile(join(root, 'packages/materials/antd/generated/manifests.ts'), 'utf8'),
+    /Development button/,
+  );
+  assert.equal(output.match(/已启动 Materials manifest:watch/g)?.length, 1);
   assert.match(
     await readFile(join(desktop, 'dist/template/README.md'), 'utf8'),
     /Development template refreshed/,

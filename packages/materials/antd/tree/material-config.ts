@@ -1,9 +1,67 @@
 import { TreeDataEditor, KeysEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-import { treeManifest } from './manifest';
 const material = defineMaterial({
-  manifest: treeManifest,
+  type: 'tree',
+  layout: { display: 'block' },
+  title: '树',
+  defaultProps: {
+    treeData: [
+      {
+        title: '节点1',
+        key: '0-0',
+        children: [
+          { title: '子节点1', key: '0-0-0' },
+          { title: '子节点2', key: '0-0-1' },
+        ],
+      },
+      { title: '节点2', key: '0-1' },
+    ],
+    selectable: true,
+    virtual: true,
+    defaultExpandParent: true,
+    defaultExpandAll: false,
+    checkable: false,
+  },
+  context: {
+    variables: [
+      { name: 'selectedKeys', description: '选中节点' },
+      { name: 'checkedKeys', description: '勾选节点' },
+      { name: 'expandedKeys', description: '展开节点' },
+    ],
+    writable: [
+      { name: 'treeData', description: '节点数据' },
+      { name: 'selectedKeys', description: '选中节点' },
+      { name: 'checkedKeys', description: '勾选节点' },
+      { name: 'expandedKeys', description: '展开节点' },
+    ],
+    values: [],
+    methods: [
+      {
+        name: 'onSelect',
+        description: '选中节点',
+        params: [{ description: '业务参数（event.payload）' }],
+        linkageShow: [{ field: 'selectable', value: true }],
+      },
+      {
+        name: 'onCheck',
+        description: '勾选节点',
+        params: [{ description: '业务参数（event.payload）' }],
+        linkageShow: [{ field: 'checkable', value: true }],
+      },
+      {
+        name: 'onExpand',
+        description: '展开或收起',
+        params: [{ description: '业务参数（event.payload）' }],
+      },
+    ],
+  },
+  description: '树的结构与展示属性。',
+  keywords: ['树', 'display'],
+  role: 'display',
+  acceptsChildren: false,
+  usage: '配置树的属性与展示行为。',
+  constraints: ['树节点 key 应唯一。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
     panels: [
@@ -11,6 +69,27 @@ const material = defineMaterial({
         title: '属性',
         configs: [
           {
+            schema: {
+              type: 'array',
+              items: { $ref: '#/$defs/node' },
+              $defs: {
+                node: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    title: { type: 'string' },
+                    key: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                    disabled: { type: 'boolean' },
+                    disableCheckbox: { type: 'boolean' },
+                    checkable: { type: 'boolean' },
+                    selectable: { type: 'boolean' },
+                    isLeaf: { type: 'boolean' },
+                    children: { type: 'array', items: { $ref: '#/$defs/node' } },
+                  },
+                  required: ['title', 'key'],
+                },
+              },
+            },
             field: 'treeData',
             label: '树节点',
             uiType: 'custom',
@@ -20,7 +99,6 @@ const material = defineMaterial({
             field: 'checkable',
             label: '显示复选框',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             field: 'checkStrictly',
@@ -44,7 +122,6 @@ const material = defineMaterial({
             field: 'selectable',
             label: '允许选中',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'disabled',
@@ -56,13 +133,11 @@ const material = defineMaterial({
             field: 'defaultExpandAll',
             label: '默认展开全部',
             uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             field: 'defaultExpandParent',
             label: '默认展开父节点',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'autoExpandParent',
@@ -71,6 +146,7 @@ const material = defineMaterial({
             defaultValue: false,
           },
           {
+            schema: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
             field: 'defaultExpandedKeys',
             label: '默认展开节点键',
             linkageShow: [
@@ -83,6 +159,7 @@ const material = defineMaterial({
             render: KeysEditor,
           },
           {
+            schema: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
             field: 'defaultSelectedKeys',
             label: '默认选中节点键',
             linkageShow: [
@@ -95,6 +172,7 @@ const material = defineMaterial({
             render: KeysEditor,
           },
           {
+            schema: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
             field: 'defaultCheckedKeys',
             label: '默认勾选节点键',
             linkageShow: [
@@ -122,7 +200,6 @@ const material = defineMaterial({
             field: 'virtual',
             label: '虚拟滚动',
             uiType: 'checkbox',
-            defaultValue: true,
           },
           {
             field: 'height',
