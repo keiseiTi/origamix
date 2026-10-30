@@ -175,6 +175,42 @@ try {
   );
   assert.equal(await evaluate('window.api.development === undefined'), true);
   const first = await connection();
+  await evaluate(`(async () => { window.__developmentMarker = 'retained'; window.__backendStatuses = [];
+    window.api.backend.onStatusChanged(status => window.__backendStatuses.push(status));
+    window.__oldConnection = await window.api.backend.getConnection();
+    await import('/src/services/request.ts').then(m => m.getApiConnection()); return true; })()`);
+  const backendSource = join(root, 'packages/server/src/errors.ts');
+  const backendOriginal = await readFile(backendSource, 'utf8');
+  const backendUpdateStart = output.length;
+  await writeFile(backendSource, backendOriginal + '\n// backend-only update\n');
+  await waitFor(() => output.slice(backendUpdateStart).includes('后端已独立重启'));
+  const backendUpdated = await connection();
+  assert.notEqual(backendUpdated.serviceInstanceId, first.serviceInstanceId);
+  assert.equal(await evaluate(`window.__developmentMarker`), 'retained');
+  assert.deepEqual(await evaluate(`window.__backendStatuses.slice(-2)`), ['restarting', 'ready']);
+  await waitFor(() =>
+    evaluate(`import('/src/services/request.ts').then(async m =>
+    (await m.getApiConnection()).serviceInstanceId === (await window.api.backend.getConnection()).serviceInstanceId)`),
+  );
+  assert.equal(
+    await evaluate(`(async () => {
+    const c = window.__oldConnection;
+    const response = await fetch(c.baseUrl + '/projects/list', { method: 'POST', body: '{}',
+      headers: { Authorization: 'Bearer ' + c.token, 'X-Origamix-Service': c.serviceInstanceId, 'Content-Type': 'application/json' } });
+    return response.status === 401;
+  })()`),
+    true,
+  );
+  const beforeBackendFailure = output.length;
+  await writeFile(backendSource, backendOriginal + '\nconst = invalid;\n');
+  await waitFor(() => output.slice(beforeBackendFailure).includes('更新暂停'));
+  assert.equal((await connection()).serviceInstanceId, backendUpdated.serviceInstanceId);
+  assert.equal(await evaluate(`window.__developmentMarker`), 'retained');
+  const beforeBackendRepair = output.length;
+  await writeFile(backendSource, backendOriginal);
+  await waitFor(() => output.slice(beforeBackendRepair).includes('后端已独立重启'));
+  assert.notEqual((await connection()).serviceInstanceId, backendUpdated.serviceInstanceId);
+  assert.equal(await evaluate(`window.__developmentMarker`), 'retained');
   const templateBefore = await readFile(join(desktop, 'dist/template/README.md'), 'utf8');
   for (const name of ['shared', 'runtime', 'server']) {
     const source = join(
@@ -250,7 +286,7 @@ try {
   await waitFor(connect);
   assert.notEqual((await waitFor(() => connection())).serviceInstanceId, third.serviceInstanceId);
   console.info(
-    'Desktop development passed: ordered dependency builds, automatic restart loads Main/backend/template updates and a fresh connection.',
+    'Desktop development passed: ordered dependency builds, backend-only updates retain the document and reject old authority; full restarts load Main/dependency/template updates.',
   );
 } finally {
   socket?.close();

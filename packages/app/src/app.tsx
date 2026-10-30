@@ -1,5 +1,6 @@
+import { watchBackendConnection } from '@/services/request';
 import { TooltipProvider } from '@origamix/ui';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SidebarNavigation,
   type SidebarNavigationHandle,
@@ -19,6 +20,7 @@ const App = (): React.JSX.Element => {
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
 
   useAppPreferences();
+  useEffect(() => watchBackendConnection(), []);
 
   const pages = useWorkspacePageController({
     onPageSelected: () => sidebarRef.current?.closePeek(),

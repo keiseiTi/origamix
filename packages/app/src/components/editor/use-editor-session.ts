@@ -1,3 +1,4 @@
+import { subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorTransaction } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
@@ -60,24 +61,34 @@ export const useEditorSession = (
     const ownedSession = sessionRef.current;
     sessionRef.current.active = true;
     sessionRef.current.ready = false;
-    schemaService
-      .workingState(projectId, pageId)
-      .then((result) => {
-        if (!active) return;
-        sessionRef.current.draft = result.schema;
-        sessionRef.current.savedHash = JSON.stringify(result.schema);
-        sessionRef.current.workingVersion = result.workingVersion;
-        setLoaded({ sessionRef, initial: result, error: null });
-      })
-      .catch((reason: unknown) => {
-        if (active)
-          setLoaded({
-            sessionRef,
-            initial: null,
-            error: reason instanceof Error ? reason.message : '无法读取 Schema',
-          });
-      });
+    let sequence = 0;
+    const load = () => {
+      const request = ++sequence;
+      return schemaService
+        .workingState(projectId, pageId)
+        .then((result) => {
+          if (!active || sequence !== request) return;
+          sessionRef.current.draft = result.schema;
+          sessionRef.current.savedHash = JSON.stringify(result.schema);
+          sessionRef.current.workingVersion = result.workingVersion;
+          setLoaded({ sessionRef, initial: result, error: null });
+        })
+        .catch((reason: unknown) => {
+          if (active && sequence === request)
+            setLoaded({
+              sessionRef,
+              initial: null,
+              error: reason instanceof Error ? reason.message : '无法读取 Schema',
+            });
+        });
+    };
+    void load();
+    const unsubscribe = subscribeBackendReady(() => {
+      // A retained local draft must never be replaced by recovery reads.
+      if (!ownedSession.draft) void load();
+    });
     return () => {
+      unsubscribe();
       active = false;
       ownedSession.active = false;
       ownedSession.ready = false;

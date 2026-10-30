@@ -1,3 +1,5 @@
+export type BackendStatus = 'restarting' | 'ready' | 'unavailable';
+
 export interface BackendConnection {
   baseUrl: string;
   token: string;
@@ -22,7 +24,10 @@ export interface ModelSettings {
 
 export interface DesktopApi {
   platform: 'darwin' | 'other';
-  backend: { getConnection(): Promise<BackendConnection> };
+  backend: {
+    getConnection(): Promise<BackendConnection>;
+    onStatusChanged(listener: (status: BackendStatus) => void): () => void;
+  };
   dialog: {
     chooseProjectParent(): Promise<DirectoryGrant | null>;
     chooseExistingProject(): Promise<DirectoryGrant | null>;

@@ -7,6 +7,14 @@ const api: DesktopApi = {
   backend: {
     getConnection: (): Promise<{ baseUrl: string; token: string; serviceInstanceId: string }> =>
       ipcRenderer.invoke('backend:get-connection'),
+    onStatusChanged: (listener) => {
+      const receive = (_event: Electron.IpcRendererEvent, status: unknown) => {
+        if (status === 'restarting' || status === 'ready' || status === 'unavailable')
+          listener(status);
+      };
+      ipcRenderer.on('backend:status-changed', receive);
+      return () => ipcRenderer.removeListener('backend:status-changed', receive);
+    },
   },
   dialog: {
     chooseProjectParent: (): Promise<{ directoryGrantId: string; displayPath: string } | null> =>

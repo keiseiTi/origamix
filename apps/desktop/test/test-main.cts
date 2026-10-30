@@ -101,6 +101,8 @@ app
     assert.equal(result.path, join(projects, 'smoke-project'));
     assert.ok(existsSync(join(result.path, 'origamix.project.json')));
     assert.ok(!existsSync(join(result.path, 'node_modules')));
+    await main.webContents.executeJavaScript(`window.__backendStatuses = [];
+      window.api.backend.onStatusChanged(status => window.__backendStatuses.push(status));`);
     const interruptedBackend = currentBackend;
     interruptedBackend!.kill();
     await waitFor(() => currentBackend !== interruptedBackend && currentBackend);
@@ -108,6 +110,11 @@ app
       'window.api.backend.getConnection()',
     );
     assert.notEqual(recoveredConnection.serviceInstanceId, result.serviceInstanceId);
+    await waitFor(async () =>
+      main.webContents.executeJavaScript(
+        `window.__backendStatuses.includes('ready') && window.__backendStatuses.includes('restarting')`,
+      ),
+    );
     const recoveredProjects = await main.webContents.executeJavaScript(`(async () => {
       const connection = await window.api.backend.getConnection();
       const response = await fetch(connection.baseUrl + '/projects/list', { method: 'POST', body: JSON.stringify({}), headers: {

@@ -9,7 +9,7 @@ import {
   subscribeAgentEvents,
 } from '@/services/agent';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
-import { ApiRequestError } from '@/services/request';
+import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
 import { schemaService } from '@/services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 import { uniqueId } from '@/utils';
@@ -94,6 +94,17 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       generation.current += 1;
     };
   }, [loadAuthority]);
+
+  useEffect(
+    () =>
+      subscribeBackendStatus((status) => {
+        setVerifiedPageKey(null);
+        authorityRequest.current += 1;
+        if (status === 'ready') void loadAuthority();
+        else dispatch({ type: 'connection.changed', connection: 'recovering' });
+      }),
+    [loadAuthority],
+  );
 
   useEffect(
     () =>

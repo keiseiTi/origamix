@@ -318,6 +318,7 @@ export type {
 
 export type {
   BackendConnection,
+  BackendStatus,
   DirectoryGrant,
   UserProfile,
   ModelSettings,

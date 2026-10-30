@@ -1,3 +1,4 @@
+import { createDesktopControl } from './desktop-control.ts';
 import { rm as cleanOutput } from 'node:fs/promises';
 import { fork, spawn } from 'node:child_process';
 import { watch } from 'node:fs';
@@ -38,6 +39,7 @@ import { libraryWatchPaths, buildLibraries } from '@origamix/server/development-
 const dirty = new Set(['shared', 'runtime', 'materials', 'server', 'desktop', 'template']);
 const watchers: import('node:fs').FSWatcher[] = [];
 let electron: import('node:child_process').ChildProcess | undefined;
+let desktopControl: ReturnType<typeof createDesktopControl> | undefined;
 let vite: import('node:child_process').ChildProcess | undefined;
 let builder: import('node:child_process').ChildProcess | undefined;
 let manifestWatcher: import('node:child_process').ChildProcess | undefined;
@@ -139,19 +141,26 @@ const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
         `--remote-debugging-port=${config.desktopPort(env, 'ORIGAMIX_DEBUG_PORT')}`,
       ]
     : [];
-  const launchEnv: NodeJS.ProcessEnv = { ...env, ELECTRON_RENDERER_URL: rendererUrl };
+  const launchEnv: NodeJS.ProcessEnv = {
+    ...env,
+    ELECTRON_RENDERER_URL: rendererUrl,
+    ORIGAMIX_DEVELOPMENT_CONTROL: '1',
+  };
   delete launchEnv.ELECTRON_RUN_AS_NODE;
   const child = spawn(electronPath as unknown as string, [...debug, desktopRoot], {
     cwd: workspaceRoot,
-    stdio: 'inherit',
+    stdio: ['pipe', 'pipe', 'inherit'],
     env: launchEnv,
   });
+  child.stdout?.on('data', (data) => process.stdout.write(data));
   electron = child;
+  desktopControl = createDesktopControl(child);
   child.once('exit', () => {
     if (electron === child) {
       electron = undefined;
     }
   });
+  await desktopControl.ready;
 };
 const update = async () => {
   if (running || stopping || !dirty.size) return;
@@ -172,6 +181,22 @@ const update = async () => {
     if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
     if (batch.has('desktop')) await build({ ...options, clean: false });
     if (stopping) return;
+    const backendOnly =
+      !initial && batch.size === 1 && batch.has('server') && Boolean(electron && desktopControl);
+    if (backendOnly) {
+      if (paused || dirty.size) {
+        dirty.add('server');
+        if (paused) console.info('[开发环境] 自动重启已暂停，输入 p 并回车恢复。');
+        else completed = true;
+        return;
+      }
+      await desktopControl!.request('pause-backend');
+      await copyServerArtifact();
+      await desktopControl!.request('resume-backend');
+      console.info('[开发环境] 后端已独立重启，桌面窗口保持不变');
+      completed = true;
+      return;
+    }
     stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
     await run(`${desktopRoot}scripts/assemble-resources.ts`, workspaceRoot, [stagedTemplate]);
     if (stopping) return;
@@ -244,6 +269,11 @@ for (const [name, paths] of Object.entries({
           )
             return;
           dirty.add(name);
+          if (
+            name === 'server' &&
+            filename?.toString().replaceAll('\\', '/').startsWith('templates/')
+          )
+            dirty.add('template');
           schedule();
         }),
       );

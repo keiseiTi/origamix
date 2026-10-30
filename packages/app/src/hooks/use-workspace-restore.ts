@@ -1,3 +1,4 @@
+import { subscribeBackendReady } from '@/services/request';
 import { useEffect } from 'react';
 import { projectsService } from '@/services/projects';
 import { useWorkspaceStore } from '@/store/workspace';
@@ -7,7 +8,9 @@ export const useWorkspaceRestore = (): boolean => {
 
   useEffect(() => {
     let active = true;
+    let sequence = 0;
     const restore = async (): Promise<void> => {
+      const request = ++sequence;
       try {
         const projectRecords = await projectsService.list();
         const projects = projectRecords.map((project) => ({
@@ -20,16 +23,18 @@ export const useWorkspaceRestore = (): boolean => {
             fileName: page.slug,
           })),
         }));
-        if (active) useWorkspaceStore.getState().restoreWorkspace(projects);
+        if (active && request === sequence) useWorkspaceStore.getState().restoreWorkspace(projects);
       } catch (error) {
-        if (active)
+        if (active && request === sequence)
           useWorkspaceStore
             .getState()
             .failWorkspaceRestore(error instanceof Error ? error.message : '无法恢复工作区');
       }
     };
     void restore();
+    const unsubscribe = subscribeBackendReady(() => void restore());
     return () => {
+      unsubscribe();
       active = false;
     };
   }, []);

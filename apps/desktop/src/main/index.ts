@@ -1,3 +1,4 @@
+import { registerDevelopmentControl } from './development-control';
 import {
   app,
   shell,
@@ -16,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from './workbench-security';
 import { writeFile, readFile } from 'fs/promises';
 import { nanoid } from 'nanoid';
-import type { BackendConnection, ModelSettings } from '@origamix/shared';
+import type { BackendConnection, BackendStatus, ModelSettings } from '@origamix/shared';
 
 let desktopConfig: ReturnType<typeof resolveDesktopConfig>;
 const workbenchEntryUrl = (): string =>
@@ -89,6 +90,18 @@ let backendConnection: BackendConnection | undefined;
 let backendStartPromise: Promise<BackendConnection> | undefined;
 let backendStopped = false;
 let quitting = false;
+let backendPaused = false;
+let resumeWaiter:
+  { promise: Promise<void>; resolve: () => void; reject: (error: unknown) => void } | undefined;
+const notifyBackendStatus = (status: BackendStatus): void => {
+  const contents = workbenchWindow?.webContents;
+  if (
+    contents &&
+    !contents.isDestroyed() &&
+    isTrustedWorkbenchUrl(contents.getURL(), workbenchEntryUrl())
+  )
+    contents.send('backend:status-changed', status);
+};
 
 const spawnBackend = async (): Promise<BackendConnection> => {
   const serviceInstanceId = nanoid();
@@ -98,11 +111,13 @@ const spawnBackend = async (): Promise<BackendConnection> => {
   backendProcess = backend;
   return new Promise<BackendConnection>((resolve, reject) => {
     let settled = false;
+    let ready = false;
     const fail = (error: Error): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       reject(error);
+      if (backendProcess === backend) backend.kill();
     };
     const timeout = setTimeout(() => fail(new Error('本地服务启动超时')), 10_000);
     backend.on(
@@ -141,15 +156,18 @@ const spawnBackend = async (): Promise<BackendConnection> => {
           fail(new Error(message.message ?? '本地服务启动失败'));
           return;
         }
-        if (message.kind !== 'ready' || !message.port) return;
+        if (message.kind !== 'ready' || !message.port || backendProcess !== backend || quitting)
+          return;
         if (settled) return;
         settled = true;
+        ready = true;
         clearTimeout(timeout);
         backendConnection = {
           baseUrl: `http://127.0.0.1:${message.port}/api/v1`,
           token,
           serviceInstanceId,
         };
+        notifyBackendStatus('ready');
         console.info('[Origamix Server] 已就绪');
         resolve(backendConnection);
       },
@@ -158,8 +176,10 @@ const spawnBackend = async (): Promise<BackendConnection> => {
       if (backendProcess === backend) backendProcess = undefined;
       if (backendConnection?.serviceInstanceId === serviceInstanceId) backendConnection = undefined;
       fail(new Error(`本地服务异常退出（退出码 ${code}）`));
-      if (settled && !quitting && !backendStopped) {
+      if (ready && !quitting && !backendStopped && !backendPaused) {
+        notifyBackendStatus('restarting');
         void ensureBackend().catch((error: unknown) => {
+          notifyBackendStatus('unavailable');
           console.error(
             '[Origamix Server] 自动恢复失败：',
             error instanceof Error ? error.message : error,
@@ -193,11 +213,68 @@ const spawnBackend = async (): Promise<BackendConnection> => {
  * receiving credentials for the dead process.
  */
 const ensureBackend = (): Promise<BackendConnection> => {
+  if (quitting) return Promise.reject(new Error('应用正在退出'));
+  if (backendPaused)
+    return resumeWaiter
+      ? resumeWaiter.promise.then(() => ensureBackend())
+      : Promise.reject(new Error('后端更新未完成，请修复后重试'));
   if (backendConnection) return Promise.resolve(backendConnection);
   backendStartPromise ??= spawnBackend().finally(() => {
     backendStartPromise = undefined;
   });
   return backendStartPromise;
+};
+
+const pauseBackend = async (): Promise<void> => {
+  await backendStartPromise?.catch(() => undefined);
+  if (quitting) throw new Error('应用正在退出');
+  backendPaused = true;
+  resumeWaiter ??= (() => {
+    let resolve!: () => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<void>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    });
+    void promise.catch(() => undefined);
+    return { promise, resolve, reject };
+  })();
+  backendConnection = undefined;
+  notifyBackendStatus('restarting');
+  const backend = backendProcess;
+  if (!backend) return;
+  await new Promise<void>((resolve, reject) => {
+    const exited = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      backend.off('exit', exited);
+      reject(new Error('后端退出超时，未替换运行资源，请稍后重试'));
+    }, 15000);
+    backend.once('exit', exited);
+    backend.postMessage({ kind: 'shutdown' });
+  }).catch((error: unknown) => {
+    resumeWaiter?.reject(error);
+    resumeWaiter = undefined;
+    notifyBackendStatus('unavailable');
+    throw error;
+  });
+};
+const resumeBackend = async (): Promise<void> => {
+  if (quitting) throw new Error('应用正在退出');
+  backendPaused = false;
+  try {
+    await ensureBackend();
+    resumeWaiter?.resolve();
+    resumeWaiter = undefined;
+  } catch (error) {
+    backendPaused = true;
+    resumeWaiter?.reject(error);
+    resumeWaiter = undefined;
+    notifyBackendStatus('unavailable');
+    throw error;
+  }
 };
 
 const grantDirectory = (path: string): { directoryGrantId: string; displayPath: string } => {
@@ -379,6 +456,14 @@ app
     handleWorkbench('settings:profile:save', (_event, input) => saveUserProfile(input));
 
     workbenchWindow = createWindow();
+    if (!app.isPackaged && process.env.ORIGAMIX_DEVELOPMENT_CONTROL === '1') {
+      const dispose = registerDevelopmentControl({
+        pauseBackend,
+        resumeBackend,
+        disconnect: () => app.quit(),
+      });
+      app.once('will-quit', dispose);
+    }
 
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

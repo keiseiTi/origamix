@@ -7,7 +7,12 @@ import type {
   ListConversationsResponse,
   ListMessagesResponse,
 } from '@origamix/shared';
-import { getApiConnection, refreshBackendConnection, request } from './request';
+import {
+  getApiConnection,
+  refreshBackendConnection,
+  request,
+  subscribeBackendStatus,
+} from './request';
 
 const isAgentEvent = (value: unknown): value is AgentEvent => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -139,16 +144,20 @@ export const subscribeAgentEvents = (
   runId: string,
   options: AgentEventSubscriptionOptions,
 ): (() => void) => {
-  const controller = new AbortController();
+  let controller = new AbortController();
+  let generation = 0;
   let lastEventId = options.afterEventId ?? -1;
   let stopped = false;
 
-  const connect = async (refresh = false): Promise<void> => {
+  const connect = async (refresh = false, epoch = generation): Promise<void> => {
+    const ownedController = controller;
+    const active = () => !stopped && generation === epoch && !ownedController.signal.aborted;
     const current = refresh ? await refreshBackendConnection() : await getApiConnection();
+    if (!active()) return;
     const response = await fetch(
       `${current.baseUrl}/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
       {
-        signal: controller.signal,
+        signal: ownedController.signal,
         headers: {
           ...(current.token ? { Authorization: `Bearer ${current.token}` } : {}),
           ...(current.serviceInstanceId ? { 'x-origamix-service': current.serviceInstanceId } : {}),
@@ -157,15 +166,16 @@ export const subscribeAgentEvents = (
         },
       },
     );
-    if (response.status === 401 && !refresh) return connect(true);
+    if (!active()) return;
+    if (response.status === 401 && !refresh) return connect(true, epoch);
     if (!response.ok || !response.body) throw new Error(`事件流连接失败（${response.status}）`);
     options.onOpen?.();
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    while (!stopped) {
+    while (active()) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done || !active()) break;
       buffer += decoder.decode(value, { stream: true });
       const frames = buffer.split(/\r?\n\r?\n/);
       buffer = frames.pop() ?? '';
@@ -182,21 +192,39 @@ export const subscribeAgentEvents = (
         } catch {
           continue;
         }
-        if (!isAgentEvent(value)) continue;
+        if (!active() || !isAgentEvent(value)) continue;
         const event = value;
         if (event.runId !== runId || event.eventId <= lastEventId) continue;
         lastEventId = event.eventId;
         options.onEvent(event);
       }
     }
-    if (!stopped) options.onClose?.();
+    if (active()) options.onClose?.();
   };
-  void connect().catch((error: unknown) => {
-    if (!stopped && !controller.signal.aborted)
-      options.onError?.(error instanceof Error ? error : new Error('事件流连接失败'));
+  const start = () => {
+    controller.abort();
+    controller = new AbortController();
+    const epoch = ++generation;
+    void connect(false, epoch).catch((error: unknown) => {
+      if (!stopped && epoch === generation && !controller.signal.aborted)
+        options.onError?.(error instanceof Error ? error : new Error('事件流连接失败'));
+    });
+  };
+  const unsubscribe = subscribeBackendStatus((status) => {
+    if (status === 'ready') {
+      // Replay buffers are process-local; the new service owns a new event sequence.
+      lastEventId = -1;
+      start();
+    } else {
+      generation += 1;
+      controller.abort();
+    }
   });
+  start();
   return () => {
     stopped = true;
+    generation += 1;
+    unsubscribe();
     controller.abort();
   };
 };

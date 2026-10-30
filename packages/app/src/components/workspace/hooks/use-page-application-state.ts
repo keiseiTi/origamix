@@ -2,7 +2,7 @@ import { useProjectUpgrades } from '@/store/project-upgrades';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { schemaService } from '@/services/schema';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
-import { ApiRequestError } from '@/services/request';
+import { ApiRequestError, subscribeBackendReady } from '@/services/request';
 import type { EditorHandle } from '@origamix/editor';
 
 export type PageApplyStatus =
@@ -85,6 +85,11 @@ export const usePageApplicationState = ({
       window.clearTimeout(initial);
     };
   }, [active, refreshApplyState, schemaRefreshKey, projectUpgradeVersion]);
+
+  useEffect(() => {
+    if (!active) return;
+    return subscribeBackendReady(() => void refreshApplyState());
+  }, [active, refreshApplyState]);
 
   const applyPage = async (): Promise<void> => {
     if (!pageId || !projectId) return;
