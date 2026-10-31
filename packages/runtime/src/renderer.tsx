@@ -10,6 +10,7 @@ export const MaterialView = ({
   props,
   children,
   frameProps,
+  framePlacement,
   root,
 }: {
   id: string;
@@ -19,6 +20,7 @@ export const MaterialView = ({
   children?: ReactNode;
   frameProps?: HTMLAttributes<HTMLDivElement> & RefAttributes<HTMLDivElement>;
   root?: boolean;
+  framePlacement?: 'content';
 }): React.JSX.Element | null => {
   const Material = components[type] as
     (ComponentType<Record<string, unknown>> & { origamixLayout?: MaterialLayout }) | undefined;
@@ -69,7 +71,7 @@ export const MaterialView = ({
       ? layoutAlignSelf
       : undefined) as CSSProperties['alignSelf'],
   };
-  return (
+  const renderFrame = (content: ReactNode) => (
     <>
       {root && (
         <style>{`
@@ -101,11 +103,21 @@ export const MaterialView = ({
         data-material-display={block ? 'block' : 'inline'}
         style={{ ...style, ...frameProps?.style }}
       >
-        <Material {...materialProps} data-element-id={id}>
-          {children}
-        </Material>
+        {content}
       </div>
     </>
+  );
+  if (framePlacement === 'content' && props.om_mode === 'design') {
+    return (
+      <Material {...materialProps} om_renderDesignFrame={renderFrame}>
+        {children}
+      </Material>
+    );
+  }
+  return renderFrame(
+    <Material {...materialProps} data-element-id={id}>
+      {children}
+    </Material>,
   );
 };
 export const renderLayout = (

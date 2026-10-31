@@ -70,3 +70,5 @@ pnpm --filter @origamix/materials build
 - Keep Materials as one package. Separate runtime, editor and pure-data Manifest entry points; never import editor controls or UI from runtime/Manifest. UI remains private and is used only by the internal editor host. Do not introduce a separate materials-internal package. Runtime-only consumers must install without UI or editor engines.
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
+
+- Modal/Drawer declare editorConfig.presentation as overlay. Design visibility and close callbacks belong to Editor, independently of persisted open props; runtime native close behavior remains in the material. They accept children directly and add no default container or flow.

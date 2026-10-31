@@ -40,3 +40,5 @@ UI verification must exercise actual visual/flow switching, event selection, his
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
 
 - Layout ownership and rollout are documented in [material layout](docs/material-layout.md). Material.acceptsChildren comes from Manifest; default occupancy comes from Material.layout. Never reintroduce isContainer/isBlock or design-only layout wrappers. Selection refs/events attach to the shared Runtime layout node; candidate decorations use portals. Parent layout determines insertion axis.
+
+- Overlay materials declare editorConfig.presentation as overlay. Session openOverlayIds is transient: selecting an overlay or descendant reveals its ancestor path; closing never changes Schema, history or business events. Canvas portals reuse the Runtime content frame for selection and dropping.

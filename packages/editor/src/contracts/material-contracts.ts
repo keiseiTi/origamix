@@ -18,6 +18,7 @@ export interface PanelConfig {
 }
 export interface EditorConfig {
   panels?: PanelConfig[];
+  presentation?: 'overlay';
 }
 /** Minimal structural contract; concrete control configuration belongs to Materials. */
 export interface Material {

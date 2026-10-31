@@ -14,6 +14,7 @@ export interface DesignElementProps {
   renderMaterial: (
     extraProps?: Record<string, unknown>,
     frameProps?: HTMLAttributes<HTMLDivElement> & RefAttributes<HTMLDivElement>,
+    options?: { framePlacement?: 'content' },
   ) => React.JSX.Element;
 }
 export interface DesignRendererProps {
@@ -78,10 +79,11 @@ const DesignElement = ({
     type,
     props: designProps,
     children,
-    renderMaterial: (extraProps = {}, frameProps) => (
+    renderMaterial: (extraProps = {}, frameProps, options) => (
       <MaterialView
         root={root}
         frameProps={frameProps}
+        framePlacement={options?.framePlacement}
         id={id}
         type={type}
         components={materials}

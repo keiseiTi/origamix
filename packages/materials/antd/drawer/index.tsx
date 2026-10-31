@@ -1,6 +1,6 @@
 import { useRuntimeValue } from '../runtime-state';
 import React from 'react';
-import { Drawer as AntdDrawer, theme, type DrawerProps } from 'antd';
+import { Drawer as AntdDrawer, type DrawerProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 
 export type IProps = Omit<DrawerProps, 'width' | 'height'> &
@@ -12,6 +12,10 @@ export const Drawer = ({
   maskClosable,
   onClose,
   om_mode,
+  om_designOpen,
+  om_onDesignClose,
+  om_renderDesignFrame,
+  om_designLayer,
   om_dropPlaceholder,
   om_setContextActions,
   om_setRuntimeState,
@@ -20,52 +24,45 @@ export const Drawer = ({
   ...rest
 }: IProps) => {
   const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
-  const { token } = theme.useToken();
+  const designing = om_mode === 'design';
   const content = children ?? om_dropPlaceholder;
   const drawer = (
     <AntdDrawer
       {...rest}
-      open={currentOpen}
+      open={designing ? Boolean(om_designOpen) : currentOpen}
       mask={
         mask === false
           ? false
           : { ...(typeof mask === 'object' ? mask : {}), closable: maskClosable ?? true }
       }
       onClose={(event) => {
+        if (designing) {
+          event.stopPropagation();
+          om_onDesignClose?.();
+          return;
+        }
         setOpen(false);
         onClose?.(event);
       }}
       size={customSize ?? rest.size}
-      {...(om_mode === 'design'
+      {...(designing
         ? {
             getContainer: false,
-            rootStyle: { position: 'absolute' },
+            rootStyle: { position: 'absolute', pointerEvents: 'none' },
+            drawerRender: (node) => om_renderDesignFrame?.(node) ?? node,
+            styles: { wrapper: { pointerEvents: 'auto' }, body: { minHeight: 100 } },
+            closable: true,
             mask: false,
-            keyboard: false,
+            keyboard: true,
             autoFocus: false,
             focusable: { trap: false, focusTriggerAfterClose: false },
-            zIndex: 1,
+            zIndex: 1000 + (om_designLayer ?? 0),
           }
         : {})}
     >
       {content}
     </AntdDrawer>
   );
-  if (om_mode !== 'design') return drawer;
-  return (
-    <div
-      className={`relative w-full ${currentOpen ? 'min-h-80' : 'min-h-16'}`}
-      style={{ backgroundColor: token.colorBgContainer, color: token.colorText }}
-      data-element-id={rest['data-element-id']}
-    >
-      {currentOpen ? (
-        drawer
-      ) : (
-        <div className='rounded border border-dashed border-current p-4 text-sm'>
-          {rest.title ?? '抽屉'}（关闭）{content}
-        </div>
-      )}
-    </div>
-  );
+  return designing && !om_designOpen ? null : drawer;
 };
 export default Drawer;

@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import { isPageSchema, type OrigamixPageSchema } from '@origamix/shared';
+import { SchemaUtils } from '../schema/schema-utils';
 import type { Material } from '../contracts/material-contracts';
 
 export type ActiveElement = {
@@ -22,6 +23,8 @@ export interface EditorCore {
   activeElement: ActiveElement | null;
   dragElement: DragElement | null;
   insertPosition: InsertPosition | null;
+  openOverlayIds: string[];
+  closeOverlay: (id: string) => void;
   canUndo: boolean;
   canRedo: boolean;
   setSchema: (schema: OrigamixPageSchema, options?: { historyGroup?: string }) => void;
@@ -42,12 +45,19 @@ export const createEditorSession = (
   let lastGroup: string | undefined,
     lastEdit = 0;
   return createStore<EditorCore>((set, get) => {
+    const overlayPath = (next: OrigamixPageSchema, id: string): string[] =>
+      [...SchemaUtils.getParents(next, id).reverse(), id].filter(
+        (elementId) =>
+          materials.find((material) => material.type === next.elements[elementId]?.type)
+            ?.editorConfig?.presentation === 'overlay',
+      );
     const project = (next: OrigamixPageSchema) => {
       const active = get().activeElement;
       const element = active ? next.elements[active.id] : undefined;
       set({
         schema: next,
         activeElement: active && element ? { ...active, ...element } : null,
+        openOverlayIds: get().openOverlayIds.filter((id) => Boolean(next.elements[id])),
         canUndo: undos.length > 0,
         canRedo: redos.length > 0,
       });
@@ -58,6 +68,12 @@ export const createEditorSession = (
       canvasRoot: null,
       setCanvasRoot: (canvasRoot) => set({ canvasRoot }),
       activeElement: null,
+      openOverlayIds: [],
+      closeOverlay: (id) =>
+        set((state) => {
+          const index = state.openOverlayIds.indexOf(id);
+          return index < 0 ? {} : { openOverlayIds: state.openOverlayIds.slice(0, index) };
+        }),
       dragElement: null,
       insertPosition: null,
       canUndo: false,
@@ -91,7 +107,11 @@ export const createEditorSession = (
         redos.length = 0;
         project(next);
       },
-      setActiveElement: (activeElement) => set({ activeElement }),
+      setActiveElement: (activeElement) =>
+        set({
+          activeElement,
+          openOverlayIds: activeElement ? overlayPath(get().schema, activeElement.id) : [],
+        }),
       setDragElement: (dragElement) => set({ dragElement }),
       setInsertPosition: (insertPosition) => set({ insertPosition }),
       undo: () => {

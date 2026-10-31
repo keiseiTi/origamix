@@ -41,6 +41,7 @@ const material = defineMaterial({
   constraints: ['不将实例或回调写入 Schema。'],
   Component: lazy(() => import('./index')),
   editorConfig: {
+    presentation: 'overlay',
     panels: [
       {
         title: '属性',

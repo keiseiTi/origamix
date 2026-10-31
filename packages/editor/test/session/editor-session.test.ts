@@ -71,4 +71,40 @@ describe('editor draft sessions', () => {
     expect(second.getState().schema).toEqual(initial);
     expect(second.getState().canUndo).toBe(false);
   });
+  // Visibility is browser-owned state and must never become a Working edit or undo step.
+  it('keeps overlay selection and closing outside schema history', () => {
+    const initial = document();
+    initial.elements.layer = { type: 'modal', props: { open: false } };
+    initial.layout.structure = { root: ['layer'], layer: ['button'] };
+    const overlay = {
+      type: 'modal',
+      title: 'modal',
+      Component: () => null,
+      editorConfig: { presentation: 'overlay' as const },
+    };
+    const button = { type: 'button', title: 'button', Component: () => null };
+    const store = createEditorSession(initial, [
+      overlay,
+      button,
+      {
+        type: 'container',
+        title: 'container',
+        Component: () => null,
+      },
+    ]);
+    const selected = { id: 'button', ...initial.elements.button!, material: button };
+    store.getState().setActiveElement(selected);
+    expect(store.getState().openOverlayIds).toEqual(['layer']);
+    store.getState().closeOverlay('layer');
+    expect(store.getState().openOverlayIds).toEqual([]);
+    store.getState().setActiveElement(selected);
+    expect(store.getState().openOverlayIds).toEqual(['layer']);
+    expect(store.getState().schema).toBe(initial);
+    expect(store.getState().canUndo).toBe(false);
+    store.getState().setSchema(SchemaUtils.removeElement(initial, 'layer').schema);
+    expect(store.getState().openOverlayIds).toEqual([]);
+    store.getState().undo();
+    expect(store.getState().schema).toEqual(initial);
+    expect(store.getState().schema.elements.layer!.props.open).toBe(false);
+  });
 });

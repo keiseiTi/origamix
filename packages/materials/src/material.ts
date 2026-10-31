@@ -14,7 +14,7 @@ type BasicAttributeConfig = {
   linkageShow?: { field: string; value?: string | number | boolean; isNotEmpty?: boolean }[];
 };
 type BasicPanelConfig = { title?: React.ReactNode };
-type BasicEditorConfig = { panels?: PanelConfig[] };
+type BasicEditorConfig = { panels?: PanelConfig[]; presentation?: 'overlay' };
 type BasicMaterial = {
   Component: React.ComponentType | React.LazyExoticComponent<React.ComponentType>;
   title: string;
