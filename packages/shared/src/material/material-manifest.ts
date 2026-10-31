@@ -21,7 +21,6 @@ export type JsonSchema = Readonly<Record<string, unknown>>;
 export type MaterialContextEntry = Readonly<{
   name: string;
   description?: string;
-  isMethod?: boolean;
   linkageShow?: readonly Readonly<{ field: string; value?: unknown; isNotEmpty?: boolean }>[];
   params?: readonly Readonly<{ description?: string }>[];
 }>;
@@ -42,8 +41,10 @@ export type MaterialManifest = Readonly<{
     variables: readonly MaterialContextEntry[];
     /** Runtime setters are independent of readable business values and design-time props. */
     writable?: readonly MaterialContextEntry[];
-    values: readonly MaterialContextEntry[];
-    methods: readonly MaterialContextEntry[];
+    /** Public actions that page logic may call. */
+    actions: readonly MaterialContextEntry[];
+    /** Events emitted by the component, including lifecycle events. */
+    events: readonly MaterialContextEntry[];
   }>;
   usage: string;
   constraints: readonly string[];

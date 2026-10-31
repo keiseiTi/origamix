@@ -15,8 +15,8 @@ const ButtonMaterial = defineMaterial({
       { name: 'text', description: '文本内容' },
       { name: 'loading', description: '加载中' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClick',
         description: '点击',

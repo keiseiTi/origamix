@@ -19,8 +19,8 @@ const material = defineMaterial({
       { name: 'open', description: '是否打开' },
       { name: 'loading', description: '加载中' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClose',
         description: '关闭请求',

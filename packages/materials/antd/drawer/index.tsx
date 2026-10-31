@@ -13,7 +13,7 @@ export const Drawer = ({
   onClose,
   om_mode,
   om_dropPlaceholder,
-  om_setContextValues,
+  om_setContextActions,
   om_setRuntimeState,
   om_readonly,
   customSize,

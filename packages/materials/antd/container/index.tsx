@@ -19,7 +19,7 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
     heightConfig,
     height,
     om_dropPlaceholder,
-    om_setContextValues,
+    om_setContextActions,
     om_setRuntimeState,
     om_mode,
     om_readonly,

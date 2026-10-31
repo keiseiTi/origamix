@@ -42,7 +42,7 @@ pnpm --filter @origamix/shared build
 - Run all root gates for downstream compilation and behavior; Shared passing alone is insufficient for a public-contract change.
 - Root ESLint restrictions cover some platform imports, not the entire dependency graph. Review imports/manifests explicitly; do not describe architectural isolation as fully lint-enforced.
 
-- Material context keeps independent variables (read), writable (runtime write), values (callable methods) and methods (events) declarations. Optional pure linkage metadata can control event visibility; it does not grant runtime access. `propsSchema` remains design-time validation, not a fallback capability source.
+- Material context keeps independent variables (read), writable (runtime write), actions (callable methods) and events (events) declarations. Optional pure linkage metadata can control event visibility; it does not grant runtime access. `propsSchema` remains design-time validation, not a fallback capability source.
 
 - Public page validation accepts only the current release contract; never loosen it to implement persisted-data migration.
 

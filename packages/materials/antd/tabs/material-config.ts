@@ -19,8 +19,8 @@ const material = defineMaterial({
       { name: 'activeKey', description: '激活页签' },
       { name: 'items', description: '页签' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

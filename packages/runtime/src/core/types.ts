@@ -11,7 +11,7 @@ export type RuntimeMaterialProps = {
   om_mode?: 'design' | 'render';
   om_dropPlaceholder?: ReactNode;
   om_setRuntimeState?: (state: Record<string, unknown>) => void;
-  om_setContextValues?: (values: Record<string, unknown>) => void;
+  om_setContextActions?: (values: Record<string, unknown>) => void;
   [key: string]: unknown;
 };
 export type MaterialRegistry = Record<string, ComponentType | LazyExoticComponent<ComponentType>>;

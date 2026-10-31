@@ -113,7 +113,7 @@ export const createLogicReadTools = (
         const material = materials.materials.find(
           (item) => item.type === schema.elements[input.elementId!]!.type,
         );
-        if (!material?.context.methods.some((entry) => entry.name === input.event))
+        if (!material?.context.events.some((entry) => entry.name === input.event))
           throw invalid('事件未由目标物料声明');
         flowId = schema.bindElements.find(
           (binding) => binding.id === input.elementId && binding.event === input.event,

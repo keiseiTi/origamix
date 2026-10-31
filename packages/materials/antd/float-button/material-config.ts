@@ -5,7 +5,7 @@ const FloatButtonMaterial = defineMaterial({
   layout: { display: 'inline' },
   title: '悬浮按钮',
   defaultProps: { type: 'default', shape: 'circle' },
-  context: { variables: [], writable: [], values: [], methods: [] },
+  context: { variables: [], writable: [], actions: [], events: [] },
   description: '悬浮在页面边缘的快捷操作按钮。',
   keywords: ['悬浮按钮', '快捷操作'],
   role: 'action',

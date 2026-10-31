@@ -33,7 +33,7 @@ UI verification must exercise actual visual/flow switching, event selection, his
 
 - Flow forms follow the reference value kinds without a JSON kind or separate comparison operators. Requests edit headers/query/body through functions; conditions use expressions/functions. Coalesce LogicFlow model events until the mutation completes, then send the full executable flow and layout through the shared engine change callback with `immediate: true` in logic mode. Do not add panel-owned persistence.
 
-- Flow read candidates come only from Manifest.context.variables; write candidates only from context.writable; method choices only from context.values with isMethod. Never merge propsSchema into these lists. Keep event.payload separate from durable element state. Root materials are injected separately and must not enter the draggable palette.
+- Flow read candidates come only from Manifest.context.variables; write candidates only from context.writable; method choices only from context.actions. Never merge propsSchema into these lists. Keep event.payload separate from durable element state. Root materials are injected separately and must not enter the draggable palette.
 
 - `src/prototype/canvas-prototype.tsx` is the public surface of the isolation feasibility experiment. It exposes only restricted commands and snapshots, never Engine. It reuses CanvasEditor, independent session history and Schema editing tools, without HTTP, persistence or production replacement behavior. Keep the experiment permission-isolated from the production Editor; verify native hit testing and movement through actual interaction.
 

@@ -22,7 +22,7 @@ export const DatePicker = ({
   om_mode,
   om_readonly,
   om_dropPlaceholder,
-  om_setContextValues,
+  om_setContextActions,
   ...rest
 }: IProps) => {
   const [current, change] = useRuntimeValue(

@@ -17,7 +17,7 @@ export const Select = (props: IProps) => {
     om_mode,
     om_readonly,
     om_dropPlaceholder,
-    om_setContextValues,
+    om_setContextActions,
     ...rest
   } = props;
   const [current, change] = useRuntimeValue(

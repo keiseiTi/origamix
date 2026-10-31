@@ -30,9 +30,9 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
   },
   context: {
     ...manifest.context,
-    methods: manifest.context.methods.some((method) => method.name === 'init')
-      ? manifest.context.methods
-      : [commonInitEvent, ...manifest.context.methods],
+    events: manifest.context.events.some((event) => event.name === 'init')
+      ? manifest.context.events
+      : [commonInitEvent, ...manifest.context.events],
   },
 });
 

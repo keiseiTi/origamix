@@ -98,15 +98,13 @@ export const HyperInput = ({
           ),
           tags: elementTags,
         })),
-        ...(material?.contextConfig?.contextValues ?? [])
-          .filter((item) => item.isMethod)
-          .map((item) => ({
-            value: `method.${id}.${item.name}`,
-            name: item.name,
-            label: `${title} · 方法 ${item.description || item.name}`,
-            property: item.description || item.name,
-            tags: elementTags,
-          })),
+        ...(material?.contextConfig?.actions ?? []).map((item) => ({
+          value: `method.${id}.${item.name}`,
+          name: item.name,
+          label: `${title} · 方法 ${item.description || item.name}`,
+          property: item.description || item.name,
+          tags: elementTags,
+        })),
       ];
     })
     .concat(

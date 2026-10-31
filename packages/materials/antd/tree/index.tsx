@@ -13,7 +13,7 @@ export const Tree = ({
   onSelect,
   onCheck,
   onExpand,
-  om_setContextValues,
+  om_setContextActions,
   om_setRuntimeState,
   om_readonly,
   om_dropPlaceholder,

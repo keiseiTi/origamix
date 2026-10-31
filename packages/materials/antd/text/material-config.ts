@@ -11,8 +11,8 @@ const material = defineMaterial({
   context: {
     variables: [{ name: 'text', description: '文本内容' }],
     writable: [{ name: 'text', description: '文本内容' }],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClick',
         description: '点击',

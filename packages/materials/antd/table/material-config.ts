@@ -30,8 +30,8 @@ const material = defineMaterial({
       { name: 'loading', description: '加载中' },
       { name: 'pagination', description: '分页' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '分页变化',

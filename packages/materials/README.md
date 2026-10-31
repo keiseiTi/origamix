@@ -62,7 +62,7 @@ Server 仅消费 Manifest，不能让清单入口通过组件或编辑配置间�
 
 完整字段清单见 [Ant Design 配置契约](antd/CONFIGURATION-PLAN.md)。属性面板只配置选定的基础类型和中文枚举；原生 ReactNode、style/classNames、函数和回调不放入普通属性控件。Button.text、Text.text、Upload.text 等是物料自己声明的字符串文案。布局容器保留其内部 margin/padding 数据能力，但普通面板不提供 CSS 样式编辑入口。
 
-Manifest.context.variables 是逻辑流**读取**白名单，context.writable 是独立的**写入运行状态**白名单，context.values 中 isMethod=true 才是可调用方法，context.methods 是事件入口。propsSchema 只描述设计期配置，不自动成为读写能力。Button 可读 text/loading，Input 只可读 value。Editor、Server 与 Runtime 均遵循该边界。
+Manifest.context.variables 是逻辑流**读取**白名单，context.writable 是独立的**写入运行状态**白名单，context.actions 声明可调用方法，context.events 是事件入口。propsSchema 只描述设计期配置，不自动成为读写能力。Button 可读 text/loading，Input 只可读 value。Editor、Server 与 Runtime 均遵循该边界。
 
 事件在独立面板显示中文名称与真实属性名。linkageShow 默认 AND；确有组合模式的控件显式使用 linkageMode=any。隐藏控件或事件不静默删除配置和已有绑定。复杂编辑器可折叠，使用本地草稿、确认更新和取消；确认沿用同一 Working 更新通路。
 
@@ -80,7 +80,7 @@ Upload 无 action 时只选择文件，不发送请求；流只能读取文件�
 
 ## 运行时接入
 
-runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务事件投影和字段边界；它不导入 Editor/UI。Runtime 注入 om_setRuntimeState 与 om_setContextValues，业务值先同步后调用事件。当前事件通过 event.payload 读取，异步调用各自保留快照。
+runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务事件投影和字段边界；它不导入 Editor/UI。Runtime 注入 om_setRuntimeState 与 om_setContextActions，业务值先同步后调用事件。当前事件通过 event.payload 读取，异步调用各自保留快照。
 
 输入的本地状态与运行时读值投影同步，不因每次输入重建 Engine 组件；逻辑流主动写值才更新对应渲染元素。字段方法及程序写值同步 Form 和控件投影。这些都是临时运行态，不会写 Working、创建 Revision 或 Apply。
 

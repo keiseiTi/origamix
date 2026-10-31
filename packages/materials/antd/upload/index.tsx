@@ -15,7 +15,7 @@ export const Upload = ({
   onChange,
   onRemove,
   fileList: _runtimeFiles,
-  om_setContextValues,
+  om_setContextActions,
   om_setRuntimeState,
   om_mode,
   om_readonly,

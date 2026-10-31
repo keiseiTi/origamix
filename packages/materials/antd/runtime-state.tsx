@@ -226,7 +226,7 @@ const RuntimeField = ({
     const unregister = context?.register(name, (value) =>
       props.om_setRuntimeState?.({ [field]: value ?? initialState(type, props)[field] }),
     );
-    props.om_setContextValues?.({
+    props.om_setContextActions?.({
       $writeField: (value: unknown) => {
         form.setFieldValue(name, value);
         context?.sync();
@@ -234,9 +234,9 @@ const RuntimeField = ({
     });
     return () => {
       unregister?.();
-      props.om_setContextValues?.({ $writeField: undefined });
+      props.om_setContextActions?.({ $writeField: undefined });
     };
-  }, [context, field, form, name, props.om_setContextValues, props.om_setRuntimeState, type]);
+  }, [context, field, form, name, props.om_setContextActions, props.om_setRuntimeState, type]);
   return (
     <Form.Item
       name={name}

@@ -8,8 +8,8 @@ const material = defineMaterial({
   context: {
     variables: [{ name: 'fileList', description: '文件列表' }],
     writable: [],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

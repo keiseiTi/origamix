@@ -16,12 +16,12 @@ const material = defineMaterial({
   context: {
     variables: [{ name: 'value', description: '当前值' }],
     writable: [],
-    values: [
-      { name: 'validateFields', description: '校验字段', isMethod: true },
-      { name: 'resetFields', description: '重置字段', isMethod: true },
-      { name: 'setFieldsValue', description: '设置字段值', isMethod: true },
+    actions: [
+      { name: 'validateFields', description: '校验字段' },
+      { name: 'resetFields', description: '重置字段' },
+      { name: 'setFieldsValue', description: '设置字段值' },
     ],
-    methods: [
+    events: [
       {
         name: 'onValuesChange',
         description: '字段值改变',

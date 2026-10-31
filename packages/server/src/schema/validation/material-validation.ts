@@ -129,7 +129,7 @@ export const validatePageAgainstMaterials = (
       continue;
     }
     const manifest = runtime.registry[element.type];
-    if (!manifest?.context.methods.some((entry) => entry.name === binding['event'])) {
+    if (!manifest?.context.events.some((entry) => entry.name === binding['event'])) {
       errors.push(
         error(
           'UNKNOWN_EVENT',

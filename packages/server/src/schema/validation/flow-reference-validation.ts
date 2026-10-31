@@ -80,7 +80,7 @@ export const validateFlowReferences = (
           if (kind === 'method') {
             if (
               parts.length !== 1 ||
-              !manifest.context.values.some((entry) => entry.isMethod && entry.name === parts[0])
+              !manifest.context.actions.some((entry) => entry.name === parts[0])
             )
               report(at, 'Context method must be declared by the target material');
           } else if (
@@ -186,9 +186,7 @@ export const validateFlowReferences = (
           if (
             manifest &&
             (setter.methodName || complete) &&
-            !manifest.context.values.some(
-              (entry) => entry.isMethod && entry.name === setter.methodName,
-            )
+            !manifest.context.actions.some((entry) => entry.name === setter.methodName)
           )
             report(
               `${at}/methodName`,

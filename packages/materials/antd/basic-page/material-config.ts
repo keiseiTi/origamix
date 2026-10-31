@@ -6,7 +6,7 @@ const BasicPageMaterial = defineMaterial({
   layout: { display: 'block' },
   title: '页面',
   defaultProps: { display: 'flow', flexDirection: 'column' },
-  context: { variables: [], writable: [], values: [], methods: [] },
+  context: { variables: [], writable: [], actions: [], events: [] },
   description: '页面内容的根布局容器。',
   keywords: ['页面', '根容器', '布局'],
   role: 'layout',

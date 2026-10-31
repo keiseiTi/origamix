@@ -6,7 +6,7 @@ const ContainerMaterial = defineMaterial({
   layout: { display: 'block' },
   title: '容器',
   defaultProps: { heightConfig: 'fixed', height: 200 },
-  context: { variables: [], writable: [], values: [], methods: [] },
+  context: { variables: [], writable: [], actions: [], events: [] },
   description: '用于组织其他元素并控制区域尺寸和间距。',
   keywords: ['容器', '布局', '分区'],
   role: 'layout',

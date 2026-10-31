@@ -24,7 +24,7 @@ export interface IProps
 export const Button = (props: IProps) => {
   const {
     text,
-    om_setContextValues,
+    om_setContextActions,
     fieldName,
     fieldLabel,
     om_setRuntimeState,

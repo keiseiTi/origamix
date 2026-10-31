@@ -26,8 +26,8 @@ type BasicMaterial = {
   layout?: MaterialLayout;
   contextConfig?: {
     variables?: MaterialManifest['context']['variables'];
-    contextValues?: MaterialManifest['context']['values'];
-    methods?: {
+    actions?: MaterialManifest['context']['actions'];
+    events?: {
       name: string;
       description?: string;
       params?: { description: string; fields?: Record<string, unknown> }[];

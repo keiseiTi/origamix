@@ -8,8 +8,8 @@ const material = defineMaterial({
   context: {
     variables: [{ name: 'checked', description: '是否选中' }],
     writable: [{ name: 'checked', description: '是否选中' }],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

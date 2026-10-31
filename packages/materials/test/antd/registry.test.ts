@@ -34,7 +34,7 @@ describe('material boundary used by editing and preview', () => {
       expect(material.propsSchema.additionalProperties).toBe(false);
       expect(material.propsSchema.properties).toMatchObject({ alias: { type: 'string' } });
       expect(material.propsSchema.required ?? []).not.toContain('alias');
-      expect(material.context.methods.filter((method) => method.name === 'init')).toHaveLength(1);
+      expect(material.context.events.filter((event) => event.name === 'init')).toHaveLength(1);
       expect(antdValidationMaterialRegistry[material.type]?.version).toBe(material.version);
     }
   });

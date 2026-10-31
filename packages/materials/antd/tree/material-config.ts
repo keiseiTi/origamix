@@ -35,8 +35,8 @@ const material = defineMaterial({
       { name: 'checkedKeys', description: '勾选节点' },
       { name: 'expandedKeys', description: '展开节点' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onSelect',
         description: '选中节点',

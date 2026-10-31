@@ -90,7 +90,7 @@ const DesignElement = ({
           ...extraProps,
           om_mode: 'design',
           om_setRuntimeState: undefined,
-          om_setContextValues: undefined,
+          om_setContextActions: undefined,
           init: undefined,
         }}
       >

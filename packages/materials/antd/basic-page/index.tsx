@@ -15,7 +15,7 @@ export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps
     margin,
     padding,
     om_dropPlaceholder,
-    om_setContextValues,
+    om_setContextActions,
     om_setRuntimeState,
     om_mode,
     om_readonly,

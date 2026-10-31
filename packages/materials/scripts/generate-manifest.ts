@@ -41,10 +41,10 @@ const generate = async () => {
       },
       context: {
         ...manifest.context,
-        methods:
-          JSON.stringify(manifest.context.methods[0]) === JSON.stringify(commonInitEvent)
-            ? manifest.context.methods.slice(1)
-            : manifest.context.methods,
+        events:
+          JSON.stringify(manifest.context.events[0]) === JSON.stringify(commonInitEvent)
+            ? manifest.context.events.slice(1)
+            : manifest.context.events,
       },
     };
     // Reject executable and non-JSON numeric values instead of silently losing validation rules.

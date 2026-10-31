@@ -8,8 +8,8 @@ const InputMaterial = defineMaterial({
   context: {
     variables: [{ name: 'value', description: '当前值' }],
     writable: [{ name: 'value', description: '当前值' }],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

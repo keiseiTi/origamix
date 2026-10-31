@@ -9,8 +9,8 @@ export const basicPageManifest = withMaterialManifestDefaults({
   context: {
     variables: [],
     writable: [],
-    values: [],
-    methods: [],
+    actions: [],
+    events: [],
   },
   description: '页面内容的根布局容器。',
   keywords: ['页面', '根容器', '布局'],
@@ -92,8 +92,8 @@ export const buttonManifest = withMaterialManifestDefaults({
         description: '加载中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClick',
         description: '点击',
@@ -178,8 +178,8 @@ export const cascaderManifest = withMaterialManifestDefaults({
         description: '加载中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -337,8 +337,8 @@ export const checkboxManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -430,8 +430,8 @@ export const containerManifest = withMaterialManifestDefaults({
   context: {
     variables: [],
     writable: [],
-    values: [],
-    methods: [],
+    actions: [],
+    events: [],
   },
   description: '用于组织其他元素并控制区域尺寸和间距。',
   keywords: ['容器', '布局', '分区'],
@@ -508,8 +508,8 @@ export const datePickerManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -641,8 +641,8 @@ export const datePickerRangeManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -803,8 +803,8 @@ export const drawerManifest = withMaterialManifestDefaults({
         description: '加载中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClose',
         description: '关闭请求',
@@ -915,8 +915,8 @@ export const floatButtonManifest = withMaterialManifestDefaults({
   context: {
     variables: [],
     writable: [],
-    values: [],
-    methods: [],
+    actions: [],
+    events: [],
   },
   description: '悬浮在页面边缘的快捷操作按钮。',
   keywords: ['悬浮按钮', '快捷操作'],
@@ -972,24 +972,21 @@ export const formManifest = withMaterialManifestDefaults({
       },
     ],
     writable: [],
-    values: [
+    actions: [
       {
         name: 'validateFields',
         description: '校验字段',
-        isMethod: true,
       },
       {
         name: 'resetFields',
         description: '重置字段',
-        isMethod: true,
       },
       {
         name: 'setFieldsValue',
         description: '设置字段值',
-        isMethod: true,
       },
     ],
-    methods: [
+    events: [
       {
         name: 'onValuesChange',
         description: '字段值改变',
@@ -1130,8 +1127,8 @@ export const inputManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -1245,8 +1242,8 @@ export const modalManifest = withMaterialManifestDefaults({
         description: '加载中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onOk',
         description: '确认',
@@ -1389,8 +1386,8 @@ export const numberManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -1515,8 +1512,8 @@ export const radioManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -1645,8 +1642,8 @@ export const selectManifest = withMaterialManifestDefaults({
         description: '加载中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -1788,8 +1785,8 @@ export const sliderManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -1929,8 +1926,8 @@ export const switchManifest = withMaterialManifestDefaults({
         description: '是否选中',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -2023,8 +2020,8 @@ export const tableManifest = withMaterialManifestDefaults({
         description: '分页',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '分页变化',
@@ -2224,8 +2221,8 @@ export const tabsManifest = withMaterialManifestDefaults({
         description: '页签',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -2376,8 +2373,8 @@ export const textManifest = withMaterialManifestDefaults({
         description: '文本内容',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onClick',
         description: '点击',
@@ -2463,8 +2460,8 @@ export const textareaManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -2600,8 +2597,8 @@ export const timePickerManifest = withMaterialManifestDefaults({
         description: '当前值',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -2762,8 +2759,8 @@ export const treeManifest = withMaterialManifestDefaults({
         description: '展开节点',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onSelect',
         description: '选中节点',
@@ -3000,8 +2997,8 @@ export const treeSelectManifest = withMaterialManifestDefaults({
         description: '节点数据',
       },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
@@ -3190,8 +3187,8 @@ export const uploadManifest = withMaterialManifestDefaults({
       },
     ],
     writable: [],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

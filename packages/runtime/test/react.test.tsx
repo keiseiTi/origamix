@@ -71,6 +71,6 @@ it('renders design materials without event execution, runtime authority or sourc
   expect(seen[0]?.om_mode).toBe('design');
   expect(seen[0]?.init).toBeUndefined();
   expect(seen[0]?.om_setRuntimeState).toBeUndefined();
-  expect(seen[0]?.om_setContextValues).toBeUndefined();
+  expect(seen[0]?.om_setContextActions).toBeUndefined();
   expect(JSON.stringify(source)).toBe(before);
 });

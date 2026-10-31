@@ -87,10 +87,10 @@ export const EventTree = ({
         element,
         typeof material?.title === 'string' ? material.title : undefined,
       ),
-      events: (material?.contextConfig?.methods ?? []).map((method) => ({
+      events: (material?.contextConfig?.events ?? []).map((event) => ({
         elementId: id,
-        event: method.name,
-        label: method.description || method.name,
+        event: event.name,
+        label: event.description || event.name,
       })),
       children: (schema.layout.structure[id] ?? [])
         .map((child) => build(child, next))

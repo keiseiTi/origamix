@@ -39,9 +39,7 @@ export const runtimeCapability = (
 export const assertRuntimeMethod = (engine: Engine, id: string, name: string): void => {
   if (
     metadata.has(engine) &&
-    !runtimeCapability(engine, id)?.context.values.some(
-      (entry) => entry.isMethod && entry.name === name,
-    )
+    !runtimeCapability(engine, id)?.context.actions.some((entry) => entry.name === name)
   )
     throw new Error('Context method is not callable');
 };
@@ -93,7 +91,7 @@ export const installMaterialState = (engine: Engine, components: Record<string, 
           );
           if (Object.keys(changes).length) writeRuntimeState(engine, id, changes);
         },
-        om_setContextValues: (values: Record<string, unknown>) =>
+        om_setContextActions: (values: Record<string, unknown>) =>
           engine.setContextValue(id, { ...engine.getContextValue(id), ...values }),
       },
     });

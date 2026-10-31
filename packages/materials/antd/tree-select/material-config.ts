@@ -15,8 +15,8 @@ const material = defineMaterial({
       { name: 'value', description: '当前值' },
       { name: 'treeData', description: '节点数据' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',

@@ -82,8 +82,8 @@ describe('declarative event execution', () => {
           context: {
             variables: [{ name: 'text' }, { name: 'loading' }],
             writable: [{ name: 'text' }, { name: 'loading' }],
-            values: [],
-            methods: [],
+            actions: [],
+            events: [],
           },
           defaultProps: {},
           initialState: () => ({ loading: false }),

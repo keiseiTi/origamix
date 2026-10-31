@@ -74,15 +74,15 @@ export const AttributePanel = ({
     parentTabsId && Array.isArray(schema.elements[parentTabsId]?.props?.items)
       ? (schema.elements[parentTabsId]!.props.items as { key: string; label: string }[])
       : [];
-  const allMethods = material?.contextConfig?.methods;
-  const methods = allMethods?.filter((method) =>
-    isVisible(method as unknown as AttributeConfig, { ...material?.defaultProps, ...values }),
+  const allEvents = material?.contextConfig?.events;
+  const events = allEvents?.filter((event) =>
+    isVisible(event as unknown as AttributeConfig, { ...material?.defaultProps, ...values }),
   );
-  const hiddenBindings = allMethods?.filter(
-    (method) =>
-      !methods?.includes(method) &&
+  const hiddenBindings = allEvents?.filter(
+    (event) =>
+      !events?.includes(event) &&
       schema.bindElements?.some(
-        (binding) => binding.id === activeElement?.id && binding.event === method.name,
+        (binding) => binding.id === activeElement?.id && binding.event === event.name,
       ),
   );
   const panels = [
@@ -106,7 +106,7 @@ export const AttributePanel = ({
       ],
       kind: 'attributes' as const,
     })),
-    ...(methods?.length ? [{ title: '事件', kind: 'events' as const, methods }] : []),
+    ...(events?.length ? [{ title: '事件', kind: 'events' as const, events }] : []),
   ];
 
   useEffect(() => {
@@ -394,26 +394,26 @@ export const AttributePanel = ({
                           <p role='status' className='mb-2 text-xs text-muted-foreground'>
                             当前模式不支持的已有事件绑定：
                             {hiddenBindings
-                              .map((method) => method.description || method.name)
+                              .map((event) => event.description || event.name)
                               .join('、')}
                             。绑定已保留，请调整模式或在逻辑视图处理。
                           </p>
                         )}
-                        {panel.methods.map((method) => (
+                        {panel.events.map((event) => (
                           <Button
                             variant='outline'
-                            key={method.name}
-                            data-flow-event={method.name}
+                            key={event.name}
+                            data-flow-event={event.name}
                             className='mb-2 w-full justify-start text-xs'
                             onClick={() =>
                               onEditEvent({
                                 elementId: activeElement.id,
-                                event: method.name,
-                                label: method.description || method.name,
+                                event: event.name,
+                                label: event.description || event.name,
                               })
                             }
                           >
-                            <span>{method.description || method.name}</span>
+                            <span>{event.description || event.name}</span>
                           </Button>
                         ))}
                       </div>

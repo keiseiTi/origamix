@@ -22,7 +22,7 @@ const FormContent = (props: IProps) => {
     om_mode,
     om_readonly,
     om_dropPlaceholder,
-    om_setContextValues,
+    om_setContextActions,
     om_setRuntimeState,
     ...restProps
   } = props;
@@ -56,7 +56,7 @@ const FormContent = (props: IProps) => {
   }, [value, form]);
 
   useLayoutEffect(() => {
-    om_setContextValues?.({
+    om_setContextActions?.({
       setFieldsValue: (fields: Record<string, unknown>) => {
         form.setFieldsValue(fields);
         publish();
@@ -72,7 +72,7 @@ const FormContent = (props: IProps) => {
       },
     });
     publish();
-  }, [form, om_setContextValues, publish]);
+  }, [form, om_setContextActions, publish]);
 
   const onValuesChange = (_: Record<string, unknown>, allValues: Record<string, unknown>) => {
     om_setRuntimeState?.({ value: allValues });

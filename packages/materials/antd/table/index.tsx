@@ -14,7 +14,7 @@ export const Table = ({
   scroll,
   emptyText,
   locale,
-  om_setContextValues,
+  om_setContextActions,
   om_setRuntimeState,
   om_mode,
   om_readonly,

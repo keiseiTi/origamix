@@ -36,10 +36,10 @@ export const defineMaterial = ({
     ...(manifest.allowedParentTypes ? { dropTypes: [...manifest.allowedParentTypes] } : {}),
     contextConfig: {
       variables: [...manifest.context.variables],
-      contextValues: [...manifest.context.values],
-      methods: manifest.context.methods.map((method) => ({
-        ...method,
-        params: method.params?.map((param) => ({ description: param.description ?? '' })),
+      actions: [...manifest.context.actions],
+      events: manifest.context.events.map((event) => ({
+        ...event,
+        params: event.params?.map((param) => ({ description: param.description ?? '' })),
       })),
     },
     acceptsChildren: manifest.acceptsChildren,

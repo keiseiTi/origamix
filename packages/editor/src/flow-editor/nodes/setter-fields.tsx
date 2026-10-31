@@ -45,7 +45,7 @@ export const SettersFields = ({
         );
         const manifest = catalog.find((item) => item.type === element?.type);
         const fields = method
-          ? (manifest?.context.values ?? []).filter((item) => item.isMethod)
+          ? (manifest?.context.actions ?? [])
           : (manifest?.context.writable ?? []).map((field) => ({
               ...field,
               description: String(fieldLabels.get(field.name) || field.description || field.name),

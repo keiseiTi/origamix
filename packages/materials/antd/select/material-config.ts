@@ -20,8 +20,8 @@ const material = defineMaterial({
       { name: 'options', description: '选项' },
       { name: 'loading', description: '加载中' },
     ],
-    values: [],
-    methods: [
+    actions: [],
+    events: [
       {
         name: 'onChange',
         description: '值改变',
