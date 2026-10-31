@@ -5,13 +5,12 @@ const material = defineMaterial({
   layout: { display: 'block' },
   title: '弹窗容器',
   defaultProps: {
-    open: false,
+    title: '弹窗',
     width: 520,
     showFooter: true,
     closable: true,
     mask: true,
     maskClosable: true,
-    keyboard: true,
   },
   context: {
     variables: [{ name: 'open', description: '是否打开' }],
@@ -44,7 +43,10 @@ const material = defineMaterial({
   role: 'overlay',
   acceptsChildren: true,
   usage: '配置弹窗容器的属性与展示行为。',
-  constraints: ['不将实例或回调写入 Schema。'],
+  constraints: [
+    '仅允许放在 layout.root 的直接子节点中，与根节点的物料类型无关。',
+    '不将实例或回调写入 Schema。',
+  ],
   Component: lazy(() => import('./index')),
   editorConfig: {
     presentation: 'overlay',
@@ -52,11 +54,7 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
-          {
-            field: 'open',
-            label: '显示弹窗',
-            uiType: 'checkbox',
-          },
+          { field: 'title', label: '标题', uiType: 'input' },
           {
             schema: { anyOf: [{ type: 'number', minimum: 1 }, { type: 'string' }] },
             field: 'width',
@@ -92,17 +90,6 @@ const material = defineMaterial({
                 value: true,
               },
             ],
-          },
-          {
-            field: 'keyboard',
-            label: 'Esc 关闭',
-            uiType: 'checkbox',
-          },
-          {
-            field: 'loading',
-            label: '内容加载中',
-            uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             field: 'showFooter',
@@ -147,30 +134,6 @@ const material = defineMaterial({
           {
             field: 'confirmLoading',
             label: '确定按钮加载中',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'showFooter',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'okDisabled',
-            label: '禁用确定按钮',
-            uiType: 'checkbox',
-            defaultValue: false,
-            linkageShow: [
-              {
-                field: 'showFooter',
-                value: true,
-              },
-            ],
-          },
-          {
-            field: 'cancelDisabled',
-            label: '禁用取消按钮',
             uiType: 'checkbox',
             defaultValue: false,
             linkageShow: [

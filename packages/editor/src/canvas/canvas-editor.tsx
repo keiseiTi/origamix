@@ -1,5 +1,4 @@
-import { createPortal } from 'react-dom';
-import { useMemo, useState, type ReactNode, type MouseEvent } from 'react';
+import { useMemo, type ReactNode, type MouseEvent } from 'react';
 import { DesignRenderer, type DesignElementProps } from '@origamix/runtime';
 import { useDroppable } from '@dnd-kit/core';
 import type { Material } from '../contracts/material-contracts';
@@ -28,7 +27,7 @@ export const CanvasEditor = ({
   renderElement,
   renderOverlayContent,
 }: CanvasProps): React.JSX.Element => {
-  const [overlayRoot, setOverlayRoot] = useState<HTMLDivElement | null>(null);
+  const canvasRoot = useEditorCore((state) => state.canvasRoot);
   const schema = useEditorCore((state) => state.schema);
   const materials = useEditorCore((state) => state.materials);
   const setCanvasRoot = useEditorCore((state) => state.setCanvasRoot);
@@ -55,18 +54,13 @@ export const CanvasEditor = ({
             <EditableMaterial
               key={element.id}
               element={element}
-              overlayRoot={overlayRoot}
+              overlayRoot={canvasRoot}
               renderDropIndicator={renderDropIndicator}
               renderElement={renderElement}
             />
           )}
         />
       </div>
-      <div
-        ref={setOverlayRoot}
-        className='pointer-events-none absolute inset-0 z-20 overflow-hidden'
-        data-editor-overlay-host
-      />
       <SelectionOverlay renderContent={renderOverlayContent} />
     </div>
   );
@@ -76,7 +70,7 @@ const EditableMaterial = ({
   overlayRoot,
   renderDropIndicator,
   renderElement,
-}: { element: DesignElementProps; overlayRoot: HTMLDivElement | null } & Pick<
+}: { element: DesignElementProps; overlayRoot: HTMLElement | null } & Pick<
   CanvasProps,
   'renderDropIndicator' | 'renderElement'
 >): ReactNode => {
@@ -90,6 +84,7 @@ const EditableMaterial = ({
       element={element}
       material={material}
       overlay={overlay}
+      overlayRoot={overlayRoot}
       closeOverlay={() => closeOverlay(element.id)}
       select={(event) => {
         event.stopPropagation();
@@ -120,7 +115,7 @@ const EditableMaterial = ({
   ) : (
     content
   );
-  return overlay && overlayRoot ? createPortal(rendered, overlayRoot) : rendered;
+  return rendered;
 };
 const ElementWrapper = ({
   element,
@@ -128,8 +123,10 @@ const ElementWrapper = ({
   select,
   overlay,
   closeOverlay,
+  overlayRoot,
   renderDropIndicator,
 }: {
+  overlayRoot: HTMLElement | null;
   overlay: boolean;
   closeOverlay: () => void;
   element: DesignElementProps;
@@ -137,6 +134,7 @@ const ElementWrapper = ({
   select: (event: MouseEvent) => void;
 } & Pick<CanvasProps, 'renderDropIndicator'>): ReactNode => {
   const openOverlayIds = useEditorCore((state) => state.openOverlayIds);
+  const rootId = useEditorCore((state) => state.schema.layout.root);
   const { setNodeRef } = useDroppable({ id: element.id, data: { id: element.id, material } });
   // The shared Runtime layout node owns geometry in both design and run modes.
   return element.renderMaterial(
@@ -145,6 +143,10 @@ const ElementWrapper = ({
       ...(overlay
         ? {
             om_designOpen: true,
+            om_getDesignContainer: () =>
+              overlayRoot!.querySelector<HTMLElement>(
+                `[data-origamix-layout][data-element-id="${CSS.escape(rootId)}"]`,
+              ) ?? overlayRoot!,
             om_onDesignClose: closeOverlay,
             om_designLayer: openOverlayIds.indexOf(element.id),
           }
@@ -165,7 +167,11 @@ const ElementWrapper = ({
     {
       ref: setNodeRef,
       onClick: select,
-      ...(overlay ? { style: { pointerEvents: 'auto', height: '100%' } } : {}),
+      ...(overlay
+        ? { style: { pointerEvents: 'auto' } }
+        : element.root
+          ? { style: { position: 'relative' } }
+          : {}),
     },
     overlay ? { framePlacement: 'content' } : undefined,
   );

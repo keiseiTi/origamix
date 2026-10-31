@@ -193,8 +193,9 @@ export const validateMaterialStructure = (
         fieldNames.add(child.props.fieldName);
       }
       if (
-        childManifest?.allowedParentTypes &&
-        !childManifest.allowedParentTypes.includes(parent.type)
+        (['modal', 'drawer'].includes(child.type) && parentId !== schema.layout.root) ||
+        (childManifest?.allowedParentTypes &&
+          !childManifest.allowedParentTypes.includes(parent.type))
       ) {
         errors.push(
           error(

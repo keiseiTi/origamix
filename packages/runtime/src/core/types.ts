@@ -11,6 +11,7 @@ export type RuntimeMaterialProps = {
   om_mode?: 'design' | 'render';
   om_dropPlaceholder?: ReactNode;
   om_designOpen?: boolean;
+  om_getDesignContainer?: () => HTMLElement;
   om_designLayer?: number;
   om_onDesignClose?: () => void;
   om_renderDesignFrame?: (content: ReactNode) => ReactNode;

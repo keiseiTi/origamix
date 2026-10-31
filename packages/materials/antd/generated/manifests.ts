@@ -830,16 +830,16 @@ export const drawerManifest = withMaterialManifestDefaults({
   role: 'overlay',
   acceptsChildren: true,
   usage: '配置抽屉容器的属性与展示行为。',
-  constraints: ['不将实例或回调写入 Schema。'],
+  constraints: [
+    '仅允许放在 layout.root 的直接子节点中，与根节点的物料类型无关。',
+    '不将实例或回调写入 Schema。',
+  ],
   defaultProps: {
-    open: false,
+    title: '抽屉',
     placement: 'right',
     closable: true,
     mask: true,
     maskClosable: true,
-    keyboard: true,
-    loading: false,
-    resizable: false,
     push: true,
     forceRender: false,
     destroyOnHidden: false,
@@ -848,8 +848,8 @@ export const drawerManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
-      open: {
-        type: 'boolean',
+      title: {
+        type: 'string',
       },
       placement: {
         type: 'string',
@@ -867,10 +867,6 @@ export const drawerManifest = withMaterialManifestDefaults({
           },
         ],
       },
-      customSize: {
-        type: 'number',
-        minimum: 1,
-      },
       closable: {
         type: 'boolean',
       },
@@ -878,15 +874,6 @@ export const drawerManifest = withMaterialManifestDefaults({
         type: 'boolean',
       },
       maskClosable: {
-        type: 'boolean',
-      },
-      keyboard: {
-        type: 'boolean',
-      },
-      loading: {
-        type: 'boolean',
-      },
-      resizable: {
         type: 'boolean',
       },
       push: {
@@ -1284,20 +1271,19 @@ export const modalManifest = withMaterialManifestDefaults({
   role: 'overlay',
   acceptsChildren: true,
   usage: '配置弹窗容器的属性与展示行为。',
-  constraints: ['不将实例或回调写入 Schema。'],
+  constraints: [
+    '仅允许放在 layout.root 的直接子节点中，与根节点的物料类型无关。',
+    '不将实例或回调写入 Schema。',
+  ],
   defaultProps: {
-    open: false,
+    title: '弹窗',
     width: 520,
     showFooter: true,
     closable: true,
     mask: true,
     maskClosable: true,
-    keyboard: true,
     centered: false,
-    loading: false,
     confirmLoading: false,
-    okDisabled: false,
-    cancelDisabled: false,
     forceRender: false,
     destroyOnHidden: false,
   },
@@ -1305,8 +1291,8 @@ export const modalManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
-      open: {
-        type: 'boolean',
+      title: {
+        type: 'string',
       },
       width: {
         anyOf: [
@@ -1331,12 +1317,6 @@ export const modalManifest = withMaterialManifestDefaults({
       maskClosable: {
         type: 'boolean',
       },
-      keyboard: {
-        type: 'boolean',
-      },
-      loading: {
-        type: 'boolean',
-      },
       showFooter: {
         type: 'boolean',
       },
@@ -1345,12 +1325,6 @@ export const modalManifest = withMaterialManifestDefaults({
         enum: ['primary', 'default', 'dashed', 'text', 'link'],
       },
       confirmLoading: {
-        type: 'boolean',
-      },
-      okDisabled: {
-        type: 'boolean',
-      },
-      cancelDisabled: {
         type: 'boolean',
       },
       forceRender: {
@@ -2053,7 +2027,6 @@ export const tableManifest = withMaterialManifestDefaults({
       },
     ],
     showHeader: true,
-    dataSource: [],
     pagination: false,
     bordered: false,
     sticky: false,

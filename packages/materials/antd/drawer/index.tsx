@@ -13,6 +13,7 @@ export const Drawer = ({
   onClose,
   om_mode,
   om_designOpen,
+  om_getDesignContainer,
   om_onDesignClose,
   om_renderDesignFrame,
   om_designLayer,
@@ -47,16 +48,20 @@ export const Drawer = ({
       size={customSize ?? rest.size}
       {...(designing
         ? {
-            getContainer: false,
-            rootStyle: { position: 'absolute', pointerEvents: 'none' },
+            getContainer: om_getDesignContainer,
+            rootStyle: { position: 'absolute', inset: 0, pointerEvents: 'none' },
             drawerRender: (node) => om_renderDesignFrame?.(node) ?? node,
-            styles: { wrapper: { pointerEvents: 'auto' }, body: { minHeight: 100 } },
+            styles: {
+              mask: { position: 'absolute', pointerEvents: 'auto' },
+              wrapper: { pointerEvents: 'auto' },
+              body: { minHeight: 100 },
+            },
             closable: true,
-            mask: false,
+            mask: true,
             keyboard: true,
             autoFocus: false,
             focusable: { trap: false, focusTriggerAfterClose: false },
-            zIndex: 1000 + (om_designLayer ?? 0),
+            zIndex: 100 + (om_designLayer ?? 0),
           }
         : {})}
     >

@@ -18,6 +18,7 @@ export const Modal = ({
   onOk,
   om_mode,
   om_designOpen,
+  om_getDesignContainer,
   om_onDesignClose,
   om_renderDesignFrame,
   om_designLayer,
@@ -34,7 +35,8 @@ export const Modal = ({
 }: IProps) => {
   const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
   const designing = om_mode === 'design';
-  const content = children ?? om_dropPlaceholder;
+  const content =
+    children ?? (designing ? <div className='h-25'>{om_dropPlaceholder}</div> : om_dropPlaceholder);
   const modal = (
     <AntdModal
       {...rest}
@@ -72,19 +74,21 @@ export const Modal = ({
       }}
       {...(designing
         ? {
-            getContainer: false,
+            getContainer: om_getDesignContainer,
             closable: true,
             keyboard: true,
             modalRender: (node) => om_renderDesignFrame?.(node) ?? node,
             scrollLock: false,
             focusable: { trap: false, focusTriggerAfterClose: false },
+            rootStyle: { position: 'absolute', inset: 0 },
             classNames: { wrapper: 'absolute!' },
             styles: {
-              wrapper: { position: 'absolute', pointerEvents: 'none' },
+              wrapper: { position: 'absolute', pointerEvents: 'auto' },
+              mask: { position: 'absolute', pointerEvents: 'auto' },
               body: { minHeight: 100 },
             },
-            mask: false,
-            zIndex: 1000 + (om_designLayer ?? 0),
+            mask: true,
+            zIndex: 100 + (om_designLayer ?? 0),
           }
         : {})}
     >

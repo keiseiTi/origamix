@@ -1,4 +1,3 @@
-import { DrawerSizeEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
@@ -6,12 +5,11 @@ const material = defineMaterial({
   layout: { display: 'block' },
   title: '抽屉容器',
   defaultProps: {
-    open: false,
+    title: '抽屉',
     placement: 'right',
     closable: true,
     mask: true,
     maskClosable: true,
-    keyboard: true,
   },
   context: {
     variables: [{ name: 'open', description: '是否打开' }],
@@ -38,7 +36,10 @@ const material = defineMaterial({
   role: 'overlay',
   acceptsChildren: true,
   usage: '配置抽屉容器的属性与展示行为。',
-  constraints: ['不将实例或回调写入 Schema。'],
+  constraints: [
+    '仅允许放在 layout.root 的直接子节点中，与根节点的物料类型无关。',
+    '不将实例或回调写入 Schema。',
+  ],
   Component: lazy(() => import('./index')),
   editorConfig: {
     presentation: 'overlay',
@@ -46,11 +47,7 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
-          {
-            field: 'open',
-            label: '显示抽屉',
-            uiType: 'checkbox',
-          },
+          { field: 'title', label: '标题', uiType: 'input' },
           {
             field: 'placement',
             label: '位置',
@@ -101,13 +98,6 @@ const material = defineMaterial({
             },
           },
           {
-            schema: { type: 'number', minimum: 1 },
-            field: 'customSize',
-            label: '自定义尺寸',
-            uiType: 'custom',
-            render: DrawerSizeEditor,
-          },
-          {
             field: 'closable',
             label: '显示关闭按钮',
             uiType: 'checkbox',
@@ -127,23 +117,6 @@ const material = defineMaterial({
                 value: true,
               },
             ],
-          },
-          {
-            field: 'keyboard',
-            label: 'Esc 关闭',
-            uiType: 'checkbox',
-          },
-          {
-            field: 'loading',
-            label: '内容加载中',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
-            field: 'resizable',
-            label: '允许调整尺寸',
-            uiType: 'checkbox',
-            defaultValue: false,
           },
           {
             field: 'push',

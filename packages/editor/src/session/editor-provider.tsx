@@ -74,6 +74,15 @@ export const EditorProvider = ({
     const state = store.getState();
     const target = over?.data.current as { id: string; material: Material } | undefined;
     if (!over || !target || !state.schema.elements[target.id]) return null;
+    const drag = state.dragElement;
+    const draggedMaterial = drag && ('material' in drag ? drag.material : drag);
+    if (draggedMaterial?.editorConfig?.presentation === 'overlay') {
+      const rootId = state.schema.layout.root;
+      const material = state.materials.find(
+        (item) => item.type === state.schema.elements[rootId]?.type,
+      );
+      return material ? { target: { id: rootId, material }, position: undefined } : null;
+    }
     const translated = event.active.rect.current.translated;
     const activation = event.activatorEvent;
     const point =
@@ -86,7 +95,6 @@ export const EditorProvider = ({
             x: (translated?.left ?? over.rect.left) + (translated?.width ?? 0) / 2,
             y: (translated?.top ?? over.rect.top) + (translated?.height ?? 0) / 2,
           };
-    const drag = state.dragElement;
     const dragged = drag
       ? 'material' in drag
         ? { material: drag.material, props: state.schema.elements[drag.id]?.props ?? {} }

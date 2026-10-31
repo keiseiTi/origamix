@@ -14,7 +14,6 @@ const material = defineMaterial({
       { title: '列2', dataIndex: 'col2' },
     ],
     showHeader: true,
-    dataSource: [],
     pagination: false,
   },
   context: {

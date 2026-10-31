@@ -71,4 +71,4 @@ pnpm --filter @origamix/materials build
 
 - Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
 
-- Modal/Drawer declare editorConfig.presentation as overlay. Design visibility and close callbacks belong to Editor, independently of persisted open props; runtime native close behavior remains in the material. They accept children directly and add no default container or flow.
+- Modal/Drawer declare editorConfig.presentation as overlay. Design visibility and close callbacks belong to Editor, independently of persisted open props; runtime native close behavior remains in the material. They accept children directly and add no default container or flow. Their parent is identified by schema.layout.root regardless of its material type; they expose a title with a default, and use a root-scoped getContainer and mask in design mode.

@@ -28,6 +28,14 @@ const generate = async () => {
     if (types.has(material.type)) throw new Error(`重复物料类型: ${material.type}`);
     types.add(material.type);
     const manifest = material.manifest;
+    const properties = manifest.propsSchema.properties as Record<string, unknown>;
+    const undeclaredDefaults = Object.keys(manifest.defaultProps ?? {}).filter(
+      (field) => !Object.hasOwn(properties, field),
+    );
+    if (undeclaredDefaults.length)
+      throw new Error(
+        `${material.type}: defaultProps 包含协议未声明的字段：${undeclaredDefaults.join(', ')}。请删除组件自身已有的默认行为，或显式声明需要持久化的属性协议。`,
+      );
     const data = {
       ...manifest,
       version: undefined,

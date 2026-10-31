@@ -46,7 +46,7 @@ tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作�
 
 1. 在 `antd/<material>/index.tsx` 编写 Ant Design 适配组件，参考 [按钮组件](antd/button/index.tsx)。使用包内运行属性契约，剥离引擎注入属性，避免传入 DOM。
 2. 在 `material-config.ts` 使用 `defineMaterial({ type, title, ..., Component, editorConfig })` 定义元信息、默认值、上下文和 panels，参考 [按钮配置](antd/button/material-config.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)。
-3. 普通属性从 `uiType`、静态 `options`、数值 `min/max`、`required` 和 `defaultValue` 推导协议；自定义组件和复杂属性显式补充 `schema`，参考 [表格配置](antd/table/material-config.ts)。`schema` 是完整覆盖，内部 `#` 引用相对于该字段的 Schema，生成时自动调整嵌入位置；`hidden: true` 声明协议支持但不在面板显示的字段。顶层 `defaultProps` 可定义复杂初值，同字段不要再重复定义默认值。
+3. 普通属性从 `uiType`、静态 `options`、数值 `min/max`、`required` 和 `defaultValue` 推导协议；自定义组件和复杂属性显式补充 `schema`，参考 [表格配置](antd/table/material-config.ts)。`schema` 是完整覆盖，内部 `#` 引用相对于该字段的 Schema，生成时自动调整嵌入位置；`hidden: true` 声明协议支持但不在面板显示的字段。顶层 `defaultProps` 可省略，用于定义需要写入页面 Schema 的初值（包括复杂初值），同字段不要再重复定义默认值；组件自身默认行为无需重复写入。生成时拒绝协议未声明的默认字段，服务端物料验证测试覆盖所有物料默认值的完整协议校验。删除字段配置时同时移除其默认值；仅隐藏控件、仍需持久化时使用 `hidden: true`。
 4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)；生成器自动发现 `antd/*/material-config.ts`。公开清单仍由 [antd/manifest.ts](antd/manifest.ts) 明确选择，保留根物料和未开放物料的区别。
 5. 运行包检查与根检查，在编辑器、预览和生成项目中验证属性、上下文及亮暗主题。自动测试只补已有清单一致性场景中的必要约束。
 

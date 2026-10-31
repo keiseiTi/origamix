@@ -1,6 +1,8 @@
 import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
+import { antdMaterialManifest, basicPageManifest } from '@origamix/materials/antd/manifest';
+import { propsValidator } from '../../src/schema/validation/material-props-validation';
 import {
   defaultMaterialValidationRuntime,
   validatePageAgainstMaterials,
@@ -47,6 +49,14 @@ const codes = (
 
 describe('Manifest-driven Schema validation', () => {
   it('accepts declared props, hierarchy, event, binding and safe URL', () => {
+    // New material insertion copies defaults into Working; every built-in must pass its protocol.
+    for (const manifest of [...antdMaterialManifest.materials, basicPageManifest]) {
+      const validate = propsValidator(manifest);
+      expect(
+        validate(manifest.defaultProps ?? {}),
+        `${manifest.type}: ${JSON.stringify(validate.errors)}`,
+      ).toBe(true);
+    }
     const schema = page();
     schema.flows!.flow_save = {
       startId: 'node_start',
@@ -138,8 +148,8 @@ describe('Manifest-driven Schema validation', () => {
         tabPlacement: 'start',
         destroyOnHidden: true,
       },
-      modal: { open: false, showFooter: false, destroyOnHidden: true },
-      drawer: { open: false, placement: 'bottom', customSize: 240, resizable: true },
+      modal: { title: '弹窗', showFooter: false, destroyOnHidden: true },
+      drawer: { title: '抽屉', placement: 'bottom', size: 'large' },
     };
     for (const [type, props] of Object.entries(displays)) {
       schema.elements[`${type}_test`] = { type, props };
@@ -190,6 +200,25 @@ describe('Manifest-driven Schema validation', () => {
     expect(codes(schema)).toEqual(
       expect.arrayContaining(['CHILDREN_NOT_ALLOWED', 'INVALID_PARENT']),
     );
+    // Agent/full-candidate edits must enforce the same root-only overlay hierarchy as DnD.
+    for (const type of ['modal', 'drawer']) {
+      const nested = page();
+      nested.elements.overlay = { type, props: { title: '标题' } };
+      nested.layout.structure.form_main!.push('overlay');
+      expect(codes(nested)).toContain('INVALID_PARENT');
+      nested.layout.structure.form_main = ['input_name'];
+      nested.layout.structure.element_root!.push('overlay');
+      expect(codes(nested)).toEqual([]);
+      nested.elements.element_root = { type: 'container', props: {} };
+      expect(codes(nested)).toEqual([]);
+      nested.elements.overlay!.props.open = false;
+      expect(validatePageAgainstMaterials(nested, supportedSet).errors).toContainEqual(
+        expect.objectContaining({
+          code: 'INVALID_MATERIAL_PROPS',
+          path: '/elements/overlay/props/open',
+        }),
+      );
+    }
   });
 
   it('rejects unknown events and broken bindings', () => {
