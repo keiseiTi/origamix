@@ -1,3 +1,4 @@
+import { hashSchema } from '../../src/schema/schema-hash';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
 import {
   mkdtemp,
@@ -786,11 +787,53 @@ describe('Schema Service', () => {
 
   it('applies Working operations and keeps revisions explicit', async () => {
     const page = await createPageFixture();
-    const initialRevisionId = await initializePageSchema(page, schema);
+    const initialSchema: OrigamixPageSchema = {
+      ...structuredClone(schema),
+      elements: {
+        ...schema.elements,
+        button_existing: { type: 'button', props: { text: '旧按钮' } },
+      },
+      layout: {
+        root: 'element_root',
+        structure: { element_root: ['button_existing'], button_existing: [] },
+      },
+    };
+    const initialRevisionId = await initializePageSchema(page, initialSchema);
+    // A retained draft written before these property controls were removed.
+    const workingPath = join(page.projectPath, '.origamix/pages', page.pageId, 'working.json');
+    const retained = JSON.parse(await readFile(workingPath, 'utf8'));
+    retained.schema.elements.button_existing.props = {
+      text: '旧按钮',
+      htmlType: 'submit',
+      shape: 'round',
+    };
+    retained.workingHash = hashSchema(retained.schema);
+    await writeFile(workingPath, JSON.stringify(retained));
+    const targetPath = join(page.projectPath, 'src/pages', page.slug, 'schema.json');
+    const targetBefore = await readFile(targetPath, 'utf8');
     const working = await getWorkingSchemaState(page);
+    await expect(
+      applyWorkingSchemaOperations(page, {
+        baseWorkingVersion: working.workingVersion,
+        operations: [
+          {
+            operation: 'updateElementProps',
+            elementId: 'button_existing',
+            set: { text: '新按钮' },
+          },
+        ],
+      }),
+    ).rejects.toThrow('INVALID_MATERIAL_PROPS');
+    expect((await getWorkingSchemaState(page)).workingHash).toBe(working.workingHash);
     const draft = await applyWorkingSchemaOperations(page, {
       baseWorkingVersion: working.workingVersion,
       operations: [
+        {
+          operation: 'updateElementProps',
+          elementId: 'button_existing',
+          set: { text: '新按钮' },
+          unset: ['htmlType', 'shape'],
+        },
         {
           operation: 'updateElementProps',
           elementId: 'element_root',
@@ -798,6 +841,9 @@ describe('Schema Service', () => {
         },
       ],
     });
+    expect(draft.schema.elements.button_existing!.props).toEqual({ text: '新按钮' });
+    expect(draft.workingVersion).toBe(working.workingVersion + 1);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetBefore);
     expect(draft.revisionId).toBe(initialRevisionId);
     expect(draft.schema.elements.element_root.props).toMatchObject({
       padding: 16,

@@ -96,7 +96,7 @@ const stopDesktop = async () => {
     previous.kill('SIGTERM');
   });
 };
-const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
+const startVite = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
   let occupied = false;
   try {
     await fetch(rendererUrl, { signal: AbortSignal.timeout(500) });
@@ -134,6 +134,9 @@ const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   if (!available) throw new Error('页面开发服务启动超时');
+};
+const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
+  await startVite(env, rendererUrl);
   const config = await import('../src/main/config.ts');
   const debug = config.desktopDebug(env)
     ? [
@@ -181,18 +184,46 @@ const update = async () => {
     if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
     if (batch.has('desktop')) await build({ ...options, clean: false });
     if (stopping) return;
+    const materialsUpdate =
+      !initial &&
+      batch.has('materials') &&
+      [...batch].every((name) => name === 'materials' || name === 'server') &&
+      Boolean(electron && desktopControl);
     const backendOnly =
       !initial && batch.size === 1 && batch.has('server') && Boolean(electron && desktopControl);
-    if (backendOnly) {
+    if (backendOnly || materialsUpdate) {
       if (paused || dirty.size) {
-        dirty.add('server');
+        for (const name of batch) dirty.add(name);
         if (paused) console.info('[开发环境] 自动重启已暂停，输入 p 并回车恢复。');
         else completed = true;
         return;
       }
+      if (materialsUpdate) {
+        stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
+        await run(`${desktopRoot}scripts/assemble-resources.ts`, workspaceRoot, [stagedTemplate]);
+        if (stopping) return;
+        if (paused || dirty.size) {
+          for (const name of batch) dirty.add(name);
+          completed = !paused;
+          return;
+        }
+      }
       await desktopControl!.request('pause-backend');
       await copyServerArtifact();
+      if (materialsUpdate) {
+        await rm(`${desktopRoot}dist/template`, { recursive: true, force: true });
+        await rename(stagedTemplate!, `${desktopRoot}dist/template`);
+        stagedTemplate = undefined;
+        const previousVite = vite;
+        vite = undefined;
+        await stopChild(previousVite);
+        await startVite(env, rendererUrl);
+      }
       await desktopControl!.request('resume-backend');
+      if (materialsUpdate) {
+        await desktopControl!.request('reload-workbench');
+        console.info('[开发环境] 物料已更新，App 已刷新，桌面窗口保持不变');
+      }
       console.info('[开发环境] 后端已独立重启，桌面窗口保持不变');
       completed = true;
       return;

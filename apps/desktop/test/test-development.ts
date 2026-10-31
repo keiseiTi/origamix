@@ -13,6 +13,7 @@ let child: import('node:child_process').ChildProcess | undefined;
 let output = '';
 let socket: WebSocket | undefined;
 let serial = 0;
+let targetId: string | undefined;
 interface CdpResponse {
   result?: {
     exceptionDetails?: { exception?: { description?: string }; text?: string };
@@ -55,6 +56,7 @@ const connect = async () => {
       target.type === 'page' && target.url.startsWith('http://127.0.0.1:5196'),
   );
   if (!page) return false;
+  targetId = page.id;
   socket = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket!.addEventListener('open', resolve, { once: true });
@@ -211,6 +213,22 @@ try {
   await waitFor(() => output.slice(beforeBackendRepair).includes('后端已独立重启'));
   assert.notEqual((await connection()).serviceInstanceId, backendUpdated.serviceInstanceId);
   assert.equal(await evaluate(`window.__developmentMarker`), 'retained');
+  const retainedTarget = targetId;
+  const beforeMaterials = await connection();
+  const materialsSource = join(root, 'packages/materials/antd/button/index.tsx');
+  const materialsOriginal = await readFile(materialsSource, 'utf8');
+  const materialsStart = output.length;
+  await writeFile(materialsSource, materialsOriginal + '\n// material implementation update\n');
+  await waitFor(() => output.slice(materialsStart).includes('物料已更新，App 已刷新'));
+  await waitFor(connect);
+  assert.equal(targetId, retainedTarget, 'material update must retain the Electron window');
+  assert.equal(await evaluate('window.__developmentMarker === undefined'), true);
+  const afterMaterials = await connection();
+  assert.notEqual(afterMaterials.serviceInstanceId, beforeMaterials.serviceInstanceId);
+  await waitFor(() =>
+    evaluate(`import('/src/services/request.ts').then(async m =>
+    (await m.getApiConnection()).serviceInstanceId === (await window.api.backend.getConnection()).serviceInstanceId)`),
+  );
   const templateBefore = await readFile(join(desktop, 'dist/template/README.md'), 'utf8');
   for (const name of ['shared', 'runtime', 'server']) {
     const source = join(

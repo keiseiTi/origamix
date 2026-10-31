@@ -16,6 +16,7 @@ import {
 } from '@origamix/ui';
 
 import { ChevronRight } from 'lucide-react';
+import { useMaterialCatalog } from '../session/editor-environment';
 import { SchemaUtils } from '../schema/schema-utils';
 import { useEditorCore, type ActiveElement } from '../session/editor-session';
 import { type AttributeConfig } from '../contracts/material-contracts';
@@ -61,6 +62,7 @@ export const AttributePanel = ({
   const { activeElement, materials, schema, setActiveElement, setSchema } = useEditorCore();
   const [activePanel, setActivePanel] = useState('0');
   const material = activeElement?.material;
+  const catalog = useMaterialCatalog();
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
   const parentTabsId = activeElement
@@ -135,7 +137,13 @@ export const AttributePanel = ({
 
   const update = (field: string, value: unknown): void => {
     if (!activeElement) return;
-    const result = SchemaUtils.setElementProps(schema, activeElement.id, { [field]: value });
+    const manifest = catalog.find((item) => item.type === element?.type);
+    const result = SchemaUtils.setElementProps(
+      schema,
+      activeElement.id,
+      { [field]: value },
+      manifest?.propsSchema,
+    );
     setSchema(result.schema, { historyGroup: `props:${activeElement.id}:${field}` });
   };
 

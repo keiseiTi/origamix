@@ -26,7 +26,7 @@ pnpm package:dir
 pnpm package:mac
 ```
 
-开发脚本按依赖顺序构建库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。仅 Server 源码或构建配置变化时，先构建新产物，再通过监督器与 Main 的私有标准输入／输出管道协调关闭旧后端、替换产物和启动新后端，保留 Vite、Electron 窗口及网页上下文。Shared、Runtime、Materials、Main/Preload、模板或 Desktop 环境文件变化时，仍按依赖顺序构建并准备资源，正常退出并重启 Vite 与 Electron。Server 的模板复制实现变化也重新准备模板并整端重启。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
+开发脚本按依赖顺序构建库、Server、Main/Preload 和固定 npm 版本的模板，再启动 Vite 与 Electron。App、Editor、UI 保持前端 HMR。仅 Server 源码或构建配置变化时，先构建新产物，再通过监督器与 Main 的私有标准输入／输出管道协调关闭旧后端、替换产物和启动新后端，保留 Vite、Electron 窗口及网页上下文。Shared、Runtime、Main/Preload、模板或 Desktop 环境文件变化时，仍按依赖顺序构建并准备资源，正常退出并重启 Vite 与 Electron。Server 的模板复制实现变化也重新准备模板并整端重启。Materials／Shared／Runtime 在 Desktop 模式下不提前 HMR，以免页面与运行中的后端采用不同契约。修改开发启动脚本或安装新依赖后，也需重启。
 
 多次保存会合并处理，构建期间的新变化进入下一轮；构建或资源准备失败时保留当前实例，修复源码后重试，也可在终端按 Enter 重试。输入 `p` 并回车可暂停／恢复自动重启，适合调试 Agent 或长时间编辑；暂停时可以继续构建，恢复后应用待更新内容。退出超时则暂停更新，不强制杀掉桌面实例。
 
@@ -132,3 +132,5 @@ ORIGAMIX_DEBUG=1
 
 开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
 公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
+
+物料开发更新（包括 antd 组件实现、样式和 Manifest）会按顺序生成 Manifest、构建 Materials 与 Server、准备模板资源，再独立重启后端，通过现有状态通知更新 App 凭证，并重启 Vite、刷新 App。Electron 窗口保持不变；App 刷新会重置页面内存及组件临时状态。Shared、Runtime、Main、Preload 等混合变更仍整端重启。

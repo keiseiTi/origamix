@@ -1,4 +1,9 @@
-import { isPageSchema, type OrigamixPageSchema as Schema, type PageFlow } from '@origamix/shared';
+import {
+  isPageSchema,
+  type OrigamixPageSchema as Schema,
+  type PageFlow,
+  type JsonSchema,
+} from '@origamix/shared';
 
 type InsertElement = { id: string; type: string; props?: Record<string, unknown> };
 const getParents = (schema: Schema, id: string): string[] => {
@@ -151,13 +156,31 @@ const moveElement = (
     },
   };
 };
-const setElementProps = (schema: Schema, id: string, props: Record<string, unknown>) => {
+const setElementProps = (
+  schema: Schema,
+  id: string,
+  props: Record<string, unknown>,
+  propsSchema?: JsonSchema,
+) => {
   const element = schema.elements[id];
   if (!element) throw new Error('元素不存在');
+  // A deliberate attribute edit drops only this element's no-longer-declared stored props.
+  // New values still pass unchanged to Server validation; loading never writes or cleans data.
+  const properties = propsSchema?.properties;
+  const previousProps =
+    propsSchema?.additionalProperties === false &&
+    properties &&
+    typeof properties === 'object' &&
+    !Array.isArray(properties) &&
+    !propsSchema.patternProperties
+      ? Object.fromEntries(
+          Object.entries(element.props).filter(([field]) => Object.hasOwn(properties, field)),
+        )
+      : element.props;
   return {
     schema: {
       ...schema,
-      elements: { ...schema.elements, [id]: { ...element, props: { ...element.props, ...props } } },
+      elements: { ...schema.elements, [id]: { ...element, props: { ...previousProps, ...props } } },
     },
     operation: { elementId: id, props, oldProps: element.props },
   };

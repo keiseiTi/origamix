@@ -460,6 +460,11 @@ app
       const dispose = registerDevelopmentControl({
         pauseBackend,
         resumeBackend,
+        reloadWorkbench: async () => {
+          if (!workbenchWindow || workbenchWindow.isDestroyed())
+            throw new Error('工作台窗口已关闭');
+          await workbenchWindow.loadURL(workbenchEntryUrl());
+        },
         disconnect: () => app.quit(),
       });
       app.once('will-quit', dispose);
