@@ -10,14 +10,12 @@ export interface IProps
       | 'loading'
       | 'onClick'
       | 'type'
-      | 'shape'
       | 'href'
       | 'target'
       | 'ghost'
       | 'size'
       | 'danger'
       | 'block'
-      | 'htmlType'
     >,
     MaterialComponentProps {
   text?: string;

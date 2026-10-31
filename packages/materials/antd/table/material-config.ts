@@ -1,4 +1,4 @@
-import { TableRowsEditor, PaginationEditor } from '../../components/structured-editors';
+import { PaginationEditor } from '../../components/structured-editors';
 import { ColumnsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
@@ -86,26 +86,6 @@ const material = defineMaterial({
             render: ColumnsEditor,
           },
           {
-            schema: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: {
-                  anyOf: [
-                    { type: 'string' },
-                    { type: 'number' },
-                    { type: 'boolean' },
-                    { type: 'null' },
-                  ],
-                },
-              },
-            },
-            field: 'dataSource',
-            label: '表格数据',
-            uiType: 'custom',
-            render: TableRowsEditor,
-          },
-          {
             field: 'size',
             label: '尺寸',
             uiType: 'select',
@@ -129,12 +109,6 @@ const material = defineMaterial({
           {
             field: 'bordered',
             label: '显示边框',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
-            field: 'loading',
-            label: '加载中',
             uiType: 'checkbox',
             defaultValue: false,
           },
@@ -226,6 +200,7 @@ const material = defineMaterial({
             label: '分页',
             uiType: 'custom',
             render: PaginationEditor,
+            resetOnValueChange: false,
           },
         ],
       },

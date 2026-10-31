@@ -84,7 +84,7 @@ runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务�
 
 输入的本地状态与运行时读值投影同步，不因每次输入重建 Engine 组件；逻辑流主动写值才更新对应渲染元素。字段方法及程序写值同步 Form 和控件投影。这些都是临时运行态，不会写 Working、创建 Revision 或 Apply。
 
-basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor 和校验目录，但不加入拖入物料组。FloatButton 仍不注册。本次配置收敛不重写已有项目：删除的属性或旧枚举值在后续编辑校验时会给出明确错误，不能静默转换或覆盖原文件。
+basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor 和校验目录，但不加入拖入物料组。FloatButton 仍不注册。打开页面不会改写数据。属性面板下一次编辑某个元素时，会按当前 Manifest 删除该元素已移除的顶层属性，并与本次修改一起提交为 Working 操作；不会改动其他元素、历史 Revision 或真实项目文件。新提交的未知属性、非法值和旧枚举仍由 Server 严格拒绝，不做值转换。
 
 物料运行、清单与编辑入口保持分离；清单可序列化，生成项目不需要 editor-only peers。修改后必须先构建 Materials，再组装 Server/Desktop 并重载受检环境；验收见各包 AGENTS.md。
 
@@ -99,3 +99,7 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。
 
 布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。详见[物料与画布布局方案](../editor/docs/material-layout.md)。
+
+表格列配置在属性面板中以简表展示列名、字段和删除操作；点击“配置列”打开弹窗，编辑列名、字段、宽度、对齐、固定和超出省略，并支持上移、下移、删除与添加列。弹窗确认后一次更新，取消不提交；已有列的其他合法字段保持原值。
+
+表格分页配置直接更新，不再提供“更新分页”和“取消修改”按钮；非法页码或每页条数只保留为本地输入，修正为正整数后才提交。

@@ -92,16 +92,6 @@ const ButtonMaterial = defineMaterial({
             },
           },
           {
-            label: '禁用',
-            field: 'disabled',
-            uiType: 'checkbox',
-          },
-          {
-            label: '加载中',
-            field: 'loading',
-            uiType: 'checkbox',
-          },
-          {
             label: '危险样式',
             field: 'danger',
             uiType: 'checkbox',

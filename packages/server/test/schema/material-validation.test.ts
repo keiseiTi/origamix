@@ -125,7 +125,6 @@ describe('Manifest-driven Schema validation', () => {
       table: {
         rowKey: 'id',
         columns: [{ title: '姓名', dataIndex: 'name', width: 120, fixed: 'left' }],
-        dataSource: [{ id: '1', name: '张三' }],
         pagination: { pageSize: 5, current: 1 },
         scrollY: 240,
       },

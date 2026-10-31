@@ -283,33 +283,25 @@ export const AttributePanel = ({
           }
         ).render;
         return Component ? (
-          <details
-            key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
-            className='rounded border border-border p-2'
-          >
-            <summary className='cursor-pointer rounded text-xs font-medium outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring'>
-              编辑{label}
-            </summary>
-            <div className='pt-3'>
-              <Component
-                key={`${activeElement?.id}:${config.field}:${JSON.stringify(value)}`}
-                value={value}
-                elementProps={values}
-                fields={Object.keys(schema.elements)
-                  .filter((id) => SchemaUtils.getParents(schema, id).includes(activeElement!.id))
-                  .map((id: string) => schema.elements[id])
-                  .filter(
-                    (element) =>
-                      typeof element?.props?.fieldName === 'string' && element.props.fieldName,
-                  )
-                  .map((element) => ({
-                    name: String(element!.props.fieldName),
-                    label: String(element!.props.fieldLabel || element!.props.fieldName),
-                  }))}
-                onChange={(next) => update(config.field, next)}
-              />
-            </div>
-          </details>
+          <div className='pt-3'>
+            <Component
+              key={`${activeElement?.id}:${config.field}:${config.resetOnValueChange === false ? '' : JSON.stringify(value)}`}
+              value={value}
+              elementProps={values}
+              fields={Object.keys(schema.elements)
+                .filter((id) => SchemaUtils.getParents(schema, id).includes(activeElement!.id))
+                .map((id: string) => schema.elements[id])
+                .filter(
+                  (element) =>
+                    typeof element?.props?.fieldName === 'string' && element.props.fieldName,
+                )
+                .map((element) => ({
+                  name: String(element!.props.fieldName),
+                  label: String(element!.props.fieldLabel || element!.props.fieldName),
+                }))}
+              onChange={(next) => update(config.field, next)}
+            />
+          </div>
         ) : null;
       }
       case 'color':
@@ -421,9 +413,7 @@ export const AttributePanel = ({
                               })
                             }
                           >
-                            <span>
-                              {method.description || method.name}（{method.name}）
-                            </span>
+                            <span>{method.description || method.name}</span>
                           </Button>
                         ))}
                       </div>

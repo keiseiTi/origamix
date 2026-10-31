@@ -131,12 +131,6 @@ export const buttonManifest = withMaterialManifestDefaults({
         type: 'string',
         enum: ['large', 'medium', 'small'],
       },
-      disabled: {
-        type: 'boolean',
-      },
-      loading: {
-        type: 'boolean',
-      },
       danger: {
         type: 'boolean',
       },
@@ -2065,7 +2059,6 @@ export const tableManifest = withMaterialManifestDefaults({
     dataSource: [],
     pagination: false,
     bordered: false,
-    loading: false,
     sticky: false,
   },
   propsSchema: {
@@ -2123,36 +2116,11 @@ export const tableManifest = withMaterialManifestDefaults({
           required: ['title', 'dataIndex'],
         },
       },
-      dataSource: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: {
-            anyOf: [
-              {
-                type: 'string',
-              },
-              {
-                type: 'number',
-              },
-              {
-                type: 'boolean',
-              },
-              {
-                type: 'null',
-              },
-            ],
-          },
-        },
-      },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
       },
       bordered: {
-        type: 'boolean',
-      },
-      loading: {
         type: 'boolean',
       },
       showHeader: {

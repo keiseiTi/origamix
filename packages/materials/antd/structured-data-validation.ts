@@ -30,16 +30,16 @@ export const validateColumns = (value: unknown): string | undefined => {
       !column.title.trim() ||
       !column.dataIndex.trim()
     )
-      return '每列需要文本 title 和 dataIndex，例如 [{"title":"姓名","dataIndex":"name"}]。';
+      return '请填写每列的列名和字段。';
     const key = column.key ?? column.dataIndex;
     if (typeof key !== 'string' || keys.has(key))
-      return '每列的 key（未填写时使用 dataIndex）必须唯一。';
+      return '列标识不能重复，请检查字段名或删除重复列。';
     keys.add(key);
     if (
       column.width !== undefined &&
       (typeof column.width !== 'number' || !Number.isFinite(column.width) || column.width < 1)
     )
-      return '列宽 width 应为大于零的数字。';
+      return '列宽应为大于零的数字。';
     if (column.align !== undefined && !['left', 'center', 'right'].includes(String(column.align)))
       return '列对齐 align 可使用 left、center 或 right。';
     if (

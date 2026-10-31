@@ -65,18 +65,33 @@ const isRecord = (value: unknown): value is RecordValue =>
 const copy = <T,>(value: T): T => structuredClone(value);
 
 export const PaginationEditor = ({ value, onChange }: StructuredEditorProps) => {
-  const [draft, setDraft] = useState<RecordValue | false>(() =>
-    isRecord(value) ? copy(value) : false,
-  );
-  const [error, setError] = useState('');
-  const patch = (field: string, next: unknown) => setDraft({ ...draft, [field]: next });
+  const [pending, setPending] = useState<{
+    base: unknown;
+    draft: RecordValue | false;
+    error: string;
+  }>();
+  const draft = pending && pending.base === value ? pending.draft : isRecord(value) ? value : false;
+  const error = pending && pending.base === value ? pending.error : '';
+  const commit = (next: RecordValue | false) => {
+    const issue =
+      next !== false &&
+      (['pageSize', 'current'] as const).some((field) => {
+        const number = next[field] ?? (field === 'pageSize' ? 10 : 1);
+        return !Number.isInteger(number) || Number(number) < 1;
+      })
+        ? '页码和每页条数必须是正整数。'
+        : '';
+    setPending({ base: value, draft: next, error: issue });
+    if (!issue) onChange?.(next);
+  };
+  const patch = (field: string, next: unknown) => commit({ ...draft, [field]: next });
   return (
     <div className='space-y-3'>
       <Flag
         label='开启分页'
         checked={draft !== false}
         change={(enabled) =>
-          setDraft(enabled ? { current: 1, pageSize: 10, position: ['bottomRight'] } : false)
+          commit(enabled ? { current: 1, pageSize: 10, position: ['bottomRight'] } : false)
         }
       />
       {draft !== false && (
@@ -91,7 +106,7 @@ export const PaginationEditor = ({ value, onChange }: StructuredEditorProps) => 
                 step={1}
                 value={String(draft[field] ?? (field === 'pageSize' ? 10 : 1))}
                 onChange={(event) =>
-                  patch(field, event.target.value === '' ? 0 : Number(event.target.value))
+                  patch(field, event.target.value === '' ? '' : Number(event.target.value))
                 }
               />
             </FieldLabel>
@@ -144,36 +159,6 @@ export const PaginationEditor = ({ value, onChange }: StructuredEditorProps) => 
           {error}
         </p>
       )}
-      <div className='flex gap-2'>
-        <Button
-          size='sm'
-          onClick={() => {
-            if (
-              draft !== false &&
-              ['pageSize', 'current'].some(
-                (field) => !Number.isInteger(draft[field]) || Number(draft[field]) < 1,
-              )
-            ) {
-              setError('页码和每页条数必须是正整数。');
-              return;
-            }
-            onChange?.(draft);
-            setError('');
-          }}
-        >
-          更新分页
-        </Button>
-        <Button
-          size='sm'
-          variant='outline'
-          onClick={() => {
-            setDraft(isRecord(value) ? copy(value) : false);
-            setError('');
-          }}
-        >
-          取消修改
-        </Button>
-      </div>
     </div>
   );
 };
@@ -364,84 +349,6 @@ export const FormValuesEditor = ({ value, onChange, fields }: StructuredEditorPr
         size='sm'
         variant='outline'
         onClick={() => setDraft(isRecord(value) ? copy(value) : {})}
-      >
-        取消修改
-      </Button>
-      {error && (
-        <p role='alert' className='text-xs text-destructive'>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
-export const TableRowsEditor = ({ value, onChange, elementProps }: StructuredEditorProps) => {
-  const [rows, setRows] = useState<RecordValue[]>(() => (Array.isArray(value) ? copy(value) : []));
-  const [error, setError] = useState('');
-  const columns = (Array.isArray(elementProps?.columns) ? elementProps.columns : []) as {
-    title: string;
-    dataIndex: string;
-  }[];
-  return (
-    <div className='space-y-2'>
-      {rows.map((row, index) => (
-        <fieldset key={index} className='min-w-0 space-y-2 rounded border border-border p-2'>
-          <legend className='text-xs'>数据行 {index + 1}</legend>
-          {[
-            ...new Set([
-              String(elementProps?.rowKey ?? 'id'),
-              ...columns.map((column) => column.dataIndex),
-              ...Object.keys(row),
-            ]),
-          ].map((key) => (
-            <div key={key}>
-              <FieldLabel className='text-xs'>
-                {columns.find((column) => column.dataIndex === key)?.title ?? key}
-              </FieldLabel>
-              <Scalar
-                allowStructured={false}
-                label={`行${index + 1} ${key}`}
-                value={row[key] ?? ''}
-                change={(next) =>
-                  setRows(rows.map((old, i) => (i === index ? { ...old, [key]: next } : old)))
-                }
-              />
-            </div>
-          ))}
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={() => setRows(rows.filter((_, i) => i !== index))}
-          >
-            删除行 {index + 1}
-          </Button>
-        </fieldset>
-      ))}
-      <Button size='sm' variant='outline' onClick={() => setRows([...rows, {}])}>
-        添加数据行
-      </Button>
-      <Button
-        size='sm'
-        onClick={() => {
-          if (
-            !finiteJson(rows) ||
-            rows.some((row) =>
-              Object.values(row).some((cell) => cell !== null && typeof cell === 'object'),
-            )
-          ) {
-            setError('单元格请使用文本、有限数字、布尔值或空值。');
-            return;
-          }
-          setError('');
-          onChange?.(rows);
-        }}
-      >
-        更新表格数据
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => setRows(Array.isArray(value) ? copy(value) : [])}
       >
         取消修改
       </Button>

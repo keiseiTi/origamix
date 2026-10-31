@@ -2,6 +2,8 @@ import type { ComponentType, LazyExoticComponent, ReactNode } from 'react';
 import type { MaterialManifest, MaterialLayout } from '@origamix/shared';
 
 export interface AttributeConfig {
+  /** Defaults to true for draft editors; live controls opt out to preserve input focus. */
+  resetOnValueChange?: boolean;
   label?: ReactNode;
   field: string;
   uiType?: string;

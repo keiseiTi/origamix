@@ -62,7 +62,8 @@
     "@origamix/runtime": "workspace:*",
     "tsx": "4.23.13",
     "@types/node": "^24.13.3",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "lucide-react": "^1.34.0"
   },
   "peerDependencies": {
     "antd": "^6",

@@ -2,6 +2,8 @@ import type React from 'react';
 import type { MaterialManifest, MaterialLayout, JsonSchema } from '@origamix/shared';
 
 type BasicAttributeConfig = {
+  /** Defaults to true for draft editors; live controls opt out to preserve input focus. */
+  resetOnValueChange?: boolean;
   schema?: JsonSchema;
   hidden?: boolean;
   label?: React.ReactNode;
