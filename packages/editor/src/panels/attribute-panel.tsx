@@ -93,26 +93,37 @@ export const AttributePanel = ({
       ),
   );
   const panels = [
-    ...(material?.editorConfig?.panels ?? []).map((panel) => ({
-      ...panel,
-      configs: [
-        ...(panel.configs ?? []),
-        ...(panel.title === '属性' && parentTabsId
-          ? [
-              {
-                field: 'tabKey',
-                required: false,
-                label: '所属页签',
-                uiType: 'select',
-                props: {
-                  options: tabItems.map((item) => ({ label: item.label, value: item.key })),
+    ...(material?.editorConfig?.panels ?? [])
+      .filter(
+        (panel) =>
+          panel.context !== 'form' ||
+          Boolean(
+            activeElement &&
+            SchemaUtils.getParents(schema, activeElement.id).some(
+              (id) => schema.elements[id]?.type === 'form',
+            ),
+          ),
+      )
+      .map((panel) => ({
+        ...panel,
+        configs: [
+          ...(panel.configs ?? []),
+          ...(panel.title === '属性' && parentTabsId
+            ? [
+                {
+                  field: 'tabKey',
+                  required: false,
+                  label: '所属页签',
+                  uiType: 'select',
+                  props: {
+                    options: tabItems.map((item) => ({ label: item.label, value: item.key })),
+                  },
                 },
-              },
-            ]
-          : []),
-      ],
-      kind: 'attributes' as const,
-    })),
+              ]
+            : []),
+        ],
+        kind: 'attributes' as const,
+      })),
     ...(events?.length ? [{ title: '事件', kind: 'events' as const, events }] : []),
   ];
 

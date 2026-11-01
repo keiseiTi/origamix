@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'slider',
   layout: { display: 'block' },
   title: '滑动输入条',
@@ -212,9 +213,6 @@ const material = defineMaterial({
               { field: 'tooltipMode', value: undefined },
             ],
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const InputMaterial = defineMaterial({
+  formField: true,
   type: 'input',
   layout: { display: 'inline' },
   title: '输入框',
@@ -125,76 +126,6 @@ const InputMaterial = defineMaterial({
             field: 'showCount',
             uiType: 'checkbox',
           },
-          {
-            label: '校验状态',
-            field: 'status',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '错误',
-                  value: 'error',
-                },
-                {
-                  label: '警告',
-                  value: 'warning',
-                },
-              ],
-            },
-          },
-          {
-            label: '外观',
-            field: 'variant',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '描边',
-                  value: 'outlined',
-                },
-                {
-                  label: '无边框',
-                  value: 'borderless',
-                },
-                {
-                  label: '填充',
-                  value: 'filled',
-                },
-                {
-                  label: '下划线',
-                  value: 'underlined',
-                },
-              ],
-            },
-          },
-          {
-            label: '自动填充',
-            field: 'autoComplete',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '开启',
-                  value: 'on',
-                },
-                {
-                  label: '关闭',
-                  value: 'off',
-                },
-              ],
-            },
-          },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

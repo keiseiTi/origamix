@@ -8,7 +8,7 @@ import {
   useState,
   type ComponentType,
 } from 'react';
-import { Form } from 'antd';
+import { Form, type FormItemProps } from 'antd';
 import type { MaterialManifest } from '@origamix/shared';
 import type { RuntimeMaterialProps } from '../src/runtime-material';
 
@@ -46,6 +46,8 @@ const RuntimeField = ({
   label,
   required,
   field,
+  tooltip,
+  rules,
 }: {
   Component: ComponentType<RuntimeMaterialProps>;
   props: RuntimeMaterialProps;
@@ -53,6 +55,8 @@ const RuntimeField = ({
   label?: string;
   required?: boolean;
   field: string;
+  tooltip?: string;
+  rules?: FormItemProps['rules'];
 }) => {
   const form = Form.useFormInstance();
   const context = useContext(FormRuntimeContext);
@@ -90,10 +94,13 @@ const RuntimeField = ({
     <Form.Item
       name={name}
       label={label}
+      tooltip={tooltip}
+      required={required}
       valuePropName={field}
       rules={
         required
           ? [
+              ...(rules ?? []),
               {
                 validator: (_rule, value: unknown) =>
                   value === null ||
@@ -105,7 +112,7 @@ const RuntimeField = ({
                     : Promise.resolve(),
               },
             ]
-          : []
+          : rules
       }
       getValueFromEvent={(payload: Record<string, unknown>) => payload[field]}
     >
@@ -120,7 +127,18 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
   const field = manifest.valueProp ?? 'value';
   const supportsField = Object.hasOwn(manifest.propsSchema.properties ?? {}, 'fieldName');
   const BoundMaterial = (props: RuntimeMaterialProps) => {
-    const { fieldName, fieldLabel, fieldRequired, init, alias, tabKey, ...rest } = props;
+    const {
+      fieldName,
+      fieldLabel,
+      fieldRequired,
+      fieldTooltip,
+      fieldRules,
+      init,
+      alias,
+      tabKey,
+      ...rest
+    } = props;
+    const formContext = useContext(FormRuntimeContext);
     const initialized = useRef(false);
     useEffect(() => {
       if (!initialized.current && props.om_mode !== 'design') {
@@ -128,8 +146,40 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
         if (typeof init === 'function') init();
       }
     }, [init, props.om_mode]);
-    if (!supportsField || typeof fieldName !== 'string' || !fieldName || props.om_mode === 'design')
-      return <Component {...rest} />;
+    if (!supportsField || !formContext) return <Component {...rest} />;
+    const label = typeof fieldLabel === 'string' ? fieldLabel : undefined;
+    const tooltip = typeof fieldTooltip === 'string' ? fieldTooltip : undefined;
+    if (props.om_mode === 'design')
+      return (
+        <Form.Item label={label} tooltip={tooltip} required={Boolean(fieldRequired)}>
+          <Component {...rest} />
+        </Form.Item>
+      );
+    if (typeof fieldName !== 'string' || !fieldName) return <Component {...rest} />;
+    const rules: FormItemProps['rules'] = Array.isArray(fieldRules)
+      ? fieldRules.map((rule) => {
+          const { type, value, message } = rule as {
+            type: string;
+            value?: string | number;
+            message?: string;
+          };
+          if (type === 'email' || type === 'url') return { type, message };
+          if (type === 'pattern') {
+            try {
+              return { pattern: new RegExp(String(value)), message };
+            } catch {
+              return { validator: () => Promise.reject(new Error(message || '正则表达式无效')) };
+            }
+          }
+          if (type === 'minLength' || type === 'maxLength')
+            return {
+              type: 'string' as const,
+              [type === 'minLength' ? 'min' : 'max']: Number(value),
+              message,
+            };
+          return { type: 'number' as const, [type]: Number(value), message };
+        })
+      : [];
     return (
       <RuntimeField
         Component={Component}
@@ -138,6 +188,8 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
         required={Boolean(fieldRequired)}
         label={typeof fieldLabel === 'string' ? fieldLabel : undefined}
         field={field}
+        tooltip={tooltip}
+        rules={rules}
       />
     );
   };

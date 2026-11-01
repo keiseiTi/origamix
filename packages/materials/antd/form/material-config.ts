@@ -1,4 +1,3 @@
-import { FormValuesEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
@@ -10,8 +9,6 @@ const material = defineMaterial({
     labelAlign: 'right',
     colon: true,
     preserve: true,
-    requiredMark: true,
-    initialValues: {},
   },
   context: {
     variables: [{ name: 'value', description: '当前值' }],
@@ -52,11 +49,6 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
-          {
-            field: 'name',
-            label: '表单名称',
-            uiType: 'input',
-          },
           {
             field: 'layout',
             label: '布局',
@@ -168,37 +160,9 @@ const material = defineMaterial({
             ],
           },
           {
-            field: 'disabled',
-            label: '禁用表单',
-            uiType: 'checkbox',
-            defaultValue: false,
-          },
-          {
             field: 'preserve',
             label: '保留移除字段的值',
             uiType: 'checkbox',
-          },
-          {
-            schema: { anyOf: [{ type: 'boolean' }, { type: 'string', enum: ['optional'] }] },
-            field: 'requiredMark',
-            label: '必填标记',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '显示必填',
-                  value: true,
-                },
-                {
-                  label: '隐藏',
-                  value: false,
-                },
-                {
-                  label: '显示可选',
-                  value: 'optional',
-                },
-              ],
-            },
           },
           {
             field: 'scrollToFirstError',
@@ -222,46 +186,6 @@ const material = defineMaterial({
                 },
               ],
             },
-          },
-          {
-            schema: { type: 'string', enum: ['outlined', 'borderless', 'filled', 'underlined'] },
-            field: 'variant',
-            label: '控件外观',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '描边',
-                  value: 'outlined',
-                },
-                {
-                  label: '填充',
-                  value: 'filled',
-                },
-                {
-                  label: '无边框',
-                  value: 'borderless',
-                },
-                {
-                  label: '下划线',
-                  value: 'underlined',
-                },
-              ],
-            },
-          },
-          {
-            schema: { type: 'object' },
-            field: 'initialValues',
-            label: '初始字段值',
-            uiType: 'custom',
-            render: FormValuesEditor,
-            resetOnValueChange: false,
-          },
-          {
-            field: 'clearOnDestroy',
-            label: '卸载时清空字段',
-            uiType: 'checkbox',
-            defaultValue: false,
           },
         ],
       },

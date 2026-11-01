@@ -13,6 +13,7 @@ export interface AttributeConfig {
   linkageMode?: 'any';
 }
 export interface PanelConfig {
+  context?: 'form';
   title?: ReactNode;
   configs?: AttributeConfig[];
 }

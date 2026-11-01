@@ -13,7 +13,7 @@ type BasicAttributeConfig = {
   required?: boolean;
   linkageShow?: { field: string; value?: string | number | boolean; isNotEmpty?: boolean }[];
 };
-type BasicPanelConfig = { title?: React.ReactNode };
+type BasicPanelConfig = { title?: React.ReactNode; context?: 'form' };
 type BasicEditorConfig = { panels?: PanelConfig[]; presentation?: 'overlay' };
 type BasicMaterial = {
   Component: React.ComponentType | React.LazyExoticComponent<React.ComponentType>;

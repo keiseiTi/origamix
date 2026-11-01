@@ -2,6 +2,7 @@ import { SelectOptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'select',
   layout: { display: 'inline' },
   title: '选择器',
@@ -125,57 +126,6 @@ const material = defineMaterial({
             },
           },
           {
-            label: '校验状态',
-            field: 'status',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '错误',
-                  value: 'error',
-                },
-                {
-                  label: '警告',
-                  value: 'warning',
-                },
-              ],
-            },
-          },
-          {
-            label: '外观',
-            field: 'variant',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '描边',
-                  value: 'outlined',
-                },
-                {
-                  label: '无边框',
-                  value: 'borderless',
-                },
-                {
-                  label: '填充',
-                  value: 'filled',
-                },
-                {
-                  label: '下划线',
-                  value: 'underlined',
-                },
-              ],
-            },
-          },
-          {
-            label: '加载中',
-            field: 'loading',
-            uiType: 'checkbox',
-          },
-          {
             label: '最多展示标签数',
             field: 'maxTagCount',
             uiType: 'number',
@@ -225,9 +175,6 @@ const material = defineMaterial({
               ],
             },
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

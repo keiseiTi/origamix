@@ -123,7 +123,7 @@ describe('Project and Schema HTTP flows', () => {
             elementId: 'form_http',
             element: {
               type: 'form',
-              props: { layout: 'horizontal', colon: true, preserve: true, requiredMark: true },
+              props: { layout: 'horizontal', colon: true, preserve: true },
             },
             parentId: 'element_root',
           },

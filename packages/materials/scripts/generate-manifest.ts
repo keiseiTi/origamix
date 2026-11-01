@@ -1,3 +1,4 @@
+import { formFieldProperties } from '../src/form-field-schema';
 import { compileJsonSchema, equalJson } from '@origamix/shared';
 import { validateAntdMaterialProps } from '../antd/validation';
 import { readdir, readFile, mkdir, rename, writeFile, rm, stat } from 'node:fs/promises';
@@ -53,7 +54,14 @@ const generate = async () => {
         ...manifest.propsSchema,
         properties: Object.fromEntries(
           Object.entries(manifest.propsSchema.properties as Record<string, unknown>).filter(
-            ([key]) => !Object.hasOwn(commonMaterialProperties, key),
+            ([key, value]) =>
+              !Object.hasOwn(commonMaterialProperties, key) &&
+              !(
+                Object.hasOwn(properties, 'fieldName') &&
+                Object.hasOwn(formFieldProperties, key) &&
+                JSON.stringify(value) ===
+                  JSON.stringify(formFieldProperties[key as keyof typeof formFieldProperties])
+              ),
           ),
         ),
       },

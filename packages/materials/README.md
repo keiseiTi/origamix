@@ -70,7 +70,7 @@ Manifest.context.variables 是逻辑流**读取**白名单，context.writable �
 ## 结构化配置
 
 - Table：专用列编辑器和按列录入的数据编辑器。列支持稳定 key、字段、标题、宽度、对齐、固定、省略、隐藏、增删与排序；数据单元格仅文本、数字、布尔值或 null。分页只有 pagination:false 或分页对象一处配置，开关派生自它；分页开启、简洁模式控制字段显隐。当前为本地分页，total 来源于完整数据长度。运行时将配置的 position 转为当前 Ant Design placement，onChange 先同步页码和每页条数再执行流。
-- Checkbox/Radio/Select：选项编辑器支持名称、明确类型的值、逐项禁用、增删和排序；Select 仅 string/number，Checkbox/Radio 也支持 boolean。默认选中值与选项结构分开，不使用 isDefault。
+- Checkbox/Radio/Select：属性面板以简表展示选项名、值和删除操作；点击“配置选项”打开弹窗，支持名称、明确类型的值、逐项禁用、增删和排序。弹窗确认后提交，取消不提交，简表删除直接生效；Select 仅 string/number，Checkbox/Radio 也支持 boolean。默认选中值与选项结构分开，不使用 isDefault。
 - Tree/TreeSelect/Cascader：各自的树状数据模型编辑器；Tree 的初始选中、勾选和展开键从已配置节点中选择。重复键、失效引用应修正后再保存。
 - Tabs：文本页签模型编辑器；画布子内容用公共 tabKey 关联父级页签。未指定时归第一页；Server 拒绝失效归属，运行时不允许删除仍含画布子内容的页签。editable-card 的增删只改变运行态。
 - Form：字段初始值结构化编辑器。输入物料用 fieldName/fieldLabel/fieldRequired 绑定到具名 Form.Item；必填规则由公共表单绑定层实现，不把验证函数写入 Schema。公开 validateFields/resetFields/setFieldsValue 方法，支持 onValuesChange/onFinish/onFinishFailed。
@@ -109,4 +109,6 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 
 物料专属跨字段与跨元素校验统一在 [antd/validation.ts](antd/validation.ts)，编辑控件与 Server 共用。标识按 JSON 原始类型比较，数字 `1` 与文本 `"1"` 不视为同一标识；未知物料不因字段名碰巧相同而套用 Ant Design 的规则。普通属性编辑保留其他字段，失效字段通过属性面板的“移除已失效属性”显式清理。
 
-树、树选择和级联选择的节点数据通过“配置节点”弹窗编辑，支持层级、排序、增删及属性设置，确认后生效。选项、表单初始值、页签及节点选择在属性面板内直接生效；保留无效输入草稿，外部属性变化时同步新值。
+树、树选择和级联选择的节点数据通过“配置节点”弹窗编辑，支持层级、排序、增删及属性设置，确认后生效。表单初始值、页签及节点选择在属性面板内直接生效；保留无效输入草稿，外部属性变化时同步新值。
+
+支持表单绑定的控件在 `defineMaterial` 中声明 `formField: true`，按需声明 `valueProp`（默认 `value`）。统一生成字段协议与独立“表单项”面板；仅在最近的表单祖先内展示，允许中间包含布局容器，不修改共享 panels。字段名、标签、提示、必填与校验规则分别存于 `fieldName`、`fieldLabel`、`fieldTooltip`、`fieldRequired`、`fieldRules`。设计态展示 Form.Item 外观，运行态在最近的 Form 上下文中绑定值并校验；表单外的配置保留但不启用。规则支持长度、数值范围、邮箱、网址和正则，使用声明式数据，不保存回调。字段名在同一表单的全部后代中唯一，嵌套表单独立计数。

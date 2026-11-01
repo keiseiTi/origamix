@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'switch',
   valueProp: 'checked',
   layout: { display: 'inline' },
@@ -42,11 +43,6 @@ const material = defineMaterial({
             uiType: 'checkbox',
           },
           {
-            label: '加载中',
-            field: 'loading',
-            uiType: 'checkbox',
-          },
-          {
             schema: { type: 'string', enum: ['medium', 'small'] },
             label: '尺寸',
             field: 'size',
@@ -64,9 +60,6 @@ const material = defineMaterial({
               ],
             },
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

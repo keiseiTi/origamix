@@ -1,3 +1,5 @@
+import { formItemPanel } from './form-item-panel';
+import { registerRuntimeMaterial } from '../antd/runtime-state';
 import { layoutPanel } from './layout-panel';
 import type { Material, PanelConfig, InputAttributeConfig, AttributeConfig } from './material';
 import type { MaterialManifest } from '@origamix/shared';
@@ -6,6 +8,7 @@ import { createMaterialManifest } from './material-definition';
 export type MaterialDefinition = Pick<Material, 'Component' | 'editorConfig'> &
   Omit<MaterialManifest, 'version' | 'propsSchema' | 'defaultProps'> & {
     defaultProps?: MaterialManifest['defaultProps'];
+    formField?: boolean;
   };
 
 const editorMaterials = new WeakSet<object>();
@@ -14,10 +17,18 @@ const editorMaterials = new WeakSet<object>();
 export const defineMaterial = ({
   Component,
   editorConfig,
+  formField,
   ...metadata
 }: MaterialDefinition): Material => {
-  const manifest = createMaterialManifest({ ...metadata, Component, editorConfig });
-  const panels = [...(editorConfig?.panels ?? []), layoutPanel].map((panel) => ({
+  const effectiveConfig = formField
+    ? { ...editorConfig, panels: [...(editorConfig?.panels ?? []), formItemPanel] }
+    : editorConfig;
+  const manifest = createMaterialManifest({
+    ...metadata,
+    Component,
+    editorConfig: effectiveConfig,
+  });
+  const panels = [...(effectiveConfig?.panels ?? []), layoutPanel].map((panel) => ({
     ...panel,
     configs: panel.configs?.filter((config) => !config.hidden),
   })) as PanelConfig[];
@@ -29,7 +40,7 @@ export const defineMaterial = ({
   };
   const editorMaterial: Material = {
     manifest,
-    Component: Object.assign(Component, { origamixLayout: manifest.layout }),
+    Component: registerRuntimeMaterial(Component, manifest),
     title: manifest.title,
     type: manifest.type,
     defaultProps: manifest.defaultProps,
@@ -53,24 +64,6 @@ export const defineMaterial = ({
                   ...panel,
                   configs: [
                     aliasConfig,
-                    ...(manifest.propsSchema.properties &&
-                    'fieldName' in (manifest.propsSchema.properties as Record<string, unknown>)
-                      ? ([
-                          { field: 'fieldName', label: '表单字段名', uiType: 'input' },
-                          {
-                            field: 'fieldRequired',
-                            label: '必填字段',
-                            uiType: 'checkbox',
-                            linkageShow: [{ field: 'fieldName', isNotEmpty: true }],
-                          },
-                          {
-                            field: 'fieldLabel',
-                            label: '字段标签',
-                            uiType: 'input',
-                            linkageShow: [{ field: 'fieldName', isNotEmpty: true }],
-                          },
-                        ] as AttributeConfig[])
-                      : []),
                     ...((panel.configs as AttributeConfig[] | undefined) ?? []).filter(
                       (config) => config.field !== 'alias',
                     ),

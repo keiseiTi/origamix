@@ -2,6 +2,7 @@ import { OptionsEditor } from '../../components/collection-editor';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'radio',
   layout: { display: 'inline' },
   title: '单选框',
@@ -60,11 +61,6 @@ const material = defineMaterial({
             label: '禁用',
             field: 'disabled',
             uiType: 'checkbox',
-          },
-          {
-            label: '表单字段名',
-            field: 'name',
-            uiType: 'input',
           },
           {
             label: '选项样式',
@@ -155,9 +151,6 @@ const material = defineMaterial({
               ],
             },
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

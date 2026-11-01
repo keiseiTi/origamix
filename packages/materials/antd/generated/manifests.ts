@@ -253,14 +253,6 @@ export const cascaderManifest = withMaterialManifestDefaults({
       allowClear: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'filled', 'borderless', 'underlined'],
-      },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
@@ -307,12 +299,6 @@ export const cascaderManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -405,17 +391,8 @@ export const checkboxManifest = withMaterialManifestDefaults({
       disabled: {
         type: 'boolean',
       },
-      name: {
-        type: 'string',
-      },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -597,26 +574,12 @@ export const datePickerManifest = withMaterialManifestDefaults({
       allowClear: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'filled', 'borderless', 'underlined'],
-      },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -744,14 +707,6 @@ export const datePickerRangeManifest = withMaterialManifestDefaults({
       allowClear: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'filled', 'borderless', 'underlined'],
-      },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
@@ -769,12 +724,6 @@ export const datePickerRangeManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -893,58 +842,6 @@ export const drawerManifest = withMaterialManifestDefaults({
     required: [],
   },
 });
-export const floatButtonManifest = withMaterialManifestDefaults({
-  type: 'floatButton',
-  layout: {
-    display: 'inline',
-  },
-  title: '悬浮按钮',
-  context: {
-    variables: [],
-    writable: [],
-    actions: [],
-    events: [],
-  },
-  description: '悬浮在页面边缘的快捷操作按钮。',
-  keywords: ['悬浮按钮', '快捷操作'],
-  role: 'action',
-  acceptsChildren: false,
-  usage: '为页面提供悬浮的快捷操作入口。',
-  constraints: [],
-  defaultProps: {
-    type: 'default',
-    shape: 'circle',
-  },
-  propsSchema: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      type: {
-        type: 'string',
-        enum: ['default', 'primary'],
-      },
-      shape: {
-        type: 'string',
-        enum: ['circle', 'square'],
-      },
-      disabled: {
-        type: 'boolean',
-      },
-      href: {
-        type: 'string',
-      },
-      target: {
-        type: 'string',
-        enum: ['_self', '_blank'],
-      },
-      htmlType: {
-        type: 'string',
-        enum: ['button', 'submit', 'reset'],
-      },
-    },
-    required: [],
-  },
-});
 export const formManifest = withMaterialManifestDefaults({
   type: 'form',
   layout: {
@@ -1015,20 +912,13 @@ export const formManifest = withMaterialManifestDefaults({
     labelAlign: 'right',
     colon: true,
     preserve: true,
-    requiredMark: true,
-    initialValues: {},
     labelWrap: false,
-    disabled: false,
     scrollToFirstError: false,
-    clearOnDestroy: false,
   },
   propsSchema: {
     type: 'object',
     additionalProperties: false,
     properties: {
-      name: {
-        type: 'string',
-      },
       layout: {
         type: 'string',
         enum: ['horizontal', 'vertical', 'inline'],
@@ -1057,22 +947,8 @@ export const formManifest = withMaterialManifestDefaults({
       colon: {
         type: 'boolean',
       },
-      disabled: {
-        type: 'boolean',
-      },
       preserve: {
         type: 'boolean',
-      },
-      requiredMark: {
-        anyOf: [
-          {
-            type: 'boolean',
-          },
-          {
-            type: 'string',
-            enum: ['optional'],
-          },
-        ],
       },
       scrollToFirstError: {
         type: 'boolean',
@@ -1080,16 +956,6 @@ export const formManifest = withMaterialManifestDefaults({
       validateTrigger: {
         type: 'string',
         enum: ['onChange', 'onBlur'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'borderless', 'filled', 'underlined'],
-      },
-      initialValues: {
-        type: 'object',
-      },
-      clearOnDestroy: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -1181,26 +1047,8 @@ export const inputManifest = withMaterialManifestDefaults({
       showCount: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'borderless', 'filled', 'underlined'],
-      },
-      autoComplete: {
-        type: 'string',
-        enum: ['on', 'off'],
-      },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -1393,8 +1241,6 @@ export const numberManifest = withMaterialManifestDefaults({
     placeholder: '请输入',
     size: 'medium',
     controls: true,
-    keyboard: true,
-    changeOnBlur: true,
   },
   propsSchema: {
     type: 'object',
@@ -1434,34 +1280,11 @@ export const numberManifest = withMaterialManifestDefaults({
       controls: {
         type: 'boolean',
       },
-      keyboard: {
-        type: 'boolean',
-      },
-      changeOnWheel: {
-        type: 'boolean',
-      },
-      changeOnBlur: {
-        type: 'boolean',
-      },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'borderless', 'filled', 'underlined'],
-      },
       decimalSeparator: {
         type: 'string',
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -1554,9 +1377,6 @@ export const radioManifest = withMaterialManifestDefaults({
       disabled: {
         type: 'boolean',
       },
-      name: {
-        type: 'string',
-      },
       optionType: {
         type: 'string',
         enum: ['default', 'button'],
@@ -1578,12 +1398,6 @@ export const radioManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -1701,17 +1515,6 @@ export const selectManifest = withMaterialManifestDefaults({
         type: 'string',
         enum: ['large', 'medium', 'small'],
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'borderless', 'filled', 'underlined'],
-      },
-      loading: {
-        type: 'boolean',
-      },
       maxTagCount: {
         type: 'number',
         minimum: 0,
@@ -1729,12 +1532,6 @@ export const selectManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -1871,12 +1668,6 @@ export const sliderManifest = withMaterialManifestDefaults({
       fieldName: {
         type: 'string',
       },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
-      },
     },
     required: [],
   },
@@ -1932,21 +1723,12 @@ export const switchManifest = withMaterialManifestDefaults({
       disabled: {
         type: 'boolean',
       },
-      loading: {
-        type: 'boolean',
-      },
       size: {
         type: 'string',
         enum: ['medium', 'small'],
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -2519,14 +2301,6 @@ export const textareaManifest = withMaterialManifestDefaults({
         type: 'number',
         minimum: 1,
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'borderless', 'filled', 'underlined'],
-      },
       minRows: {
         type: 'integer',
         minimum: 1,
@@ -2541,12 +2315,6 @@ export const textareaManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -2669,26 +2437,12 @@ export const timePickerManifest = withMaterialManifestDefaults({
       allowClear: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'filled', 'borderless', 'underlined'],
-      },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],
@@ -3037,14 +2791,6 @@ export const treeSelectManifest = withMaterialManifestDefaults({
       allowClear: {
         type: 'boolean',
       },
-      status: {
-        type: 'string',
-        enum: ['error', 'warning'],
-      },
-      variant: {
-        type: 'string',
-        enum: ['outlined', 'filled', 'borderless', 'underlined'],
-      },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
@@ -3110,12 +2856,6 @@ export const treeSelectManifest = withMaterialManifestDefaults({
       },
       fieldName: {
         type: 'string',
-      },
-      fieldLabel: {
-        type: 'string',
-      },
-      fieldRequired: {
-        type: 'boolean',
       },
     },
     required: [],

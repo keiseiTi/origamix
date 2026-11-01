@@ -78,5 +78,29 @@ describe('material boundary used by editing and preview', () => {
     expect(validateAntdMaterialSemantics(schema)).toContainEqual(
       expect.objectContaining({ path: '/elements/child/props/tabKey' }),
     );
+    const formPage: OrigamixPageSchema = {
+      ...schema,
+      elements: {
+        root: { type: 'form', props: {} },
+        left: { type: 'container', props: {} },
+        right: { type: 'container', props: {} },
+        first: { type: 'input', props: { fieldName: 'name' } },
+        second: { type: 'input', props: { fieldName: 'name' } },
+      },
+      layout: {
+        root: 'root',
+        structure: { root: ['left', 'right'], left: ['first'], right: ['second'] },
+      },
+    };
+    expect(validateAntdMaterialSemantics(formPage)).toContainEqual(
+      expect.objectContaining({ path: '/elements/second/props/fieldName' }),
+    );
+    formPage.elements.right = { type: 'form', props: {} };
+    expect(validateAntdMaterialSemantics(formPage)).toEqual([]);
+    expect(
+      validateAntdMaterialProps('input', {
+        fieldRules: [{ type: 'pattern', value: '[' }],
+      }),
+    ).toContainEqual(expect.objectContaining({ path: '/elements//props/fieldRules/0/value' }));
   });
 });

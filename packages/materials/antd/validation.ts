@@ -42,6 +42,17 @@ const validateElement = (
       ),
     );
   };
+  if (Array.isArray(props.fieldRules)) {
+    props.fieldRules.forEach((rule, index) => {
+      if (isRecord(rule) && rule.type === 'pattern' && typeof rule.value === 'string') {
+        try {
+          new RegExp(rule.value);
+        } catch {
+          issue(`fieldRules/${index}/value`, 'Invalid field regular expression');
+        }
+      }
+    });
+  }
   if (
     ['number', 'slider'].includes(element.type) &&
     typeof props.min === 'number' &&
@@ -180,27 +191,33 @@ export const validateAntdMaterialSemantics = (
           );
       }
     }
-    const fieldNames = new Set<string>();
-    for (const childId of childIds) {
-      const child = schema.elements[childId];
-      if (!child || child.type === 'basicPage') continue;
-      if (
-        parent.type === 'form' &&
-        typeof child.props.fieldName === 'string' &&
-        child.props.fieldName
-      ) {
-        if (fieldNames.has(child.props.fieldName))
-          errors.push(
-            error(
-              'INVALID_MATERIAL_PROPS',
-              `/elements/${childId}/props/fieldName`,
-              'Form field names must be unique',
-              childId,
-              child.type,
-            ),
-          );
-        fieldNames.add(child.props.fieldName);
-      }
+    if (parent.type === 'form') {
+      const fieldNames = new Set<string>();
+      const visited = new Set<string>();
+      const visit = (ids: readonly string[]) => {
+        for (const childId of ids) {
+          if (visited.has(childId)) continue;
+          visited.add(childId);
+          const child = schema.elements[childId];
+          if (!child || child.type === 'form') continue;
+          const name = child.props.fieldName;
+          if (typeof name === 'string' && name) {
+            if (fieldNames.has(name))
+              errors.push(
+                error(
+                  'INVALID_MATERIAL_PROPS',
+                  `/elements/${childId}/props/fieldName`,
+                  'Form field names must be unique',
+                  childId,
+                  child.type,
+                ),
+              );
+            fieldNames.add(name);
+          }
+          visit(schema.layout.structure[childId] ?? []);
+        }
+      };
+      visit(childIds);
     }
   }
   return errors;

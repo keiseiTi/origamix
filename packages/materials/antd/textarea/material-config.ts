@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'textarea',
   layout: { display: 'block' },
   title: '文本域',
@@ -109,52 +110,6 @@ const material = defineMaterial({
             ],
           },
           {
-            label: '校验状态',
-            field: 'status',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '错误',
-                  value: 'error',
-                },
-                {
-                  label: '警告',
-                  value: 'warning',
-                },
-              ],
-            },
-          },
-          {
-            label: '外观',
-            field: 'variant',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '描边',
-                  value: 'outlined',
-                },
-                {
-                  label: '无边框',
-                  value: 'borderless',
-                },
-                {
-                  label: '填充',
-                  value: 'filled',
-                },
-                {
-                  label: '下划线',
-                  value: 'underlined',
-                },
-              ],
-            },
-          },
-          {
             schema: { type: 'integer', minimum: 1 },
             field: 'minRows',
             label: '最小行数',
@@ -176,9 +131,6 @@ const material = defineMaterial({
             schema: { type: 'string', enum: ['large', 'medium', 'small'] },
             uiType: 'input',
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

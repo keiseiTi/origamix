@@ -2,6 +2,7 @@ import { TreeSelectDataEditor } from '../../components/structured-editors';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
+  formField: true,
   type: 'treeSelect',
   layout: { display: 'inline' },
   title: '树选择器',
@@ -185,52 +186,6 @@ const material = defineMaterial({
             uiType: 'checkbox',
           },
           {
-            label: '校验状态',
-            field: 'status',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '默认',
-                  value: undefined,
-                },
-                {
-                  label: '错误',
-                  value: 'error',
-                },
-                {
-                  label: '警告',
-                  value: 'warning',
-                },
-              ],
-            },
-          },
-          {
-            label: '外观',
-            field: 'variant',
-            uiType: 'select',
-            props: {
-              options: [
-                {
-                  label: '描边',
-                  value: 'outlined',
-                },
-                {
-                  label: '填充',
-                  value: 'filled',
-                },
-                {
-                  label: '无边框',
-                  value: 'borderless',
-                },
-                {
-                  label: '下划线',
-                  value: 'underlined',
-                },
-              ],
-            },
-          },
-          {
             label: '弹层位置',
             field: 'placement',
             uiType: 'select',
@@ -283,9 +238,6 @@ const material = defineMaterial({
             uiType: 'custom',
             render: TreeSelectDataEditor,
           },
-          { field: 'fieldName', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldLabel', hidden: true, schema: { type: 'string' }, uiType: 'input' },
-          { field: 'fieldRequired', hidden: true, schema: { type: 'boolean' }, uiType: 'input' },
         ],
       },
     ],

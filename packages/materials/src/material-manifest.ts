@@ -1,3 +1,4 @@
+import { formFieldProperties } from './form-field-schema';
 import { layoutProperties } from './layout-properties';
 import type {
   AgentMaterialSummary,
@@ -20,6 +21,9 @@ export const withCommonMaterialManifest = (manifest: MaterialManifest): Material
   propsSchema: {
     ...manifest.propsSchema,
     properties: {
+      ...(Object.hasOwn(manifest.propsSchema.properties ?? {}, 'fieldName')
+        ? formFieldProperties
+        : {}),
       ...(manifest.propsSchema.properties as Readonly<Record<string, JsonSchema>>),
       ...commonMaterialProperties,
     },
