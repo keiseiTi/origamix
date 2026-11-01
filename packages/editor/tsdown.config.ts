@@ -7,5 +7,7 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
+  deps: {
+    neverBundle: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
+  },
 });

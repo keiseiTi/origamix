@@ -271,7 +271,7 @@ try {
     await readFile(join(desktop, 'dist/template/development-copy-proof'), 'utf8'),
     'fresh copier',
   );
-  assert.notEqual(second.serviceInstanceId, first.serviceInstanceId);
+  assert.notEqual(second.serviceInstanceId, afterMaterials.serviceInstanceId);
   assert.ok(output.includes('Development Main refreshed'));
   assert.match(await readFile(join(desktop, 'dist/main/server.cjs'), 'utf8'), /Development button/);
   assert.match(

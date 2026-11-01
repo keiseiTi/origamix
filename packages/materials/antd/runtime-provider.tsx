@@ -1,4 +1,5 @@
 import { ConfigProvider, theme } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
 import type { ReactNode } from 'react';
 
 /** Material-family theme boundary for hosts rendering Ant Design pages. */
@@ -11,6 +12,7 @@ export const RuntimeProvider = ({
 }) => (
   <ConfigProvider
     theme={{ algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm }}
+    locale={zhCN}
   >
     {children}
   </ConfigProvider>

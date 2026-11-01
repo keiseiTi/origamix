@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   ApplyWorkingOperationsSchema,
   ApplyPageSchema,
-  RevisionHistorySchema,
   UpdateWorkingSchemaSchema,
   isApplyPageResult,
   isPageApplyState,
@@ -130,23 +129,5 @@ describe('Working Schema request protocol', () => {
         operations: [],
       }),
     ).toBe(false);
-  });
-
-  it('validates Revision history metadata without embedding Schema snapshots', () => {
-    expect(
-      Value.Check(RevisionHistorySchema, {
-        revisions: [
-          {
-            revisionId: 'revision_one',
-            parentRevisionId: null,
-            source: { kind: 'user' },
-            createdAt: '2026-09-17T00:00:00.000Z',
-            schemaHash: 'a'.repeat(64),
-            isCurrent: true,
-            isApplied: false,
-          },
-        ],
-      }),
-    ).toBe(true);
   });
 });

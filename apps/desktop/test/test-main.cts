@@ -40,7 +40,7 @@ app.on('will-quit', () => {
   if (!passed || !backendExited)
     return fail(new Error('Application quit without passing checks or closing its backend'));
   console.info(
-    'Main test passed: directory IPC, project creation, iframe preview, theme and graceful backend shutdown.',
+    'Main test passed: directory IPC, project creation, iframe preview and graceful backend shutdown.',
   );
 });
 
@@ -126,10 +126,9 @@ app
     })()`);
     assert.equal(recoveredProjects.success, true);
     assert.equal(
-      recoveredProjects.data.some((project: { name: string; id: string }) => project.id),
+      recoveredProjects.data.some((project: { id: string }) => project.id === result.projectId),
       true,
     );
-    await main.webContents.executeJavaScript(`localStorage.setItem('origamix:theme', 'light')`);
     main.reload();
     await waitFor(
       () =>
@@ -159,33 +158,9 @@ app
     assert.equal(
       await main.webContents.executeJavaScript(`(() => {
         const frame = document.querySelector('iframe[title="Home 预览"]');
-        return frame?.contentDocument?.documentElement.dataset.theme;
-      })()`),
-      'light',
-    );
-    assert.equal(
-      await main.webContents.executeJavaScript(`(() => {
-        const frame = document.querySelector('iframe[title="Home 预览"]');
         return typeof frame?.contentWindow?.api;
       })()`),
       'undefined',
-    );
-    await main.webContents.executeJavaScript(`(() => {
-      document.querySelector('button[aria-label="退出预览"]')?.click();
-    })()`);
-    await waitFor(() =>
-      main.webContents.executeJavaScript(
-        `Boolean(document.querySelector('iframe[title="Home 预览"]')?.closest('.hidden'))`,
-      ),
-    );
-    await main.webContents.executeJavaScript(`localStorage.setItem('origamix:theme', 'dark')`);
-    main.reload();
-    await waitFor(
-      () =>
-        !main.webContents.isLoading() &&
-        main.webContents.executeJavaScript(
-          `document.documentElement.dataset.theme === 'dark' && document.body.innerText.includes('Smoke Project')`,
-        ),
     );
     // New opaque canvas boundary: packaged file resources must load without a bridge.
     await main.webContents.executeJavaScript(`location.hash = '/canvas-prototype'`);

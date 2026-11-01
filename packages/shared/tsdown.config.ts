@@ -11,5 +11,7 @@ export default defineConfig({
   clean: true,
   outputOptions: { codeSplitting: false },
   sourcemap: true,
-  external: ['@sinclair/typebox', 'ajv', 'ajv-formats'],
+  deps: {
+    neverBundle: ['@sinclair/typebox', 'ajv', 'ajv-formats'],
+  },
 });

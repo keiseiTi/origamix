@@ -23,10 +23,8 @@ const options: import('tsdown').UserConfig = {
       ],
     },
   },
-  noExternal: ['@origamix/shared'],
   clean: true,
   sourcemap: true,
-  external: ['@origamix/ui', 'antd', 'react', 'react/jsx-runtime', 'lucide-react'],
 };
 export default defineConfig([
   { ...options, outDir: 'dist/internal' },

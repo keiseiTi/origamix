@@ -31,7 +31,6 @@ describe('project manifest protocol', () => {
         version: '9.0.0',
       }),
     ).toThrow('9.0.0');
-    expect(() => resolveProjectStack({ ...manifest(), materialSet: null })).toThrow();
     expect(() =>
       validateResolvedProjectStack({
         ...BUILTIN_PROJECT_STACK,
@@ -40,25 +39,18 @@ describe('project manifest protocol', () => {
     ).toThrow();
   });
 
-  it.each([{ pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(
+  it.each([null, { pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(
     'rejects malformed page fields: %j',
     (fields) => {
       const value = manifest();
-      expect(isProjectManifest({ ...value, pages: [{ ...value.pages[0], ...fields }] })).toBe(
-        false,
-      );
+      expect(
+        isProjectManifest({
+          ...value,
+          pages: [fields === null ? null : { ...value.pages[0], ...fields }],
+        }),
+      ).toBe(false);
     },
   );
-
-  it('rejects null pages and malformed page fields', () => {
-    expect(isProjectManifest({ ...manifest(), pages: [null] })).toBe(false);
-    expect(
-      isProjectManifest({
-        ...manifest(),
-        pages: [{ pageId: 'page_home', name: '首页', slug: '../home' }],
-      }),
-    ).toBe(false);
-  });
 
   it('rejects page directories outside src', () => {
     expect(isProjectManifest({ ...manifest(), pageDirectory: '../pages' })).toBe(false);

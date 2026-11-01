@@ -18,8 +18,8 @@ export default defineConfig({
         '@origamix/ui',
       ],
     },
+    alwaysBundle: ['@origamix/shared'],
+    neverBundle: ['react', 'react/jsx-runtime'],
   },
   clean: true,
-  noExternal: ['@origamix/shared'],
-  external: ['react', 'react/jsx-runtime'],
 });

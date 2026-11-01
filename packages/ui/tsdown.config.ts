@@ -8,5 +8,7 @@ export default defineConfig({
   clean: true,
   outputOptions: { codeSplitting: false },
   sourcemap: true,
-  external: ['react', 'react-dom', 'react/jsx-runtime'],
+  deps: {
+    neverBundle: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
 });
