@@ -1,5 +1,6 @@
 import type { ProjectMaterialReader } from './material-reader';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { hashOperations as operationDigest } from './operation-digest';
 import { Value } from '@sinclair/typebox/value';
 import {
   CompletePageRunInputSchema,
@@ -8,7 +9,6 @@ import {
   type ClarificationCandidate,
   type PageAgentOutcome,
   getAgentElementLabel,
-  type SchemaOperation,
 } from '@origamix/shared';
 
 import type { AgentRunRepository } from '../run-repository';
@@ -46,9 +46,6 @@ export interface CompletePageRunResult {
 const assertNotCancelled = (signal: AbortSignal): void => {
   if (signal.aborted) throw new AgentEngineError('CANCELLED', '页面请求已取消');
 };
-
-const operationDigest = (operations: readonly SchemaOperation[]): string =>
-  createHash('sha256').update(JSON.stringify(operations)).digest('hex');
 
 const terminalOutcome = (input: CompletePageRunInput): PageAgentOutcome => {
   if (input.outcome === 'apply_changes')

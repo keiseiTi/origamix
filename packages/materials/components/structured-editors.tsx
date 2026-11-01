@@ -1,51 +1,13 @@
+import { Choice } from './choice';
+import { validateAntdMaterialProps } from '../antd/validation';
 import { useState } from 'react';
-import {
-  Button,
-  Checkbox,
-  FieldLabel,
-  Input,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@origamix/ui';
+import { Button, Checkbox, FieldLabel, Input } from '@origamix/ui';
 import type { CollectionEditorProps } from './collection-editor';
 type RecordValue = Record<string, unknown>;
 export type StructuredEditorProps = CollectionEditorProps & {
   elementProps?: Readonly<RecordValue>;
   fields?: readonly { name: string; label: string }[];
 };
-const Choice = ({
-  label,
-  value,
-  options,
-  change,
-}: {
-  label: string;
-  value: string;
-  options: { label: string; value: string }[];
-  change: (value: string) => void;
-}) => (
-  <Select
-    items={options}
-    value={value}
-    onValueChange={(next: string | null) => {
-      if (next !== null) change(next);
-    }}
-  >
-    <SelectTrigger aria-label={label} className='w-full'>
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      {options.map((option) => (
-        <SelectItem key={option.value} value={option.value}>
-          {option.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
 const Flag = ({
   label,
   checked,
@@ -126,7 +88,7 @@ export const PaginationEditor = ({ value, onChange }: StructuredEditorProps) => 
               value,
               label: ['上左', '上中', '上右', '下左', '下中', '下右', '隐藏'][index]!,
             }))}
-            change={(next) => patch('position', [next])}
+            onChange={(next) => patch('position', [next])}
           />
           <Flag
             label='单页隐藏'
@@ -194,7 +156,7 @@ const Scalar = ({
           value,
           label: ['文本', '数字', '布尔值', '空值', '数组', '对象'][index]!,
         }))}
-        change={(next) =>
+        onChange={(next) =>
           change(
             next === 'number'
               ? 0
@@ -362,7 +324,7 @@ export const FormValuesEditor = ({ value, onChange, fields }: StructuredEditorPr
 };
 
 type Node = RecordValue & { children?: Node[] };
-const nodeIssue = (nodes: Node[], kind: string, seen = new Set<unknown>()): string => {
+const nodeIssue = (nodes: Node[], kind: string): string => {
   for (const node of nodes) {
     const key = kind === 'tree' ? node.key : node.value;
     const title = node[kind === 'cascader' ? 'label' : 'title'];
@@ -373,10 +335,8 @@ const nodeIssue = (nodes: Node[], kind: string, seen = new Set<unknown>()): stri
       !title.trim()
     )
       return '请填写节点文本和有效的文本或数字标识。';
-    if (seen.has(key)) return '节点标识不能重复。';
-    seen.add(key);
     if (node.children) {
-      const issue = nodeIssue(node.children, kind, seen);
+      const issue = nodeIssue(node.children, kind);
       if (issue) return issue;
     }
   }
@@ -416,7 +376,7 @@ const Nodes = ({
               { value: 'string', label: '文本' },
               { value: 'number', label: '数字' },
             ]}
-            change={(next) =>
+            onChange={(next) =>
               update(keyField, next === 'number' ? 0 : String(node[keyField] ?? ''))
             }
           />
@@ -526,7 +486,11 @@ const NodeEditor = ({ value, onChange, kind }: { kind: string } & StructuredEdit
       <Button
         size='sm'
         onClick={() => {
-          const issue = nodeIssue(nodes, kind);
+          const type = kind === 'tree' ? 'tree' : kind === 'cascader' ? 'cascader' : 'treeSelect';
+          const field = kind === 'cascader' ? 'options' : 'treeData';
+          const issue =
+            nodeIssue(nodes, kind) ||
+            validateAntdMaterialProps(type, { [field]: nodes })[0]?.message;
           if (issue) {
             setError(issue);
             return;
@@ -677,7 +641,7 @@ export const TabItemsEditor = ({ value, onChange }: StructuredEditorProps) => {
                 typeof item.label !== 'string' ||
                 !item.label.trim(),
             ) ||
-            new Set(items.map((item) => item.key)).size !== items.length
+            validateAntdMaterialProps('tabs', { items }).length > 0
           ) {
             setError('页签需要唯一标识和名称。');
             return;

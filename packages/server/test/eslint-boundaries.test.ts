@@ -75,6 +75,10 @@ for (const [file, code] of [
     'agent/tools/read-only-tools.ts',
     "import { manifest } from '@origamix/materials/antd/manifest';",
   ],
+  [
+    'projects/project-materials.ts',
+    "import { validate } from '@origamix/materials/antd/validation';",
+  ],
   ['schema/schema-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/schema-service.ts', "import { WorkingSchemaStore } from './working-schema-store';"],
   ['schema/project-apply-service.ts', "import { TargetSchemaStore } from './target-schema-store';"],

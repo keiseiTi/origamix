@@ -15,7 +15,7 @@ export interface ValidationResult {
 }
 
 export interface LayoutSemanticError {
-  code: 'ROOT_NOT_FOUND' | 'LAYOUT_ELEMENT_NOT_FOUND' | 'LAYOUT_CYCLE';
+  code: 'ROOT_NOT_FOUND' | 'LAYOUT_ELEMENT_NOT_FOUND' | 'LAYOUT_CYCLE' | 'INVALID_LAYOUT_PARENT';
   path: string;
   message: string;
 }
@@ -67,6 +67,17 @@ const validatePageSemantics = (page: OrigamixPageSchema): SemanticError[] => {
 
   const visited = new Set<string>();
   const active = new Set<string>();
+  const parents = new Set<string>();
+  for (const [parentId, children] of Object.entries(page.layout.structure))
+    for (const [index, childId] of children.entries()) {
+      if (childId === page.layout.root || parents.has(childId))
+        errors.push({
+          code: 'INVALID_LAYOUT_PARENT',
+          path: `/layout/structure/${parentId}/${index}`,
+          message: 'The root cannot have a parent and each child must have exactly one parent',
+        });
+      parents.add(childId);
+    }
 
   const visit = (elementId: string): void => {
     if (active.has(elementId)) {

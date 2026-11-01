@@ -785,6 +785,19 @@ describe('Schema Service', () => {
     ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('rejects multi-parent layouts atomically before retaining a Working update', async () => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, schema);
+    const before = await getWorkingSchemaState(page);
+    const candidate = structuredClone(before.schema);
+    candidate.elements.child = { type: 'text', props: {} };
+    candidate.layout.structure[candidate.layout.root] = ['child', 'child'];
+    await expect(
+      updateWorkingSchema(page, { baseWorkingVersion: before.workingVersion, schema: candidate }),
+    ).rejects.toThrow('INVALID_LAYOUT_PARENT');
+    expect(await getWorkingSchemaState(page)).toEqual(before);
+  });
+
   it('applies Working operations and keeps revisions explicit', async () => {
     const page = await createPageFixture();
     const initialSchema: OrigamixPageSchema = {

@@ -9,7 +9,7 @@ import {
   type MaterialValidationRuntime,
 } from './validation-contracts';
 import { propsValidator, propertyPath, inspectSafeValues } from './material-props-validation';
-import { validateMaterialSemantics, validateMaterialStructure } from './material-semantics';
+import { validateMaterialStructure } from './material-semantics';
 
 export const defaultMaterialValidationRuntime: MaterialValidationRuntime =
   builtinProjectMaterials.validation;
@@ -88,7 +88,6 @@ export const validatePageAgainstMaterials = (
         );
       }
     }
-    validateMaterialSemantics(elementId, element, errors);
     inspectSafeValues(
       element.props,
       `/elements/${elementId}/props`,
@@ -99,6 +98,7 @@ export const validatePageAgainstMaterials = (
   }
 
   validateMaterialStructure(schema, runtime, errors);
+  errors.push(...(runtime.validateSemantics?.(schema) ?? []));
 
   for (const [index, rawBinding] of schema.bindElements.entries()) {
     const path = `/bindElements/${index}`;

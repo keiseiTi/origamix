@@ -1,5 +1,5 @@
 import type { RunBudget, ToolPolicy } from '@origamix/shared';
-import { createHash } from 'node:crypto';
+import { hashOperations } from './operation-digest';
 import { AgentEngineError, AgentToolValidationError, type AgentEngineTool } from '../agent-engine';
 import { ApiError } from '../../errors';
 
@@ -32,7 +32,7 @@ const operationEvidence = (toolName: string, args: unknown) => {
   return {
     operationCount: operations.length,
     operationTypeCounts,
-    operationDigest: createHash('sha256').update(JSON.stringify(operations)).digest('hex'),
+    operationDigest: hashOperations(operations),
   };
 };
 

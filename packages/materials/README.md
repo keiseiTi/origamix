@@ -2,16 +2,17 @@
 
 Origamix 页面物料包，当前只提供 Ant Design。它拥有页面组件、物料默认值、编辑配置和可序列化清单，不包含 Origamix 工作台、项目服务或持久化。
 
-属性面板、事件与逻辑流读值的完整配置契约，见 [Ant Design 物料配置清单](antd/CONFIGURATION-PLAN.md)。
+属性面板、事件与逻辑流读值的完整配置契约，见 [物料定义实现](src/material-definition.ts)。
 
 ## 公开接口
 
-| 入口                                | 消费方与用途                       |
-| ----------------------------------- | ---------------------------------- |
-| `@origamix/materials/antd/runtime`  | Runtime/生成页面使用的组件注册表   |
-| `@origamix/materials/antd/editor`   | 编辑器使用的分组、清单与扩展注册   |
-| `@origamix/materials`               | `src/` 的公共类型与辅助函数        |
-| `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单 |
+| 入口                                  | 消费方与用途                         |
+| ------------------------------------- | ------------------------------------ |
+| `@origamix/materials/antd/runtime`    | Runtime/生成页面使用的组件注册表     |
+| `@origamix/materials/antd/editor`     | 编辑器使用的分组、清单与扩展注册     |
+| `@origamix/materials`                 | `src/` 的公共类型与辅助函数          |
+| `@origamix/materials/antd/manifest`   | Server、Agent 使用的纯数据物料清单   |
+| `@origamix/materials/antd/validation` | 物料字段与跨元素语义校验，不加载组件 |
 
 运行、编辑和清单使用各自的 Ant Design 子入口，物料编写 API 使用根入口，不提供旧入口别名；格式类型直接从 Shared 导入。`antd/editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；列与选项编辑器通过 editor-only custom 属性控件提供。
 
@@ -36,7 +37,7 @@ pnpm --filter @origamix/materials... build
 
 `build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 TypeScript 提交检查在 Materials 构建前检查，避免构建自动生成掩盖遗漏提交。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
 
-tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档只公开 runtime／Manifest。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
+tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -46,7 +47,7 @@ tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作�
 
 1. 在 `antd/<material>/index.tsx` 编写 Ant Design 适配组件，参考 [按钮组件](antd/button/index.tsx)。使用包内运行属性契约，剥离引擎注入属性，避免传入 DOM。
 2. 在 `material-config.ts` 使用 `defineMaterial({ type, title, ..., Component, editorConfig })` 定义元信息、默认值、上下文和 panels，参考 [按钮配置](antd/button/material-config.ts)。版本统一来自 [material-set.ts](antd/material-set.ts)。
-3. 普通属性从 `uiType`、静态 `options`、数值 `min/max`、`required` 和 `defaultValue` 推导协议；自定义组件和复杂属性显式补充 `schema`，参考 [表格配置](antd/table/material-config.ts)。`schema` 是完整覆盖，内部 `#` 引用相对于该字段的 Schema，生成时自动调整嵌入位置；`hidden: true` 声明协议支持但不在面板显示的字段。顶层 `defaultProps` 可省略，用于定义需要写入页面 Schema 的初值（包括复杂初值），同字段不要再重复定义默认值；组件自身默认行为无需重复写入。生成时拒绝协议未声明的默认字段，服务端物料验证测试覆盖所有物料默认值的完整协议校验。删除字段配置时同时移除其默认值；仅隐藏控件、仍需持久化时使用 `hidden: true`。
+3. 普通属性从 `uiType`、静态 `options`、数值 `min/max`、`required` 和 `defaultValue` 推导协议；自定义组件和复杂属性显式补充 `schema`，参考 [表格配置](antd/table/material-config.ts)。`schema` 是完整覆盖，内部 `#` 引用相对于该字段的 Schema，生成时自动调整嵌入位置；`hidden: true` 声明协议支持但不在面板显示的字段。顶层 `defaultProps` 可省略，用于定义需要写入页面 Schema 的初值（包括复杂初值），同字段不要再重复定义默认值；组件自身默认行为无需重复写入。生成时拒绝协议未声明的默认字段，生成器同时执行默认值的完整 Schema 和物料语义校验。删除字段配置时同时移除其默认值；仅隐藏控件、仍需持久化时使用 `hidden: true`。
 4. 将运行组件加入 [antd/runtime.ts](antd/runtime.ts)，编辑配置加入 [antd/editor.ts](antd/editor.ts)；生成器自动发现 `antd/*/material-config.ts`。公开清单仍由 [antd/manifest.ts](antd/manifest.ts) 明确选择，保留根物料和未开放物料的区别。
 5. 运行包检查与根检查，在编辑器、预览和生成项目中验证属性、上下文及亮暗主题。自动测试只补已有清单一致性场景中的必要约束。
 
@@ -56,11 +57,11 @@ tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作�
 import { defineMaterial } from '@origamix/materials';
 ```
 
-Server 仅消费 Manifest，不能让清单入口通过组件或编辑配置间接加载 React。新增类型可以扩展注册表；重命名或删除已有类型必须同时考虑保留的 Working、历史 Revision 和生成项目。
+Server 消费 Manifest 与不依赖 React 的 validation 入口，不能让清单入口通过组件或编辑配置间接加载 React。新增类型可以扩展注册表；重命名或删除已有类型必须同时考虑保留的 Working、历史 Revision 和生成项目。
 
 ## 属性、事件与运行状态
 
-完整字段清单见 [Ant Design 配置契约](antd/CONFIGURATION-PLAN.md)。属性面板只配置选定的基础类型和中文枚举；原生 ReactNode、style/classNames、函数和回调不放入普通属性控件。Button.text、Text.text、Upload.text 等是物料自己声明的字符串文案。布局容器保留其内部 margin/padding 数据能力，但普通面板不提供 CSS 样式编辑入口。
+完整字段清单见 [物料类型](src/material.ts)。属性面板只配置选定的基础类型和中文枚举；原生 ReactNode、style/classNames、函数和回调不放入普通属性控件。Button.text、Text.text、Upload.text 等是物料自己声明的字符串文案。布局容器保留其内部 margin/padding 数据能力，但普通面板不提供 CSS 样式编辑入口。
 
 Manifest.context.variables 是逻辑流**读取**白名单，context.writable 是独立的**写入运行状态**白名单，context.actions 声明可调用方法，context.events 是事件入口。propsSchema 只描述设计期配置，不自动成为读写能力。Button 可读 text/loading，Input 只可读 value。Editor、Server 与 Runtime 均遵循该边界。
 
@@ -72,7 +73,7 @@ Manifest.context.variables 是逻辑流**读取**白名单，context.writable �
 - Checkbox/Radio/Select：选项编辑器支持名称、明确类型的值、逐项禁用、增删和排序；Select 仅 string/number，Checkbox/Radio 也支持 boolean。默认选中值与选项结构分开，不使用 isDefault。
 - Tree/TreeSelect/Cascader：各自的树状数据模型编辑器；Tree 的初始选中、勾选和展开键从已配置节点中选择。重复键、失效引用应修正后再保存。
 - Tabs：文本页签模型编辑器；画布子内容用公共 tabKey 关联父级页签。未指定时归第一页；Server 拒绝失效归属，运行时不允许删除仍含画布子内容的页签。editable-card 的增删只改变运行态。
-- Form：字段初始值结构化编辑器。输入物料用 fieldName/fieldLabel/fieldRequired 绑定到具名 Form.Item；必填规则由适配器实现，不把验证函数写入 Schema。公开 validateFields/resetFields/setFieldsValue 方法，支持 onValuesChange/onFinish/onFinishFailed。
+- Form：字段初始值结构化编辑器。输入物料用 fieldName/fieldLabel/fieldRequired 绑定到具名 Form.Item；必填规则由公共表单绑定层实现，不把验证函数写入 Schema。公开 validateFields/resetFields/setFieldsValue 方法，支持 onValuesChange/onFinish/onFinishFailed。
 
 日期和时间的配置与可读值使用规范字符串，Dayjs 只存在于原生控件边界；日期范围清空为 [null,null]，单值日期/时间清空为 null。展示 format 不改变业务值类型。范围、Slider、Radio 按钮风格、Form 布局、分页和浮层的模式字段均有对应显隐。
 
@@ -80,11 +81,13 @@ Upload 无 action 时只选择文件，不发送请求；流只能读取文件�
 
 ## 运行时接入
 
-runtime.ts 用 registerRuntimeMaterial 绑定物料能力、初始值、业务事件投影和字段边界；它不导入 Editor/UI。Runtime 注入 om_setRuntimeState 与 om_setContextActions，业务值先同步后调用事件。当前事件通过 event.payload 读取，异步调用各自保留快照。
+每个物料只提供 `material-config.ts` 和物料组件，不需要额外的运行适配器。配置声明属性与上下文能力；组件计算初始状态、发布变化并整理事件参数。`runtime.ts` 从生成清单绑定能力、生命周期和公共 Form 字段边界，不导入 Editor/UI。Form 字段默认绑定 `value`，只有 Switch 等不同绑定才在物料配置中声明 `valueProp: 'checked'`。
+
+Runtime 注入 `om_setRuntimeState` 与 `om_setContextActions`；组件在布局 effect 中发布初始状态、注册方法，再由公共注册层执行 `init`。用户操作先同步状态，再调用事件回调，回调只传一个可序列化业务对象，例如 `onChange?.({ value })`，不传 DOM 事件、Dayjs 或文件对象。逻辑流通过 `event.payload` 读取，异步调用各自保留快照。`MaterialEventProps` 可用于将第三方控件的原生事件类型替换为物料业务事件类型。
 
 输入的本地状态与运行时读值投影同步，不因每次输入重建 Engine 组件；逻辑流主动写值才更新对应渲染元素。字段方法及程序写值同步 Form 和控件投影。这些都是临时运行态，不会写 Working、创建 Revision 或 Apply。
 
-basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor 和校验目录，但不加入拖入物料组。FloatButton 仍不注册。打开页面不会改写数据。属性面板下一次编辑某个元素时，会按当前 Manifest 删除该元素已移除的顶层属性，并与本次修改一起提交为 Working 操作；不会改动其他元素、历史 Revision 或真实项目文件。新提交的未知属性、非法值和旧枚举仍由 Server 严格拒绝，不做值转换。
+basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor 和校验目录，但不加入拖入物料组。FloatButton 仍不注册。打开页面不会改写数据。普通属性编辑保留其他字段；已移除的顶层属性只通过“移除已失效属性”显式清理，并经同一 Working 操作管道提交。该操作不会改动其他元素、历史 Revision 或真实项目文件。新提交的未知属性、非法值和旧枚举仍由 Server 严格拒绝，不做值转换。
 
 物料运行、清单与编辑入口保持分离；清单可序列化，生成项目不需要 editor-only peers。修改后必须先构建 Materials，再组装 Server/Desktop 并重载受检环境；验收见各包 AGENTS.md。
 
@@ -94,12 +97,14 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 
 ## 单包与入口隔离
 
-Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd/runtime`，Server 只导入 Manifest；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
+Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd/runtime`，Server 只导入 Manifest 与 validation；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
 
 归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。
 
-布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。详见[物料与画布布局方案](../editor/docs/material-layout.md)。
+布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。详见[物料与画布布局方案](src/layout-properties.ts)。
 
 表格列配置在属性面板中以简表展示列名、字段和删除操作；点击“配置列”打开弹窗，编辑列名、字段、宽度、对齐、固定和超出省略，并支持上移、下移、删除与添加列。弹窗确认后一次更新，取消不提交；已有列的其他合法字段保持原值。
 
 表格分页配置直接更新，不再提供“更新分页”和“取消修改”按钮；非法页码或每页条数只保留为本地输入，修正为正整数后才提交。
+
+物料专属跨字段与跨元素校验统一在 [antd/validation.ts](antd/validation.ts)，编辑控件与 Server 共用。标识按 JSON 原始类型比较，数字 `1` 与文本 `"1"` 不视为同一标识；未知物料不因字段名碰巧相同而套用 Ant Design 的规则。普通属性编辑保留其他字段，失效字段通过属性面板的“移除已失效属性”显式清理。

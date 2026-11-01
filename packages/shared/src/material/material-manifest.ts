@@ -33,6 +33,8 @@ export type MaterialManifest = Readonly<{
   keywords: readonly string[];
   role: MaterialRole;
   propsSchema: JsonSchema;
+  /** Form field value property; defaults to value when fieldName is supported. */
+  valueProp?: string;
   defaultProps: Readonly<Record<string, unknown>>;
   acceptsChildren: boolean;
   layout?: MaterialLayout;
@@ -51,6 +53,7 @@ export type MaterialManifest = Readonly<{
 }>;
 
 export type ValidationMaterialManifest = Readonly<{
+  role?: MaterialRole;
   type: string;
   version: string;
   propsSchema: JsonSchema;

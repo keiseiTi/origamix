@@ -1,38 +1,42 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { useRuntimeValue } from '../runtime-state';
 import React from 'react';
 import { Modal as AntdModal, type ModalProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 
-export type IProps = ModalProps &
+export type IProps = MaterialEventProps<ModalProps, 'onCancel' | 'onOk' | 'afterOpenChange'> &
   RuntimeMaterialProps & {
     showFooter?: boolean;
     okDisabled?: boolean;
     cancelDisabled?: boolean;
   };
-export const Modal = ({
-  children,
-  open,
-  mask,
-  maskClosable,
-  onCancel,
-  onOk,
-  om_mode,
-  om_designOpen,
-  om_getDesignContainer,
-  om_onDesignClose,
-  om_renderDesignFrame,
-  om_designLayer,
-  om_dropPlaceholder,
-  om_setContextActions,
-  om_setRuntimeState,
-  om_readonly,
-  showFooter,
-  okDisabled,
-  cancelDisabled,
-  okButtonProps,
-  cancelButtonProps,
-  ...rest
-}: IProps) => {
+export const Modal = (props: IProps) => {
+  const {
+    children,
+    open,
+    mask,
+    maskClosable,
+    afterOpenChange,
+    onCancel,
+    onOk,
+    om_mode,
+    om_designOpen,
+    om_getDesignContainer,
+    om_onDesignClose,
+    om_renderDesignFrame,
+    om_designLayer,
+    om_dropPlaceholder,
+    om_setContextActions,
+    om_setRuntimeState,
+    om_readonly,
+    showFooter,
+    okDisabled,
+    cancelDisabled,
+    okButtonProps,
+    cancelButtonProps,
+    ...rest
+  } = props;
+
   const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
   const designing = om_mode === 'design';
   const content =
@@ -40,6 +44,7 @@ export const Modal = ({
   const modal = (
     <AntdModal
       {...rest}
+      afterOpenChange={(open) => afterOpenChange?.({ open })}
       open={designing ? Boolean(om_designOpen) : currentOpen}
       mask={
         mask === false
@@ -53,7 +58,7 @@ export const Modal = ({
           return;
         }
         setOpen(false);
-        onCancel?.(event);
+        onCancel?.({ action: 'onCancel' });
       }}
       onOk={(event) => {
         if (designing) {
@@ -61,7 +66,7 @@ export const Modal = ({
           return;
         }
         if (!onOk) setOpen(false);
-        onOk?.(event);
+        onOk?.({ action: 'onOk' });
       }}
       footer={showFooter === false ? null : rest.footer}
       okButtonProps={{

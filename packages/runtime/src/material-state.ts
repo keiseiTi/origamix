@@ -1,13 +1,14 @@
+import { equalJson } from '@origamix/shared';
 import type { MaterialManifest } from '@origamix/shared';
 import type { RuntimeEngine, FlowExecuteContext } from './core/types';
 
 type Engine = RuntimeEngine;
 type Context = FlowExecuteContext<Record<string, unknown>>;
 export interface RuntimeMaterialMetadata {
+  role?: MaterialManifest['role'];
+  valueProp?: string;
   context: MaterialManifest['context'];
   defaultProps: Readonly<Record<string, unknown>>;
-  initialState: (props: Record<string, unknown>) => Record<string, unknown>;
-  eventPayload: (event: string, args: unknown[], props: Record<string, unknown>) => unknown;
 }
 const metadata = new WeakMap<Engine, Readonly<Record<string, RuntimeMaterialMetadata>>>();
 const liveValues = new WeakMap<Engine, Record<string, Record<string, unknown>>>();
@@ -72,8 +73,7 @@ export const installMaterialState = (engine: Engine, components: Record<string, 
   liveValues.set(engine, {});
   for (const [id, element] of Object.entries(engine.elements)) {
     const capability = entries[element.type];
-    const props = { ...capability?.defaultProps, ...element.props };
-    const initial = { ...props, ...capability?.initialState(props) };
+    const initial = { ...capability?.defaultProps, ...element.props };
     writeRuntimeState(engine, id, initial);
     engine.setState({
       [id]: {
@@ -86,7 +86,7 @@ export const installMaterialState = (engine: Engine, components: Record<string, 
               ([key, value]) =>
                 !key.startsWith('om_') &&
                 !['__proto__', 'prototype', 'constructor'].includes(key) &&
-                JSON.stringify(previous?.[key]) !== JSON.stringify(value),
+                !equalJson(previous?.[key], value),
             ),
           );
           if (Object.keys(changes).length) writeRuntimeState(engine, id, changes);
@@ -107,16 +107,7 @@ export const bindMaterialEventPayloads = (engine: Engine): void => {
         Object.entries(callbacks).map(([event, handlers]) => [
           event,
           handlers.map((handler) => (...args: unknown[]) => {
-            activeEvent.set(
-              engine,
-              structuredClone(
-                runtimeCapability(engine, id)?.eventPayload(
-                  event,
-                  args,
-                  readRuntimeState(engine, id),
-                ) ?? null,
-              ),
-            );
+            activeEvent.set(engine, structuredClone(args[0] ?? null));
             return handler(...args);
           }),
         ]),

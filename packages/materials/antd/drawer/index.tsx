@@ -1,35 +1,43 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { useRuntimeValue } from '../runtime-state';
 import React from 'react';
 import { Drawer as AntdDrawer, type DrawerProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 
-export type IProps = Omit<DrawerProps, 'width' | 'height'> &
+export type IProps = MaterialEventProps<
+  Omit<DrawerProps, 'width' | 'height'>,
+  'onClose' | 'afterOpenChange'
+> &
   RuntimeMaterialProps & { customSize?: number };
-export const Drawer = ({
-  children,
-  open,
-  mask,
-  maskClosable,
-  onClose,
-  om_mode,
-  om_designOpen,
-  om_getDesignContainer,
-  om_onDesignClose,
-  om_renderDesignFrame,
-  om_designLayer,
-  om_dropPlaceholder,
-  om_setContextActions,
-  om_setRuntimeState,
-  om_readonly,
-  customSize,
-  ...rest
-}: IProps) => {
+export const Drawer = (props: IProps) => {
+  const {
+    children,
+    open,
+    mask,
+    maskClosable,
+    afterOpenChange,
+    onClose,
+    om_mode,
+    om_designOpen,
+    om_getDesignContainer,
+    om_onDesignClose,
+    om_renderDesignFrame,
+    om_designLayer,
+    om_dropPlaceholder,
+    om_setContextActions,
+    om_setRuntimeState,
+    om_readonly,
+    customSize,
+    ...rest
+  } = props;
+
   const [currentOpen, setOpen] = useRuntimeValue('open', open, false, om_setRuntimeState);
   const designing = om_mode === 'design';
   const content = children ?? om_dropPlaceholder;
   const drawer = (
     <AntdDrawer
       {...rest}
+      afterOpenChange={(open) => afterOpenChange?.({ open })}
       open={designing ? Boolean(om_designOpen) : currentOpen}
       mask={
         mask === false
@@ -43,7 +51,7 @@ export const Drawer = ({
           return;
         }
         setOpen(false);
-        onClose?.(event);
+        onClose?.({ action: 'onClose' });
       }}
       size={customSize ?? rest.size}
       {...(designing

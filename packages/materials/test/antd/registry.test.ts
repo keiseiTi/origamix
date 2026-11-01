@@ -1,3 +1,5 @@
+import { validateAntdMaterialProps, validateAntdMaterialSemantics } from '../../antd/validation';
+import { ORIGAMIX_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { materialGroups, rootMaterials } from '../../antd/editor';
 import { describe, expect, it } from 'vitest';
 import materialComponents, { materialSet } from '../../antd/runtime';
@@ -37,5 +39,44 @@ describe('material boundary used by editing and preview', () => {
       expect(material.context.events.filter((event) => event.name === 'init')).toHaveLength(1);
       expect(antdValidationMaterialRegistry[material.type]?.version).toBe(material.version);
     }
+  });
+  // Invalid persisted material data must be rejected consistently for Agent and visual edits.
+  it('keeps family constraints scoped and rejects invalid ranges, identities and child references', () => {
+    expect(
+      validateAntdMaterialProps('datePickerRange', {
+        defaultStart: '2026-10-31 12:00:00',
+        defaultEnd: '2026-10-31T09:00:00',
+      }),
+    ).not.toEqual([]);
+    expect(
+      validateAntdMaterialProps('textarea', { autoSize: { minRows: 5, maxRows: 2 } }),
+    ).not.toEqual([]);
+    expect(validateAntdMaterialProps('custom', { options: [{ value: 1 }, { value: 1 }] })).toEqual(
+      [],
+    );
+    expect(validateAntdMaterialProps('tree', { treeData: [{ key: 1 }, { key: '1' }] })).toEqual([]);
+    expect(
+      validateAntdMaterialProps('tree', { treeData: [{ key: 1, children: [{ key: 1 }] }] }),
+    ).not.toEqual([]);
+    expect(
+      validateAntdMaterialProps('cascader', {
+        options: [{ value: 'a', children: [{ value: 'a' }] }],
+      }),
+    ).not.toEqual([]);
+    const schema: OrigamixPageSchema = {
+      elements: {
+        root: { type: 'container', props: {} },
+        tabs: { type: 'tabs', props: { items: [{ key: 'one', label: 'One' }] } },
+        child: { type: 'text', props: { tabKey: 'missing' } },
+      },
+      layout: { root: 'root', structure: { root: ['tabs'], tabs: ['child'] } },
+      flows: {},
+      bindElements: [],
+      context: { globalVariables: [] },
+      extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+    };
+    expect(validateAntdMaterialSemantics(schema)).toContainEqual(
+      expect.objectContaining({ path: '/elements/child/props/tabKey' }),
+    );
   });
 });

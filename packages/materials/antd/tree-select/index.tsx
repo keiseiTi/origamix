@@ -1,8 +1,9 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import type { RuntimeMaterialProps } from '@';
 import { TreeSelect as AntdTreeSelect, type TreeSelectProps } from 'antd';
 
-export type IProps = TreeSelectProps & RuntimeMaterialProps;
+export type IProps = MaterialEventProps<TreeSelectProps, 'onChange'> & RuntimeMaterialProps;
 
 import { useRuntimeValue } from '../runtime-state';
 const raw = (item: unknown): unknown =>
@@ -38,10 +39,10 @@ export const TreeSelect = (props: IProps) => {
           ? current.map((value: unknown) => ({ value }))
           : current
       }
-      onChange={(next, labels, extra) => {
+      onChange={(next) => {
         const normalized = Array.isArray(next) ? next.map(raw) : (raw(next) ?? null);
         change(normalized);
-        onChange?.(normalized, labels, extra);
+        onChange?.({ value: normalized });
       }}
     />
   );

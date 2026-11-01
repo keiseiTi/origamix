@@ -43,6 +43,4 @@ pnpm --filter @origamix/server test:template
 - `test:template` installs dependencies into an isolated generated project and needs registry access or populated cache. Report missing prerequisites; never substitute a real user project.
 - For UI changes run the template dev server and verify both themes. Run root gates for source changes; coordinate Desktop resource checks when scaffold packaging changes.
 
-- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
-
 - Keep eslint.config.mjs in the scaffold copy allowlist and standalone installation checks.

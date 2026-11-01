@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { ORIGAMIX_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import {
   validatePage,
@@ -78,7 +78,13 @@ describe('page protocol validation', () => {
         structure: { element_root: ['element_child'], element_child: ['element_root'] },
       },
     });
-    expect(result.semanticErrors[0]?.code).toBe('LAYOUT_CYCLE');
+    expect(result.semanticErrors.map((error) => error.code)).toContain('LAYOUT_CYCLE');
+    const multipleParents: OrigamixPageSchema = structuredClone(emptyPage);
+    multipleParents.elements = { ...emptyPage.elements, child: { type: 'text', props: {} } };
+    multipleParents.layout.structure = { element_root: ['child', 'child'] };
+    expect(validatePage(multipleParents).semanticErrors.map((error) => error.code)).toContain(
+      'INVALID_LAYOUT_PARENT',
+    );
   });
 
   it('validates a typed Schema operation', () => {

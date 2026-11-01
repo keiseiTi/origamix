@@ -1,3 +1,4 @@
+import { equalJson } from '@origamix/shared';
 import { useToastManager } from '@origamix/ui';
 import { getElementLabel } from '@origamix/shared';
 import LogicFlow from '@logicflow/core';
@@ -26,7 +27,7 @@ export const FlowEditor = ({
   const { schema, materials, onChange, history } = useFlowEditorSession();
   const container = useRef<HTMLDivElement>(null);
   const lfRef = useRef<LogicFlow | null>(null);
-  const lastGraph = useRef('');
+  const lastGraph = useRef<LogicFlow.GraphData>({ nodes: [], edges: [] });
   const [selected, setSelected] = useState<LogicFlow.NodeData | null>(null);
   const historyRef = useRef(history);
   useEffect(() => {
@@ -42,7 +43,7 @@ export const FlowEditor = ({
     const lf = lfRef.current;
     if (!lf || !target) return;
     const graph = lf.getGraphRawData();
-    if (JSON.stringify(graph) === lastGraph.current) return;
+    if (equalJson(graph, lastGraph.current)) return;
     try {
       const flow = toFlow(graph);
       const binding = schema.bindElements?.find(
@@ -55,7 +56,7 @@ export const FlowEditor = ({
         binding?.flowId ?? `flow-${crypto.randomUUID()}`,
         flow,
       );
-      lastGraph.current = JSON.stringify(graph);
+      lastGraph.current = structuredClone(graph);
       const candidate = SchemaUtils.setFlowGraph(
         next,
         `${target.elementId}::${target.event}`,
@@ -64,7 +65,7 @@ export const FlowEditor = ({
       schemaRef.current = candidate;
       onChange(candidate);
     } catch (reason) {
-      lf.render(JSON.parse(lastGraph.current) as LogicFlow.GraphData);
+      lf.render(structuredClone(lastGraph.current));
       notifications.add({
         id: 'editor-flow-error',
         type: 'error',
@@ -109,7 +110,7 @@ export const FlowEditor = ({
       anchor: { fill: '#ffffff', stroke: '#6366f1', r: 5 },
     });
     lf.render(initialGraph.current);
-    lastGraph.current = JSON.stringify(lf.getGraphRawData());
+    lastGraph.current = structuredClone(lf.getGraphRawData());
     // LogicFlow may emit several events inside one model mutation (e.g. deleting
     // a node also deletes edges). Read the completed graph after that mutation.
     let scheduled = false;
@@ -179,9 +180,9 @@ export const FlowEditor = ({
     const lf = lfRef.current;
     if (!lf || !target) return;
     const graph = readGraph(schema, target);
-    if (JSON.stringify(graph) === lastGraph.current) return;
+    if (equalJson(graph, lastGraph.current)) return;
     lf.render(graph);
-    lastGraph.current = JSON.stringify(lf.getGraphRawData());
+    lastGraph.current = structuredClone(lf.getGraphRawData());
     setSelected((current) => (current ? (lf.getNodeDataById(current.id) ?? null) : null));
   }, [schema, target]);
 

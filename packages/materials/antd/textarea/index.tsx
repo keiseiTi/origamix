@@ -1,14 +1,14 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Input as AntdInput } from 'antd';
 import type { TextAreaProps } from 'antd/es/input/TextArea';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export type IProps = TextAreaProps &
+export type IProps = MaterialEventProps<TextAreaProps, 'onChange' | 'onPressEnter'> &
   MaterialComponentProps & {
     minRows?: number;
     maxRows?: number;
     value?: string;
-    onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   };
 
 import { useRuntimeValue } from '../runtime-state';
@@ -47,11 +47,12 @@ export const Textarea = (props: IProps) => {
       }
       onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => {
         change(event.target.value);
-        onChange?.(event);
+        onChange?.({ value: event.target.value });
       }}
       onPressEnter={(event) => {
         change(event.currentTarget.value);
-        if (!event.nativeEvent.isComposing) onPressEnter?.(event);
+        if (!event.nativeEvent.isComposing)
+          onPressEnter?.({ value: event.currentTarget.value, key: 'Enter' });
       }}
     />
   );

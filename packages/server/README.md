@@ -267,3 +267,5 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
 
 后端默认监听 `127.0.0.1:1029`，可通过宿主的 `ORIGAMIX_SERVER_PORT` 配置覆盖；`0` 表示系统分配端口，供隔离检查使用。网页开发入口默认使用 `9685`，`/api/v1` 继续由开发宿主代理并注入认证信息。固定端口被占用时启动失败，不自动连接或终止占用进程。
+
+物料协议与校验分工：Shared 检查页面结构及唯一父节点；Server 检查通用 Manifest 属性、层级和安全边界；Materials 的 React-free `antd/validation` 入口检查该物料族的字段与跨元素语义。Server 校验器单测使用固定测试清单，Materials 生成器检查真实默认值。

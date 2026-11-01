@@ -1,7 +1,7 @@
+import { equalJson } from '@origamix/shared';
 import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared';
 
-const same = (left: unknown, right: unknown): boolean =>
-  JSON.stringify(left) === JSON.stringify(right);
+const same = (left: unknown, right: unknown): boolean => equalJson(left, right);
 
 const parentMap = (schema: OrigamixPageSchema): Map<string, string> => {
   const result = new Map<string, string>();

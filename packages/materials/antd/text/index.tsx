@@ -15,7 +15,7 @@ export interface IProps {
   mark?: boolean;
   delete?: boolean;
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: (payload: { action: 'click' }) => void;
 }
 
 const TitleLevel: Record<string, 1 | 2 | 3 | 4 | 5> = {
@@ -54,7 +54,7 @@ export const Text = (props: IProps) => {
     type: textType,
     strong: strong,
     italic: italic,
-    onClick: onClick,
+    onClick: () => onClick?.({ action: 'click' }),
     delete: deleted,
     disabled,
   };

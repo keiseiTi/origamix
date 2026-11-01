@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
   type: 'switch',
+  valueProp: 'checked',
   layout: { display: 'inline' },
   title: '开关',
   defaultProps: {},

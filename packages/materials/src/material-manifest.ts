@@ -57,6 +57,7 @@ export const toValidationMaterialManifest = (
 ): ValidationMaterialManifest => {
   return {
     type: manifest.type,
+    role: manifest.role,
     version: manifest.version,
     propsSchema: manifest.propsSchema,
     acceptsChildren: manifest.acceptsChildren,

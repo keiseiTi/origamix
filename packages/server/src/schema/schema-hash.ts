@@ -16,6 +16,3 @@ export const hashSchema = (schema: OrigamixPageSchema): string => {
     .update(JSON.stringify(normalize(schema)))
     .digest('hex');
 };
-export const hashValue = (value: unknown): string => {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
-};

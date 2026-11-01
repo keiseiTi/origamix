@@ -1,3 +1,4 @@
+import { Choice } from './choice';
 import { useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Settings2, Trash2 } from 'lucide-react';
 import {
@@ -11,11 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from '@origamix/ui';
 import { validateColumns } from '../antd/structured-data-validation';
 import type { CollectionEditorProps } from './collection-editor';
@@ -30,37 +26,6 @@ const readColumns = (value: unknown): Column[] =>
           : { title: '', dataIndex: '' },
       )
     : [];
-
-const ColumnChoice = ({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { label: string; value: string }[];
-  onChange: (value: string) => void;
-}) => (
-  <Select
-    items={options}
-    value={value}
-    onValueChange={(next) => {
-      if (next !== null) onChange(next);
-    }}
-  >
-    <SelectTrigger aria-label={label} className='w-full'>
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      {options.map((option) => (
-        <SelectItem key={option.value} value={option.value}>
-          {option.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
 
 export const ColumnsEditor = ({ value, onChange }: CollectionEditorProps) => {
   const columns = readColumns(value);
@@ -286,7 +251,7 @@ export const ColumnsEditor = ({ value, onChange }: CollectionEditorProps) => {
                         />
                       </td>
                       <td className='p-2'>
-                        <ColumnChoice
+                        <Choice
                           label={`对齐 ${index + 1}`}
                           value={String(column.align ?? '')}
                           options={[
@@ -299,7 +264,7 @@ export const ColumnsEditor = ({ value, onChange }: CollectionEditorProps) => {
                         />
                       </td>
                       <td className='p-2'>
-                        <ColumnChoice
+                        <Choice
                           label={`固定 ${index + 1}`}
                           value={String(column.fixed ?? '')}
                           options={[

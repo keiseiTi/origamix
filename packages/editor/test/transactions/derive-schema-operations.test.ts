@@ -20,7 +20,7 @@ const schema = (): OrigamixPageSchema => ({
 });
 
 describe('visual editor Operation Batch', () => {
-  it('turns insertion and edits with removed props into Working operations', () => {
+  it('turns insertion and property edits into operations without deleting unrelated fields', () => {
     const before = schema();
     const after = structuredClone(before);
     after.elements.button_one = { type: 'button', props: { text: '提交' } };
@@ -39,21 +39,11 @@ describe('visual editor Operation Batch', () => {
       alias: '主操作',
       layoutWidth: 'fill',
     };
-    const edited = SchemaUtils.setElementProps(
-      after,
-      'button_one',
-      { text: '保存' },
-      {
-        additionalProperties: false,
-        properties: {
-          text: { type: 'string' },
-          alias: { type: 'string' },
-          layoutWidth: { type: 'string' },
-        },
-      },
-    ).schema;
+    const edited = SchemaUtils.setElementProps(after, 'button_one', { text: '保存' }).schema;
     expect(edited.elements.button_one!.props).toEqual({
       text: '保存',
+      htmlType: 'submit',
+      shape: 'round',
       alias: '主操作',
       layoutWidth: 'fill',
     });
@@ -64,7 +54,6 @@ describe('visual editor Operation Batch', () => {
         operation: 'updateElementProps',
         elementId: 'button_one',
         set: { text: '保存' },
-        unset: expect.arrayContaining(['htmlType', 'shape']),
       }),
     ]);
   });

@@ -104,3 +104,5 @@ pnpm site:build
 [仓库 README](https://github.com/keiseiTi/origamix/blob/main/README.md) 是当前命令总览，包 README 提供详细接口与验证说明。
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
+
+物料的 `antd/manifest` 保持纯数据；`antd/validation` 提供不依赖 React 的物料语义检查，供 Server 和属性控件共用。字段类型、枚举及默认值从物料定义生成；Server 的通用校验测试使用固定测试清单，避免物料配置变更牵动无关用例。

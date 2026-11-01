@@ -1,28 +1,35 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { useLayoutEffect } from 'react';
 import { Table as AntdTable, theme, type TableProps, type TablePaginationConfig } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 import { useRuntimeValue } from '../runtime-state';
-export type IProps = TableProps<Record<string, unknown>> &
+export type IProps = MaterialEventProps<TableProps<Record<string, unknown>>, 'onChange'> &
   RuntimeMaterialProps & { scrollX?: number; scrollY?: number; emptyText?: string };
-export const Table = ({
-  columns,
-  pagination,
-  dataSource = [],
-  onChange,
-  scrollX,
-  scrollY,
-  scroll,
-  emptyText,
-  locale,
-  om_setContextActions,
-  om_setRuntimeState,
-  om_mode,
-  om_readonly,
-  om_dropPlaceholder,
-  ...rest
-}: IProps) => {
+export const Table = (props: IProps) => {
+  const {
+    columns,
+    loading = false,
+    pagination,
+    dataSource = [],
+    onChange,
+    scrollX,
+    scrollY,
+    scroll,
+    emptyText,
+    locale,
+    om_setContextActions,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    ...rest
+  } = props;
+
   const { token } = theme.useToken();
   const [page, setPage] = useRuntimeValue('pagination', pagination, false, om_setRuntimeState);
+  useLayoutEffect(() => {
+    om_setRuntimeState?.({ loading: Boolean(loading) });
+  }, [loading, om_setRuntimeState]);
   useLayoutEffect(() => {
     if (!page) return;
     const pageSize = Math.max(1, Math.trunc(page.pageSize ?? 10));
@@ -36,6 +43,7 @@ export const Table = ({
   return (
     <AntdTable
       {...rest}
+      loading={loading}
       dataSource={dataSource}
       columns={columns?.map((column) => ({
         ...column,
@@ -66,7 +74,7 @@ export const Table = ({
               total: dataSource.length,
             }
       }
-      onChange={(next, filters, sorter, extra) => {
+      onChange={(next, _filters, _sorter, extra) => {
         const normalized = {
           ...(page || {}),
           pageSize: next.pageSize,
@@ -74,7 +82,7 @@ export const Table = ({
           total: dataSource.length,
         };
         setPage(normalized);
-        onChange?.(normalized, filters, sorter, extra);
+        onChange?.({ pagination: normalized, action: extra.action });
       }}
     />
   );

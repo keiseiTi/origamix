@@ -1,7 +1,11 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { Slider as AntdSlider, type SliderSingleProps, type SliderRangeProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 import { useRuntimeValue } from '../runtime-state';
-export type IProps = (SliderSingleProps | SliderRangeProps) &
+export type IProps = (
+  | MaterialEventProps<SliderSingleProps, 'onChange' | 'onChangeComplete'>
+  | MaterialEventProps<SliderRangeProps, 'onChange' | 'onChangeComplete'>
+) &
   RuntimeMaterialProps & {
     defaultStart?: number;
     defaultEnd?: number;
@@ -9,29 +13,33 @@ export type IProps = (SliderSingleProps | SliderRangeProps) &
     tooltipMode?: 'auto' | 'always' | 'hidden';
     tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
   };
-export const Slider = ({
-  value,
-  defaultValue,
-  defaultStart,
-  defaultEnd,
-  draggableTrack,
-  tooltipMode,
-  tooltipPlacement,
-  fieldName,
-  fieldLabel,
-  om_setRuntimeState,
-  om_mode,
-  om_readonly,
-  om_dropPlaceholder,
-  om_setContextActions,
-  ...rest
-}: IProps) => {
+export const Slider = (props: IProps) => {
+  const {
+    value,
+    defaultValue,
+    defaultStart,
+    defaultEnd,
+    draggableTrack,
+    tooltipMode,
+    tooltipPlacement,
+    onChange,
+    onChangeComplete,
+    fieldName,
+    fieldLabel,
+    om_setRuntimeState,
+    om_mode,
+    om_readonly,
+    om_dropPlaceholder,
+    om_setContextActions,
+    ...rest
+  } = props;
+
   const [current, change] = useRuntimeValue<number | number[]>(
     'value',
     value,
-    rest.range
-      ? [defaultStart ?? rest.min ?? 0, defaultEnd ?? rest.max ?? 100]
-      : (defaultValue ?? rest.min ?? 0),
+    props.range
+      ? [defaultStart ?? props.min ?? 0, defaultEnd ?? props.max ?? 100]
+      : (defaultValue ?? props.min ?? 0),
     om_setRuntimeState,
   );
   const tooltip = {
@@ -48,11 +56,11 @@ export const Slider = ({
         tooltip={tooltip}
         onChange={(next: number[]) => {
           change(next);
-          (rest.onChange as SliderRangeProps['onChange'])?.(next);
+          onChange?.({ value: next });
         }}
         onChangeComplete={(next: number[]) => {
           change(next);
-          (rest.onChangeComplete as SliderRangeProps['onChangeComplete'])?.(next);
+          onChangeComplete?.({ value: next });
         }}
         style={rest.vertical ? { height: 160 } : { minWidth: 160 }}
       />
@@ -65,11 +73,11 @@ export const Slider = ({
       tooltip={tooltip}
       onChange={(next) => {
         change(next);
-        (rest.onChange as SliderSingleProps['onChange'])?.(next);
+        onChange?.({ value: next });
       }}
       onChangeComplete={(next) => {
         change(next);
-        (rest.onChangeComplete as SliderSingleProps['onChangeComplete'])?.(next);
+        onChangeComplete?.({ value: next });
       }}
       style={rest.vertical ? { height: 160 } : { minWidth: 160 }}
     />

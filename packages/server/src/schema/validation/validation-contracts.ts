@@ -1,4 +1,4 @@
-import type { ValidationMaterialManifest } from '@origamix/shared';
+import type { OrigamixPageSchema, ValidationMaterialManifest } from '@origamix/shared';
 
 export type MaterialValidationErrorCode =
   | 'MATERIAL_SET_VERSION_MISMATCH'
@@ -28,6 +28,7 @@ export interface MaterialValidationResult {
 }
 
 export interface MaterialValidationRuntime {
+  validateSemantics?: (schema: OrigamixPageSchema) => MaterialValidationError[];
   materialSet: { id: string; version: string };
   registry: Readonly<Record<string, ValidationMaterialManifest>>;
 }

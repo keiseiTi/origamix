@@ -86,8 +86,6 @@ describe('declarative event execution', () => {
             events: [],
           },
           defaultProps: {},
-          initialState: () => ({ loading: false }),
-          eventPayload: (_event: string, args: unknown[]) => args[0],
         },
       },
     });
@@ -140,6 +138,28 @@ describe('declarative event execution', () => {
         .sort(),
     );
     const engine = createEngine(schema);
+    installMaterialState(
+      engine,
+      Object.fromEntries(
+        ['container', 'button', 'form', 'modal'].map((type) => [
+          type,
+          {
+            origamixRuntime: {
+              role: type === 'modal' ? 'overlay' : 'input',
+              valueProp: 'value',
+              context: {
+                variables: [{ name: 'text' }],
+                writable: [{ name: 'text' }, { name: 'disabled' }],
+                actions: [{ name: 'resetFields' }],
+                events: [],
+              },
+              defaultProps: {},
+            },
+          },
+        ]),
+      ),
+    );
+
     expect(() =>
       logicNodes.setElementProps!({
         engine,

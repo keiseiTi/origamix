@@ -1,3 +1,4 @@
+import { equalJson } from '@origamix/shared';
 import { subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorTransaction } from '@origamix/editor';
@@ -11,7 +12,7 @@ type Session = {
   active: boolean;
   ready: boolean;
   draft: OrigamixPageSchema | null;
-  savedHash: string;
+  savedSchema: OrigamixPageSchema | null;
   workingVersion: number;
   pending: Promise<void> | null;
   timer: number | null;
@@ -33,7 +34,7 @@ export const useEditorSession = (
         active: false,
         ready: false,
         draft: null,
-        savedHash: '',
+        savedSchema: null,
         workingVersion: 0,
         pending: null,
         timer: null,
@@ -69,7 +70,7 @@ export const useEditorSession = (
         .then((result) => {
           if (!active || sequence !== request) return;
           sessionRef.current.draft = result.schema;
-          sessionRef.current.savedHash = JSON.stringify(result.schema);
+          sessionRef.current.savedSchema = result.schema;
           sessionRef.current.workingVersion = result.workingVersion;
           setLoaded({ sessionRef, initial: result, error: null });
         })
@@ -121,13 +122,13 @@ export const useEditorSession = (
         }
         if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
         const draft = sessionRef.current.draft;
-        if (!draft || JSON.stringify(draft) === sessionRef.current.savedHash) return;
+        if (!draft || equalJson(draft, sessionRef.current.savedSchema)) return;
         if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
         const transaction: EditorTransaction = createEditorTransaction(
           {
             scope: sessionRef.current.scope,
             workingVersion: sessionRef.current.workingVersion,
-            schema: JSON.parse(sessionRef.current.savedHash) as OrigamixPageSchema,
+            schema: sessionRef.current.savedSchema!,
           },
           draft,
         );
@@ -149,7 +150,7 @@ export const useEditorSession = (
           .then((result) => {
             if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
             sessionRef.current.workingVersion = result.workingVersion;
-            sessionRef.current.savedHash = JSON.stringify(result.schema);
+            sessionRef.current.savedSchema = result.schema;
             sessionRef.current.failed = false;
             setFailure(null);
             onWorkingCommittedRef.current?.();
@@ -176,7 +177,7 @@ export const useEditorSession = (
   const onChange = (schema: OrigamixPageSchema, options?: { immediate: boolean }): void => {
     if (!sessionRef.current.active || !sessionRef.current.ready || readOnly) return;
     sessionRef.current.draft = schema;
-    if (JSON.stringify(schema) === sessionRef.current.savedHash) return;
+    if (equalJson(schema, sessionRef.current.savedSchema)) return;
     if (sessionRef.current.timer !== null) window.clearTimeout(sessionRef.current.timer);
     // A failed/ambiguous write needs an explicit flush; typing does not replay it.
     if (!sessionRef.current.failed)

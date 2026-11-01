@@ -1,9 +1,11 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Checkbox as AntdCheckbox } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 type AntdCheckboxGroupProps = React.ComponentProps<typeof AntdCheckbox.Group>;
-export interface IProps extends AntdCheckboxGroupProps, MaterialComponentProps {
+export interface IProps
+  extends MaterialEventProps<AntdCheckboxGroupProps, 'onChange'>, MaterialComponentProps {
   label?: string;
 }
 
@@ -31,7 +33,7 @@ export const Checkbox = (props: IProps) => {
       value={current}
       onChange={(...args) => {
         change(args[0]);
-        onChange?.(...args);
+        onChange?.({ value: args[0] ?? [] });
       }}
     />
   );

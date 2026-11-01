@@ -93,11 +93,11 @@ export default Page;
 
 用户输入先发布到读值投影，再触发事件；setElementProps 对 context.writable 校验后更新投影与目标元素。state 引用只允许 context.variables 的业务路径，method 只允许公开可调用方法。事件参数在 start 捕获为本次调用的独立快照，异步事件不共享一个可变载荷。
 
-React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建正在输入的其他控件。Form 的字段绑定在物料适配器处理；程序写入与字段方法同时维护字段值及整表读值。新增回归见 test/logic-nodes.test.ts，覆盖异步事件隔离、白名单与源 Schema 不变；界面焦点和原生控件转换仍需实际交互验收。
+React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建正在输入的其他控件。Form 的字段绑定由 Materials 的公共注册层处理；程序写入与字段方法同时维护字段值及整表读值。新增回归见 test/logic-nodes.test.ts，覆盖异步事件隔离、白名单与源 Schema 不变；界面焦点和原生控件转换仍需实际交互验收。
 
 ## 编辑态与运行态
 
-`@origamix/runtime` 是唯一公开入口。工作区消费 `src/index.ts` 以支持 HMR，发布包消费 dist/index.js 与内联后的声明；生成项目无需安装 Shared 或 Editor。
+`@origamix/runtime` 是唯一公开入口。工作区与发布包均消费 `dist/index.js` 与内联后的声明；生成项目无需安装 Shared 或 Editor。
 
 `OrigamixPage` 创建运行状态、变量、事件和异步流程会话。卸载或更换会话时中止请求，并阻止旧调用的后续状态写入。`DesignRenderer` 只解析布局并调用物料，复用稳定的 MaterialView；不创建执行引擎、绑定业务事件、执行 init/表达式/函数，也不注入运行写值和方法注册回调。Editor 通过 renderElement 提供选择、拖拽、容器占位与覆盖层。
 

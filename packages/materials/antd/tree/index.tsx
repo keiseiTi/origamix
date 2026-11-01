@@ -1,32 +1,30 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import type { Key } from 'react';
 import { Tree as AntdTree, type TreeProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 import { useRuntimeValue } from '../runtime-state';
-export type IProps = TreeProps & RuntimeMaterialProps;
-export const Tree = ({
-  selectedKeys,
-  checkedKeys,
-  expandedKeys,
-  defaultSelectedKeys,
-  defaultCheckedKeys,
-  defaultExpandedKeys,
-  onSelect,
-  onCheck,
-  onExpand,
-  om_setContextActions,
-  om_setRuntimeState,
-  om_readonly,
-  om_dropPlaceholder,
-  om_mode,
-  ...rest
-}: IProps) => {
-  const allKeys: Key[] = [];
-  const visit = (nodes: NonNullable<TreeProps['treeData']>) =>
-    nodes.forEach((node) => {
-      allKeys.push(node.key);
-      if (node.children) visit(node.children);
-    });
-  visit(rest.treeData ?? []);
+export type IProps = MaterialEventProps<TreeProps, 'onSelect' | 'onCheck' | 'onExpand'> &
+  RuntimeMaterialProps;
+export const Tree = (props: IProps) => {
+  const {
+    selectedKeys,
+    checkedKeys,
+    expandedKeys,
+    defaultSelectedKeys,
+    defaultCheckedKeys,
+    defaultExpandedKeys,
+    defaultExpandAll,
+    onSelect,
+    onCheck,
+    onExpand,
+    om_setContextActions,
+    om_setRuntimeState,
+    om_readonly,
+    om_dropPlaceholder,
+    om_mode,
+    ...rest
+  } = props;
+
   const [selected, select] = useRuntimeValue<Key[]>(
     'selectedKeys',
     selectedKeys,
@@ -42,7 +40,18 @@ export const Tree = ({
   const [expanded, expand] = useRuntimeValue<Key[]>(
     'expandedKeys',
     expandedKeys,
-    rest.defaultExpandAll ? allKeys : (defaultExpandedKeys ?? []),
+    () => {
+      if (!defaultExpandAll) return defaultExpandedKeys ?? [];
+      const keys: Key[] = [];
+      const visit = (nodes: NonNullable<TreeProps['treeData']>) => {
+        for (const node of nodes) {
+          keys.push(node.key);
+          if (node.children) visit(node.children);
+        }
+      };
+      visit(props.treeData ?? []);
+      return keys;
+    },
     om_setRuntimeState,
   );
   return (
@@ -51,17 +60,17 @@ export const Tree = ({
       selectedKeys={selected}
       checkedKeys={checked}
       expandedKeys={expanded}
-      onSelect={(next, info) => {
+      onSelect={(next) => {
         select(next);
-        onSelect?.(next, info);
+        onSelect?.({ selectedKeys: next });
       }}
-      onCheck={(next, info) => {
+      onCheck={(next) => {
         check(Array.isArray(next) ? next : next.checked);
-        onCheck?.(next, info);
+        onCheck?.({ checkedKeys: Array.isArray(next) ? next : next.checked });
       }}
-      onExpand={(next, info) => {
+      onExpand={(next) => {
         expand(next);
-        onExpand?.(next, info);
+        onExpand?.({ expandedKeys: next });
       }}
     />
   );

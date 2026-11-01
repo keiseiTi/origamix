@@ -1,8 +1,10 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Radio as AntdRadio, type RadioGroupProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export interface IProps extends RadioGroupProps, MaterialComponentProps {
+export interface IProps
+  extends MaterialEventProps<RadioGroupProps, 'onChange'>, MaterialComponentProps {
   label?: string;
 }
 
@@ -35,7 +37,7 @@ export const Radio = (props: IProps) => {
       value={current}
       onChange={(event) => {
         change(event.target.value);
-        onChange?.(event);
+        onChange?.({ value: event.target.value });
       }}
     />
   );

@@ -17,7 +17,7 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 - Editor does not interpret AI Runs or clarification expiry. `targetSelection` receives host-owned candidates, highlight, disabled state and a selection callback. Read-only defaults are generic; App supplies business-specific messages.
 - No HTTP, Working recovery, Revision, Apply, App Store or host credential ownership here. The unified Editor receives a loaded schema, stable sessionKey, registration, explicit theme and change/flush callbacks.
 - The schema prop is the initial projection for one sessionKey, not a second authoritative store. Ordinary saves do not replace it or reset history; an explicit new sessionKey remounts the engine. App retains in-flight drafts and advances the committed Working version only after Server success.
-- An explicit attribute-panel edit drops stored props absent from the selected material’s closed propsSchema on that element only; newly supplied values remain subject to Server validation. Snapshot diff emits explicit unset operations through the existing Working queue. Loading, unrelated elements and immutable Revisions are untouched; this is not a version migration.
+- Attribute edits preserve unrelated stored props. The attribute panel lists obsolete fields and removes them only through the explicit cleanup action; snapshot diff emits unset operations. Loading and immutable Revisions are never rewritten.
 - Each flush translates against the last acknowledged Working snapshot through `createEditorTransaction`. Typed operations are preferred; the internal candidate fallback is only for operation protocol gaps. Prop edits and Flow edits use the same host queue.
 - `flow-editor/flow-graph.ts` keeps LogicFlow presentation dimensions in `extensions.flowGraph`, stripping `width`/`height` from executable node props so Runtime can validate them against Shared without allowing layout fields in the execution contract.
 - Preserve scoped async results, failed drafts and flush rejection before page/mode/preview transitions. Readonly view changes must not reach the host; never add a separate save path to a panel or flow node.
@@ -27,7 +27,7 @@ Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Verification
 
-Run `pnpm --filter @origamix/editor lint`, `typecheck`, `test`, `build` and all four root gates. Existing snapshot-operation and graph safety tests live in `test/session/`, `test/transactions/` and `test/flow-editor/`; App owns persistence-session failures and stale-response checks. Do not add presentation tests for this migration.
+Run `pnpm --filter @origamix/editor lint`, `typecheck`, `test`, `build` and all four root gates. Existing snapshot-operation and graph safety tests live in `test/session/`, `test/transactions/` and `test/flow-editor/`; App owns persistence-session failures and stale-response checks. Do not add presentation tests.
 
 UI verification must exercise actual visual/flow switching, event selection, history, code-editor workers, preview and both themes. Successful HTTP is not rendering evidence.
 
@@ -37,8 +37,6 @@ UI verification must exercise actual visual/flow switching, event selection, his
 
 - `src/prototype/canvas-prototype.tsx` is the public surface of the isolation feasibility experiment. It exposes only restricted commands and snapshots, never Engine. It reuses CanvasEditor, independent session history and Schema editing tools, without HTTP, persistence or production replacement behavior. Keep the experiment permission-isolated from the production Editor; verify native hit testing and movement through actual interaction.
 
-- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
-
-- Layout ownership and rollout are documented in [material layout](docs/material-layout.md). Material.acceptsChildren comes from Manifest; default occupancy comes from Material.layout. Never reintroduce isContainer/isBlock or design-only layout wrappers. Selection refs/events attach to the shared Runtime layout node; candidate decorations use portals. Parent layout determines insertion axis.
+- Layout ownership and rollout are documented in [material layout](../materials/src/layout-properties.ts). Material.acceptsChildren comes from Manifest; default occupancy comes from Material.layout. Never reintroduce isContainer/isBlock or design-only layout wrappers. Selection refs/events attach to the shared Runtime layout node; candidate decorations use portals. Parent layout determines insertion axis.
 
 - Overlay materials declare editorConfig.presentation as overlay. Session openOverlayIds is transient: selecting an overlay or descendant reveals its ancestor path; closing never changes Schema, history or business events. Overlay insertion/movement targets the Schema root; Ant Design getContainer mounts into its Runtime layout frame, which is positioned relative. Content frames retain selection/drop geometry, and masks stay within the page.

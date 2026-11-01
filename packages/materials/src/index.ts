@@ -42,7 +42,7 @@ export {
   type MaterialDefinition,
 } from './origamix-material';
 
-export type { RuntimeMaterialProps } from './runtime-material';
+export type { RuntimeMaterialProps, MaterialEventProps } from './runtime-material';
 
 export { layoutProperties } from './layout-properties';
 export { layoutPanel } from './layout-panel';

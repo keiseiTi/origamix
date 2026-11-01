@@ -1,28 +1,31 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { Children, isValidElement } from 'react';
 import { Tabs as AntdTabs, theme, type TabsProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 import { useRuntimeValue } from '../runtime-state';
-export type IProps = TabsProps & RuntimeMaterialProps;
-export const Tabs = ({
-  children,
-  items,
-  activeKey,
-  defaultActiveKey,
-  onChange,
-  onEdit,
-  om_mode,
-  om_dropPlaceholder,
-  om_setContextActions,
-  om_setRuntimeState,
-  om_readonly,
-  ...rest
-}: IProps) => {
+export type IProps = MaterialEventProps<TabsProps, 'onChange' | 'onEdit'> & RuntimeMaterialProps;
+export const Tabs = (props: IProps) => {
+  const {
+    children,
+    items,
+    activeKey,
+    defaultActiveKey,
+    onChange,
+    onEdit,
+    om_mode,
+    om_dropPlaceholder,
+    om_setContextActions,
+    om_setRuntimeState,
+    om_readonly,
+    ...rest
+  } = props;
+
   const { token } = theme.useToken();
   const [pages, setPages] = useRuntimeValue('items', items, [], om_setRuntimeState);
   const [active, setActive] = useRuntimeValue<string | null>(
     'activeKey',
     activeKey,
-    defaultActiveKey ?? pages[0]?.key ?? null,
+    defaultActiveKey ?? items?.[0]?.key ?? null,
     om_setRuntimeState,
   );
   const contents = Children.toArray(children);
@@ -36,7 +39,7 @@ export const Tabs = ({
       activeKey={active ?? undefined}
       onChange={(next) => {
         setActive(next);
-        onChange?.(next);
+        onChange?.({ activeKey: next });
       }}
       style={{ backgroundColor: token.colorBgContainer, color: token.colorText }}
       onEdit={(key, action) => {
@@ -50,7 +53,7 @@ export const Tabs = ({
           setPages(remaining);
           if (active === key) setActive(remaining[0]?.key ?? null);
         }
-        onEdit?.(key, action);
+        onEdit?.({ action, targetKey: typeof key === 'string' ? key : null });
       }}
       items={pages.map((item, index) => ({
         ...item,

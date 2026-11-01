@@ -80,9 +80,9 @@ export const serverBoundaries: Rule.RuleModule = {
       }
       if (
         specifier.startsWith('@origamix/materials') &&
-        !/^@origamix\/materials\/[^/]+\/manifest$/.test(specifier)
+        !/^@origamix\/materials\/[^/]+\/(?:manifest|validation)$/.test(specifier)
       ) {
-        report(node, 'Server may import Materials manifests only.');
+        report(node, 'Server may import Materials pure manifest/validation entries only.');
       }
       const thinBoundary = file.startsWith('http/') || file.startsWith('agent/tools/');
       if (

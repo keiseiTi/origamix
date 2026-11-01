@@ -1,8 +1,10 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { InputNumber as AntdInputNumber, type InputNumberProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export type IProps = InputNumberProps & MaterialComponentProps;
+export type IProps = MaterialEventProps<InputNumberProps, 'onChange' | 'onPressEnter'> &
+  MaterialComponentProps;
 
 import { useRuntimeValue } from '../runtime-state';
 export const Number = (props: IProps) => {
@@ -34,7 +36,7 @@ export const Number = (props: IProps) => {
       onChange={(next) => {
         const numeric = next === null ? null : globalThis.Number(next);
         change(numeric);
-        onChange?.(numeric);
+        onChange?.({ value: numeric });
       }}
       onPressEnter={(event) => {
         if (!event.nativeEvent.isComposing) {
@@ -44,7 +46,10 @@ export const Number = (props: IProps) => {
               ? null
               : globalThis.Number(text.replace(rest.decimalSeparator ?? '.', '.'));
           if (next === null || globalThis.Number.isFinite(next)) change(next);
-          onPressEnter?.(event);
+          onPressEnter?.({
+            value: next === null || globalThis.Number.isFinite(next) ? next : current,
+            key: 'Enter',
+          });
         }
       }}
     />

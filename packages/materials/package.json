@@ -21,6 +21,10 @@
     "./antd/editor": {
       "types": "./dist/internal/antd/editor.d.ts",
       "import": "./dist/internal/antd/editor.js"
+    },
+    "./antd/validation": {
+      "types": "./dist/public/antd/validation.d.ts",
+      "import": "./dist/public/antd/validation.js"
     }
   },
   "publishConfig": {
@@ -33,6 +37,10 @@
       "./antd/manifest": {
         "types": "./dist/public/antd/manifest.d.ts",
         "import": "./dist/public/antd/manifest.js"
+      },
+      "./antd/validation": {
+        "types": "./dist/public/antd/validation.d.ts",
+        "import": "./dist/public/antd/validation.js"
       }
     }
   },

@@ -1,15 +1,7 @@
+import { Choice } from './choice';
+import { validateAntdMaterialProps } from '../antd/validation';
 import { useState } from 'react';
-import {
-  Button,
-  Checkbox,
-  Input,
-  FieldLabel,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@origamix/ui';
+import { Button, Checkbox, Input, FieldLabel } from '@origamix/ui';
 
 type Row = Record<string, unknown>;
 export interface CollectionEditorProps {
@@ -17,39 +9,7 @@ export interface CollectionEditorProps {
   onChange?: (value: unknown) => void;
 }
 
-const Choice = ({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { label: string; value: string }[];
-  onChange: (value: string) => void;
-}) => (
-  <Select
-    items={options}
-    value={value}
-    onValueChange={(next: string | null) => {
-      if (next !== null) onChange(next);
-    }}
-  >
-    <SelectTrigger aria-label={label} className='w-full'>
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      {options.map((option) => (
-        <SelectItem key={option.value} value={option.value}>
-          {option.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-);
-
 const validateOptions = (rows: Row[]): string | undefined => {
-  const keys = new Set<unknown>();
   for (const row of rows) {
     if (
       typeof row.label !== 'string' ||
@@ -59,10 +19,8 @@ const validateOptions = (rows: Row[]): string | undefined => {
       (typeof row.value === 'number' && !Number.isFinite(row.value))
     )
       return '请填写选项名称和有效的值。';
-    if (keys.has(row.value)) return '选项值不能重复。';
-    keys.add(row.value);
   }
-  return undefined;
+  return validateAntdMaterialProps('select', { options: rows })[0]?.message;
 };
 
 const CollectionEditor = ({

@@ -32,7 +32,11 @@ export default defineConfig([
   { ...options, outDir: 'dist/internal' },
   {
     ...options,
-    entry: { 'antd/runtime': 'antd/runtime.ts', 'antd/manifest': 'antd/manifest.ts' },
+    entry: {
+      'antd/runtime': 'antd/runtime.ts',
+      'antd/manifest': 'antd/manifest.ts',
+      'antd/validation': 'antd/validation.ts',
+    },
     outDir: 'dist/public',
   },
 ]);

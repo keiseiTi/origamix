@@ -1,8 +1,9 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Switch as AntdSwitch, type SwitchProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export type IProps = SwitchProps & MaterialComponentProps & {};
+export type IProps = MaterialEventProps<SwitchProps, 'onChange'> & MaterialComponentProps & {};
 
 import { useRuntimeValue } from '../runtime-state';
 export const Switch = (props: IProps) => {
@@ -32,7 +33,7 @@ export const Switch = (props: IProps) => {
       checked={current}
       onChange={(...args) => {
         change(args[0]);
-        onChange?.(...args);
+        onChange?.({ checked: args[0] });
       }}
     />
   );

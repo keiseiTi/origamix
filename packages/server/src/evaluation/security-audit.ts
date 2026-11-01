@@ -6,7 +6,7 @@ export interface AgentSecurityEvidence {
   sseFrames: readonly string[];
   clientState: readonly string[];
   previewCapabilities: readonly string[];
-  deniedAttacks: readonly string[];
+  reportedDeniedAttacks: readonly string[];
 }
 
 export interface AgentSecurityAuditResult {
@@ -41,8 +41,10 @@ const containsSecret = (values: readonly string[]): boolean => {
   return values.some((value) => secretPatterns.some((pattern) => pattern.test(value)));
 };
 
-/** Audits redacted boundary snapshots only; callers must never place real credentials in fixtures. */
-export const auditAgentSecurity = (evidence: AgentSecurityEvidence): AgentSecurityAuditResult => {
+/** Checks supplied redacted snapshots and caller-reported denials; does not execute attacks or measure live security. */
+export const checkAgentSecurityEvidence = (
+  evidence: AgentSecurityEvidence,
+): AgentSecurityAuditResult => {
   const channels = [
     ['logs', evidence.logs],
     ['sqlite', evidence.sqliteValues],
@@ -64,14 +66,19 @@ export const auditAgentSecurity = (evidence: AgentSecurityEvidence): AgentSecuri
     passed: forbidden.length === 0,
     detail:
       forbidden.length === 0
-        ? 'Preview 仅暴露只读能力'
+        ? '所提供的 Preview 能力列表未包含已知写能力'
         : `Preview 暴露写能力：${forbidden.join(', ')}`,
   });
-  const missing = [...requiredAttacks].filter((item) => !evidence.deniedAttacks.includes(item));
+  const missing = [...requiredAttacks].filter(
+    (item) => !evidence.reportedDeniedAttacks.includes(item),
+  );
   checks.push({
-    id: 'attack_matrix_denied',
+    id: 'attack_matrix_reported',
     passed: missing.length === 0,
-    detail: missing.length === 0 ? '固定攻击矩阵全部被拒绝' : `缺少拒绝证据：${missing.join(', ')}`,
+    detail:
+      missing.length === 0
+        ? '调用方已报告完整攻击矩阵的拒绝结果，未在此执行攻击'
+        : `缺少拒绝证据：${missing.join(', ')}`,
   });
   return { passed: checks.every((check) => check.passed), checks };
 };

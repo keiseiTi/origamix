@@ -1,21 +1,25 @@
-import React from 'react';
+import type { MaterialEventProps } from '../../src/runtime-material';
+import React, { useLayoutEffect } from 'react';
 import { Button as AntdButton, type ButtonProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export interface IProps
   extends
-    Pick<
-      ButtonProps,
-      | 'disabled'
-      | 'loading'
-      | 'onClick'
-      | 'type'
-      | 'href'
-      | 'target'
-      | 'ghost'
-      | 'size'
-      | 'danger'
-      | 'block'
+    MaterialEventProps<
+      Pick<
+        ButtonProps,
+        | 'disabled'
+        | 'loading'
+        | 'onClick'
+        | 'type'
+        | 'href'
+        | 'target'
+        | 'ghost'
+        | 'size'
+        | 'danger'
+        | 'block'
+      >,
+      'onClick'
     >,
     MaterialComponentProps {
   text?: string;
@@ -24,6 +28,8 @@ export interface IProps
 export const Button = (props: IProps) => {
   const {
     text,
+    loading = false,
+    onClick,
     om_setContextActions,
     fieldName,
     fieldLabel,
@@ -33,7 +39,14 @@ export const Button = (props: IProps) => {
     om_dropPlaceholder,
     ...restProps
   } = props;
-  return <AntdButton {...restProps}>{text}</AntdButton>;
+  useLayoutEffect(() => {
+    om_setRuntimeState?.({ loading: Boolean(loading) });
+  }, [loading, om_setRuntimeState]);
+  return (
+    <AntdButton {...restProps} loading={loading} onClick={() => onClick?.({ action: 'click' })}>
+      {text}
+    </AntdButton>
+  );
 };
 
 export default Button;

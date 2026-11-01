@@ -1,4 +1,9 @@
-import { assertRuntimeField, assertRuntimeMethod, writeRuntimeState } from './material-state';
+import {
+  assertRuntimeField,
+  assertRuntimeMethod,
+  writeRuntimeState,
+  runtimeCapability,
+} from './material-state';
 import type { FlowExecuteContext, LogicNodes } from './core/types';
 import { isFlowNodeProps, type FlowNodeProps, type RuntimeFlowNodeType } from '@origamix/shared';
 
@@ -31,7 +36,7 @@ const portal =
   (open: boolean) =>
   (context: NodeContext<'openModalDrawer' | 'closeModalDrawer'>): void => {
     const id = elementId(context, context.data.elementId);
-    if (id && ['modal', 'drawer'].includes(context.engine.elements[id]!.type)) {
+    if (id && runtimeCapability(context.engine, id)?.role === 'overlay') {
       writeRuntimeState(context.engine, id, { open });
       context.engine.setState({ [id]: { open } });
     }
@@ -61,8 +66,9 @@ const handlers: NodeHandlers = {
     for (const [id, patch] of Object.entries(changes)) writeRuntimeState(engine, id, patch);
     for (const [id, patch] of Object.entries(changes)) {
       const writeField = engine.getContextValue(id)?.$writeField;
-      const field = engine.elements[id]?.type === 'switch' ? 'checked' : 'value';
-      if (typeof writeField === 'function' && Object.hasOwn(patch, field)) writeField(patch[field]);
+      const field = runtimeCapability(engine, id)?.valueProp ?? 'value';
+      if (typeof writeField === 'function' && field && Object.hasOwn(patch, field))
+        writeField(patch[field]);
     }
     engine.setState(changes);
   },

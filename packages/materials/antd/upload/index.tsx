@@ -1,10 +1,25 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Button, Upload as AntdUpload, type UploadProps } from 'antd';
-import { useState } from 'react';
-import { fileDescriptions } from '../runtime-state';
+import { useLayoutEffect, useState } from 'react';
 import type { RuntimeMaterialProps } from '@';
 
-export type IProps = UploadProps & RuntimeMaterialProps & { drag?: boolean; text?: string };
+const object = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+const fileDescriptions = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.map((file) => {
+        const data = object(file);
+        return Object.fromEntries(
+          ['uid', 'name', 'status', 'percent', 'url', 'size', 'type']
+            .filter((key) => data[key] !== undefined)
+            .map((key) => [key, data[key]]),
+        );
+      })
+    : [];
+
+export type IProps = MaterialEventProps<UploadProps, 'onChange' | 'onRemove'> &
+  RuntimeMaterialProps & { drag?: boolean; text?: string };
 export const Upload = ({
   children,
   drag,
@@ -23,15 +38,21 @@ export const Upload = ({
   ...rest
 }: IProps) => {
   const [files, setFiles] = useState<UploadProps['fileList']>([]);
+  useLayoutEffect(() => {
+    om_setRuntimeState?.({ fileList: [] });
+  }, [om_setRuntimeState]);
   const uploadProps: UploadProps = {
     fileList: files,
     onChange: (info) => {
       setFiles(info.fileList);
       om_setRuntimeState?.({ fileList: fileDescriptions(info.fileList) });
-      onChange?.(info);
+      onChange?.({
+        file: fileDescriptions([info.file])[0],
+        fileList: fileDescriptions(info.fileList),
+      });
     },
     onRemove: (file) => {
-      onRemove?.(file);
+      onRemove?.({ file: fileDescriptions([file])[0] });
       return true;
     },
     ...rest,

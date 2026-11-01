@@ -1,9 +1,10 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import type { RuntimeMaterialProps } from '@';
 import { Cascader as AntdCascader, type CascaderProps } from 'antd';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type IProps = CascaderProps<any> & RuntimeMaterialProps;
+export type IProps = MaterialEventProps<CascaderProps<any>, 'onChange'> & RuntimeMaterialProps;
 
 import { useRuntimeValue } from '../runtime-state';
 export const Cascader = (props: IProps) => {
@@ -28,7 +29,7 @@ export const Cascader = (props: IProps) => {
       value={current}
       onChange={(...args) => {
         change(args[0] ?? []);
-        onChange?.(...args);
+        onChange?.({ value: args[0] ?? [] });
       }}
     />
   );

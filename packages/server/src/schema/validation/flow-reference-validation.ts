@@ -217,7 +217,7 @@ export const validateFlowReferences = (
       ) {
         const id = node.props.elementId;
         const manifest = target(id, `${path}/props/elementId`);
-        if (manifest && !['modal', 'drawer'].includes(manifest.type))
+        if (manifest && manifest.role !== 'overlay')
           report(`${path}/props/elementId`, 'Target must be a modal or drawer');
       }
       if (node.type === 'setGlobalVariable' && isFlowNodeProps('setGlobalVariable', node.props)) {

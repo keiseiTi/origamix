@@ -1,22 +1,17 @@
-import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import type { ErrorObject, ValidateFunction } from 'ajv';
+import { compileJsonSchema } from '@origamix/shared';
 import { isHyperValue, type ValidationMaterialManifest } from '@origamix/shared';
 import {
   createMaterialValidationError as error,
   type MaterialValidationError,
 } from './validation-contracts';
 
-const ajv = new Ajv({ allErrors: true, strict: true });
-const validatorCache = new WeakMap<object, ValidateFunction>();
 const safeUrlPattern = /^(?:(?:https?):\/\/|(?:mailto|tel):|\/(?!\/)|\.{1,2}\/|#)/i;
 const unsafeExpressionPattern =
   /(?:\b(?:eval|Function|import|require|process|globalThis|window|document|fetch|XMLHttpRequest)\b|__proto__|prototype|constructor|=>|;|(?<![=!<>])=(?!=))/;
 
 export const propsValidator = (manifest: ValidationMaterialManifest): ValidateFunction => {
-  const cached = validatorCache.get(manifest.propsSchema);
-  if (cached) return cached;
-  const compiled = ajv.compile(manifest.propsSchema);
-  validatorCache.set(manifest.propsSchema, compiled);
-  return compiled;
+  return compileJsonSchema(manifest.propsSchema);
 };
 
 export const propertyPath = (elementId: string, ajvError: ErrorObject): string => {

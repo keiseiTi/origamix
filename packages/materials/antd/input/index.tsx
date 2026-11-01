@@ -1,8 +1,9 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Input as AntdInput, type InputProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export type IProps = InputProps &
+export type IProps = MaterialEventProps<InputProps, 'onChange' | 'onPressEnter'> &
   MaterialComponentProps & {
     value?: string;
   };
@@ -31,11 +32,12 @@ export const Input = (props: IProps) => {
       value={current}
       onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
         change(event.target.value);
-        onChange?.(event);
+        onChange?.({ value: event.target.value });
       }}
       onPressEnter={(event) => {
         change(event.currentTarget.value);
-        if (!event.nativeEvent.isComposing) onPressEnter?.(event);
+        if (!event.nativeEvent.isComposing)
+          onPressEnter?.({ value: event.currentTarget.value, key: 'Enter' });
       }}
     />
   );

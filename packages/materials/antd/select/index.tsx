@@ -1,8 +1,9 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import React from 'react';
 import { Select as AntdSelect, type SelectProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export type IProps = SelectProps & MaterialComponentProps & {};
+export type IProps = MaterialEventProps<SelectProps, 'onChange'> & MaterialComponentProps & {};
 
 import { useRuntimeValue } from '../runtime-state';
 export const Select = (props: IProps) => {
@@ -23,7 +24,7 @@ export const Select = (props: IProps) => {
   const [current, change] = useRuntimeValue(
     'value',
     value,
-    (defaultValue ?? props.mode) ? [] : null,
+    defaultValue ?? (props.mode ? [] : null),
     om_setRuntimeState,
   );
   return (
@@ -32,7 +33,7 @@ export const Select = (props: IProps) => {
       value={current}
       onChange={(...args) => {
         change(args[0] ?? (props.mode ? [] : null));
-        onChange?.(...args);
+        onChange?.({ value: args[0] ?? (props.mode ? [] : null) });
       }}
     />
   );

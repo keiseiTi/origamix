@@ -1,3 +1,4 @@
+import { equalJson } from '@origamix/shared';
 import { createContext, useContext } from 'react';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useStore } from 'zustand';
@@ -80,7 +81,7 @@ export const createEditorSession = (
       canRedo: false,
       setSchema: (next, options) => {
         const current = get().schema;
-        if (current === next || JSON.stringify(current) === JSON.stringify(next)) return;
+        if (equalJson(current, next)) return;
         if (!isPageSchema(next)) throw new Error('编辑结果无效，原有草稿已保留');
         const knownTypes = new Set(materials.map((material) => material.type));
         if (
@@ -88,14 +89,6 @@ export const createEditorSession = (
           Object.values(next.elements).some((element) => !knownTypes.has(element.type))
         )
           throw new Error('编辑结果包含未知物料，原有草稿已保留');
-        // A design tree cannot render one identity under multiple parents.
-        const children = new Set<string>();
-        for (const ids of Object.values(next.layout.structure))
-          for (const id of ids) {
-            if (id === next.layout.root || children.has(id))
-              throw new Error('元素不能重复出现在布局中，原有草稿已保留');
-            children.add(id);
-          }
         const group = options?.historyGroup;
         const now = Date.now();
         if (!group || group !== lastGroup || now - lastEdit > 600) {

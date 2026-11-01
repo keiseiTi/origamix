@@ -1883,6 +1883,7 @@ export const sliderManifest = withMaterialManifestDefaults({
 });
 export const switchManifest = withMaterialManifestDefaults({
   type: 'switch',
+  valueProp: 'checked',
   layout: {
     display: 'inline',
   },

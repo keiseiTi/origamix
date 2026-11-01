@@ -17,8 +17,8 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 
 - Runtime accepts only Schema tagged with Shared `ORIGAMIX_VERSION`; it never migrates project data. Older pages must be opened, saved and explicitly applied by Server before rendering with the new runtime.
 
-- Build and publication ownership follows [package artifact contract](../../site/docs/architecture/development.md). Materials npm output contains only public runtime/Manifest artifacts; UI/Editor stay private. Template dependencies use exact registry versions, never production vendor archives.
-
 - MaterialView owns the same layout frame in design/run modes, reading serializable origamixLayout metadata attached to registry components. It consumes validated layout-prefixed instance props before forwarding business props. Root frames include scoped baseline sizing CSS so generated projects need no editor stylesheet. Design renderMaterial accepts frame attributes/ref separately from material props.
 
 - Design renderMaterial may place its shared frame inside overlay content through framePlacement and om_renderDesignFrame. These design-only callbacks provide layout/selection geometry without creating an execution engine or mutating Schema.
+
+- Runtime material metadata supplies role and valueProp. Portal actions and Form writes use these capabilities, never concrete Ant Design names; initial state and event projection remain component-owned. Runtime snapshots the first event callback argument as serializable event.payload, without per-material event converters. Components publish initial state and register actions before lifecycle init runs.

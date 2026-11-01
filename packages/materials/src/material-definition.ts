@@ -1,3 +1,4 @@
+import { equalJson } from '@origamix/shared';
 import type { JsonSchema, MaterialManifest } from '@origamix/shared';
 import type { AttributeConfig } from './material';
 import type { MaterialDefinition } from './origamix-material';
@@ -68,13 +69,14 @@ export const createMaterialManifest = (definition: MaterialDefinition): Material
   const required: string[] = [];
   for (const panel of editorConfig?.panels ?? []) {
     for (const config of panel.configs ?? []) {
-      if (config.field in properties) throw new Error(`${metadata.type}: 重复属性 ${config.field}`);
+      if (Object.hasOwn(properties, config.field))
+        throw new Error(`${metadata.type}: 重复属性 ${config.field}`);
       properties[config.field] = scopeSchema(inferSchema(config), config.field);
       if (config.required) required.push(config.field);
       if (config.defaultValue !== undefined) {
         if (
-          config.field in defaults &&
-          JSON.stringify(defaults[config.field]) !== JSON.stringify(config.defaultValue)
+          Object.hasOwn(defaults, config.field) &&
+          !equalJson(defaults[config.field], config.defaultValue)
         ) {
           throw new Error(`${metadata.type}.${config.field}: 默认值重复且不一致`);
         }

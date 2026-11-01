@@ -53,7 +53,7 @@ const components = {
   container: Container,
   text: Text,
   slider: Slider,
-};
+} as const;
 
 export const materialComponents = Object.fromEntries(
   Object.entries(components).map(([type, Component]) => [

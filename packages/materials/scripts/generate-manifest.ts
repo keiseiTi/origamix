@@ -1,3 +1,5 @@
+import { compileJsonSchema, equalJson } from '@origamix/shared';
+import { validateAntdMaterialProps } from '../antd/validation';
 import { readdir, readFile, mkdir, rename, writeFile, rm, stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
@@ -36,6 +38,14 @@ const generate = async () => {
       throw new Error(
         `${material.type}: defaultProps 包含协议未声明的字段：${undeclaredDefaults.join(', ')}。请删除组件自身已有的默认行为，或显式声明需要持久化的属性协议。`,
       );
+    const validate = compileJsonSchema(manifest.propsSchema);
+    if (
+      !validate(manifest.defaultProps) ||
+      validateAntdMaterialProps(material.type, manifest.defaultProps).length
+    )
+      throw new Error(
+        `${material.type}: 默认属性不符合物料协议：${JSON.stringify(validate.errors ?? validateAntdMaterialProps(material.type, manifest.defaultProps))}`,
+      );
     const data = {
       ...manifest,
       version: undefined,
@@ -49,10 +59,9 @@ const generate = async () => {
       },
       context: {
         ...manifest.context,
-        events:
-          JSON.stringify(manifest.context.events[0]) === JSON.stringify(commonInitEvent)
-            ? manifest.context.events.slice(1)
-            : manifest.context.events,
+        events: equalJson(manifest.context.events[0], commonInitEvent)
+          ? manifest.context.events.slice(1)
+          : manifest.context.events,
       },
     };
     // Reject executable and non-JSON numeric values instead of silently losing validation rules.

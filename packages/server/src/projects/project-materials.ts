@@ -1,3 +1,4 @@
+import { validateAntdMaterialSemantics } from '@origamix/materials/antd/validation';
 import {
   antdMaterialManifest,
   antdAgentMaterialCatalog,
@@ -22,7 +23,11 @@ export const getProjectMaterials = (stack: ProjectStack) => {
   return {
     manifest: antdMaterialManifest,
     agentCatalog: antdAgentMaterialCatalog,
-    validation: { materialSet: stack.materialSet, registry: antdValidationMaterialRegistry },
+    validation: {
+      materialSet: stack.materialSet,
+      registry: antdValidationMaterialRegistry,
+      validateSemantics: validateAntdMaterialSemantics,
+    },
   };
 };
 

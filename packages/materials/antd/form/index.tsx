@@ -1,9 +1,13 @@
+import type { MaterialEventProps } from '../../src/runtime-material';
 import { FormRuntimeContext } from '../runtime-state';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Form as AntdForm, theme, type FormProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export interface IProps extends FormProps, MaterialComponentProps {
+export interface IProps
+  extends
+    MaterialEventProps<FormProps, 'onValuesChange' | 'onFinish' | 'onFinishFailed'>,
+    MaterialComponentProps {
   children?: React.ReactNode;
   labelColVal?: number;
   wrapperColVal?: number;
@@ -31,8 +35,8 @@ const FormContent = (props: IProps) => {
   const fieldPublishers = useRef(new Map<string, (value: unknown) => void>());
   const publish = useCallback(() => {
     const values = form.getFieldsValue(true);
-    om_setRuntimeState?.({ value: values });
     for (const [name, send] of fieldPublishers.current) send(values[name]);
+    om_setRuntimeState?.({ value: form.getFieldsValue(true) });
   }, [form, om_setRuntimeState]);
   const fieldContext = useMemo(
     () => ({
@@ -47,13 +51,14 @@ const FormContent = (props: IProps) => {
     [publish],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (value) {
       form.setFieldsValue({
         ...value,
       });
+      publish();
     }
-  }, [value, form]);
+  }, [value, form, publish]);
 
   useLayoutEffect(() => {
     om_setContextActions?.({
@@ -76,7 +81,7 @@ const FormContent = (props: IProps) => {
 
   const onValuesChange = (_: Record<string, unknown>, allValues: Record<string, unknown>) => {
     om_setRuntimeState?.({ value: allValues });
-    onValuesChangeProp?.(_, allValues);
+    onValuesChangeProp?.({ changedValues: _, value: allValues });
   };
 
   return (
@@ -87,11 +92,11 @@ const FormContent = (props: IProps) => {
         onValuesChange={onValuesChange}
         onFinish={(values) => {
           om_setRuntimeState?.({ value: values });
-          onFinish?.(values);
+          onFinish?.({ value: values });
         }}
         onFinishFailed={(info) => {
           om_setRuntimeState?.({ value: info.values });
-          onFinishFailed?.(info);
+          onFinishFailed?.({ value: info.values, errors: info.errorFields });
         }}
         labelCol={
           labelColVal !== undefined

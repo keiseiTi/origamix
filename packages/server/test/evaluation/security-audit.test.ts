@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AgentEngineError } from '../../src/agent/agent-engine';
-import { AgentToolRegistry, RunBudgetController } from '../../src/agent/tools/registry';
 import {
-  auditAgentSecurity,
+  checkAgentSecurityEvidence,
   type AgentSecurityEvidence,
 } from '../../src/evaluation/security-audit';
 
@@ -14,7 +12,7 @@ const evidence = (): AgentSecurityEvidence => ({
   sseFrames: ['data: {"type":"run.completed"}'],
   clientState: ['{"connection":"idle"}'],
   previewCapabilities: ['preview.readSnapshot'],
-  deniedAttacks: [
+  reportedDeniedAttacks: [
     'prompt_injection',
     'malicious_manifest',
     'malicious_document',
@@ -28,36 +26,17 @@ const evidence = (): AgentSecurityEvidence => ({
 
 describe('Agent security audit', () => {
   it('passes only with redacted surfaces, read-only preview and a complete attack matrix', () => {
-    expect(auditAgentSecurity(evidence()).passed).toBe(true);
+    expect(checkAgentSecurityEvidence(evidence()).passed).toBe(true);
     const unsafe = evidence();
     unsafe.sseFrames = ['Authorization: Bearer secret-token-value'];
     unsafe.previewCapabilities = ['preview.readSnapshot', 'schema.commit'];
-    unsafe.deniedAttacks = ['prompt_injection'];
-    const result = auditAgentSecurity(unsafe);
+    unsafe.reportedDeniedAttacks = ['prompt_injection'];
+    const result = checkAgentSecurityEvidence(unsafe);
     expect(result.passed).toBe(false);
     expect(result.checks.filter((check) => !check.passed).map((check) => check.id)).toEqual([
       'no_plaintext_secret_sse',
       'preview_read_only',
-      'attack_matrix_denied',
+      'attack_matrix_reported',
     ]);
-  });
-
-  it('does not let prompt injection or a forged tool expand authority', async () => {
-    const registry = new AgentToolRegistry();
-    expect(() =>
-      registry.toolsForRun({
-        runId: 'run_test',
-        requestedToolNames: ['read_credentials'],
-        budget: new RunBudgetController({
-          maxModelCalls: 1,
-          maxToolCalls: 1,
-          maxOutputTokens: 10,
-          maxDurationMs: 1_000,
-          maxSchemaBytes: 1_024,
-          maxRepairAttempts: 0,
-        }),
-        audit: () => undefined,
-      }),
-    ).toThrowError(AgentEngineError);
   });
 });

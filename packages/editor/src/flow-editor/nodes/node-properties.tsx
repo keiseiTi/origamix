@@ -17,7 +17,7 @@ export const NodeProperties = ({
   onChange: (patch: Record<string, unknown>) => void;
   eventLabel?: string;
 }): React.JSX.Element => {
-  const { schema, materials } = useFlowEditorSession();
+  const { schema, materials, catalog } = useFlowEditorSession();
   const properties = node.properties ?? {};
   const type = node.type;
   const definition = getNodeDefinition(String(type));
@@ -29,8 +29,10 @@ export const NodeProperties = ({
       String(materials.find((material) => material.type === item.type)?.title ?? item.type),
     ),
   }));
-  const portalOptions = elementOptions.filter((item) =>
-    ['modal', 'drawer'].includes(schema.elements[item.value]?.type ?? ''),
+  const portalOptions = elementOptions.filter(
+    (item) =>
+      catalog.find((manifest) => manifest.type === schema.elements[item.value]?.type)?.role ===
+      'overlay',
   );
   const ids = Array.isArray(properties.elementIds) ? properties.elementIds : [];
   return (

@@ -65,6 +65,13 @@ export const AttributePanel = ({
   const catalog = useMaterialCatalog();
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
+  const propsSchema = catalog.find((item) => item.type === element?.type)?.propsSchema;
+  const declared = propsSchema?.properties as Record<string, unknown> | undefined;
+  const obsoleteFields =
+    propsSchema?.additionalProperties === false && !propsSchema.patternProperties && declared
+      ? Object.keys(values).filter((field) => !Object.hasOwn(declared, field))
+      : [];
+
   const parentTabsId = activeElement
     ? SchemaUtils.getParents(schema, activeElement.id).find(
         (id) => schema.elements[id]?.type === 'tabs',
@@ -137,20 +144,15 @@ export const AttributePanel = ({
 
   const update = (field: string, value: unknown): void => {
     if (!activeElement) return;
-    const manifest = catalog.find((item) => item.type === element?.type);
-    const result = SchemaUtils.setElementProps(
-      schema,
-      activeElement.id,
-      { [field]: value },
-      manifest?.propsSchema,
-    );
+    const result = SchemaUtils.setElementProps(schema, activeElement.id, { [field]: value });
     setSchema(result.schema, { historyGroup: `props:${activeElement.id}:${field}` });
   };
 
   const renderField = (config: AttributeConfig): React.JSX.Element | null => {
     if (!config.uiType || !isVisible(config, { ...material?.defaultProps, ...values })) return null;
-    const value =
-      values[config.field] ?? config.defaultValue ?? material?.defaultProps?.[config.field];
+    const value = Object.hasOwn(values, config.field)
+      ? values[config.field]
+      : material?.defaultProps?.[config.field];
     const options = optionsOf(config);
     const label = typeof config.label === 'string' ? config.label : config.field;
 
@@ -362,6 +364,30 @@ export const AttributePanel = ({
               )}
             </span>
           </div>
+          {obsoleteFields.length > 0 && (
+            <div
+              role='status'
+              className='space-y-2 border-b border-border p-3 text-xs text-muted-foreground'
+            >
+              <p>当前物料已移除这些属性：{obsoleteFields.join('、')}。保存前请检查并显式移除。</p>
+              <Button
+                size='sm'
+                variant='outline'
+                onClick={() => {
+                  if (!element || !activeElement) return;
+                  const props = Object.fromEntries(
+                    Object.entries(values).filter(([field]) => !obsoleteFields.includes(field)),
+                  );
+                  setSchema({
+                    ...schema,
+                    elements: { ...schema.elements, [activeElement.id]: { ...element, props } },
+                  });
+                }}
+              >
+                移除已失效属性
+              </Button>
+            </div>
+          )}
           {panels.length === 0 ? (
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>
           ) : (

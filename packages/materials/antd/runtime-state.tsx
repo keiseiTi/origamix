@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -10,7 +11,6 @@ import {
 import { Form } from 'antd';
 import type { MaterialManifest } from '@origamix/shared';
 import type { RuntimeMaterialProps } from '../src/runtime-material';
-import { serializeDateValue, serializeTimeValue } from './date-value';
 
 export const FormRuntimeContext = createContext<{
   sync: () => void;
@@ -19,186 +19,24 @@ export const FormRuntimeContext = createContext<{
 export const useRuntimeValue = <T,>(
   field: string,
   supplied: T | undefined,
-  initial: T,
+  initial: T | (() => T),
   publish: RuntimeMaterialProps['om_setRuntimeState'],
 ): [T, (next: T) => void] => {
   const [fallback] = useState(initial);
-  const [value, setValue] = useState<T>(supplied === undefined ? initial : supplied);
+  const [value, setValue] = useState<T>(() => (supplied === undefined ? fallback : supplied));
   useLayoutEffect(() => {
     const next = supplied === undefined ? fallback : supplied;
     setValue(next);
     publish?.({ [field]: next });
   }, [field, supplied, publish, fallback]);
-  return [
-    value,
-    (next) => {
+  const change = useCallback(
+    (next: T) => {
       setValue(next);
       publish?.({ [field]: next });
     },
-  ];
-};
-
-const object = (value: unknown): Record<string, unknown> =>
-  value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-export const fileDescriptions = (value: unknown): Record<string, unknown>[] =>
-  Array.isArray(value)
-    ? value.map((file) => {
-        const data = object(file);
-        return Object.fromEntries(
-          ['uid', 'name', 'status', 'percent', 'url', 'size', 'type']
-            .filter((key) => data[key] !== undefined)
-            .map((key) => [key, data[key]]),
-        );
-      })
-    : [];
-const eventPayload = (
-  type: string,
-  event: string,
-  args: unknown[],
-  props: Record<string, unknown> = {},
-): unknown => {
-  const withTime = Boolean(props.showTime) && (!props.picker || props.picker === 'date');
-  const first = object(args[0]);
-  if (type === 'input' || type === 'textarea')
-    return {
-      value: object(first.target).value ?? '',
-      ...(event === 'onPressEnter' ? { key: 'Enter' } : {}),
-    };
-  if (type === 'number')
-    return event === 'onPressEnter'
-      ? { value: props.value ?? null, key: 'Enter' }
-      : { value: args[0] ?? null };
-  if (type === 'radio') return { value: object(first.target).value ?? null };
-  if (type === 'switch') return { checked: Boolean(args[0]) };
-  if (type === 'datePicker') return { value: serializeDateValue(args[0], withTime) };
-  if (type === 'datePickerRange')
-    return {
-      value: Array.isArray(args[0])
-        ? args[0].map((value) => serializeDateValue(value, withTime))
-        : [null, null],
-    };
-  if (type === 'timePicker') return { value: serializeTimeValue(args[0]) };
-  if (type === 'table')
-    return {
-      pagination: { current: first.current, pageSize: first.pageSize, total: first.total },
-      action: object(args[3]).action ?? 'paginate',
-    };
-  if (type === 'upload')
-    return event === 'onRemove'
-      ? { file: fileDescriptions([args[0]])[0] }
-      : { file: fileDescriptions([first.file])[0], fileList: fileDescriptions(first.fileList) };
-  if (type === 'tabs')
-    return event === 'onEdit'
-      ? { action: args[1], targetKey: typeof args[0] === 'string' ? args[0] : null }
-      : { activeKey: args[0] };
-  if (type === 'tree')
-    return {
-      [event === 'onSelect'
-        ? 'selectedKeys'
-        : event === 'onCheck'
-          ? 'checkedKeys'
-          : 'expandedKeys']: Array.isArray(args[0]) ? args[0] : (first.checked ?? []),
-    };
-  if (type === 'form')
-    return event === 'onValuesChange'
-      ? { changedValues: args[0], value: args[1] }
-      : event === 'onFinish'
-        ? { value: args[0] }
-        : { value: first.values, errors: first.errorFields };
-  if (type === 'modal' || type === 'drawer')
-    return event === 'afterOpenChange' ? { open: Boolean(args[0]) } : { action: event };
-  if (['button', 'text'].includes(type)) return { action: 'click' };
-  return { value: args[0] ?? null };
-};
-const initialState = (type: string, props: Record<string, unknown>): Record<string, unknown> => {
-  if (['input', 'textarea'].includes(type))
-    return { value: props.value ?? props.defaultValue ?? '' };
-  if (type === 'number') return { value: props.value ?? props.defaultValue ?? null };
-  if (type === 'checkbox') return { value: props.value ?? props.defaultValue ?? [] };
-  if (['radio', 'select', 'treeSelect'].includes(type))
-    return {
-      value:
-        props.value ??
-        props.defaultValue ??
-        (props.mode || props.multiple || props.treeCheckable ? [] : null),
-    };
-  if (type === 'switch') return { checked: props.checked ?? props.defaultChecked ?? false };
-  if (type === 'slider')
-    return {
-      value:
-        props.value ??
-        (props.range
-          ? [props.defaultStart ?? props.min ?? 0, props.defaultEnd ?? props.max ?? 100]
-          : (props.defaultValue ?? props.min ?? 0)),
-    };
-  if (type === 'datePicker')
-    return {
-      value: serializeDateValue(
-        props.value ?? props.defaultValue,
-        Boolean(props.showTime) && (!props.picker || props.picker === 'date'),
-      ),
-    };
-  if (type === 'datePickerRange')
-    return {
-      value: (Array.isArray(props.value)
-        ? props.value
-        : [props.defaultStart ?? null, props.defaultEnd ?? null]
-      ).map((value) =>
-        serializeDateValue(
-          value,
-          Boolean(props.showTime) && (!props.picker || props.picker === 'date'),
-        ),
-      ),
-    };
-  if (type === 'timePicker')
-    return { value: serializeTimeValue(props.value ?? props.defaultValue) };
-  if (type === 'cascader') return { value: props.value ?? props.defaultValue ?? [] };
-  if (type === 'tree')
-    return {
-      selectedKeys: props.selectedKeys ?? props.defaultSelectedKeys ?? [],
-      checkedKeys: props.checkedKeys ?? props.defaultCheckedKeys ?? [],
-      expandedKeys:
-        props.expandedKeys ??
-        (props.defaultExpandAll
-          ? (() => {
-              const keys: unknown[] = [];
-              const visit = (nodes: unknown[]) =>
-                nodes.forEach((node) => {
-                  const item = object(node);
-                  keys.push(item.key);
-                  if (Array.isArray(item.children)) visit(item.children);
-                });
-              visit(Array.isArray(props.treeData) ? props.treeData : []);
-              return keys;
-            })()
-          : (props.defaultExpandedKeys ?? [])),
-    };
-  if (type === 'tabs')
-    return {
-      activeKey:
-        props.activeKey ??
-        props.defaultActiveKey ??
-        object((props.items as unknown[])?.[0]).key ??
-        null,
-    };
-  if (type === 'form') return { value: props.value ?? props.initialValues ?? {} };
-  if (type === 'table')
-    return {
-      loading: props.loading ?? false,
-      pagination:
-        props.pagination === false || props.pagination === undefined
-          ? false
-          : {
-              current: 1,
-              pageSize: 10,
-              ...object(props.pagination),
-              total: (props.dataSource as unknown[])?.length ?? 0,
-            },
-    };
-  if (type === 'upload') return { fileList: [] };
-  if (type === 'button') return { loading: props.loading ?? false };
-  if (type === 'modal' || type === 'drawer') return { open: props.open ?? false };
-  return {};
+    [field, publish],
+  );
+  return [value, change];
 };
 
 const RuntimeField = ({
@@ -207,42 +45,52 @@ const RuntimeField = ({
   name,
   label,
   required,
-  type,
+  field,
 }: {
   Component: ComponentType<RuntimeMaterialProps>;
   props: RuntimeMaterialProps;
   name: string;
   label?: string;
   required?: boolean;
-  type: string;
+  field: string;
 }) => {
   const form = Form.useFormInstance();
   const context = useContext(FormRuntimeContext);
-  const field = type === 'switch' ? 'checked' : 'value';
-  const [fieldInitial] = useState(() =>
-    form.getFieldValue(name) === undefined ? initialState(type, props)[field] : undefined,
+  const initial = useRef<{ value: unknown } | null>(null);
+  const publish = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (Object.hasOwn(patch, field) && !initial.current) {
+        initial.current = { value: patch[field] };
+        if (form.getFieldValue(name) === undefined) form.setFieldValue(name, patch[field]);
+      }
+      props.om_setRuntimeState?.(patch);
+    },
+    [field, form, name, props.om_setRuntimeState],
   );
   useLayoutEffect(() => {
-    const unregister = context?.register(name, (value) =>
-      props.om_setRuntimeState?.({ [field]: value ?? initialState(type, props)[field] }),
-    );
+    const unregister = context?.register(name, (value) => {
+      const next = value === undefined ? initial.current?.value : value;
+      // resetFields clears Form's store; restore the component's published default there too.
+      if (value === undefined && initial.current) form.setFieldValue(name, next);
+      props.om_setRuntimeState?.({ [field]: next });
+    });
     props.om_setContextActions?.({
       $writeField: (value: unknown) => {
         form.setFieldValue(name, value);
         context?.sync();
       },
     });
+    context?.sync();
     return () => {
       unregister?.();
       props.om_setContextActions?.({ $writeField: undefined });
     };
-  }, [context, field, form, name, props.om_setContextActions, props.om_setRuntimeState, type]);
+  }, [context, field, form, name, props.om_setContextActions, props.om_setRuntimeState]);
   return (
     <Form.Item
       name={name}
       label={label}
       valuePropName={field}
-      initialValue={fieldInitial}
       rules={
         required
           ? [
@@ -259,11 +107,9 @@ const RuntimeField = ({
             ]
           : []
       }
-      getValueFromEvent={(...args: unknown[]) =>
-        (eventPayload(type, 'onChange', args, props) as Record<string, unknown>)[field]
-      }
+      getValueFromEvent={(payload: Record<string, unknown>) => payload[field]}
     >
-      <Component {...props} />
+      <Component {...props} om_setRuntimeState={publish} />
     </Form.Item>
   );
 };
@@ -271,6 +117,8 @@ const RuntimeField = ({
 /** The runtime entry attaches only its pure capability data and a Form field boundary. */
 export const registerRuntimeMaterial = (component: unknown, manifest: MaterialManifest) => {
   const Component = component as ComponentType<RuntimeMaterialProps>;
+  const field = manifest.valueProp ?? 'value';
+  const supportsField = Object.hasOwn(manifest.propsSchema.properties ?? {}, 'fieldName');
   const BoundMaterial = (props: RuntimeMaterialProps) => {
     const { fieldName, fieldLabel, fieldRequired, init, alias, tabKey, ...rest } = props;
     const initialized = useRef(false);
@@ -280,7 +128,7 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
         if (typeof init === 'function') init();
       }
     }, [init, props.om_mode]);
-    if (typeof fieldName !== 'string' || !fieldName || props.om_mode === 'design')
+    if (!supportsField || typeof fieldName !== 'string' || !fieldName || props.om_mode === 'design')
       return <Component {...rest} />;
     return (
       <RuntimeField
@@ -289,7 +137,7 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
         name={fieldName}
         required={Boolean(fieldRequired)}
         label={typeof fieldLabel === 'string' ? fieldLabel : undefined}
-        type={manifest.type}
+        field={field}
       />
     );
   };
@@ -298,9 +146,8 @@ export const registerRuntimeMaterial = (component: unknown, manifest: MaterialMa
     origamixRuntime: {
       context: manifest.context,
       defaultProps: manifest.defaultProps,
-      initialState: (props: Record<string, unknown>) => initialState(manifest.type, props),
-      eventPayload: (event: string, args: unknown[], props: Record<string, unknown>) =>
-        eventPayload(manifest.type, event, args, props),
+      role: manifest.role,
+      valueProp: manifest.valueProp,
     },
   });
 };

@@ -86,6 +86,6 @@ pnpm --filter @origamix/editor build
 
 ## 画布布局
 
-[物料与画布布局方案](docs/material-layout.md)记录默认占位、容器能力、实例尺寸、共享渲染和拖放规则。编辑器不再通过额外 inline-block 包装改变物料布局。
+[物料与画布布局方案](../materials/src/layout-properties.ts)记录默认占位、容器能力、实例尺寸、共享渲染和拖放规则。编辑器不再通过额外 inline-block 包装改变物料布局。
 
 编辑器拖放、视图切换和流程更新失败通过共享 shadcn/ui Toast 展示，不占用画布布局。每个 EditorProvider 创建独立通知管理器，切换编辑会话时不会显示上一会话的通知；字段校验提示仍由对应属性控件管理。
