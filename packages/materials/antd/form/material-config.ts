@@ -255,6 +255,7 @@ const material = defineMaterial({
             label: '初始字段值',
             uiType: 'custom',
             render: FormValuesEditor,
+            resetOnValueChange: false,
           },
           {
             field: 'clearOnDestroy',

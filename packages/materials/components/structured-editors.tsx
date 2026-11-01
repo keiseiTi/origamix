@@ -1,7 +1,20 @@
+import { useLiveProperty } from './use-live-property';
 import { Choice } from './choice';
 import { validateAntdMaterialProps } from '../antd/validation';
 import { useState } from 'react';
-import { Button, Checkbox, FieldLabel, Input } from '@origamix/ui';
+import {
+  Button,
+  Checkbox,
+  FieldLabel,
+  Input,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@origamix/ui';
 import type { CollectionEditorProps } from './collection-editor';
 type RecordValue = Record<string, unknown>;
 export type StructuredEditorProps = CollectionEditorProps & {
@@ -275,8 +288,21 @@ const finiteJson = (value: unknown): boolean =>
           )
         : true;
 export const FormValuesEditor = ({ value, onChange, fields }: StructuredEditorProps) => {
-  const [draft, setDraft] = useState<RecordValue>(() => (isRecord(value) ? copy(value) : {}));
-  const [error, setError] = useState('');
+  const {
+    draft,
+    change: setDraft,
+    error,
+  } = useLiveProperty<RecordValue>(
+    value,
+    (value) => (isRecord(value) ? copy(value) : {}),
+    (next) =>
+      !finiteJson(next)
+        ? '初始值必须是有效字段对象。'
+        : fields && Object.keys(next).some((key) => !fields.some((field) => field.name === key))
+          ? '初始值中有未绑定的字段，请先为控件配置字段名。'
+          : undefined,
+    onChange,
+  );
   return (
     <div className='space-y-2'>
       {fields?.length ? (
@@ -287,33 +313,6 @@ export const FormValuesEditor = ({ value, onChange, fields }: StructuredEditorPr
         <p className='text-xs text-muted-foreground'>请先为子控件配置表单字段名。</p>
       )}
       <Scalar label='初始字段值' value={draft} change={(next) => setDraft(next as RecordValue)} />
-      <Button
-        size='sm'
-        onClick={() => {
-          if (!isRecord(draft) || !finiteJson(draft)) {
-            setError('初始值必须是有效字段对象。');
-            return;
-          }
-          if (
-            fields &&
-            Object.keys(draft).some((key) => !fields.some((field) => field.name === key))
-          ) {
-            setError('初始值中有未绑定的字段，请先为控件配置字段名。');
-            return;
-          }
-          setError('');
-          onChange?.(draft);
-        }}
-      >
-        更新初始字段值
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => setDraft(isRecord(value) ? copy(value) : {})}
-      >
-        取消修改
-      </Button>
       {error && (
         <p role='alert' className='text-xs text-destructive'>
           {error}
@@ -475,45 +474,64 @@ const Nodes = ({
 const NodeEditor = ({ value, onChange, kind }: { kind: string } & StructuredEditorProps) => {
   const [nodes, setNodes] = useState<Node[]>(() => (Array.isArray(value) ? copy(value) : []));
   const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
   return (
-    <div className='space-y-2'>
-      <Nodes nodes={nodes} change={setNodes} kind={kind} />
-      {error && (
-        <p role='alert' className='text-xs text-destructive'>
-          {error}
-        </p>
-      )}
-      <Button
-        size='sm'
-        onClick={() => {
-          const type = kind === 'tree' ? 'tree' : kind === 'cascader' ? 'cascader' : 'treeSelect';
-          const field = kind === 'cascader' ? 'options' : 'treeData';
-          const issue =
-            nodeIssue(nodes, kind) ||
-            validateAntdMaterialProps(type, { [field]: nodes })[0]?.message;
-          if (issue) {
-            setError(issue);
-            return;
-          }
-          setError('');
-          onChange?.(nodes);
-        }}
-      >
-        更新节点数据
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => {
-          setNodes(Array.isArray(value) ? copy(value) : []);
-          setError('');
-        }}
-      >
-        取消修改
-      </Button>
-    </div>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setNodes(Array.isArray(value) ? copy(value) : []);
+        setError('');
+        setOpen(next);
+      }}
+    >
+      <p className='text-xs text-muted-foreground'>
+        已配置 {Array.isArray(value) ? value.length : 0} 个根节点
+      </p>
+      <DialogTrigger render={<Button size='sm' variant='outline' disabled={!onChange} />}>
+        配置节点
+      </DialogTrigger>
+      <DialogContent className='flex max-h-[85dvh] flex-col sm:max-w-3xl'>
+        <DialogHeader>
+          <DialogTitle>配置树节点</DialogTitle>
+          <DialogDescription>编辑节点层级、文本和标识，确认后生效。</DialogDescription>
+        </DialogHeader>
+        <div className='min-h-0 overflow-auto'>
+          <Nodes nodes={nodes} change={setNodes} kind={kind} />
+        </div>
+        {error && (
+          <p role='alert' className='text-xs text-destructive'>
+            {error}
+          </p>
+        )}
+        <DialogFooter>
+          <Button size='sm' variant='outline' onClick={() => setOpen(false)}>
+            取消
+          </Button>
+          <Button
+            size='sm'
+            onClick={() => {
+              const type =
+                kind === 'tree' ? 'tree' : kind === 'cascader' ? 'cascader' : 'treeSelect';
+              const field = kind === 'cascader' ? 'options' : 'treeData';
+              const issue =
+                nodeIssue(nodes, kind) ||
+                validateAntdMaterialProps(type, { [field]: nodes })[0]?.message;
+              if (issue) {
+                setError(issue);
+                return;
+              }
+              onChange?.(nodes);
+              setOpen(false);
+            }}
+          >
+            确定
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
+
 export const TreeDataEditor = (props: StructuredEditorProps) => (
   <NodeEditor {...props} kind='tree' />
 );
@@ -524,7 +542,7 @@ export const CascaderDataEditor = (props: StructuredEditorProps) => (
   <NodeEditor {...props} kind='cascader' />
 );
 export const KeysEditor = ({ value, onChange, elementProps }: StructuredEditorProps) => {
-  const [keys, setKeys] = useState<unknown[]>(() => (Array.isArray(value) ? copy(value) : []));
+  const keys: unknown[] = Array.isArray(value) ? value : [];
   const nodes: Node[] = [];
   const visit = (items: Node[]) =>
     items.forEach((node) => {
@@ -541,36 +559,42 @@ export const KeysEditor = ({ value, onChange, elementProps }: StructuredEditorPr
           label={String(node.title)}
           checked={keys.includes(node.key)}
           change={(checked) =>
-            setKeys(checked ? [...keys, node.key] : keys.filter((key) => key !== node.key))
+            onChange?.(
+              (checked ? [...keys, node.key] : keys.filter((key) => key !== node.key)).filter(
+                (key) => nodes.some((node) => node.key === key),
+              ),
+            )
           }
         />
       ))}
       {keys.some((key) => !nodes.some((node) => node.key === key)) && (
         <p role='alert' className='text-xs text-destructive'>
-          已有引用指向移除的节点，请取消修改或重新选择。
+          已有引用指向移除的节点，请重新选择。
         </p>
       )}
-      <Button
-        size='sm'
-        onClick={() => onChange?.(keys.filter((key) => nodes.some((node) => node.key === key)))}
-      >
-        更新节点选择
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => setKeys(Array.isArray(value) ? copy(value) : [])}
-      >
-        取消修改
-      </Button>
     </div>
   );
 };
 export const TabItemsEditor = ({ value, onChange }: StructuredEditorProps) => {
-  const [items, setItems] = useState<RecordValue[]>(() =>
-    Array.isArray(value) ? copy(value) : [],
+  const {
+    draft: items,
+    change: setItems,
+    error,
+  } = useLiveProperty<RecordValue[]>(
+    value,
+    (value) => (Array.isArray(value) ? copy(value) : []),
+    (items) =>
+      items.some(
+        (item) =>
+          typeof item.key !== 'string' ||
+          !item.key ||
+          typeof item.label !== 'string' ||
+          !item.label.trim(),
+      ) || validateAntdMaterialProps('tabs', { items }).length > 0
+        ? '页签需要唯一标识和名称。'
+        : undefined,
+    onChange,
   );
-  const [error, setError] = useState('');
   const update = (index: number, field: string, next: unknown) =>
     setItems(items.map((item, i) => (i === index ? { ...item, [field]: next } : item)));
   return (
@@ -629,35 +653,6 @@ export const TabItemsEditor = ({ value, onChange }: StructuredEditorProps) => {
         onClick={() => setItems([...items, { key: '', label: '', children: '' }])}
       >
         添加页签
-      </Button>
-      <Button
-        size='sm'
-        onClick={() => {
-          if (
-            items.some(
-              (item) =>
-                typeof item.key !== 'string' ||
-                !item.key ||
-                typeof item.label !== 'string' ||
-                !item.label.trim(),
-            ) ||
-            validateAntdMaterialProps('tabs', { items }).length > 0
-          ) {
-            setError('页签需要唯一标识和名称。');
-            return;
-          }
-          setError('');
-          onChange?.(items);
-        }}
-      >
-        更新页签
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => setItems(Array.isArray(value) ? copy(value) : [])}
-      >
-        取消修改
       </Button>
       {error && (
         <p role='alert' className='text-xs text-destructive'>

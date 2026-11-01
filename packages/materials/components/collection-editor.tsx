@@ -1,6 +1,6 @@
 import { Choice } from './choice';
 import { validateAntdMaterialProps } from '../antd/validation';
-import { useState } from 'react';
+import { useLiveProperty } from './use-live-property';
 import { Button, Checkbox, Input, FieldLabel } from '@origamix/ui';
 
 type Row = Record<string, unknown>;
@@ -28,17 +28,26 @@ const CollectionEditor = ({
   onChange,
   allowBoolean = true,
 }: CollectionEditorProps & { allowBoolean?: boolean }) => {
-  const [rows, setRows] = useState<Row[]>(() =>
-    Array.isArray(value)
-      ? value.map((item) =>
-          typeof item === 'object' && item !== null
-            ? { ...item }
-            : { label: String(item), value: item },
-        )
-      : [],
+  const {
+    draft: rows,
+    change: setRows,
+    error,
+  } = useLiveProperty<Row[]>(
+    value,
+    (value) =>
+      Array.isArray(value)
+        ? value.map((item) =>
+            typeof item === 'object' && item !== null
+              ? { ...item }
+              : { label: String(item), value: item },
+          )
+        : [],
+    (rows) =>
+      !allowBoolean && rows.some((row) => typeof row.value === 'boolean')
+        ? '下拉选项值请使用文本或数字。'
+        : validateOptions(rows),
+    onChange,
   );
-  const [error, setError] = useState<string>();
-  const title = '选项配置';
   const change = (index: number, field: string, next: unknown): void => {
     setRows(
       rows.map((row, i) => {
@@ -48,7 +57,6 @@ const CollectionEditor = ({
         return result;
       }),
     );
-    setError(undefined);
   };
   const move = (index: number, offset: number): void => {
     const next = [...rows];
@@ -163,34 +171,6 @@ const CollectionEditor = ({
           {error}
         </p>
       )}
-      <Button
-        size='sm'
-        onClick={() => {
-          const issue =
-            !allowBoolean && rows.some((row) => typeof row.value === 'boolean')
-              ? '下拉选项值请使用文本或数字。'
-              : validateOptions(rows);
-          if (issue) {
-            setError(issue);
-            return;
-          }
-          setError(undefined);
-          onChange?.(rows);
-        }}
-      >
-        更新{title}
-      </Button>
-      <Button
-        size='sm'
-        variant='outline'
-        onClick={() => {
-          setRows(Array.isArray(value) ? value.map((item) => ({ ...item })) : []);
-          setError(undefined);
-        }}
-      >
-        取消修改
-      </Button>
-      <p className='text-xs text-muted-foreground'>编辑后点击更新，再保存版本。</p>
     </div>
   );
 };

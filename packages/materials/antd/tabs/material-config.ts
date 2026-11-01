@@ -69,6 +69,7 @@ const material = defineMaterial({
             label: '页签项',
             uiType: 'custom',
             render: TabItemsEditor,
+            resetOnValueChange: false,
           },
           {
             field: 'defaultActiveKey',

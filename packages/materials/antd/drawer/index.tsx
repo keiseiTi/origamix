@@ -58,7 +58,12 @@ export const Drawer = (props: IProps) => {
         ? {
             getContainer: om_getDesignContainer,
             rootStyle: { position: 'absolute', inset: 0, pointerEvents: 'none' },
-            drawerRender: (node) => om_renderDesignFrame?.(node) ?? node,
+            // Preserve full panel height across the editor-owned layout frame.
+            drawerRender: (node) => (
+              <div className='h-full [&>[data-origamix-layout]]:h-full'>
+                {om_renderDesignFrame?.(node) ?? node}
+              </div>
+            ),
             styles: {
               mask: { position: 'absolute', pointerEvents: 'auto' },
               wrapper: { pointerEvents: 'auto' },

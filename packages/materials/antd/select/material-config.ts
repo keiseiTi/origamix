@@ -60,6 +60,7 @@ const material = defineMaterial({
             label: '选项配置',
             uiType: 'custom',
             render: SelectOptionsEditor,
+            resetOnValueChange: false,
           },
           {
             label: '占位符',

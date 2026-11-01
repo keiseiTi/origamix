@@ -2905,32 +2905,6 @@ export const treeManifest = withMaterialManifestDefaults({
           ],
         },
       },
-      defaultSelectedKeys: {
-        type: 'array',
-        items: {
-          anyOf: [
-            {
-              type: 'string',
-            },
-            {
-              type: 'number',
-            },
-          ],
-        },
-      },
-      defaultCheckedKeys: {
-        type: 'array',
-        items: {
-          anyOf: [
-            {
-              type: 'string',
-            },
-            {
-              type: 'number',
-            },
-          ],
-        },
-      },
       showLine: {
         type: 'boolean',
       },

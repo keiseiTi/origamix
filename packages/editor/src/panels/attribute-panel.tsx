@@ -123,8 +123,8 @@ export const AttributePanel = ({
 
   const parents = useMemo<ActiveElement[]>(() => {
     if (!activeElement) return [];
-    if (activeElement.parents?.length) return activeElement.parents;
     return SchemaUtils.getParents(schema, activeElement.id)
+      .reverse()
       .map((id) => {
         const parent = schema.elements[id];
         const parentMaterial = parent

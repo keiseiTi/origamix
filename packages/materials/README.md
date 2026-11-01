@@ -65,7 +65,7 @@ Server 消费 Manifest 与不依赖 React 的 validation 入口，不能让清�
 
 Manifest.context.variables 是逻辑流**读取**白名单，context.writable 是独立的**写入运行状态**白名单，context.actions 声明可调用方法，context.events 是事件入口。propsSchema 只描述设计期配置，不自动成为读写能力。Button 可读 text/loading，Input 只可读 value。Editor、Server 与 Runtime 均遵循该边界。
 
-事件在独立面板显示中文名称与真实属性名。linkageShow 默认 AND；确有组合模式的控件显式使用 linkageMode=any。隐藏控件或事件不静默删除配置和已有绑定。复杂编辑器可折叠，使用本地草稿、确认更新和取消；确认沿用同一 Working 更新通路。
+事件在独立面板显示中文名称与真实属性名。linkageShow 默认 AND；确有组合模式的控件显式使用 linkageMode=any。隐藏控件或事件不静默删除配置和已有绑定。属性面板内的配置直接更新，不提供额外的“更新属性／取消修改”按钮；不完整输入保留在本地并显示错误。弹窗配置使用独立草稿，确认后沿用同一 Working 更新通路，取消不提交。
 
 ## 结构化配置
 
@@ -108,3 +108,5 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 表格分页配置直接更新，不再提供“更新分页”和“取消修改”按钮；非法页码或每页条数只保留为本地输入，修正为正整数后才提交。
 
 物料专属跨字段与跨元素校验统一在 [antd/validation.ts](antd/validation.ts)，编辑控件与 Server 共用。标识按 JSON 原始类型比较，数字 `1` 与文本 `"1"` 不视为同一标识；未知物料不因字段名碰巧相同而套用 Ant Design 的规则。普通属性编辑保留其他字段，失效字段通过属性面板的“移除已失效属性”显式清理。
+
+树、树选择和级联选择的节点数据通过“配置节点”弹窗编辑，支持层级、排序、增删及属性设置，确认后生效。选项、表单初始值、页签及节点选择在属性面板内直接生效；保留无效输入草稿，外部属性变化时同步新值。

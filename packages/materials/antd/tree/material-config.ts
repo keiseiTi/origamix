@@ -157,32 +157,7 @@ const material = defineMaterial({
             ],
             uiType: 'custom',
             render: KeysEditor,
-          },
-          {
-            schema: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
-            field: 'defaultSelectedKeys',
-            label: '默认选中节点键',
-            linkageShow: [
-              {
-                field: 'selectable',
-                value: true,
-              },
-            ],
-            uiType: 'custom',
-            render: KeysEditor,
-          },
-          {
-            schema: { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
-            field: 'defaultCheckedKeys',
-            label: '默认勾选节点键',
-            linkageShow: [
-              {
-                field: 'checkable',
-                value: true,
-              },
-            ],
-            uiType: 'custom',
-            render: KeysEditor,
+            resetOnValueChange: false,
           },
           {
             field: 'showLine',
