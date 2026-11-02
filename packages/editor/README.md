@@ -78,6 +78,8 @@ pnpm --filter @origamix/editor build
 
 `CanvasPrototypeSurface` 是单独 frame 中的实验画布，复用本包的画布、Schema 操作和独立会话历史。宿主仅调用受限 `CanvasPrototypeHandle.run`，不取得底层会话。它不持有 Working 或 HTTP 权限，正式 Editor 的持久化继续由 App 协调。
 
+`CanvasPrototypeSession` 接收 `initial`、离线 `frameDocument` 和 `onSnapshot`，拥有 allow-scripts-only iframe、MessageChannel、版本过滤及宿主拖放/属性面板。`mountCanvasPrototypeFrame(registration)` 在 iframe 文档中启动画布并校验受限命令；通信协议位于 `src/prototype/protocol.ts`，仅用于实验。`createCanvasPrototypeDocument(script, css)` 将调用方离线打包的 IIFE 与样式封装为带 CSP 的文档，Session 注入随机 nonce。Editor 不依赖 Materials 或 Vite；App 已移除实验路由、示例数据、具体物料装配及 Vite 打包插件。当前未提供可运行演示入口，调用方需自行装配物料、样式和离线 bundle。iframe 的 CSS 与 JS 环境独立，CSP 禁止联网；页面固定浅色，用于验证宿主主题隔离。该实验尚未接入 Working 队列，也未替换正式 Editor 或预览 iframe。
+
 ## 本地编辑内核
 
 `schema/schema-utils.ts` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`session/editor-session.tsx` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。

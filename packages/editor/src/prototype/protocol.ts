@@ -1,4 +1,4 @@
-import type { CanvasPrototypeCommand, CanvasPrototypeSnapshot } from '@origamix/editor';
+import type { CanvasPrototypeCommand, CanvasPrototypeSnapshot } from './canvas-prototype';
 import type { OrigamixPageSchema } from '@origamix/shared';
 export interface Scope {
   protocol: 1;

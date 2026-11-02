@@ -19,7 +19,6 @@
     "src",
     "test",
     "vite.config.ts",
-    "canvas-prototype-plugin.ts",
     "scripts/**/*.ts"
   ]
 }

@@ -1,21 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Button, Input, FieldLabel } from '@origamix/ui';
-import {
-  deriveSchemaOperations,
-  type CanvasPrototypeCommand,
-  type CanvasPrototypeSnapshot,
-} from '@origamix/editor';
+import type { CanvasPrototypeCommand, CanvasPrototypeSnapshot } from './canvas-prototype';
 import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
-import { Moon, Sun, RotateCcw, Undo2, Redo2, MousePointer2 } from 'lucide-react';
-import frameDocument from 'virtual:canvas-prototype-document';
+import { Undo2, Redo2 } from 'lucide-react';
 import { isReply, type Scope, type Request } from './protocol';
-import { sample } from './sample';
 
-const Session = ({
+export const CanvasPrototypeSession = ({
   initial,
+  frameDocument,
   onSnapshot,
 }: {
   initial: OrigamixPageSchema;
+  frameDocument: string;
   onSnapshot: (snapshot: CanvasPrototypeSnapshot) => void;
 }) => {
   const iframe = useRef<HTMLIFrameElement>(null);
@@ -289,51 +285,5 @@ const Session = ({
         </div>
       )}
     </>
-  );
-};
-export const CanvasPrototypeLab = () => {
-  const [dark, setDark] = useState(false);
-  const [generation, setGeneration] = useState(0);
-  const [initial, setInitial] = useState(sample);
-  const [snapshot, setSnapshot] = useState<CanvasPrototypeSnapshot | null>(null);
-  const operations = useMemo(
-    () => (snapshot ? deriveSchemaOperations(sample, snapshot.schema) : []),
-    [snapshot],
-  );
-  return (
-    <div
-      className={`${dark ? 'dark ' : ''}origamix-ui flex h-screen flex-col bg-background text-foreground`}
-    >
-      <header className='flex items-center gap-3 border-b p-3'>
-        <MousePointer2 className='size-5' />
-        <div className='flex-1'>
-          <h1 className='text-sm font-semibold'>画布隔离原型</h1>
-          <p className='text-xs text-muted-foreground'>
-            独立试验页 · 使用示例数据 · 不保存到真实项目
-          </p>
-        </div>
-        <Button size='sm' variant='outline' onClick={() => setDark(!dark)}>
-          {dark ? <Sun /> : <Moon />}切换宿主主题
-        </Button>
-        <Button
-          size='sm'
-          variant='outline'
-          onClick={() => {
-            setInitial(snapshot?.schema ?? sample);
-            setGeneration(generation + 1);
-          }}
-        >
-          <RotateCcw />
-          恢复画布
-        </Button>
-      </header>
-      <Session key={generation} initial={initial} onSnapshot={setSnapshot} />
-      <details className='max-h-48 overflow-auto border-t p-3 text-xs'>
-        <summary className='cursor-pointer'>
-          编辑差异：{operations?.length ?? '完整候选'} 项（仅验证现有 Operation 转换，不提交）
-        </summary>
-        <pre className='whitespace-pre-wrap'>{JSON.stringify(operations, null, 2)}</pre>
-      </details>
-    </div>
   );
 };

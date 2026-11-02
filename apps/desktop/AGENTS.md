@@ -45,8 +45,6 @@ pnpm --filter @origamix/desktop test:main
 - For packaging changes, also run `pnpm package:dir` and the packaged-resource check in the root README. Resource checks do not prove signed-installer launch.
 - Run root gates before handoff; report unavailable graphical or signing checks.
 
-- `test:main` also verifies actual `/canvas-prototype` rendering in file mode, an opaque origin, no parent DOM access and no Desktop bridge. This proves prototype resource and permission boundaries, not delivery of a fully isolated editor.
-
 - Desktop development prepares the same npm-pinned template as packaged builds before launching Electron and points ORIGAMIX_TEMPLATE_DIR at dist/template. Keep preparation delegated to Server tooling; source templates use workspace dependencies, which preparation pins to registry versions.
 
 - `src/main/config.ts` owns Desktop env parsing and resolved paths. Dev scripts load package `.env` then optional `.env.local`, with process overrides; the packaged Main reads only shipped `dist/.env`. Build/resource assembly must copy only `.env`, never personal files. Renderer navigation and IPC authority must use the same resolved entry.

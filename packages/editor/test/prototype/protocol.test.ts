@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isRequest, isReply, type Scope } from '../../src/canvas-prototype/protocol';
-import { sample } from '../../src/canvas-prototype/sample';
+import { isRequest, isReply, type Scope } from '../../src/prototype/protocol';
+import { sample } from './sample';
 const scope: Scope = {
   protocol: 1,
   instanceId: 'active',

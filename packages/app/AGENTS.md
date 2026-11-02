@@ -84,8 +84,6 @@ pnpm --filter @origamix/app build
 
 - Material loaders register rootMaterials/rootManifests separately from draggable groups. Keep the root in Editor and validation context without allowing duplicate root insertion; runtime loading still returns the standalone components and Provider together.
 
-- `src/canvas-prototype/` and `canvas-prototype-plugin.ts` implement the standalone `/canvas-prototype` experiment. They handle example in-memory snapshots only, without user projects or new persistence; this is not the production canvas protocol. Bundle the canvas offline into an allow-scripts-only srcdoc, without same-origin, network or Desktop bridge privileges. Its scope/version/command validator must reject stale instances, wrong pages and undeclared capabilities. Move the full contract to Shared and connect the existing Working queue only during a production migration.
-
 - The project menu's upgrade dialog reads durable upgrade status, keeps the request ID on failures, and resumes only on explicit user action. It flushes local edits but never saves Revisions automatically. Close/reopen recovers pending identity from Server. Completion tells users to reinstall dependencies; the UI never runs a package manager.
 
 - The Node-only web host prepares a vendored template under ORIGAMIX_WEB_STATE_DIR using Server's exported template-artifact tooling. Do not send source-only templates or workspace dependency paths to the project upgrade service.

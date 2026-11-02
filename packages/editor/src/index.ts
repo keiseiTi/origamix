@@ -11,3 +11,6 @@ export {
   type CanvasPrototypeHandle,
   type CanvasPrototypeSnapshot,
 } from './prototype/canvas-prototype';
+export { CanvasPrototypeSession } from './prototype/canvas-prototype-session';
+export { mountCanvasPrototypeFrame } from './prototype/mount-canvas-prototype-frame';
+export { createCanvasPrototypeDocument } from './prototype/create-canvas-prototype-document';
