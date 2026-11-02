@@ -3,6 +3,7 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { validateResolvedProjectStack, type ProjectStack } from '@origamix/shared';
 import { copyTemplate } from '../templates/copy-template';
+import { resolvePageDirectory } from './page-directory';
 
 const pageComponentName = (slug: string): string => {
   return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
@@ -51,12 +52,17 @@ export class ProjectSourceService {
     stack: ProjectStack,
   ): Promise<void> {
     await writeFileAtomically(
-      join(projectPath, 'src', pageDirectory, slug, 'index.tsx'),
+      join(await resolvePageDirectory(projectPath, pageDirectory, slug), 'index.tsx'),
       pageComponentSource(slug, stack),
     );
   }
 
-  removePageDirectory(projectPath: string, pageDirectory: string, slug: string): Promise<void> {
-    return rm(join(projectPath, 'src', pageDirectory, slug), { recursive: true, force: true });
+  async removePageDirectory(
+    projectPath: string,
+    pageDirectory: string,
+    slug: string,
+  ): Promise<void> {
+    const directory = await resolvePageDirectory(projectPath, pageDirectory, slug);
+    await rm(directory, { recursive: true, force: true });
   }
 }

@@ -1,6 +1,7 @@
 import type { AgentRunStatus, PageAgentOutcome } from '@origamix/shared';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from './run-repository';
+import { redactAgentMessage } from './safe-error';
 
 const terminal = new Set<AgentRunStatus>(['completed', 'failed', 'cancelled', 'interrupted']);
 const active: AgentRunStatus[] = [
@@ -37,10 +38,7 @@ export const canTransitionAgentRun = (from: AgentRunStatus, to: AgentRunStatus):
 
 const redactSafeMessage = (message: string | undefined): string | undefined => {
   if (!message) return undefined;
-  return message
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
-    .replace(/\b(api[_-]?key|token|secret|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
-    .slice(0, 2_000);
+  return redactAgentMessage(message);
 };
 
 export class AgentRunService {

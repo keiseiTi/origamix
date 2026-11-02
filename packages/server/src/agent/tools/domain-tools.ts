@@ -39,14 +39,20 @@ const parse = <T>(schema: TSchema, value: unknown): T => {
 const bounded = (value: unknown, maxBytes: number): unknown => {
   const json = JSON.stringify(value);
   if (Buffer.byteLength(json, 'utf8') <= maxBytes) return value;
-  return { truncated: true, preview: json.slice(0, Math.floor(maxBytes / 2)) };
+  let preview = json.slice(0, Math.floor(maxBytes / 2));
+  while (
+    Buffer.byteLength(JSON.stringify({ truncated: true, preview }), 'utf8') > maxBytes &&
+    preview.length
+  )
+    preview = preview.slice(0, Math.floor(preview.length / 2));
+  return { truncated: true, preview };
 };
 
 export const createDomainAgentTools = (
   scope: DomainToolScope,
   dependencies: DomainToolDependencies,
 ): AgentEngineTool[] => {
-  const maxBytes = dependencies.maxResultBytes ?? 16 * 1024;
+  const maxBytes = dependencies.maxResultBytes ?? 32 * 1024;
   const assertPage = (): void => {
     if (
       !dependencies.projects.getProject(scope.projectId) ||

@@ -22,8 +22,8 @@ export interface PiAgentEngineOptions {
 
 const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): AgentEngineError => {
   if (timedOut) return new AgentEngineError('TIMEOUT', '模型请求超时', true);
-  if (aborted) return new AgentEngineError('CANCELLED', '模型请求已取消');
   if (error instanceof AgentEngineError) return error;
+  if (aborted) return new AgentEngineError('CANCELLED', '模型请求已取消');
   const message = error instanceof Error ? error.message.toLowerCase() : '';
   if (message.includes('rate') || message.includes('429')) {
     return new AgentEngineError('RATE_LIMITED', '请求过于频繁或额度不足，请稍后重试', true);
@@ -61,14 +61,24 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
   return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek 服务暂时不可用，请稍后重试', true);
 };
 
-const adaptTool = (tool: AgentEngineTool, onTerminalDecision: () => void): AgentTool => {
+const adaptTool = (
+  tool: AgentEngineTool,
+  onTerminalDecision: () => void,
+  onFatal: (error: AgentEngineError) => void,
+): AgentTool => {
   return {
     name: tool.name,
     label: tool.name,
     description: tool.description,
     parameters: tool.parameters,
     execute: async (_toolCallId, input, signal) => {
-      const result = await tool.execute(input, signal ?? new AbortController().signal);
+      let result: unknown;
+      try {
+        result = await tool.execute(input, signal ?? new AbortController().signal);
+      } catch (error) {
+        if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') onFatal(error);
+        throw error;
+      }
       if (tool.name === 'complete_page_run') onTerminalDecision();
       return {
         content: [{ type: 'text', text: JSON.stringify(result) }],
@@ -82,6 +92,10 @@ export class PiAgentEngine implements AgentEngine {
   constructor(private readonly options: PiAgentEngineOptions) {}
 
   async run(request: AgentEngineRequest): Promise<AgentEngineResult> {
+    if (request.signal?.aborted)
+      throw request.signal.reason instanceof AgentEngineError
+        ? request.signal.reason
+        : new AgentEngineError('CANCELLED', '模型请求已取消');
     const definition = getAgentModel(request.modelId);
     requireModelCapability(definition, 'streaming');
     requireModelCapability(definition, 'abort');
@@ -89,6 +103,10 @@ export class PiAgentEngine implements AgentEngine {
     const model = this.options.resolveModel(definition.provider, definition.model);
     if (!model) throw new AgentEngineError('MODEL_NOT_FOUND', '所选模型不可用');
     const credential = await this.options.getCredential(definition.provider);
+    if (request.signal?.aborted)
+      throw request.signal.reason instanceof AgentEngineError
+        ? request.signal.reason
+        : new AgentEngineError('CANCELLED', '模型请求已取消');
     if (!credential)
       throw new AgentEngineError('PROVIDER_ERROR', '请先在设置中配置 DeepSeek API Key');
 
@@ -105,24 +123,61 @@ export class PiAgentEngine implements AgentEngine {
       : undefined;
     const emit = async (event: AgentEngineEvent) => request.onEvent?.(event);
     let text = '';
-    let usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+    const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
     let terminalDecisionCompleted = false;
+    let fatalBudgetError: AgentEngineError | undefined;
+    let outputCap = 16_000;
+    let inputReservation = 0;
+    let streamedBytes = 0;
+    const onFatal = (error: AgentEngineError) => {
+      fatalBudgetError ??= error;
+      controller.abort(error);
+    };
 
     const agent = new Agent({
       initialState: {
         systemPrompt: request.systemPrompt,
         model,
         tools: request.tools?.map((tool) =>
-          adaptTool(tool, () => {
-            terminalDecisionCompleted = true;
-          }),
+          adaptTool(
+            tool,
+            () => {
+              terminalDecisionCompleted = true;
+            },
+            onFatal,
+          ),
         ),
       },
-      streamFn: this.options.stream,
+      streamFn: (currentModel, context, options) => {
+        try {
+          if (fatalBudgetError) throw fatalBudgetError;
+          if (controller.signal.aborted) throw new AgentEngineError('CANCELLED', '模型请求已取消');
+          // A conservative byte-based upper bound includes system/tool schemas and all accumulated messages.
+          inputReservation = Buffer.byteLength(JSON.stringify(context), 'utf8') + 2048;
+          outputCap =
+            request.budget?.beforeRequest(
+              inputReservation,
+              currentModel.contextWindow,
+              currentModel.maxTokens,
+            ) ?? Math.min(16_000, currentModel.maxTokens);
+          streamedBytes = 0;
+          return this.options.stream(currentModel, context, {
+            ...options,
+            signal: controller.signal,
+            maxRetries: 0,
+            maxTokens: Math.min(options?.maxTokens ?? outputCap, outputCap),
+          });
+        } catch (error) {
+          if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') onFatal(error);
+          throw error;
+        }
+      },
       getApiKey: async (provider) =>
         provider === definition.provider ? credential : this.options.getCredential(provider),
       toolExecution: 'sequential',
       beforeToolCall: async ({ assistantMessage }) => {
+        if (fatalBudgetError) throw fatalBudgetError;
+        if (controller.signal.aborted) throw new AgentEngineError('CANCELLED', '模型请求已取消');
         const writeCalls = assistantMessage.content.filter(
           (entry) => entry.type === 'toolCall' && entry.name === 'complete_page_run',
         );
@@ -145,6 +200,13 @@ export class PiAgentEngine implements AgentEngine {
       eventQueue = eventQueue.then(async () => {
         try {
           if (controller.signal.aborted) agent.abort();
+          if (event.type === 'message_update') {
+            const delta = event.assistantMessageEvent;
+            if ('delta' in delta && typeof delta.delta === 'string')
+              streamedBytes += Buffer.byteLength(delta.delta, 'utf8');
+            if (streamedBytes > outputCap * 4 + 4096)
+              throw new AgentEngineError('BUDGET_EXCEEDED', '模型流式输出体积超过安全预算');
+          }
           if (
             event.type === 'message_update' &&
             event.assistantMessageEvent.type === 'text_delta'
@@ -168,17 +230,32 @@ export class PiAgentEngine implements AgentEngine {
             });
           } else if (event.type === 'message_end' && event.message.role === 'assistant') {
             const piUsage = event.message.usage;
-            usage = {
-              inputTokens: piUsage.input,
-              outputTokens: piUsage.output,
-              totalTokens: piUsage.totalTokens,
+            const turnUsage = {
+              inputTokens:
+                piUsage.input + piUsage.cacheRead + piUsage.cacheWrite || inputReservation,
+              outputTokens:
+                piUsage.output || Buffer.byteLength(JSON.stringify(event.message.content), 'utf8'),
+              totalTokens: 0,
             };
+            turnUsage.totalTokens = turnUsage.inputTokens + turnUsage.outputTokens;
+            usage.inputTokens += turnUsage.inputTokens;
+            usage.outputTokens += turnUsage.outputTokens;
+            usage.totalTokens += turnUsage.totalTokens;
+            request.budget?.recordUsage(turnUsage);
+            if (
+              Buffer.byteLength(JSON.stringify(event.message.content), 'utf8') >
+              outputCap * 4 + 4096
+            )
+              throw new AgentEngineError('BUDGET_EXCEEDED', '模型输出体积超过安全预算');
+
             if (event.message.stopReason === 'error') throw new Error(event.message.errorMessage);
           }
         } catch (error) {
+          if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') onFatal(error);
           eventProcessingError ??= error;
         }
       });
+      return eventQueue;
     });
 
     const abortListener = () => agent.abort();
@@ -192,11 +269,15 @@ export class PiAgentEngine implements AgentEngine {
       } while (drainedQueue !== eventQueue);
       if (eventProcessingError) throw eventProcessingError;
       if (controller.signal.aborted) throw controller.signal.reason;
-      const result = { text, usage };
+      const result = { text, usage, budgetTracked: Boolean(request.budget) };
       await emit({ type: 'completed', ...result });
       return result;
     } catch (error) {
-      const normalized = normalizeError(error, timedOut, controller.signal.aborted && !timedOut);
+      const reason =
+        controller.signal.reason instanceof AgentEngineError ? controller.signal.reason : error;
+      const normalized =
+        fatalBudgetError ??
+        normalizeError(reason, timedOut, controller.signal.aborted && !timedOut);
       try {
         await emit({ type: 'failed', error: normalized });
       } catch {
@@ -208,6 +289,8 @@ export class PiAgentEngine implements AgentEngine {
       request.signal?.removeEventListener('abort', forwardAbort);
       controller.signal.removeEventListener('abort', abortListener);
       unsubscribe();
+      // Drain already queued callbacks before the owner can close persistence.
+      await eventQueue;
     }
   }
 }

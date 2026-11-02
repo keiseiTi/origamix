@@ -1,4 +1,10 @@
-import { normalizePageDirectory, ensurePageDirectory } from './page-directory';
+import { withExclusiveProjectActivity, withProjectActivity } from './project-activity';
+import {
+  normalizePageDirectory,
+  ensurePageDirectory,
+  resolvePageDirectory,
+} from './page-directory';
+import { readPageDeletion, writePageDeletion } from './page-deletion-store';
 import { createInitialPageSchema } from './initial-page-schema';
 import { ProjectUpgradeService } from './project-upgrade-service';
 import { assertProjectNotUpgrading, readProjectUpgrade } from './project-upgrade-store';
@@ -42,6 +48,7 @@ export class ProjectService {
     private readonly projects: ProjectRepository,
     private readonly templatePath: string,
     private readonly projectApply = new ProjectApplyService(projects),
+    private readonly clearDiagnostics?: (projectId: string, pageId?: string) => void,
   ) {
     this.scaffold = new ProjectScaffoldService(templatePath);
     this.source = new ProjectSourceService(templatePath);
@@ -267,23 +274,68 @@ export class ProjectService {
 
   async deletePage(projectId: string, pageId: string): Promise<void> {
     await withProjectQueue(projectId, async () => {
-      if (this.projects.hasActiveRuns(projectId, pageId))
-        throw conflict('页面 Agent 正在运行，请先停止后再删除');
       const project = this.projects.getProject(projectId);
       const page = this.projects.getPage(projectId, pageId);
-      if (!project || !page) throw notFound('页面不存在');
-      const manifest = await this.manifest.readManifest(project.path);
-      await this.manifest.removePage(project.path, pageId);
-      await Promise.all([
-        this.source.removePageDirectory(project.path, manifest.pageDirectory, page.slug),
-        discardInitializedPageSchema({
-          projectPath: project.path,
-          pageId,
-          slug: page.slug,
-          relativePath: page.relativePath,
-        }),
-      ]);
-      if (!this.projects.deletePageRecord(projectId, pageId)) throw notFound('页面不存在');
+      if (!project) throw notFound('页面不存在');
+      return withExclusiveProjectActivity(project.path, async () => {
+        await assertProjectNotUpgrading(project.path);
+        const manifest = await this.manifest.readManifest(project.path);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
+        let deletion = await readPageDeletion(project.path, pageId);
+        if (deletion && deletion.projectId !== projectId) throw invalid('页面删除记录归属不匹配');
+        if (deletion?.state === 'completed') {
+          this.clearDiagnostics?.(projectId, pageId);
+          return;
+        }
+        if (page && this.projects.hasActiveRuns(projectId, pageId))
+          throw conflict('页面 Agent 正在运行，请先停止后再删除');
+        const declared = manifest.pages.find((item) => item.pageId === pageId);
+        if (!deletion) {
+          if (!page || !declared || declared.slug !== page.slug) throw notFound('页面不存在');
+          deletion = {
+            version: 1,
+            projectId,
+            pageId,
+            pageDirectory: manifest.pageDirectory,
+            slug: page.slug,
+            state: 'pending',
+          };
+        }
+        if (
+          declared &&
+          (declared.slug !== deletion.slug || manifest.pageDirectory !== deletion.pageDirectory)
+        )
+          throw conflict('待删除页面路径已变化，请恢复原页面清单后重试');
+        const deletedSlug = deletion.slug;
+        if (
+          deletion.state === 'pending' &&
+          manifest.pages.some((item) => item.pageId !== pageId && item.slug === deletedSlug) &&
+          manifest.pageDirectory === deletion.pageDirectory
+        )
+          throw conflict('待删除目录已被其他页面使用');
+        if (deletion.state === 'pending') {
+          await resolvePageDirectory(project.path, deletion.pageDirectory, deletion.slug);
+          await writePageDeletion(project.path, deletion);
+          // Keep the durable intent across every destructive stage. Only an explicit retry resumes it.
+          await this.source.removePageDirectory(
+            project.path,
+            deletion.pageDirectory,
+            deletion.slug,
+          );
+          await discardInitializedPageSchema({
+            projectPath: project.path,
+            pageId,
+            slug: deletion.slug,
+            relativePath: join('src', deletion.pageDirectory, deletion.slug),
+          });
+          deletion = { ...deletion, state: 'files_removed' };
+          await writePageDeletion(project.path, deletion);
+        }
+        if (declared) await this.manifest.removePage(project.path, pageId);
+        this.projects.deletePageRecord(projectId, pageId);
+        await writePageDeletion(project.path, { ...deletion, state: 'completed' });
+        this.clearDiagnostics?.(projectId, pageId);
+      });
     });
   }
 
@@ -291,21 +343,32 @@ export class ProjectService {
     return withProjectQueue(projectId, async () => {
       const project = this.projects.getProject(projectId);
       if (!project) throw notFound('项目不存在');
-      await assertProjectNotUpgrading(project.path);
-      if (this.projects.hasActiveRuns(projectId))
-        throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
-      if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+      return withExclusiveProjectActivity(project.path, async () => {
+        await assertProjectNotUpgrading(project.path);
+        if (this.projects.hasActiveRuns(projectId))
+          throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
+        if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
+        this.clearDiagnostics?.(projectId);
+      });
+    });
+  }
+
+  private withDestructiveProject<T>(projectId: string, action: () => Promise<T>): Promise<T> {
+    return withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project) throw notFound('项目不存在');
+      return withExclusiveProjectActivity(project.path, action);
     });
   }
 
   upgradeProject(projectId: string, input: { expectedVersion: string; clientRequestId: string }) {
-    return withProjectQueue(projectId, () =>
+    return this.withDestructiveProject(projectId, () =>
       new ProjectUpgradeService(this.projects, this.templatePath).upgrade(projectId, input),
     );
   }
 
   cancelProjectUpgrade(projectId: string, clientRequestId: string) {
-    return withProjectQueue(projectId, () =>
+    return this.withDestructiveProject(projectId, () =>
       new ProjectUpgradeService(this.projects, this.templatePath).cancel(
         projectId,
         clientRequestId,
@@ -328,32 +391,33 @@ export class ProjectService {
     };
   }
 
-  reconcile = async (path: string): Promise<ProjectRecord> => {
-    const manifest = await this.manifest.readManifest(path);
-    const timestamp = now();
-    const pages: PageRecord[] = [];
-    for (const item of manifest.pages) {
-      const relativePath = join('src', manifest.pageDirectory, item.slug);
-      pages.push({
-        id: item.pageId,
-        projectId: manifest.projectId,
-        name: item.name,
-        slug: item.slug,
-        relativePath,
+  reconcile = async (path: string): Promise<ProjectRecord> =>
+    withProjectActivity(path, async () => {
+      const manifest = await this.manifest.readManifest(path);
+      const timestamp = now();
+      const pages: PageRecord[] = [];
+      for (const item of manifest.pages) {
+        const relativePath = join('src', manifest.pageDirectory, item.slug);
+        pages.push({
+          id: item.pageId,
+          projectId: manifest.projectId,
+          name: item.name,
+          slug: item.slug,
+          relativePath,
+          status: 0,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+      const project: ProjectRecord = {
+        id: manifest.projectId,
+        name: manifest.name,
+        path,
         status: 0,
         createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-    }
-    const project: ProjectRecord = {
-      id: manifest.projectId,
-      name: manifest.name,
-      path,
-      status: 0,
-      createdAt: timestamp,
-      lastOpenedAt: timestamp,
-    };
-    this.projects.reconcile(project, pages);
-    return project;
-  };
+        lastOpenedAt: timestamp,
+      };
+      this.projects.reconcile(project, pages);
+      return project;
+    });
 }

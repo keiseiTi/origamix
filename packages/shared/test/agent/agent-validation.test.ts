@@ -230,6 +230,10 @@ describe('agent domain protocol', () => {
     ).toBe(false);
 
     const runtimeReport = {
+      workingVersion: 1,
+      workingHash: 'a'.repeat(64),
+      previewId: 'preview_test',
+      reportSequence: 1,
       version: '1',
       projectId: 'project_one',
       pageId: 'page_one',

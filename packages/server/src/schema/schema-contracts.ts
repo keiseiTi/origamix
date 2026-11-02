@@ -13,6 +13,7 @@ export interface AgentWorkingCommitInput {
   operationDigest: string;
 }
 export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'beforeWrite'> {
+  validateCandidate?: (schema: OrigamixPageSchema) => void | Promise<void>;
   migration?: { from: string; to: string };
   agentCommit?: AgentWorkingCommitInput;
   /** Test hook for deterministic interruption at a durable Agent write boundary. */

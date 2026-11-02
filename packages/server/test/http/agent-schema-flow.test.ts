@@ -196,6 +196,7 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
         ]),
     });
     const service = new AgentService({
+      projects,
       runs,
       runService,
       conversations,

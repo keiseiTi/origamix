@@ -5,6 +5,7 @@ import type { AgentRunService } from './run-service';
 import type { ConversationService } from '../conversations/conversation-service';
 import { AgentEngineError, type AgentEngine, type AgentEngineEvent } from './agent-engine';
 import type { ContextAssembler } from './context-assembler';
+import { redactAgentMessage } from './safe-error';
 import {
   AgentToolRegistry,
   RunBudgetController,
@@ -17,7 +18,7 @@ const textContent = (text: string): MessageContent => ({
   blocks: [{ type: 'text', text }],
 });
 
-const safeToolError = (result: unknown): string => {
+const toolErrorMessage = (result: unknown): string => {
   if (result instanceof Error && result.message) return result.message.slice(0, 1_500);
   if (result && typeof result === 'object' && !Array.isArray(result)) {
     const record = result as Record<string, unknown>;
@@ -54,6 +55,8 @@ const safeToolError = (result: unknown): string => {
   })();
   return serialized.slice(0, 1_500) || 'Operation 校验失败';
 };
+
+const safeToolError = (result: unknown): string => redactAgentMessage(toolErrorMessage(result));
 
 const persistedTerminalResponse = (outcomeJson: unknown): string | undefined => {
   if (!outcomeJson || typeof outcomeJson !== 'object' || Array.isArray(outcomeJson))
@@ -102,6 +105,7 @@ export interface RunExecutorDependencies {
     pageId: string;
     baseWorkingVersion: number;
     maxSchemaBytes: number;
+    maxOperationBytes?: number;
     maxRepairAttempts: number;
   }) => RegisteredAgentTool[];
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
@@ -145,13 +149,16 @@ export class RunExecutor {
     const controller = new AbortController();
     this.active.set(runId, controller);
     const tracker = new RunBudgetController(started.run.budget);
+    const deadline = setTimeout(
+      () => controller.abort(new AgentEngineError('TIMEOUT', 'Agent 运行超时')),
+      started.run.budget.maxDurationMs,
+    );
     let assistantText = '';
     let resultWorkingVersion: number | undefined;
     let terminalOutcome: PageAgentOutcome | undefined;
     let terminalFailure: string | undefined;
     let lastTerminalFailure: string | undefined;
     let previousSubmission: unknown;
-    let inputTokens = 0;
     const registry = new AgentToolRegistry();
     try {
       for (const entry of this.dependencies.createTools({
@@ -161,6 +168,7 @@ export class RunExecutor {
         pageId: input.pageId,
         baseWorkingVersion: input.baseWorkingVersion,
         maxSchemaBytes: input.budget.maxSchemaBytes,
+        maxOperationBytes: input.budget.maxOperationBytes,
         maxRepairAttempts: input.budget.maxRepairAttempts,
       }))
         registry.register(entry);
@@ -184,13 +192,17 @@ export class RunExecutor {
       let prompt = message;
       let missingTerminalRepairUsed = false;
       while (!terminalOutcome) {
-        tracker.consumeModelCall();
+        tracker.assertDuration();
         const remainingDurationMs = Math.max(
           1,
           started.run.budget.maxDurationMs - tracker.snapshot().durationMs,
         );
         terminalFailure = undefined;
         const result = await this.dependencies.engine.run({
+          budget: {
+            beforeRequest: (size, window, output) => tracker.beforeRequest(size, window, output),
+            recordUsage: (usage) => tracker.recordUsage(usage),
+          },
           modelId: started.run.modelRef,
           systemPrompt: `${assembled.systemPolicy}\n本 Run 工具总预算 ${input.budget.maxToolCalls} 次，当前剩余 ${Math.max(0, input.budget.maxToolCalls - tracker.snapshot().toolCalls)} 次，包含读取、预检、提交和修复。复用已读能力，不重复读取同一 Manifest；至少预留 2 次用于 complete_page_run 和修复。预检不能代替终态提交。\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(assembled)}</ORIGAMIX_CONTEXT>`,
           prompt,
@@ -226,8 +238,10 @@ export class RunExecutor {
             }
           },
         });
-        inputTokens += result.usage.inputTokens;
-        tracker.recordOutputTokens(result.usage.outputTokens);
+        if (!result.budgetTracked) {
+          tracker.consumeModelCall();
+          tracker.recordUsage(result.usage);
+        }
         // Tool callbacks are transport evidence; the persisted terminal decision is
         // authoritative if a provider adapter delivers its completion event late.
         const persisted = this.dependencies.runs.get(runId);
@@ -308,7 +322,7 @@ export class RunExecutor {
       } else {
         this.dependencies.runService.transition(runId, 'completed');
       }
-      this.persistMetrics(runId, tracker, inputTokens);
+      this.persistMetrics(runId, tracker);
       return {
         runId,
         status: 'completed',
@@ -316,14 +330,16 @@ export class RunExecutor {
         outcome: terminalOutcome,
         ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
       };
-    } catch (error) {
+    } catch (caught) {
+      const error =
+        controller.signal.reason instanceof AgentEngineError ? controller.signal.reason : caught;
       const current = this.dependencies.runs.get(runId);
       const committedWorkingVersion = current?.resultWorkingVersion ?? resultWorkingVersion;
       const persistedResponse = persistedTerminalResponse(current?.outcomeJson);
       if (current?.status === 'deciding' && current.outcome && assistantText) {
         this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
         this.dependencies.runService.transition(runId, 'completed');
-        this.persistMetrics(runId, tracker, inputTokens);
+        this.persistMetrics(runId, tracker);
         return {
           runId,
           status: 'completed',
@@ -343,7 +359,7 @@ export class RunExecutor {
         this.dependencies.runService.transition(runId, 'completed', {
           resultWorkingVersion: committedWorkingVersion,
         });
-        this.persistMetrics(runId, tracker, inputTokens);
+        this.persistMetrics(runId, tracker);
         return {
           runId,
           status: 'completed',
@@ -353,7 +369,11 @@ export class RunExecutor {
         };
       }
       const cancelled =
-        controller.signal.aborted ||
+        (controller.signal.aborted &&
+          !(
+            controller.signal.reason instanceof AgentEngineError &&
+            controller.signal.reason.code === 'TIMEOUT'
+          )) ||
         (error instanceof AgentEngineError && error.code === 'CANCELLED');
       if (cancelled && current?.status === 'cancelling') {
         this.dependencies.runService.transition(runId, 'cancelled');
@@ -363,23 +383,29 @@ export class RunExecutor {
       ) {
         this.dependencies.runService.transition(runId, 'failed', {
           errorCode: error instanceof AgentEngineError ? error.code : 'INTERNAL_ERROR',
-          errorMessage: error instanceof Error ? error.message : 'Agent 运行失败',
+          errorMessage:
+            error instanceof AgentEngineError
+              ? redactAgentMessage(error.message)
+              : 'Agent 运行失败，请重试。',
         });
       }
       const safeFailure =
-        error instanceof AgentEngineError ? error.message : 'Agent 运行失败，请重试。';
+        error instanceof AgentEngineError
+          ? redactAgentMessage(error.message)
+          : 'Agent 运行失败，请重试。';
       this.dependencies.conversations.failAssistant(
         runId,
         textContent(`本次请求未完成：${safeFailure}`),
         'AGENT_FAILED',
       );
-      this.persistMetrics(runId, tracker, inputTokens);
+      this.persistMetrics(runId, tracker);
       return {
         runId,
         status: cancelled ? 'cancelled' : 'failed',
         text: assistantText,
       };
     } finally {
+      clearTimeout(deadline);
       this.active.delete(runId);
     }
   }
@@ -405,10 +431,10 @@ export class RunExecutor {
     }
   }
 
-  private persistMetrics(runId: string, tracker: RunBudgetController, inputTokens: number): void {
+  private persistMetrics(runId: string, tracker: RunBudgetController): void {
     const metrics = tracker.snapshot();
     this.dependencies.runs.updateMetrics(runId, {
-      inputTokens,
+      inputTokens: metrics.inputTokens,
       outputTokens: metrics.outputTokens,
       modelCalls: metrics.modelCalls,
       toolCalls: metrics.toolCalls,

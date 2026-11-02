@@ -12,18 +12,18 @@ export const ClarificationCandidateSchema = strictObject({
 export const CompletePageRunInputSchema = Type.Union([
   strictObject({
     outcome: Type.Literal('apply_changes'),
-    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 100 }),
-    response: Type.String({ minLength: 1, maxLength: 20_000 }),
+    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 }),
+    response: Type.String({ minLength: 1, maxLength: 40_000 }),
     answeredQuestion: Type.Optional(Type.Boolean()),
   }),
   strictObject({
     outcome: Type.Literal('answer_only'),
-    response: Type.String({ minLength: 1, maxLength: 20_000 }),
+    response: Type.String({ minLength: 1, maxLength: 40_000 }),
   }),
   strictObject({
     outcome: Type.Literal('no_change_needed'),
     reason: Type.String({ minLength: 1, maxLength: 2_000 }),
-    response: Type.String({ minLength: 1, maxLength: 20_000 }),
+    response: Type.String({ minLength: 1, maxLength: 40_000 }),
   }),
   strictObject({
     outcome: Type.Literal('needs_clarification'),
@@ -33,7 +33,7 @@ export const CompletePageRunInputSchema = Type.Union([
   strictObject({
     outcome: Type.Literal('refused'),
     reasonCode: Type.String({ pattern: '^[A-Z][A-Z0-9_]{0,127}$' }),
-    response: Type.String({ minLength: 1, maxLength: 20_000 }),
+    response: Type.String({ minLength: 1, maxLength: 40_000 }),
   }),
 ]);
 
@@ -50,8 +50,8 @@ export const CompletePageRunToolParametersSchema = strictObject({
     Type.Literal('needs_clarification'),
     Type.Literal('refused'),
   ]),
-  operations: Type.Optional(Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 100 })),
-  response: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
+  operations: Type.Optional(Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 })),
+  response: Type.Optional(Type.String({ minLength: 1, maxLength: 40_000 })),
   answeredQuestion: Type.Optional(Type.Boolean()),
   reason: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),
   question: Type.Optional(Type.String({ minLength: 1, maxLength: 2_000 })),

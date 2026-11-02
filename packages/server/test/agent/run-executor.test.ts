@@ -129,6 +129,7 @@ const setup = (
     },
   }));
   const service = new AgentService({
+    projects,
     conversations,
     runService,
     runs,
@@ -158,6 +159,7 @@ const setup = (
     run,
     input,
     calls: () => calls,
+    projects,
   };
 };
 
@@ -431,7 +433,7 @@ describe('Agent execution through AgentService', () => {
     fixture.database.close();
   });
 
-  it('cancels an active run and releases it', async () => {
+  it('drains an active run on shutdown and rejects new submissions before persistence closes', async () => {
     let notifyStarted!: () => void;
     const engineStarted = new Promise<void>((resolve) => {
       notifyStarted = resolve;
@@ -446,14 +448,142 @@ describe('Agent execution through AgentService', () => {
     const pending = fixture.run(fixture.input('表单如何搭建'));
     await engineStarted;
     const runId = fixture.runs.listActive()[0]!.id;
-    fixture.service.cancel(runId, 'cancel-request');
+    const closing = fixture.service.shutdown();
+    await expect(fixture.service.start(fixture.input('late request'))).rejects.toThrow(
+      '服务正在关闭',
+    );
+    await closing;
     await expect(pending).resolves.toMatchObject({ status: 'cancelled' });
     expect(fixture.runs.get(runId)?.status).toBe('cancelled');
+    expect(fixture.events.isTerminal(runId)).toBe(true);
     fixture.database.close();
   });
+
+  it('times out without abandoning a still-running task, then permits shutdown retry', async () => {
+    const entered = deferred();
+    const release = deferred();
+    const fixture = setup(async () => {
+      entered.resolve();
+      await release.promise;
+      throw new AgentEngineError('CANCELLED', 'cancelled');
+    });
+    try {
+      const pending = fixture.run(fixture.input('slow cancellation'));
+      await entered.promise;
+      await expect(fixture.service.shutdown(10)).rejects.toThrow('关闭超时');
+      expect(fixture.runs.listActive()[0]?.status).toBe('cancelling');
+      release.resolve();
+      await fixture.service.shutdown();
+      expect(await pending).toMatchObject({ status: 'cancelled' });
+      expect(fixture.runs.listActive()).toEqual([]);
+    } finally {
+      release.resolve();
+      fixture.database.close();
+    }
+  });
+
+  it('fences an in-flight startup before a closing service can create its Run', async () => {
+    const entered = deferred();
+    const release = deferred();
+    const fixture = setup(async () => ({ text: 'unexpected', usage }));
+    fixture.getCurrentState.mockImplementationOnce(async () => {
+      entered.resolve();
+      await release.promise;
+      return { workingVersion: 1 } as Awaited<ReturnType<typeof fixture.getCurrentState>>;
+    });
+    try {
+      const pending = fixture.service.start(fixture.input('pending startup'));
+      const rejected = expect(pending).rejects.toThrow('服务正在关闭');
+      await entered.promise;
+      const closing = fixture.service.shutdown();
+      release.resolve();
+      await closing;
+      await rejected;
+      expect(fixture.runs.listActive()).toEqual([]);
+      expect(fixture.calls()).toBe(0);
+    } finally {
+      release.resolve();
+      fixture.database.close();
+    }
+  });
+
+  it.each(['internal', 'controlled'] as const)(
+    'redacts %s failures in durable state, messages and SSE',
+    async (kind) => {
+      const unsafe =
+        'read /Users/synthetic/private/schema.json C:\\Users\\synthetic\\schema.json sk-synthetic123456789 password=fake-secret';
+      const fixture = setup(async () => {
+        if (kind === 'controlled') throw new AgentEngineError('TOOL_ERROR', unsafe);
+        throw new Error(unsafe);
+      });
+      try {
+        const started = await fixture.service.start(fixture.input('redaction'));
+        expect(await started.completion).toMatchObject({ status: 'failed' });
+        const persisted = fixture.runs.get(started.run.id)!;
+        const events = fixture.events.subscribe(started.run.id, -1, () => undefined);
+        const evidence = JSON.stringify({
+          persisted,
+          events: events.replay,
+          history: fixture.conversations.history(
+            'project_test',
+            'page_test',
+            started.conversationId,
+          ),
+        });
+        for (const secret of [
+          '/Users/synthetic',
+          'C:\\Users\\synthetic',
+          'sk-synthetic123456789',
+          'fake-secret',
+        ])
+          expect(evidence).not.toContain(secret);
+        if (kind === 'internal') expect(persisted.errorMessage).toBe('Agent 运行失败，请重试。');
+        events.close();
+      } finally {
+        fixture.database.close();
+      }
+    },
+  );
 });
 
 describe('Agent startup ownership', () => {
+  it('rejects another request for the same active page while preserving exact-request retries', async () => {
+    const entered = deferred();
+    const fixture = setup(async (request) => {
+      entered.resolve();
+      await new Promise<void>((resolve) =>
+        request.signal!.addEventListener('abort', () => resolve(), { once: true }),
+      );
+      throw new AgentEngineError('CANCELLED', 'cancelled');
+    });
+    try {
+      const first = await fixture.service.start(fixture.input('first'));
+      await entered.promise;
+      expect((await fixture.service.start(fixture.input('first'))).run.id).toBe(first.run.id);
+      await expect(fixture.service.start(fixture.input('another'))).rejects.toMatchObject({
+        statusCode: 409,
+      });
+      expect(fixture.runs.listActive()).toHaveLength(1);
+      const project = fixture.projects.getProject('project_test')!;
+      const page = fixture.projects.getPage(project.id, 'page_test')!;
+      const extras = Array.from({ length: 4 }, (_, index) => ({
+        ...page,
+        id: `page_extra_${index}`,
+        slug: `extra-${index}`,
+      }));
+      fixture.projects.reconcile(project, [page, ...extras]);
+      for (const extra of extras.slice(0, 3))
+        await fixture.service.start({ ...fixture.input(extra.id), pageId: extra.id });
+      await expect(
+        fixture.service.start({ ...fixture.input('full'), pageId: extras[3]!.id }),
+      ).rejects.toMatchObject({ statusCode: 429 });
+      expect(fixture.runs.listActive()).toHaveLength(4);
+      await fixture.service.shutdown();
+      expect(await first.completion).toMatchObject({ status: 'cancelled' });
+    } finally {
+      fixture.database.close();
+    }
+  });
   it('accepts only a current clarification candidate from the same page and conversation', async () => {
     const fixture = setup(async (request) => {
       await complete(request, { outcome: 'answer_only', response: 'ok' });

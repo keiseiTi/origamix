@@ -12,16 +12,43 @@ export const ensurePageDirectory = async (
   projectPath: string,
   pageDirectory: string,
 ): Promise<string> => {
+  return resolvePageDirectory(projectPath, pageDirectory, undefined, true);
+};
+
+/** Check every directory, including src and the page leaf, before destructive access. */
+export const resolvePageDirectory = async (
+  projectPath: string,
+  pageDirectory: string,
+  slug?: string,
+  create = false,
+): Promise<string> => {
   const project = await realpath(projectPath);
-  let directory = join(project, 'src');
-  await mkdir(directory, { recursive: true });
-  for (const segment of pageDirectory.split('/')) {
+  if (slug !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw invalid('页面标识无效');
+  let directory = project;
+  let missing = false;
+  const segments = [
+    'src',
+    ...normalizePageDirectory(pageDirectory).split('/'),
+    ...(slug ? [slug] : []),
+  ];
+  for (const segment of segments) {
     const candidate = join(directory, segment);
+    if (missing) {
+      directory = candidate;
+      continue;
+    }
     try {
-      if ((await lstat(candidate)).isSymbolicLink()) throw invalid('页面目录不能是符号链接');
+      const entry = await lstat(candidate);
+      if (entry.isSymbolicLink()) throw invalid('页面目录不能是符号链接');
+      if (!entry.isDirectory()) throw invalid('页面目录不是文件夹');
     } catch (error) {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
-      await mkdir(candidate);
+      if (create) await mkdir(candidate);
+      else {
+        missing = true;
+        directory = candidate;
+        continue;
+      }
     }
     const resolved = await realpath(candidate);
     const fromProject = relative(project, resolved);

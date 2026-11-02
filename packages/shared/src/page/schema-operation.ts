@@ -166,7 +166,7 @@ export const SchemaOperationBatchSchema = Type.Object(
         { additionalProperties: false },
       ),
     ]),
-    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 }),
+    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 400 }),
     createdAt: Type.String({ format: 'date-time' }),
   },
   { additionalProperties: false },

@@ -73,6 +73,9 @@ export const CancelAgentRunResponseSchema = strictObject({
     Type.Literal('committing'),
     Type.Literal('cancelling'),
     Type.Literal('cancelled'),
+    Type.Literal('completed'),
+    Type.Literal('failed'),
+    Type.Literal('interrupted'),
   ]),
 });
 

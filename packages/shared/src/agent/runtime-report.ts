@@ -25,6 +25,10 @@ export const RuntimeDiagnosticSchema = strictObject({
 });
 
 export const RuntimeRenderReportSchema = strictObject({
+  workingVersion: Type.Integer({ minimum: 1 }),
+  workingHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
+  previewId: Type.String({ minLength: 1, maxLength: 128 }),
+  reportSequence: Type.Integer({ minimum: 1 }),
   version: AgentProtocolVersionSchema,
   projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
   pageId: PageIdSchema,

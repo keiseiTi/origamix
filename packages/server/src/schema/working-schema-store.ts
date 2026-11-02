@@ -164,15 +164,17 @@ export class WorkingSchemaStore {
   }
 
   async removePage(page: WorkingSchemaPageRef): Promise<void> {
-    const [working, revisions, journal] = await Promise.all([
+    const [working, revisions, journal, receipts] = await Promise.all([
       metadataPath(page.projectPath, 'pages', page.pageId),
       metadataPath(page.projectPath, 'revisions', page.pageId),
       this.journalFile(page),
+      metadataPath(page.projectPath, 'apply-receipts', page.pageId),
     ]);
     await Promise.all([
       rm(working, { recursive: true, force: true }),
       rm(revisions, { recursive: true, force: true }),
       rm(journal, { force: true }),
+      rm(receipts, { recursive: true, force: true }),
     ]);
   }
 }

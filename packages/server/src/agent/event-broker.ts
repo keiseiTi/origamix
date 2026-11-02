@@ -1,4 +1,5 @@
 import type { AgentEvent } from '@origamix/shared';
+import { ApiError } from '../errors';
 
 type EventInput = Omit<AgentEvent, 'version' | 'eventId' | 'sequence' | 'occurredAt'> & {
   occurredAt?: string;
@@ -46,8 +47,14 @@ export class AgentEventBroker {
     channel.nextEventId += 1;
     channel.events.push(event);
     if (channel.events.length > this.replayLimit) channel.events.shift();
-    for (const subscriber of channel.subscribers) subscriber(event);
     if (terminalTypes.has(event.type)) channel.terminal = true;
+    for (const subscriber of channel.subscribers) {
+      try {
+        subscriber(event);
+      } catch {
+        channel.subscribers.delete(subscriber);
+      }
+    }
     return event;
   }
 
@@ -57,6 +64,9 @@ export class AgentEventBroker {
     onEvent: (event: AgentEvent) => void,
   ): AgentEventSubscription {
     const channel = this.channel(runId);
+    const total = [...this.channels.values()].reduce((sum, item) => sum + item.subscribers.size, 0);
+    if (channel.subscribers.size >= 16 || total >= 256)
+      throw new ApiError('事件订阅过多，请关闭多余连接后重试', 429);
     const replay = channel.events.filter((event) => event.eventId > afterEventId);
     if (!channel.terminal) channel.subscribers.add(onEvent);
     return {
@@ -83,9 +93,10 @@ export class AgentEventBroker {
     if (!channel) {
       if (this.channels.size >= this.channelLimit) {
         const evictable = [...this.channels.entries()]
-          .filter(([, item]) => item.terminal && item.subscribers.size === 0)
+          .filter(([, item]) => item.subscribers.size === 0)
           .sort((left, right) => left[1].lastTouchedAt - right[1].lastTouchedAt)[0];
         if (evictable) this.channels.delete(evictable[0]);
+        else throw new ApiError('事件通道已达上限，请稍后重试', 429);
       }
       channel = {
         nextEventId: 0,

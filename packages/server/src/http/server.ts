@@ -94,7 +94,7 @@ const route: RouteAdapter =
 
 export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   const server = Fastify({
-    bodyLimit: 512 * 1024,
+    bodyLimit: 2 * 1024 * 1024,
     logger: false,
     ajv: { customOptions: { removeAdditional: false } },
   });

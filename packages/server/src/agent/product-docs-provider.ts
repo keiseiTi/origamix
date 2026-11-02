@@ -117,7 +117,7 @@ export class ProductDocsProvider {
   search(input: ProductDocsSearchInput): ProductDocSnippet[] {
     const queryTerms = terms(input.query);
     if (queryTerms.length === 0) return [];
-    const maxSnippetChars = Math.max(64, Math.min(input.maxSnippetChars ?? 1_200, 8_000));
+    const maxSnippetChars = Math.max(64, Math.min(input.maxSnippetChars ?? 2_400, 16_000));
     const limit = Math.max(1, Math.min(input.limit ?? 3, 10));
     return this.documents
       .filter((document) => !input.version || document.version === input.version)

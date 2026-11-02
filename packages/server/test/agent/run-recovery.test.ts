@@ -17,6 +17,8 @@ import { AgentRunService } from '../../src/agent/run-service';
 import { ConversationRepository } from '../../src/conversations/conversation-repository';
 import { ConversationService } from '../../src/conversations/conversation-service';
 import { recoverAgentRunsOnStartup } from '../../src/agent/run-recovery';
+import { createCompletePageRunTool } from '../../src/agent/tools/complete-page-run';
+import { loadProjectMaterials } from '../../src/projects/project-materials';
 
 const directories: string[] = [];
 
@@ -57,7 +59,11 @@ const setup = async () => {
   return { database, projects, project, page, pageRef, runs, conversations };
 };
 
-const startApplyingRun = async (fixture: Awaited<ReturnType<typeof setup>>, requestId: string) => {
+const startApplyingRun = async (
+  fixture: Awaited<ReturnType<typeof setup>>,
+  requestId: string,
+  submit = true,
+) => {
   const current = await getWorkingSchemaState(fixture.pageRef);
   const operationDigest = `${requestId}-digest`;
   const started = fixture.conversations.startRun({
@@ -85,6 +91,7 @@ const startApplyingRun = async (fixture: Awaited<ReturnType<typeof setup>>, requ
   service.transition(started.run.id, 'preparing');
   service.transition(started.run.id, 'reasoning');
   service.transition(started.run.id, 'reading');
+  if (!submit) return { run: started.run, current, operationDigest };
   service.transition(started.run.id, 'deciding', {
     outcomeJson: {
       outcome: 'apply_changes',
@@ -99,6 +106,45 @@ const startApplyingRun = async (fixture: Awaited<ReturnType<typeof setup>>, requ
 };
 
 describe('Agent Working commit receipt recovery', () => {
+  it('rejects an oversized final Schema before preparing a receipt even when the Operation List is small', async () => {
+    const fixture = await setup();
+    try {
+      const started = await startApplyingRun(fixture, 'schema-size', false);
+      const tool = createCompletePageRunTool(
+        {
+          projects: fixture.projects,
+          runs: fixture.runs,
+          runService: new AgentRunService(fixture.runs),
+          loadMaterials: loadProjectMaterials,
+        },
+        {
+          runId: started.run.id,
+          messageId: started.run.userMessageId,
+          projectId: fixture.project.id,
+          pageId: fixture.page.id,
+          baseWorkingVersion: started.current.workingVersion,
+          maxSchemaBytes: Buffer.byteLength(JSON.stringify(started.current.schema)) - 1,
+          maxOperationBytes: 1024,
+          maxRepairAttempts: 1,
+        },
+      );
+      await expect(
+        tool.execute(
+          {
+            outcome: 'apply_changes',
+            response: 'update',
+            operations: [
+              { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 22 } },
+            ],
+          },
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' });
+      expect(await getWorkingSchemaState(fixture.pageRef)).toEqual(started.current);
+    } finally {
+      fixture.database.close();
+    }
+  });
   it('recovers a Working write completed before the Run result was persisted', async () => {
     const fixture = await setup();
     try {

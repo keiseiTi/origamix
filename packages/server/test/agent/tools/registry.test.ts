@@ -75,7 +75,7 @@ describe('Agent tool policy and budget', () => {
     });
   });
 
-  it('enforces model, output, schema, and repair budgets', () => {
+  it('enforces model, output, and repair budgets', () => {
     const tracker = new RunBudgetController(budget);
     tracker.consumeModelCall();
     expect(() => tracker.consumeModelCall()).toThrowError(
@@ -84,13 +84,24 @@ describe('Agent tool policy and budget', () => {
     expect(() => tracker.recordOutputTokens(11)).toThrowError(
       expect.objectContaining({ code: 'BUDGET_EXCEEDED' }),
     );
-    expect(() => tracker.assertSchemaSize({ value: 'x'.repeat(200) })).toThrowError(
-      expect.objectContaining({ code: 'BUDGET_EXCEEDED' }),
-    );
     tracker.consumeRepair();
     expect(() => tracker.consumeRepair()).toThrowError(
       expect.objectContaining({ code: 'BUDGET_EXCEEDED' }),
     );
+    const tokens = new RunBudgetController({
+      ...budget,
+      maxModelCalls: 4,
+      maxInputTokens: 12,
+      maxRequestInputTokens: 8,
+      maxRequestOutputTokens: 8,
+      maxTotalTokens: 20,
+    });
+    expect(() => tokens.beforeRequest(9, 100, 100)).toThrow('单次输入');
+    expect(tokens.beforeRequest(6, 100, 100)).toBe(8);
+    tokens.recordUsage({ inputTokens: 6, outputTokens: 4 });
+    expect(() => tokens.beforeRequest(7, 100, 100)).toThrow('累计输入');
+    expect(tokens.beforeRequest(6, 100, 100)).toBe(4);
+    expect(() => tokens.recordUsage({ inputTokens: 6, outputTokens: 5 })).toThrow('累计 Token');
   });
 
   it('maps only the fixed domain whitelist to policies', () => {

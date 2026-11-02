@@ -1,7 +1,11 @@
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
+import { Value } from '@sinclair/typebox/value';
 
 export interface PreviewSnapshot {
+  workingVersion: number;
+  workingHash: string;
+  previewId: string;
   stack: import('../project/project-stack.ts').ProjectStack;
   schema: import('../page/page-schema.ts').OrigamixPageSchema;
   revisionId: string;
@@ -30,6 +34,10 @@ export type PreviewRenderDiagnostic = Static<typeof PreviewRenderDiagnosticSchem
 
 export const PreviewRenderReportSchema = Type.Object(
   {
+    workingVersion: Type.Integer({ minimum: 1 }),
+    workingHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
+    previewId: Type.String({ minLength: 1, maxLength: 128 }),
+    reportSequence: Type.Integer({ minimum: 1 }),
     revisionId: Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' }),
     outcome: Type.Union([Type.Literal('success'), Type.Literal('failed')]),
     diagnostics: Type.Array(PreviewRenderDiagnosticSchema, { maxItems: 50 }),
@@ -39,3 +47,5 @@ export const PreviewRenderReportSchema = Type.Object(
 );
 
 export type PreviewRenderReport = Static<typeof PreviewRenderReportSchema>;
+export const isPreviewRenderReport = (value: unknown): value is PreviewRenderReport =>
+  Value.Check(PreviewRenderReportSchema, value);

@@ -11,6 +11,7 @@ import { Type, type Static } from '@sinclair/typebox';
 import { PageScopeSchema, ProjectIdSchema } from './body-schemas';
 import type { AgentRunRecord } from '../agent/run-repository';
 import { notFound } from '../errors';
+import { ApiError } from '../errors';
 import type { RouteRegistrationContext } from './types';
 
 const publicRun = (run: AgentRunRecord): AgentRun => ({
@@ -46,6 +47,10 @@ const publicRun = (run: AgentRunRecord): AgentRun => ({
 
 export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   if (!input.agent) return;
+  const streams = new Set<import('node:http').ServerResponse>();
+  server.addHook('preClose', async () => {
+    for (const stream of streams) stream.end();
+  });
   const agent = input.agent;
   const requireOwnedRun = (projectId: string, runId: string): AgentRunRecord => {
     const run = agent.runs.get(runId);
@@ -149,21 +154,41 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       return {
         version: '1',
         runId: run.id,
-        status:
-          cancelled.status === 'cancelled' || cancelled.status === 'committing'
-            ? cancelled.status
-            : ('cancelling' as const),
+        status: ['cancelled', 'committing', 'completed', 'failed', 'interrupted'].includes(
+          cancelled.status,
+        )
+          ? cancelled.status
+          : ('cancelling' as const),
       };
     }),
   );
   server.get('/api/v1/projects/:projectId/agent/runs/:runId/events', async (request, reply) => {
     const { projectId, runId } = request.params as { projectId: string; runId: string };
-    requireOwnedRun(projectId, runId);
+    const durable = requireOwnedRun(projectId, runId);
+    if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
     const cursor = Number(
       request.headers['last-event-id'] ??
         (request.query as { afterEventId?: string }).afterEventId ??
         -1,
     );
+    const after =
+      Number.isSafeInteger(cursor) && cursor < Number.MAX_SAFE_INTEGER ? Math.max(-1, cursor) : -1;
+    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(durable.status);
+    let subscription: import('../agent/event-broker').AgentEventSubscription | undefined;
+    const write = (event: import('@origamix/shared').AgentEvent): void => {
+      if (reply.raw.destroyed || reply.raw.writableEnded) return;
+      const accepted = reply.raw.write(
+        `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+      );
+      if (
+        !accepted ||
+        ['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(event.type)
+      ) {
+        subscription?.close();
+        reply.raw.end();
+      }
+    };
+    if (!terminal) subscription = agent.events.subscribe(runId, after, write);
     reply.hijack();
     // Hijacked responses bypass Fastify's normal header serialization. Copy the
     // authenticated Origin/CORS headers installed by the request boundary.
@@ -176,30 +201,48 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       connection: 'keep-alive',
       'x-accel-buffering': 'no',
     });
-    const write = (event: import('@origamix/shared').AgentEvent): void => {
-      reply.raw.write(
-        `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
-      );
-      if (
-        event.type.startsWith('run.') &&
-        ['completed', 'failed', 'cancelled', 'interrupted'].includes(event.type.slice(4))
-      ) {
-        subscription.close();
+    streams.add(reply.raw);
+    const heartbeat = setInterval(() => {
+      if (!reply.raw.destroyed && !reply.raw.writableEnded && !reply.raw.write(': heartbeat\n\n')) {
+        subscription?.close();
         reply.raw.end();
       }
-    };
-    const subscription = agent.events.subscribe(
-      runId,
-      Number.isSafeInteger(cursor) ? cursor : -1,
-      write,
-    );
-    const heartbeat = setInterval(() => reply.raw.write(': heartbeat\n\n'), 15_000);
+    }, 15_000);
     heartbeat.unref();
     reply.raw.on('close', () => {
+      streams.delete(reply.raw);
       clearInterval(heartbeat);
-      subscription.close();
+      subscription?.close();
     });
-    for (const event of subscription.replay) write(event);
+    if (terminal) {
+      write({
+        version: '1',
+        eventId: after + 1,
+        sequence: after + 1,
+        type: `run.${durable.status}`,
+        runId,
+        pageId: durable.pageId,
+        requestId: durable.clientRequestId,
+        occurredAt: durable.updatedAt,
+        payload:
+          durable.status === 'completed'
+            ? {
+                status: 'completed',
+                outcome: durable.outcome ?? 'answered_only',
+                ...(durable.resultWorkingVersion
+                  ? { resultWorkingVersion: durable.resultWorkingVersion }
+                  : {}),
+              }
+            : durable.status === 'failed'
+              ? {
+                  status: 'failed',
+                  errorCode: durable.errorCode ?? 'INTERNAL_ERROR',
+                  safeMessage: 'Agent 请求未完成，请读取运行记录后重试',
+                }
+              : { status: durable.status },
+      });
+    }
+    for (const event of subscription?.replay ?? []) write(event);
     if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
   });
 };

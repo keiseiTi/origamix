@@ -45,6 +45,7 @@ pnpm --filter @origamix/shared build
 - Material context keeps independent variables (read), writable (runtime write), actions (callable methods) and events (events) declarations. Optional pure linkage metadata can control event visibility; it does not grant runtime access. `propsSchema` remains design-time validation, not a fallback capability source.
 
 - Public page validation accepts only the current release contract; never loosen it to implement persisted-data migration.
+- Runtime render reports identify Working version/hash plus preview ID and increasing report sequence; Revision identifies the saved checkpoint only. Keep these fields in both host/iframe and HTTP contracts. Cancel responses include existing terminal states. Extended optional Run budget fields permit reading retained Runs; new Run producers populate the full budget and never replace a retained retry's configuration.
 
 - MaterialLayout declares serializable default occupancy independently of acceptsChildren. getMaterialDisplay resolves only static property values; never evaluate expressions for design layout. Instance layout properties remain validated material props and use the existing version-checked operation pipeline.
 

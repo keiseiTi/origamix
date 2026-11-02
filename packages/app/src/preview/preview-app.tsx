@@ -1,7 +1,7 @@
 import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
 import type { PreviewSnapshot } from '@origamix/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { isHostToPreviewMessage, type PreviewToHostMessage } from './protocol';
 
@@ -14,6 +14,7 @@ export const PreviewApp = (): React.JSX.Element => {
   const projectId = params.get('projectId') ?? '';
   const pageId = params.get('pageId') ?? '';
   const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
+  const reportSequence = useRef(0);
   const [error, setError] = useState<string | null>(
     projectId && pageId ? null : '预览 URL 缺少 projectId 或 pageId',
   );
@@ -56,13 +57,18 @@ export const PreviewApp = (): React.JSX.Element => {
         stack={snapshot.stack}
         theme={snapshot.theme}
         schema={snapshot.schema}
-        revisionId={snapshot.revisionId}
+        revisionId={`${snapshot.revisionId}:${snapshot.workingVersion}:${snapshot.previewId}`}
         onOutcome={({ outcome, diagnostics }) =>
           postToHost({
             type: 'origamix.preview.outcome',
             projectId,
             pageId,
             revisionId: snapshot.revisionId,
+            workingVersion: snapshot.workingVersion,
+            workingHash: snapshot.workingHash,
+            previewId: snapshot.previewId,
+            reportSequence: ++reportSequence.current,
+            observedAt: new Date().toISOString(),
             outcome,
             diagnostics,
           })

@@ -53,7 +53,7 @@ export interface ReadOnlyToolDependencies {
 }
 
 type JsonObject = Record<string, unknown>;
-const MAX_RESULT_BYTES = 24 * 1024;
+const MAX_RESULT_BYTES = 64 * 1024;
 const MAX_PROP_KEYS = 24;
 const MAX_STRING_LENGTH = 400;
 
@@ -87,12 +87,16 @@ const boundedResult = (value: JsonObject): JsonObject => {
   const compact = compactValue(value) as JsonObject;
   const serialized = JSON.stringify(compact);
   if (Buffer.byteLength(serialized, 'utf8') <= MAX_RESULT_BYTES) return compact;
-  return {
+  let preview = serialized.slice(0, MAX_RESULT_BYTES / 2);
+  const result = () => ({
     truncated: true,
     reason: 'result_size_limit',
     byteLimit: MAX_RESULT_BYTES,
-    preview: serialized.slice(0, MAX_RESULT_BYTES / 2),
-  };
+    preview,
+  });
+  while (Buffer.byteLength(JSON.stringify(result()), 'utf8') > MAX_RESULT_BYTES)
+    preview = preview.slice(0, Math.floor(preview.length / 2));
+  return result();
 };
 
 const elementSummary = (
@@ -306,7 +310,7 @@ export const createReadOnlyAgentTools = (
         const input = assertInput<MaterialManifestInput>(MaterialManifestInputSchema, raw);
         const current = await load(input, signal);
         return cached(
-          `material-manifest:${input.type}:${input.offset ?? 0}:${input.maxChars ?? 8000}`,
+          `material-manifest:${input.type}:${input.offset ?? 0}:${input.maxChars ?? 16000}`,
           async () => {
             const manifest = materialManifest.materials.find(
               (material) => material.type === input.type,

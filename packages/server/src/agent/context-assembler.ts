@@ -1,3 +1,4 @@
+import { AgentEngineError } from './agent-engine';
 import { loadProjectMaterials } from '../projects/project-materials';
 import { flowNodeManifests, type OrigamixPageSchema } from '@origamix/shared';
 import { FLOW_GENERATION_GUIDE } from './flow-guidance';
@@ -62,11 +63,11 @@ export interface AssembledAgentContext {
 }
 
 const DEFAULT_BUDGET: ContextBudget = {
-  maxChars: 24_000,
-  maxHistoryMessages: 12,
-  maxHistoryChars: 6_000,
-  maxSchemaChars: 10_000,
-  maxDocsChars: 3_000,
+  maxChars: 40_000,
+  maxHistoryMessages: 16,
+  maxHistoryChars: 10_000,
+  maxSchemaChars: 20_000,
+  maxDocsChars: 5_000,
 };
 
 const SYSTEM_POLICY = [
@@ -222,7 +223,7 @@ export class ContextAssembler {
       this.budget,
     );
     const schema = cap(JSON.stringify(current.schema), this.budget.maxSchemaChars);
-    const summary = input.summary ? cap(input.summary, 2_000) : undefined;
+    const summary = input.summary ? cap(input.summary, 3_000) : undefined;
     let docs = input.docsQuery
       ? this.docsProvider.search({
           query: input.docsQuery,
@@ -322,7 +323,11 @@ export class ContextAssembler {
       context = { ...context, materialCatalog: catalog };
     }
     const sizeChars = totalSize(context);
-    if (sizeChars > this.budget.maxChars) throw new Error('Context 固定内容超过预算');
+    if (sizeChars > this.budget.maxChars)
+      throw new AgentEngineError(
+        'BUDGET_EXCEEDED',
+        '当前请求与页面上下文超过预算，请缩短请求或拆分修改',
+      );
     return { ...context, sizeChars };
   }
 }

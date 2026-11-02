@@ -11,6 +11,8 @@ let directory: string;
 let database: ApplicationDatabase;
 let revisionId: string;
 let service: RuntimeDiagnosticService;
+let reportSequence = 0;
+let workingVersion = 1;
 
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), 'origamix-runtime-diagnostic-'));
@@ -40,11 +42,12 @@ beforeEach(async () => {
     ],
   );
   revisionId = 'revision_one';
-  service = new RuntimeDiagnosticService(
-    projects,
-    new RuntimeDiagnosticCache(),
-    async () => revisionId,
-  );
+  workingVersion = 1;
+  service = new RuntimeDiagnosticService(projects, new RuntimeDiagnosticCache(), async () => ({
+    revisionId,
+    workingVersion,
+    workingHash: 'a'.repeat(64),
+  }));
 });
 
 afterEach(async () => {
@@ -53,6 +56,10 @@ afterEach(async () => {
 });
 
 const report = (outcome: 'success' | 'failed', message = '组件失败') => ({
+  workingVersion,
+  workingHash: 'a'.repeat(64),
+  previewId: 'preview_test',
+  reportSequence: ++reportSequence,
   version: '1' as const,
   projectId: 'project_one',
   pageId: 'page_one',
@@ -103,6 +110,31 @@ describe('RuntimeDiagnosticService', () => {
       currentRevisionId: 'revision_two',
     });
     expect((await service.getState('project_one', 'page_one')).diagnostics).toEqual([]);
+  });
+
+  it('rejects old Working snapshots and late preview reports even when the saved Revision is unchanged', async () => {
+    const old = report('failed');
+    workingVersion += 1;
+    const current = report('success');
+    expect(await service.report(current)).toMatchObject({ disposition: 'accepted' });
+    expect(await service.report(old)).toMatchObject({ disposition: 'stale' });
+    expect(
+      await service.report({
+        ...current,
+        reportSequence: current.reportSequence - 1,
+        outcome: 'failed',
+        diagnostics: report('failed').diagnostics,
+      }),
+    ).toMatchObject({ disposition: 'stale' });
+    expect(
+      await service.report({
+        ...report('failed'),
+        previewId: 'previous-frame',
+        observedAt: '2020-01-01T00:00:00.000Z',
+      }),
+    ).toMatchObject({ disposition: 'stale' });
+    expect((await service.getState('project_one', 'page_one')).diagnostics).toEqual([]);
+    service.clear('project_one', 'page_one');
   });
 
   it('redacts secrets and local paths before persistence and rejects wrong ownership', async () => {

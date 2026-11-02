@@ -13,7 +13,7 @@ const object = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
 export const exactReadPagination = {
   offset: Type.Optional(Type.Integer({ minimum: 0 })),
-  maxChars: Type.Optional(Type.Integer({ minimum: 256, maximum: 12_000 })),
+  maxChars: Type.Optional(Type.Integer({ minimum: 256, maximum: 24_000 })),
 };
 const ManifestInput = object({
   type: Type.String({ minLength: 1, maxLength: 80 }),
@@ -43,8 +43,8 @@ export const exactReadResult = (
   const json = JSON.stringify(data);
   const offset = input.offset ?? 0;
   if (offset > json.length) throw invalid('读取偏移超出内容范围');
-  const maxChars = input.maxChars ?? 8_000;
-  const maxBytes = 24 * 1024;
+  const maxChars = input.maxChars ?? 16_000;
+  const maxBytes = 64 * 1024;
   const full = { workingVersion, complete: true, data };
   if (
     !offset &&

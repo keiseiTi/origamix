@@ -44,6 +44,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Retain one Apply request ID for the same page Revision and Working version until the result is known; an ambiguous transport failure must not turn an explicit retry into a different logical operation. Apply is available only for a clean, explicitly saved Revision.
 - Renderer transports cache backend authority only as a convenience. After a desktop Server restart, refresh it through the named connection bridge; never replay an ambiguous failed mutation automatically, and recover Agent views from durable Run/Message/Schema state.
 - Preview data access stays in the trusted workbench and sends page snapshots via postMessage to a sandboxed iframe. Never expose Desktop credentials or a broad bridge to the iframe. Rendering errors must remain visible without corrupting the editing session.
+- Preview snapshots come from Working-state reads and carry Working version/hash and a fresh preview ID. Filter iframe outcomes against that identity and a monotonic report sequence; ignore late snapshot reads and diagnostic request completions. A saved Revision is not a draft render identity. Refresh/reload creates a new preview identity; protocol changes update Shared and Server together.
 
 ## Interaction contract
 

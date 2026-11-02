@@ -102,6 +102,8 @@ export const createDefaultAgentToolEntries = (
 };
 
 export class RunBudgetController {
+  private inputTokens = 0;
+  private reservedInput = 0;
   private modelCalls = 0;
   private toolCalls = 0;
   private outputTokens = 0;
@@ -110,10 +112,51 @@ export class RunBudgetController {
 
   constructor(readonly budget: RunBudget) {}
 
+  beforeRequest(inputUpperBound: number, contextWindow: number, providerMaxOutput: number): number {
+    this.assertDuration();
+    this.inputTokens += this.reservedInput;
+    this.reservedInput = 0;
+    if (inputUpperBound > (this.budget.maxRequestInputTokens ?? 128_000))
+      this.exceeded('单次输入 Token 预估');
+    if (
+      this.inputTokens + this.reservedInput + inputUpperBound >
+      (this.budget.maxInputTokens ?? 400_000)
+    )
+      this.exceeded('累计输入 Token');
+    const available =
+      (this.budget.maxTotalTokens ?? 432_000) -
+      this.inputTokens -
+      this.reservedInput -
+      this.outputTokens -
+      inputUpperBound;
+    const output = Math.floor(
+      Math.min(
+        this.budget.maxRequestOutputTokens ?? 16_000,
+        this.budget.maxOutputTokens - this.outputTokens,
+        available,
+        contextWindow - inputUpperBound,
+        providerMaxOutput,
+      ),
+    );
+    if (output < 1) this.exceeded('模型上下文或剩余 Token');
+    this.consumeModelCall();
+    this.reservedInput += inputUpperBound;
+    return output;
+  }
+
+  recordUsage(usage: { inputTokens: number; outputTokens: number }): void {
+    this.inputTokens += usage.inputTokens > 0 ? usage.inputTokens : this.reservedInput;
+    this.reservedInput = 0;
+    this.recordOutputTokens(usage.outputTokens);
+    if (this.inputTokens > (this.budget.maxInputTokens ?? 400_000)) this.exceeded('累计输入 Token');
+    if (this.inputTokens + this.outputTokens > (this.budget.maxTotalTokens ?? 432_000))
+      this.exceeded('累计 Token');
+  }
+
   consumeModelCall(): void {
     this.assertDuration();
+    if (this.modelCalls >= this.budget.maxModelCalls) this.exceeded('模型调用次数');
     this.modelCalls += 1;
-    if (this.modelCalls > this.budget.maxModelCalls) this.exceeded('模型调用次数');
   }
 
   consumeToolCall(): void {
@@ -125,11 +168,6 @@ export class RunBudgetController {
   recordOutputTokens(tokens: number): void {
     this.outputTokens += Math.max(0, tokens);
     if (this.outputTokens > this.budget.maxOutputTokens) this.exceeded('输出 Token');
-  }
-
-  assertSchemaSize(schema: unknown): void {
-    const bytes = Buffer.byteLength(JSON.stringify(schema), 'utf8');
-    if (bytes > this.budget.maxSchemaBytes) this.exceeded('Schema 大小');
   }
 
   consumeRepair(): void {
@@ -144,6 +182,7 @@ export class RunBudgetController {
   snapshot() {
     return {
       modelCalls: this.modelCalls,
+      inputTokens: this.inputTokens + this.reservedInput,
       toolCalls: this.toolCalls,
       outputTokens: this.outputTokens,
       repairAttempts: this.repairAttempts,

@@ -64,6 +64,12 @@ Schema 服务只抽离契约、校验与结果转换；页面队列、Agent 回�
 
 从 `createPageWithSchemaUnlocked` 阅读具体步骤和失败清理。Manifest 与 SQLite 不是一个跨文件事务。
 
+### 删除页面与服务关闭
+
+页面删除先校验整个源码目录链及元数据路径，再在 `.origamix/page-deletions/<pageId>.json` 记录待删除、文件已清理、删除完成三个阶段。中断后由用户显式重试删除；重新打开项目不会自动继续删除。已标记页面拒绝 Schema 访问，完成记录保留用于幂等重试，旧请求不会删除同名新页面。实现见 [project-service.ts](src/projects/project-service.ts) 和 [page-deletion-store.ts](src/projects/page-deletion-store.ts)。
+
+服务关闭先拒绝新 Agent Run、取消并等待活动执行，同时结束 SSE，再关闭 SQLite。Agent 等待上限为 10 秒，随后 HTTP 等待上限为 5 秒；超时会明确失败并保留数据库，待请求收敛后可重试关闭。意外异常使用通用错误；受控错误及历史失败消息在持久化或 SSE 发布前清洗密钥和本地路径，见 [safe-error.ts](src/agent/safe-error.ts)。
+
 ### 保存 Schema
 
 可视化编辑通常通过 `src/http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
@@ -87,6 +93,26 @@ Schema 服务只抽离契约、校验与结果转换；页面队列、Agent 回�
 `src/http/agent-routes.ts` → `agent/agent-service.ts#start` → 路由意图并由 ConversationService 创建消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
 
 Agent 仅通过终态工具 `src/agent/tools/complete-page-run.ts` 提交完整的版本化 Operation Batch，并原子更新 Working Schema，不自动创建 Revision。`src/agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `src/agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
+
+同一页面最多一个活动 Run，全局最多四个；相同请求 ID 仍返回原 Run。项目删除／升级通过 [project-activity.ts](src/projects/project-activity.ts) 关闭新活动准入、等待在途 Working／Apply／Run 启动操作，再检查活动 Run；升级自身的 Schema 操作共享该授权。单页并发返回 409，全局满载返回 429，不自动排队或重放。
+
+默认预算由 [agent-service.ts](src/agent/agent-service.ts) 定义并随 Run 持久化：
+
+| 限制                            |                          默认值 |
+| ------------------------------- | ------------------------------: |
+| 模型请求／工具调用／修复        |                       10／40／2 |
+| Run 时长                        |                          180 秒 |
+| 单次输入 token 预估／输出 token |                 128,000／16,000 |
+| Run 累计输入／输出／总 token    |        400,000／32,000／432,000 |
+| 操作批次／完整候选 Schema       |                256 KiB／512 KiB |
+| 初始上下文／Schema 片段         |             40,000／20,000 字符 |
+| 历史／产品文档                  | 16 条且 10,000 字符／5,000 字符 |
+
+每次 SDK 内部模型请求都检查包含工具声明与完整累积消息的输入，使用 UTF-8 字节数加协议余量作保守 token 上界估算，不能当作精确 tokenizer 或账单。输出上限传给供应商并按剩余预算、模型上下文和最大输出能力收紧；各轮 usage 累加（包括缓存输入），缺失 usage 时保守计数。供应商自动重试关闭；致命预算错误立即中止模型循环。最终 Schema 在 Working 写入前独立检查，不能用小操作绕过。固定评测的发布门槛仍独立于运行预算。
+
+SSE 从持久化 Run 终态兜底，重启或事件淘汰后也能结束订阅。慢客户端停止实时投递并断开，由客户端重新读取持久化状态；订阅和内存通道均有数量上限。取消已结束 Run 返回其真实终态。
+
+预览诊断绑定 Working 版本、哈希、预览实例和报告序号。旧 Working、同实例乱序报告及早于已接收实例的报告被拒绝；缓存只保存每页最新观测，最多 256 页、30 分钟，页面／项目删除时清理。Renderer 同样过滤过期 iframe 和 HTTP 响应。
 
 事件逻辑与组件生成共用一个 Run 和一个 Operation Batch。上下文包含 Shared 节点能力摘要、当前事件/变量摘要和 [生成规则](src/agent/flow-guidance.ts)。摘要可能省略内容；精确读取由 [逻辑只读工具](src/agent/tools/logic-tools.ts) 提供：`get_page_logic_context` 读取绑定与变量，`get_event_flow` 按流程 ID 或元素事件读取完整流程及全部引用方，`get_flow_node_manifest` 读取节点完整参数与连接约束。这些工具固定当前 Run 的页面和起始 Working，不接受调用方传入其他页面权限。
 

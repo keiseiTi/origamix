@@ -330,6 +330,7 @@ export type {
 export {
   PreviewRenderDiagnosticSchema,
   PreviewRenderReportSchema,
+  isPreviewRenderReport,
 } from './transport/preview-message.ts';
 export type {
   PreviewSnapshot,

@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,15 +7,183 @@ import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
+import { ProjectSourceService } from '../../src/projects/project-source';
+import { getWorkingSchemaState, updateWorkingSchema } from '../../src/schema/schema-service';
+import { deferred } from '../helpers/deferred';
 
 const directories: string[] = [];
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 
+const deletionFixture = async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-page-deletion-'));
+  directories.push(directory);
+  const database = new ApplicationDatabase(join(directory, 'application.db'));
+  const projects = new ProjectRepository(database);
+  const service = new ProjectService(projects, templatePath);
+  service.registerGrant('grant_delete', directory);
+  const project = await service.createProject({
+    name: 'Delete',
+    code: 'delete',
+    directoryGrantId: 'grant_delete',
+  });
+  const page = await service.createPage(project.id, { name: 'Home', slug: 'home' });
+  return { directory, database, projects, service, project, page };
+};
+
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
 });
 
 describe('Project page persistence and recovery', () => {
+  it('waits for an admitted Working write before deletion and rejects new page activity during cleanup', async () => {
+    const { database, project, page, service } = await deletionFixture();
+    const release = deferred(),
+      entered = deferred();
+    try {
+      const pageRef = {
+        projectPath: project.path,
+        pageId: page.id,
+        slug: page.slug,
+        relativePath: page.relativePath,
+      };
+      const working = await getWorkingSchemaState(pageRef);
+      const written = vi.fn();
+      const removed = vi.spyOn(ProjectSourceService.prototype, 'removePageDirectory');
+      const write = updateWorkingSchema(
+        pageRef,
+        {
+          baseWorkingVersion: working.workingVersion,
+          schema: {
+            ...working.schema,
+            elements: {
+              ...working.schema.elements,
+              element_root: { ...working.schema.elements.element_root!, props: { padding: 22 } },
+            },
+          },
+        },
+        {
+          beforeWrite: async () => {
+            entered.resolve();
+            await release.promise;
+          },
+          afterWorkingStage: (stage) => {
+            if (stage === 'working') written();
+          },
+        },
+      );
+      await entered.promise;
+      const deletion = service.deletePage(project.id, page.id);
+      // The queued project owner marks admission closed before waiting on the retained writer.
+      await Promise.resolve();
+      await expect(getWorkingSchemaState(pageRef)).rejects.toThrow('删除或升级');
+      expect(removed).not.toHaveBeenCalled();
+      release.resolve();
+      await write;
+      await deletion;
+      expect(written.mock.invocationCallOrder[0]).toBeLessThan(
+        removed.mock.invocationCallOrder[0]!,
+      );
+    } finally {
+      release.resolve();
+      database.close();
+    }
+  });
+  // Destructive authorization and interruption are not covered by creation or HTTP success checks.
+  it.each(['src', 'parent', 'leaf', 'metadata'] as const)(
+    'rejects a symlink at %s before deleting source or retained drafts',
+    async (boundary) => {
+      const fixture = await deletionFixture();
+      const { directory, database, project, page, service } = fixture;
+      try {
+        const relative = {
+          src: 'src',
+          parent: 'src/pages',
+          leaf: 'src/pages/home',
+          metadata: `.origamix/pages/${page.id}`,
+        }[boundary];
+        const original = join(project.path, relative),
+          external = join(directory, 'external');
+        await rename(original, external);
+        await symlink(external, original);
+        const manifestPath = join(project.path, 'origamix.project.json');
+        const before = await readFile(manifestPath, 'utf8');
+        const sentinel = join(
+          external,
+          {
+            src: 'pages/home/schema.json',
+            parent: 'home/schema.json',
+            leaf: 'schema.json',
+            metadata: 'working.json',
+          }[boundary],
+        );
+        const contents = await readFile(sentinel, 'utf8');
+        await expect(service.deletePage(project.id, page.id)).rejects.toThrow('符号链接');
+        expect(await readFile(sentinel, 'utf8')).toBe(contents);
+        expect(await readFile(manifestPath, 'utf8')).toBe(before);
+        expect(fixture.projects.getPage(project.id, page.id)).toBeDefined();
+        await access(join(project.path, 'src/pages/home/schema.json'));
+      } finally {
+        database.close();
+      }
+    },
+  );
+
+  it.each(['files', 'database'] as const)(
+    'resumes explicit deletion after %s failure and never deletes a replacement page',
+    async (stage) => {
+      const { database, projects, project, page, service } = await deletionFixture();
+      try {
+        const deleteRecord = projects.deletePageRecord.bind(projects);
+        const failed =
+          stage === 'files'
+            ? vi
+                .spyOn(ProjectSourceService.prototype, 'removePageDirectory')
+                .mockRejectedValueOnce(new Error('interrupted deletion'))
+            : vi.spyOn(projects, 'deletePageRecord').mockImplementationOnce((...args) => {
+                deleteRecord(...args);
+                throw new Error('interrupted deletion');
+              });
+        await expect(service.deletePage(project.id, page.id)).rejects.toThrow(
+          'interrupted deletion',
+        );
+        failed.mockRestore();
+        const pageRef = {
+          projectPath: project.path,
+          pageId: page.id,
+          slug: page.slug,
+          relativePath: page.relativePath,
+        };
+        await expect(getWorkingSchemaState(pageRef)).rejects.toThrow('删除流程');
+        // Recreate the service/index as reopening the project would; no cleanup is auto-resumed.
+        const reopened = new ProjectService(projects, templatePath);
+        await reopened.reconcile(project.path);
+        let replacement;
+        if (stage === 'database')
+          replacement = await reopened.createPage(project.id, { name: 'New home', slug: 'home' });
+        await reopened.deletePage(project.id, page.id);
+        replacement ??= await reopened.createPage(project.id, { name: 'New home', slug: 'home' });
+        await reopened.deletePage(project.id, page.id);
+        expect(projects.getPage(project.id, replacement.id)).toBeDefined();
+        expect(projects.getPage(project.id, page.id)).toBeUndefined();
+        await access(join(project.path, replacement.relativePath, 'schema.json'));
+        expect(
+          JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')).pages,
+        ).toEqual([expect.objectContaining({ pageId: replacement.id })]);
+        expect(
+          JSON.parse(
+            await readFile(
+              join(project.path, '.origamix/page-deletions', `${page.id}.json`),
+              'utf8',
+            ),
+          ).state,
+        ).toBe('completed');
+      } finally {
+        database.close();
+      }
+    },
+  );
+
   it('serializes page creation and keeps the page index aligned with an empty manifest', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-page-index-'));
     directories.push(directory);

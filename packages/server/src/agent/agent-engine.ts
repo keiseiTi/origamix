@@ -122,6 +122,14 @@ export interface AgentEngineUsage {
 }
 
 export interface AgentEngineRequest {
+  budget?: {
+    beforeRequest: (
+      inputUpperBound: number,
+      contextWindow: number,
+      providerMaxOutput: number,
+    ) => number;
+    recordUsage: (usage: AgentEngineUsage) => void;
+  };
   modelId: string;
   systemPrompt: string;
   prompt: string;
@@ -132,6 +140,7 @@ export interface AgentEngineRequest {
 }
 
 export interface AgentEngineResult {
+  budgetTracked?: boolean;
   text: string;
   usage: AgentEngineUsage;
 }

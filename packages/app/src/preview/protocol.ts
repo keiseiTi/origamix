@@ -1,4 +1,8 @@
-import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared';
+import {
+  isPreviewRenderReport,
+  type PreviewRenderReport,
+  type PreviewSnapshot,
+} from '@origamix/shared';
 
 export interface PreviewIdentity {
   pageId: string;
@@ -7,12 +11,7 @@ export interface PreviewIdentity {
 
 export type PreviewToHostMessage =
   | ({ type: 'origamix.preview.ready' } & PreviewIdentity)
-  | ({
-      type: 'origamix.preview.outcome';
-      revisionId: string;
-      outcome: 'success' | 'failed';
-      diagnostics: PreviewRenderDiagnostic[];
-    } & PreviewIdentity);
+  | ({ type: 'origamix.preview.outcome' } & PreviewRenderReport & PreviewIdentity);
 
 export type HostToPreviewMessage =
   | ({ type: 'origamix.preview.snapshot'; snapshot: PreviewSnapshot } & PreviewIdentity)
@@ -21,6 +20,15 @@ export type HostToPreviewMessage =
 export const isPreviewToHostMessage = (value: unknown): value is PreviewToHostMessage => {
   if (!value || typeof value !== 'object') return false;
   const message = value as Record<string, unknown>;
+  if (message.type === 'origamix.preview.outcome') {
+    const { type, projectId, pageId, ...report } = message;
+    return (
+      type === 'origamix.preview.outcome' &&
+      typeof projectId === 'string' &&
+      typeof pageId === 'string' &&
+      isPreviewRenderReport(report)
+    );
+  }
   return (
     (message.type === 'origamix.preview.ready' || message.type === 'origamix.preview.outcome') &&
     typeof message.projectId === 'string' &&

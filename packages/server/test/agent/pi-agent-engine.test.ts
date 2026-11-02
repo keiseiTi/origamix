@@ -5,7 +5,9 @@ import {
   fauxProvider,
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { RunBudgetController } from '../../src/agent/tools/registry';
+import { DEFAULT_AGENT_RUN_BUDGET } from '../../src/agent/agent-service';
 import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '../../src/agent/agent-engine';
 import { PiAgentEngine } from '../../src/agent/pi-agent-engine';
 
@@ -15,18 +17,80 @@ const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSe
   const models = createModels();
   models.setProvider(faux.provider);
   let credentialReads = 0;
+  const stream = vi.fn(models.streamSimple.bind(models));
   const engine = new PiAgentEngine({
     resolveModel: () => faux.getModel(),
-    stream: models.streamSimple.bind(models),
+    stream,
     getCredential: async () => {
       credentialReads += 1;
       return 'test-only-secret';
     },
   });
-  return { engine, getCredentialReads: () => credentialReads };
+  return { engine, stream, getCredentialReads: () => credentialReads };
 };
 
 describe('PiAgentEngine', () => {
+  it('counts real provider turns and stops before another request when the Run budget is exhausted', async () => {
+    const { engine, stream } = setup([
+      fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
+      fauxAssistantMessage('must not request this turn'),
+    ]);
+    const tracker = new RunBudgetController({ ...DEFAULT_AGENT_RUN_BUDGET, maxModelCalls: 1 });
+    await expect(
+      engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: 'read',
+        budget: {
+          beforeRequest: (size, window, output) => tracker.beforeRequest(size, window, output),
+          recordUsage: (usage) => tracker.recordUsage(usage),
+        },
+        tools: [
+          {
+            name: 'lookup',
+            description: 'read',
+            parameters: Type.Object({}),
+            execute: async () => ({ value: 'read' }),
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' });
+    expect(stream).toHaveBeenCalledTimes(1);
+    expect(stream.mock.calls[0]?.[2]).toMatchObject({
+      maxRetries: 0,
+      maxTokens: expect.any(Number),
+    });
+    expect(tracker.snapshot().inputTokens).toBeGreaterThan(0);
+    expect(tracker.snapshot().outputTokens).toBeGreaterThan(0);
+  });
+
+  it('aborts a fatal tool budget error instead of letting the SDK request a repair turn', async () => {
+    const { engine, stream } = setup([
+      fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
+      fauxAssistantMessage('must not continue'),
+    ]);
+    const tracker = new RunBudgetController({ ...DEFAULT_AGENT_RUN_BUDGET, maxToolCalls: 1 });
+    tracker.consumeToolCall();
+    await expect(
+      engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: 'read',
+        tools: [
+          {
+            name: 'lookup',
+            description: 'read',
+            parameters: Type.Object({}),
+            execute: async () => {
+              tracker.consumeToolCall();
+              return {};
+            },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' });
+    expect(stream).toHaveBeenCalledTimes(1);
+  });
   it('requires a configured provider credential instead of falling back to a fake model', async () => {
     const faux = fauxProvider({ provider: 'deepseek' });
     const models = createModels();
@@ -68,10 +132,17 @@ describe('PiAgentEngine', () => {
       fauxAssistantMessage('done'),
     ]);
     const events: AgentEngineEvent[] = [];
+    const turns: { inputTokens: number; outputTokens: number; totalTokens: number }[] = [];
     const result = await engine.run({
       modelId: DEEPSEEK_FLASH_MODEL_ID,
       systemPrompt: 'test',
       prompt: 'use tool',
+      budget: {
+        beforeRequest: () => 8192,
+        recordUsage: (usage) => {
+          turns.push(usage);
+        },
+      },
       tools: [
         {
           name: 'lookup',
@@ -87,6 +158,9 @@ describe('PiAgentEngine', () => {
     });
 
     expect(result.text).toBe('done');
+    expect(turns).toHaveLength(2);
+    expect(result.usage.inputTokens).toBe(turns.reduce((sum, turn) => sum + turn.inputTokens, 0));
+    expect(result.usage.outputTokens).toBe(turns.reduce((sum, turn) => sum + turn.outputTokens, 0));
     expect(events.map((event) => event.type)).toEqual(
       expect.arrayContaining(['tool_start', 'tool_end', 'completed']),
     );

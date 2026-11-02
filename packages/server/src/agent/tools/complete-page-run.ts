@@ -26,6 +26,7 @@ export interface CompletePageRunToolScope {
   pageId: string;
   baseWorkingVersion: number;
   maxSchemaBytes: number;
+  maxOperationBytes?: number;
   maxRepairAttempts: number;
 }
 
@@ -44,7 +45,10 @@ export interface CompletePageRunResult {
 }
 
 const assertNotCancelled = (signal: AbortSignal): void => {
-  if (signal.aborted) throw new AgentEngineError('CANCELLED', '页面请求已取消');
+  if (signal.aborted)
+    throw signal.reason instanceof AgentEngineError
+      ? signal.reason
+      : new AgentEngineError('CANCELLED', '页面请求已取消');
 };
 
 const terminalOutcome = (input: CompletePageRunInput): PageAgentOutcome => {
@@ -131,7 +135,8 @@ export const createCompletePageRunTool = (
       const response = terminalResponse(input);
       if (
         operations &&
-        Buffer.byteLength(JSON.stringify(operations), 'utf8') > scope.maxSchemaBytes
+        Buffer.byteLength(JSON.stringify(operations), 'utf8') >
+          (scope.maxOperationBytes ?? scope.maxSchemaBytes)
       ) {
         throw new AgentEngineError('BUDGET_EXCEEDED', 'Operation List 大小已超过本次运行预算');
       }
@@ -200,6 +205,10 @@ export const createCompletePageRunTool = (
           },
           { baseWorkingVersion: scope.baseWorkingVersion, operations },
           {
+            validateCandidate: (candidate) => {
+              if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') > scope.maxSchemaBytes)
+                throw new AgentEngineError('BUDGET_EXCEEDED', '最终 Schema 大小超过本次运行预算');
+            },
             beforeWrite: () => assertNotCancelled(signal),
             agentCommit: {
               runId: scope.runId,
@@ -209,6 +218,7 @@ export const createCompletePageRunTool = (
           },
         );
       } catch (error) {
+        if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') throw error;
         rejectedWrite = true;
         const current = dependencies.runs.get(scope.runId);
         const isWorkingConflict = error instanceof ApiError && error.statusCode === 409;

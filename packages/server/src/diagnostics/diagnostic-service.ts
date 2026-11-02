@@ -27,7 +27,10 @@ export class RuntimeDiagnosticService {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly diagnostics: RuntimeDiagnosticCache,
-    private readonly getCurrentRevisionId: (projectId: string, pageId: string) => Promise<string>,
+    private readonly getCurrentWorking: (
+      projectId: string,
+      pageId: string,
+    ) => Promise<{ revisionId: string; workingVersion: number; workingHash: string }>,
   ) {}
 
   async report(report: RuntimeRenderReport): Promise<RuntimeReportResult> {
@@ -50,8 +53,13 @@ export class RuntimeDiagnosticService {
     )
       throw invalid('Runtime 诊断归属不匹配');
 
-    const currentRevisionId = await this.getCurrentRevisionId(report.projectId, report.pageId);
-    if (currentRevisionId !== report.revisionId) {
+    const working = await this.getCurrentWorking(report.projectId, report.pageId);
+    const currentRevisionId = working.revisionId;
+    if (
+      currentRevisionId !== report.revisionId ||
+      working.workingVersion !== report.workingVersion ||
+      working.workingHash !== report.workingHash
+    ) {
       return {
         version: '1',
         disposition: 'stale',
@@ -63,30 +71,29 @@ export class RuntimeDiagnosticService {
       ...item,
       safeMessage: redactRuntimeMessage(item.safeMessage),
     }));
-    this.diagnostics.replaceForRevision(
-      report.projectId,
-      report.pageId,
-      report.revisionId,
-      safeDiagnostics,
-      report.observedAt,
-    );
+    const accepted = this.diagnostics.replace(report, safeDiagnostics);
     return {
       version: '1',
-      disposition: 'accepted',
+      disposition: accepted ? 'accepted' : 'stale',
       currentRevisionId,
     };
   }
 
   async getState(projectId: string, pageId: string): Promise<PageRuntimeState> {
     this.assertPage(projectId, pageId);
-    const currentRevisionId = await this.getCurrentRevisionId(projectId, pageId);
+    const working = await this.getCurrentWorking(projectId, pageId);
+    const currentRevisionId = working.revisionId;
     return {
       version: '1',
       projectId,
       pageId,
       currentRevisionId,
-      diagnostics: this.diagnostics.listForRevision(projectId, pageId, currentRevisionId),
+      diagnostics: this.diagnostics.list(projectId, pageId, working),
     };
+  }
+
+  clear(projectId: string, pageId?: string): void {
+    this.diagnostics.remove(projectId, pageId);
   }
 
   private assertPage(projectId: string, pageId: string): void {

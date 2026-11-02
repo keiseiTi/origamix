@@ -1,7 +1,7 @@
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PreviewRenderDiagnostic, PreviewSnapshot } from '@origamix/shared';
+import type { PreviewRenderReport, PreviewSnapshot } from '@origamix/shared';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
 import { projectsService } from '@/services/projects';
@@ -31,9 +31,18 @@ export const PagePreviewFrame = ({
   const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const pending = useRef(false);
+  const generation = useRef(0);
+  const currentSnapshot = useRef<PreviewSnapshot | null>(null);
+  const reportSequence = useRef(0);
+  const observedAt = useRef(0);
   const ready = useRef(false);
-  const reported = useRef(new Set<string>());
+  useEffect(
+    () => () => {
+      generation.current += 1;
+      currentSnapshot.current = null;
+    },
+    [projectId, pageId],
+  );
   const previewUrl = useMemo(() => {
     const url = new URL(window.location.href);
     const search = new URLSearchParams({ projectId, pageId }).toString();
@@ -66,67 +75,78 @@ export const PagePreviewFrame = ({
 
   const refresh = useCallback(
     async (manual = false): Promise<void> => {
-      if (pending.current) return;
-      pending.current = true;
+      const requestGeneration = ++generation.current;
       if (manual) setRefreshing(true);
       try {
         const [result, stack] = await Promise.all([
-          schemaService.get(projectId, pageId),
+          schemaService.workingState(projectId, pageId),
           projectsService.stack(projectId),
         ]);
-        const next = { ...result, stack, theme } satisfies PreviewSnapshot;
+        if (requestGeneration !== generation.current) return;
+        const next = {
+          ...result,
+          stack,
+          theme,
+          previewId: crypto.randomUUID(),
+        } satisfies PreviewSnapshot;
+        currentSnapshot.current = next;
+        reportSequence.current = 0;
         setSnapshot(next);
         publishSnapshot(next);
         setError(null);
       } catch (reason) {
+        if (requestGeneration !== generation.current) return;
         const message = reason instanceof Error ? reason.message : '无法读取页面';
         setError(message);
         if (ready.current)
           postToPreview({ type: 'origamix.preview.error', projectId, pageId, message });
       } finally {
-        pending.current = false;
-        setRefreshing(false);
+        if (requestGeneration === generation.current) setRefreshing(false);
       }
     },
     [pageId, postToPreview, projectId, publishSnapshot, theme],
   );
 
   const reportRender = useCallback(
-    async (
-      revisionId: string,
-      outcome: 'success' | 'failed',
-      diagnostics: PreviewRenderDiagnostic[],
-    ): Promise<void> => {
-      const reportKey = `${revisionId}:${outcome}`;
-      if (reported.current.has(reportKey)) return;
-      reported.current.add(reportKey);
+    async (report: PreviewRenderReport): Promise<void> => {
+      const current = currentSnapshot.current;
+      if (
+        !current ||
+        current.previewId !== report.previewId ||
+        current.revisionId !== report.revisionId ||
+        current.workingVersion !== report.workingVersion ||
+        current.workingHash !== report.workingHash ||
+        report.reportSequence <= reportSequence.current
+      )
+        return;
+      reportSequence.current = report.reportSequence;
+      observedAt.current = Math.max(Date.now(), observedAt.current + 1);
+      const isCurrent = () =>
+        currentSnapshot.current?.previewId === report.previewId &&
+        reportSequence.current === report.reportSequence;
       try {
         const result = await runtimeService.report(projectId, pageId, {
-          revisionId,
-          outcome,
-          diagnostics: diagnostics.map((diagnostic) => ({ ...diagnostic, pageId, revisionId })),
-          observedAt: new Date().toISOString(),
-        });
-        if (result.visualRevisionId && result.visualRevisionId !== revisionId) {
-          const visual = await schemaService.getRevision(
-            projectId,
+          revisionId: report.revisionId,
+          workingVersion: report.workingVersion,
+          workingHash: report.workingHash,
+          previewId: report.previewId,
+          reportSequence: report.reportSequence,
+          outcome: report.outcome,
+          observedAt: new Date(observedAt.current).toISOString(),
+          diagnostics: report.diagnostics.map((diagnostic) => ({
+            ...diagnostic,
             pageId,
-            result.visualRevisionId,
-          );
-          const fallback = {
-            ...visual,
-            stack: await projectsService.stack(projectId),
-            theme,
-          } satisfies PreviewSnapshot;
-          setSnapshot(fallback);
-          publishSnapshot(fallback);
-          setError('当前版本渲染失败，已回退到最近一次正常预览');
-        } else if (outcome === 'success') setError(null);
+            revisionId: report.revisionId,
+          })),
+        });
+        if (isCurrent() && result.disposition === 'accepted' && report.outcome === 'success')
+          setError(null);
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : '无法记录页面渲染状态');
+        if (isCurrent())
+          setError(reason instanceof Error ? reason.message : '无法记录页面渲染状态');
       }
     },
-    [pageId, projectId, publishSnapshot, theme],
+    [pageId, projectId],
   );
 
   useEffect(() => {
@@ -136,9 +156,16 @@ export const PagePreviewFrame = ({
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.ready') {
         ready.current = true;
-        if (snapshot) publishSnapshot(snapshot);
-        else void refresh(true);
-      } else void reportRender(event.data.revisionId, event.data.outcome, event.data.diagnostics);
+        if (snapshot) {
+          const next = { ...snapshot, previewId: crypto.randomUUID() };
+          currentSnapshot.current = next;
+          reportSequence.current = 0;
+          setSnapshot(next);
+          publishSnapshot(next);
+        } else void refresh(true);
+      } else {
+        void reportRender(event.data);
+      }
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);

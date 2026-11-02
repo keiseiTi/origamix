@@ -12,6 +12,8 @@ import {
 } from './validation/schema-validation';
 import { workingResult } from './working-schema-result';
 import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
+import { assertPageNotDeleting } from '../projects/page-deletion-store';
+import { withProjectActivity } from '../projects/project-activity';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { transformSchema, schemaVersionOf } from './schema-migrations';
 import { readTargetSchema } from './target-schema-reader';
@@ -39,7 +41,12 @@ const store = new WorkingSchemaStore();
 const commits = new RevisionCommit(store);
 
 const withSchemaPageQueue = <T>(page: SchemaPageRef, action: () => Promise<T>): Promise<T> =>
-  pageQueue.run(`${page.projectPath}\0${page.pageId}`, action);
+  withProjectActivity(page.projectPath, () =>
+    pageQueue.run(`${page.projectPath}\0${page.pageId}`, async () => {
+      await assertPageNotDeleting(page.projectPath, page.pageId);
+      return action();
+    }),
+  );
 
 export const listRevisionHistory = async (page: SchemaPageRef): Promise<RevisionHistory> => {
   return withSchemaPageQueue(page, async () => {
@@ -64,7 +71,7 @@ export const listRevisionHistory = async (page: SchemaPageRef): Promise<Revision
 };
 
 export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void> =>
-  withSchemaPageQueue(page, () => store.removePage(page));
+  pageQueue.run(`${page.projectPath}\0${page.pageId}`, () => store.removePage(page));
 
 const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
   const working = await store.readWorking(page);
@@ -366,6 +373,7 @@ export const applyWorkingSchemaOperations = async (
         if (!previousBindings.has(bindingKey(binding))) executableFlowIds.add(binding.flowId);
     }
     await validateWritableSchema(page, candidate, executableFlowIds);
+    await options.validateCandidate?.(candidate);
     await options.beforeWrite?.();
     return writeWorkingDraft(page, current, candidate, options);
   });

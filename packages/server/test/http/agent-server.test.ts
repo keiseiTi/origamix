@@ -103,7 +103,7 @@ const setup = () => {
     projectService: new ProjectService(projects, templatePath),
     agent: { conversations: conversationService, runs: runService, events, service },
   });
-  return { database, server, events, dispatch };
+  return { database, server, events, dispatch, runService };
 };
 
 const payload = {
@@ -116,6 +116,42 @@ const payload = {
 };
 
 describe('Agent HTTP API', () => {
+  it('returns the durable terminal state on cancel and SSE even without retained terminal events', async () => {
+    const fixture = setup();
+    try {
+      const created = await fixture.server.inject({
+        method: 'POST',
+        url: '/api/v1/agent/runs/create',
+        headers: auth,
+        payload,
+      });
+      const { runId } = created.json().data;
+      fixture.runService.transition(runId, 'failed', {
+        errorCode: 'TIMEOUT',
+        errorMessage: '模型请求超时',
+      });
+      const subscribe = vi.spyOn(fixture.events, 'subscribe');
+      const cancelled = await fixture.server.inject({
+        method: 'POST',
+        url: '/api/v1/agent/runs/cancel',
+        headers: auth,
+        payload: { version: '1', projectId: 'project_a', runId, requestId: 'cancel-terminal' },
+      });
+      expect(cancelled.json().data.status).toBe('failed');
+      const stream = await fixture.server.inject({
+        method: 'GET',
+        url: `/api/v1/projects/project_a/agent/runs/${runId}/events`,
+        headers: { ...auth, 'last-event-id': '9999' },
+      });
+      expect(stream.payload).toContain('event: run.failed');
+      expect(stream.payload).toContain('id: 10000');
+      expect(subscribe).not.toHaveBeenCalled();
+      expect(fixture.dispatch).toHaveBeenCalledTimes(1);
+    } finally {
+      await fixture.server.close();
+      fixture.database.close();
+    }
+  });
   it('acknowledges once with 202 and enforces project ownership', async () => {
     const fixture = setup();
     try {
@@ -210,6 +246,22 @@ describe('Agent HTTP API', () => {
       expect(stream.payload).toContain('event: run.completed');
       expect(stream.payload).toContain('已加入输入框。');
       await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(0));
+      // Shutdown must also end an idle hijacked stream without a terminal event.
+      const idleRun = await fixture.server.inject({
+        method: 'POST',
+        url: '/api/v1/agent/runs/create',
+        headers: auth,
+        payload: { ...payload, clientRequestId: 'idle-shutdown' },
+      });
+      const idle = fixture.server.inject({
+        method: 'GET',
+        url: `/api/v1/projects/project_a/agent/runs/${idleRun.json().data.runId}/events`,
+        headers: auth,
+      });
+      await vi.waitFor(() => expect(fixture.events.resourceSnapshot().subscribers).toBe(1));
+      await fixture.server.close();
+      expect((await idle).statusCode).toBe(200);
+      expect(fixture.events.resourceSnapshot().subscribers).toBe(0);
     } finally {
       await fixture.server.close();
       fixture.database.close();
