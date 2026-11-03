@@ -35,7 +35,7 @@ import '@origamix/editor/styles.css';
 
 ## 宿主装配
 
-App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过句柄调用 flush/undo/redo；切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
+App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过 `toolbar` 插槽注入 Toolbar，其渲染在 EditorProvider 内，使用 `useEditorStore(selector)` 读取公共状态、`useEditorCommands()` 执行撤销/重做、切换模式、调整宽度和打开工具。内部 Store 和任意 setState 不对外开放。App 的 PageEditor 仅保留宿主 flush 句柄；切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
 
 schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置引擎。历史恢复或 Agent 新提交由 App 开启新会话。代码编辑器读取传入主题，独立使用时可显式传 `theme`；Monaco workers 由 App 的构建宿主配置，Editor 内不包含 Vite 专有 worker 导入。
 

@@ -18,7 +18,8 @@ export const options = {
   outputOptions: { codeSplitting: false },
   sourcemap: true,
   dts: false,
-  // Keep sandboxed preloads self-contained; Electron is provided by the host.
-  external: ['electron'],
-  noExternal: [/^(?!electron$).*/],
+  deps: {
+    neverBundle: ['electron'],
+    alwaysBundle: [/^(?!electron$).*/],
+  },
 };

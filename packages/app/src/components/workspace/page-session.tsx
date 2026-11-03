@@ -4,8 +4,10 @@ import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { PageEditor } from '@/components/editor';
-import type { EditorHandle, EditorMode, EditorHistoryState, EditorTool } from '@origamix/editor';
-import { PageToolbar, type WorkspaceMode } from './page-toolbar';
+import type { EditorHandle, EditorMode, EditorTool } from '@origamix/editor';
+import { PageToolbarShell, type WorkspaceMode } from './page-toolbar';
+import { AgentChatToolbar } from './agent-chat-toolbar';
+import { EditorToolbar } from './editor-toolbar';
 import { usePageSession } from './hooks/use-page-session';
 import { PagePreviewFrame } from './preview/page-preview-frame';
 
@@ -84,13 +86,6 @@ const PageSessionContent = ({
   const [viewportWidth, setViewportWidth] = useState(1440);
   const [editorTool, setEditorTool] = useState<EditorTool | null>(null);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
-  const [historyState, setHistoryState] = useState<EditorHistoryState>({
-    canUndo: false,
-    canRedo: false,
-  });
-  const updateHistoryState = useCallback((state: EditorHistoryState): void => {
-    setHistoryState(state);
-  }, []);
   useEffect(() => {
     if (mode !== 'preview') previousMode.current = mode;
   }, [mode]);
@@ -121,6 +116,24 @@ const PageSessionContent = ({
   // signal directly into the editor lifecycle while the page session refreshes
   // its application state.
   const editorSchemaRefreshKey = `${schemaRefreshKey}:${agent.state.workingRefreshKey ?? ''}`;
+  const toolbarProps = {
+    active: active,
+    projectName: projectName ?? '未命名项目',
+    pageName: page.name,
+    projectId: projectId,
+    pageId: page.id,
+    onModeChange: onModeChange,
+    onPreview: onPreview,
+    onSaveVersion: application.saveVersion,
+    onApply: application.applyPage,
+    onReloadFromProject: application.reloadFromProject,
+    onRestoreRevision: application.restoreRevision,
+    applyStatus: application.applyStatus,
+    canApply: capabilities.canApply,
+    canSaveVersion: capabilities.canSaveVersion,
+    canReload: capabilities.canReload,
+    canRestore: capabilities.canEdit,
+  };
   const chat = (
     <ChatWorkspace
       pageName={page.name}
@@ -134,35 +147,7 @@ const PageSessionContent = ({
   );
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      {mode !== 'preview' && (
-        <PageToolbar
-          active={active}
-          projectName={projectName ?? '未命名项目'}
-          pageName={page.name}
-          projectId={projectId}
-          pageId={page.id}
-          mode={mode}
-          editorMode={editorMode}
-          onEditorModeChange={changeEditorMode}
-          onModeChange={onModeChange}
-          onPreview={onPreview}
-          onSaveVersion={application.saveVersion}
-          onApply={application.applyPage}
-          onReloadFromProject={application.reloadFromProject}
-          onRestoreRevision={application.restoreRevision}
-          applyStatus={application.applyStatus}
-          canApply={capabilities.canApply}
-          canSaveVersion={capabilities.canSaveVersion}
-          canReload={capabilities.canReload}
-          canRestore={capabilities.canEdit}
-          viewportWidth={viewportWidth}
-          onViewportWidthChange={setViewportWidth}
-          historyState={historyState}
-          onUndo={() => editorRef.current?.undo()}
-          onRedo={() => editorRef.current?.redo()}
-          onOpenEditorTool={setEditorTool}
-        />
-      )}
+      {mode === 'chat' && <AgentChatToolbar {...toolbarProps} />}
       <>
         <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
         <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
@@ -177,7 +162,10 @@ const PageSessionContent = ({
             onModeChange={changeEditorMode}
             tool={editorTool === 'history' ? null : editorTool}
             onCloseTool={() => setEditorTool(null)}
-            onHistoryStateChange={updateHistoryState}
+            toolbar={<EditorToolbar {...toolbarProps} />}
+            loadingToolbar={<PageToolbarShell {...toolbarProps} navigation='chat' />}
+            onViewportWidthChange={setViewportWidth}
+            onToolChange={setEditorTool}
             onWorkingCommitted={onWorkingCommitted}
             readOnly={!capabilities.canEdit}
             readOnlyMessage={

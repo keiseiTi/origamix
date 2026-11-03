@@ -3,6 +3,7 @@ import React from 'react';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
 export interface IProps extends MaterialComponentProps, ContainerLayoutProps {
+  ref?: React.Ref<HTMLDivElement>;
   children?: React.ReactNode;
   margin?: number | string;
   padding?: number | string;
@@ -11,8 +12,9 @@ export interface IProps extends MaterialComponentProps, ContainerLayoutProps {
 }
 
 // Ref remains available to component consumers; Editor targets the shared layout frame.
-export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) => {
+export const Container = (props: IProps) => {
   const {
+    ref,
     children,
     margin,
     padding,
@@ -50,7 +52,7 @@ export const Container = React.forwardRef<HTMLDivElement>((props: IProps, ref) =
       {children || om_dropPlaceholder}
     </div>
   );
-});
+};
 
 Container.displayName = 'Container';
 

@@ -4,13 +4,15 @@ import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 import { cn } from '@';
 
 interface BasicPageProps extends MaterialComponentProps, ContainerLayoutProps {
+  ref?: React.Ref<HTMLDivElement>;
   children?: React.ReactNode;
   margin?: number | string;
   padding?: number | string;
 }
 
-export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps, ref) => {
+export const BasicPage = (props: BasicPageProps) => {
   const {
+    ref,
     children,
     margin,
     padding,
@@ -40,6 +42,6 @@ export const BasicPage = React.forwardRef<HTMLDivElement>((props: BasicPageProps
       {children || om_dropPlaceholder}
     </div>
   );
-});
+};
 
 export default BasicPage;

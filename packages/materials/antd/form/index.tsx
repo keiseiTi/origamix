@@ -4,7 +4,7 @@ import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Form as AntdForm, theme, type FormProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
-export interface IProps
+interface FormContentProps
   extends
     MaterialEventProps<FormProps, 'onValuesChange' | 'onFinish' | 'onFinishFailed'>,
     MaterialComponentProps {
@@ -14,7 +14,11 @@ export interface IProps
   value?: Record<string, unknown>;
 }
 
-const FormContent = (props: IProps) => {
+export interface IProps extends FormContentProps {
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+const FormContent = (props: FormContentProps) => {
   const {
     children,
     labelColVal,
@@ -125,7 +129,7 @@ const FormContent = (props: IProps) => {
   );
 };
 
-export const Form = React.forwardRef<HTMLDivElement, IProps>((props, ref) => {
+export const Form = ({ ref, ...props }: IProps) => {
   return (
     <div ref={ref} className='min-h-12 w-full'>
       <FormContent
@@ -134,6 +138,6 @@ export const Form = React.forwardRef<HTMLDivElement, IProps>((props, ref) => {
       />
     </div>
   );
-});
+};
 
 export default Form;

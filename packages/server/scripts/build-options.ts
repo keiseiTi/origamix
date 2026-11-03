@@ -17,5 +17,7 @@ export const options = {
   outputOptions: { codeSplitting: false },
   sourcemap: true,
   dts: false,
-  noExternal: [/^(?!node:).*/],
+  deps: {
+    alwaysBundle: [/^(?!node:).*/],
+  },
 };

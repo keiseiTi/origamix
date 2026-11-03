@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from '@origamix/ui';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Braces,
   Eye,
@@ -20,21 +20,19 @@ import {
   TableOfContents,
 } from 'lucide-react';
 import { RevisionHistoryDialog } from './history/revision-history-dialog';
-import type { EditorHistoryState, EditorTool, EditorMode } from '@origamix/editor';
-import { CanvasControls } from './toolbar/canvas-controls';
+import type { EditorTool } from '@origamix/editor';
 import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
-interface PageToolbarProps {
+export interface PageToolbarProps {
   active: boolean;
   projectName: string;
   pageName: string;
   projectId: string;
   pageId: string;
-  mode: WorkspaceMode;
-  editorMode?: EditorMode;
-  onEditorModeChange?: (mode: EditorMode) => Promise<void>;
+  navigation: 'chat' | 'edit';
+  children?: ReactNode;
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
   onSaveVersion: () => Promise<void>;
@@ -46,23 +44,17 @@ interface PageToolbarProps {
   canSaveVersion: boolean;
   canReload: boolean;
   canRestore: boolean;
-  viewportWidth: number;
-  onViewportWidthChange: (width: number) => void;
-  historyState: EditorHistoryState;
-  onUndo: () => void;
-  onRedo: () => void;
-  onOpenEditorTool: (tool: EditorTool | null) => void;
+  onOpenEditorTool?: (tool: EditorTool | null) => void;
 }
 
-export const PageToolbar = ({
+export const PageToolbarShell = ({
   active,
   projectName,
   pageName,
   projectId,
   pageId,
-  mode,
-  editorMode = 'view',
-  onEditorModeChange,
+  navigation,
+  children,
   onModeChange,
   onPreview,
   onSaveVersion,
@@ -74,11 +66,6 @@ export const PageToolbar = ({
   canSaveVersion,
   canReload,
   canRestore,
-  viewportWidth,
-  onViewportWidthChange,
-  historyState,
-  onUndo,
-  onRedo,
   onOpenEditorTool,
 }: PageToolbarProps): React.JSX.Element => {
   const [opening, setOpening] = useState(false);
@@ -116,12 +103,16 @@ export const PageToolbar = ({
               <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
                 <History /> Schema 历史管理
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
-                <ListTree /> 全局变量
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
-                <Braces /> Schema 编辑器
-              </DropdownMenuItem>
+              {onOpenEditorTool && (
+                <>
+                  <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
+                    <ListTree /> 全局变量
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
+                    <Braces /> Schema 编辑器
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <span
@@ -131,49 +122,7 @@ export const PageToolbar = ({
             {projectName} / {pageName}
           </span>
         </div>
-        {mode === 'edit' && (
-          <div className='flex min-w-0 items-center gap-3'>
-            <div
-              role='group'
-              aria-label='编辑模式'
-              className='flex shrink-0 items-center gap-1 rounded-lg border border-border p-0.5'
-            >
-              {(
-                [
-                  ['view', '视图'],
-                  ['logic', '逻辑'],
-                ] as const
-              ).map(([value, label]) => (
-                <Button
-                  key={value}
-                  size='sm'
-                  variant={editorMode === value ? 'secondary' : 'ghost'}
-                  aria-pressed={editorMode === value}
-                  disabled={opening || !onEditorModeChange}
-                  onClick={() => {
-                    setError(null);
-                    void onEditorModeChange?.(value).catch((reason: unknown) =>
-                      setError(
-                        reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
-                      ),
-                    );
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-            {editorMode === 'view' && (
-              <CanvasControls
-                viewportWidth={viewportWidth}
-                onViewportWidthChange={onViewportWidthChange}
-                historyState={historyState}
-                onUndo={onUndo}
-                onRedo={onRedo}
-              />
-            )}
-          </div>
-        )}
+        {children}
         <div className='flex shrink-0 items-center gap-1'>
           <RevisionActions
             active={active}
@@ -197,17 +146,26 @@ export const PageToolbar = ({
               render={
                 <Button
                   size='icon-sm'
-                  aria-label={mode === 'edit' ? '返回对话' : '编辑'}
+                  aria-label={navigation === 'chat' ? '返回对话' : '编辑'}
                   variant='ghost'
                   className='text-zinc-500 dark:text-zinc-400'
                   disabled={opening}
-                  onClick={() => void onModeChange(mode === 'edit' ? 'chat' : 'edit')}
+                  onClick={() => {
+                    setError(null);
+                    void onModeChange(navigation).catch((reason: unknown) =>
+                      setError(
+                        reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
+                      ),
+                    );
+                  }}
                 />
               }
             >
-              {mode === 'edit' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
+              {navigation === 'chat' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
             </TooltipTrigger>
-            <TooltipContent side='bottom'>{mode === 'edit' ? '返回对话' : '编辑'}</TooltipContent>
+            <TooltipContent side='bottom'>
+              {navigation === 'chat' ? '返回对话' : '编辑'}
+            </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger

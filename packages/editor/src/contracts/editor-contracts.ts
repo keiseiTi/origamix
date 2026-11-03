@@ -41,8 +41,6 @@ export type CommitEditorTransaction = (
 
 export type EditorHandle = Readonly<{
   flush: () => Promise<void>;
-  undo: () => void;
-  redo: () => void;
 }>;
 
 /** Supplied by App after resolving the project's material set. No loader or concrete family here. */

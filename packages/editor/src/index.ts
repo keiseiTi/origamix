@@ -14,3 +14,9 @@ export {
 export { CanvasPrototypeSession } from './prototype/canvas-prototype-session';
 export { mountCanvasPrototypeFrame } from './prototype/mount-canvas-prototype-frame';
 export { createCanvasPrototypeDocument } from './prototype/create-canvas-prototype-document';
+
+export {
+  useEditorStore,
+  useEditorCommands,
+  type EditorPublicState,
+} from './session/editor-controls';

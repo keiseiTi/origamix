@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import type { EditorMode } from '@origamix/editor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
 import { useWorkspaceStore } from '../../../src/store/workspace';
@@ -22,6 +23,31 @@ const mocks = vi.hoisted(() => ({
   restoreRevision: vi.fn(),
   editorMounted: vi.fn(),
 }));
+// Model the public editor hooks while keeping the host persistence/recovery real.
+const EditorTestContext = createContext<{
+  mode: EditorMode;
+  onModeChange: (mode: EditorMode) => Promise<void>;
+}>({
+  mode: 'view' as EditorMode,
+  onModeChange: async (): Promise<void> => undefined,
+});
+vi.mock('@origamix/editor', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@origamix/editor')>()),
+  useEditorStore: (selector: (state: object) => unknown) => {
+    const { mode } = useContext(EditorTestContext);
+    return selector({ mode, canUndo: false, canRedo: false, viewportWidth: 1440 });
+  },
+  useEditorCommands: () => {
+    const { onModeChange } = useContext(EditorTestContext);
+    return {
+      setMode: onModeChange,
+      undo: vi.fn(),
+      redo: vi.fn(),
+      openTool: vi.fn(),
+      setViewportWidth: vi.fn(),
+    };
+  },
+}));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../src/components/editor/index', () => ({
@@ -29,16 +55,27 @@ vi.mock('../../../src/components/editor/index', () => ({
     readOnly,
     readOnlyMessage,
     onWorkingCommitted,
+    toolbar,
+    visible,
+    mode = 'view',
+    onModeChange = async () => undefined,
   }: {
+    visible: boolean;
+    toolbar?: ReactNode;
+    mode?: EditorMode;
+    onModeChange?: (mode: EditorMode) => Promise<void>;
     readOnly: boolean;
     readOnlyMessage?: string;
     onWorkingCommitted?: () => void;
   }) => {
     useEffect(() => mocks.editorMounted(), []);
     return (
-      <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
-        {readOnlyMessage ?? '画布'}
-      </button>
+      <EditorTestContext.Provider value={{ mode, onModeChange }}>
+        {visible && toolbar}
+        <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
+          {readOnlyMessage ?? '画布'}
+        </button>
+      </EditorTestContext.Provider>
     );
   },
 }));
