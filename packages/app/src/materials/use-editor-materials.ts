@@ -16,7 +16,7 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
     let active = true;
     projectsService
       .stack(scope.projectId)
-      .then(loadEditorMaterials)
+      .then((stack) => loadEditorMaterials(stack.materialSet))
       .then((registration) => {
         if (active) setResult({ scope, registration });
       })

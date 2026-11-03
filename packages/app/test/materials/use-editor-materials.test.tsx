@@ -52,5 +52,6 @@ it('ignores late material loads from another project and retries a failed curren
   act(() => hook.result.current.retry());
   await waitFor(() => expect(hook.result.current.registration).toBe(currentRegistration));
   expect(mocks.stack).toHaveBeenLastCalledWith('project_current');
+  expect(mocks.load).toHaveBeenLastCalledWith(BUILTIN_PROJECT_STACK.materialSet);
   expect(hook.result.current.error).toBeUndefined();
 });

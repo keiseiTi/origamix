@@ -1,5 +1,5 @@
 import type { EditorMaterialRegistration } from '@origamix/editor';
-import { validateResolvedProjectStack, type ProjectStack } from '@origamix/shared';
+import type { ProjectStack } from '@origamix/shared';
 
 // Literal imports are an allowlist, never module paths supplied by project files.
 const builtinLoaders = {
@@ -10,16 +10,15 @@ const editorLoads = new Map<string, Promise<EditorMaterialRegistration>>();
 const runtimeLoads = new Map<string, ReturnType<typeof builtinLoaders.runtime>>();
 
 export const loadEditorMaterials = async (
-  stack: ProjectStack,
+  materialSet: ProjectStack['materialSet'],
 ): Promise<EditorMaterialRegistration> => {
-  const resolved = validateResolvedProjectStack(stack);
-  const key = `${resolved.materialSet.id}@${resolved.materialSet.version}`;
+  const key = `${materialSet.id}@${materialSet.version}`;
   let pending = editorLoads.get(key);
   if (!pending) {
     pending = builtinLoaders.editor().then((module) => {
       if (
-        module.antdMaterialManifest.materialSet.id !== resolved.materialSet.id ||
-        module.antdMaterialManifest.materialSet.version !== resolved.materialSet.version
+        module.antdMaterialManifest.materialSet.id !== materialSet.id ||
+        module.antdMaterialManifest.materialSet.version !== materialSet.version
       )
         throw new Error('编辑物料与项目要求的版本不一致');
       return {
@@ -42,9 +41,8 @@ export const loadEditorMaterials = async (
   }
 };
 
-export const loadRuntimeMaterials = async (stack: ProjectStack) => {
-  const resolved = validateResolvedProjectStack(stack);
-  const key = `${resolved.materialSet.id}@${resolved.materialSet.version}`;
+export const loadRuntimeMaterials = async (materialSet: ProjectStack['materialSet']) => {
+  const key = `${materialSet.id}@${materialSet.version}`;
   let pending = runtimeLoads.get(key);
   if (!pending) {
     pending = builtinLoaders.runtime();
@@ -53,8 +51,8 @@ export const loadRuntimeMaterials = async (stack: ProjectStack) => {
   try {
     const module = await pending;
     if (
-      module.materialSet.id !== resolved.materialSet.id ||
-      module.materialSet.version !== resolved.materialSet.version
+      module.materialSet.id !== materialSet.id ||
+      module.materialSet.version !== materialSet.version
     )
       throw new Error('运行物料与项目要求的版本不一致');
     return { components: module.default, Provider: module.RuntimeProvider };

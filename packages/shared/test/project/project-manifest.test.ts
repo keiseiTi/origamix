@@ -25,6 +25,11 @@ describe('project manifest protocol', () => {
     expect(isProjectManifest({ ...manifest(), materialSet: undefined })).toBe(false);
     expect(() => resolveProjectStack({ ...manifest(), materialSet: undefined })).toThrow();
     expect(validateResolvedProjectStack(BUILTIN_PROJECT_STACK)).toEqual(BUILTIN_PROJECT_STACK);
+    const otherTemplate = {
+      ...BUILTIN_PROJECT_STACK,
+      template: { id: 'custom-scaffold', version: '9.0.0' },
+    };
+    expect(validateResolvedProjectStack(otherTemplate)).toEqual(otherTemplate);
     expect(() =>
       resolveProjectStack({
         ...manifest(),

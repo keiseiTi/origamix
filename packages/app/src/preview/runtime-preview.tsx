@@ -34,7 +34,7 @@ export const RuntimePreview = ({
   theme: 'light' | 'dark';
   onOutcome?: (outcome: RenderOutcome) => void;
 }): React.JSX.Element => {
-  const key = JSON.stringify(stack ?? null);
+  const key = JSON.stringify(stack.materialSet);
   const [attempt, setAttempt] = useState(0);
   const scope = useMemo(() => ({ key, attempt }), [key, attempt]);
   const [loaded, setLoaded] = useState<{
@@ -44,7 +44,7 @@ export const RuntimePreview = ({
   } | null>(null);
   useEffect(() => {
     let active = true;
-    loadRuntimeMaterials(JSON.parse(scope.key) as ProjectStack)
+    loadRuntimeMaterials(JSON.parse(scope.key) as ProjectStack['materialSet'])
       .then((materials) => {
         if (active) setLoaded({ scope, materials });
       })

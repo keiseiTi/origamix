@@ -60,10 +60,9 @@ export const validateResolvedProjectStack = (value: unknown): ProjectStack => {
   if (
     value.materialSet.version !== resolved.materialSet.version ||
     value.runtime.id !== resolved.runtime.id ||
-    value.runtime.version !== resolved.runtime.version ||
-    value.template.id !== resolved.template.id ||
-    value.template.version !== resolved.template.version
+    value.runtime.version !== resolved.runtime.version
   )
-    throw new Error('项目运行时或模板版本不受支持');
-  return resolved;
+    throw new Error('项目物料或运行时版本不受支持');
+  // Template describes project scaffolding; it does not constrain editing or rendering.
+  return { ...resolved, template: { ...value.template } };
 };
