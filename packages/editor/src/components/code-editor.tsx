@@ -2,6 +2,7 @@ import { useContext, useEffect, useEffectEvent, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
+import { configureMonacoWorkers } from './monaco-workers';
 import { cn } from '@origamix/ui';
 import { EditorThemeContext } from '../session/editor-environment';
 import type { EditorTheme } from '../contracts/editor-contracts';
@@ -36,6 +37,7 @@ export const CodeEditor = ({
 
   useEffect(() => {
     if (!container.current) return;
+    configureMonacoWorkers();
     const model = monaco.editor.createModel('', 'json');
     const instance = monaco.editor.create(container.current, {
       model,
