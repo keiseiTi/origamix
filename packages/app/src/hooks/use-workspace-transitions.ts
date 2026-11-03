@@ -1,16 +1,16 @@
 import { useCallback, useRef, useState } from 'react';
 
-export const useWorkspaceTransitions = (flush: () => Promise<void>) => {
+export const useWorkspaceTransitions = (flush: (pageId?: string) => Promise<void>) => {
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   const transition = useCallback(
-    async (action: () => void | Promise<void>): Promise<void> => {
+    async (action: () => void | Promise<void>, pageId?: string): Promise<void> => {
       if (pending.current) return;
       pending.current = true;
       setError(null);
       try {
-        await flush();
+        await flush(pageId);
         await action();
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : '保存失败，请重试');
@@ -21,5 +21,5 @@ export const useWorkspaceTransitions = (flush: () => Promise<void>) => {
     [flush],
   );
 
-  return { transition, transitionError: error, setTransitionError: setError };
+  return { transition, transitionError: error };
 };

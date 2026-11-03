@@ -53,13 +53,13 @@ const App = (): React.JSX.Element => {
             onOpenSettings={openSettings}
             flushEditor={pages.flushEditor}
             onPageCreated={pages.addPage}
-            onSelectPage={(pageId) => void pages.transition(() => pages.selectPage(pageId))}
+            onSelectPage={pages.selectPage}
           />
         }
       >
         <Workspace
-          onSelectPage={(pageId) => void pages.transition(() => pages.selectPage(pageId))}
-          onClosePage={(pageId) => void pages.transition(() => pages.closePage(pageId))}
+          onSelectPage={pages.selectPage}
+          onClosePage={pages.closePage}
           transitionError={pages.transitionError}
           editorRefForPage={pages.editorRefForPage}
           onModeChange={pages.changeMode}

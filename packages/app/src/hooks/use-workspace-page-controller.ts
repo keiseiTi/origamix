@@ -15,11 +15,22 @@ export const useWorkspacePageController = ({ onPageSelected }: { onPageSelected:
     return ref;
   }, []);
 
-  const flushEditor = useCallback(async (): Promise<void> => {
-    const pageId = useWorkspaceStore.getState().activeTabId;
-    if (pageId) await editorRefs.current.get(pageId)?.current?.flush();
-  }, []);
-  const { transition, transitionError } = useWorkspaceTransitions(flushEditor);
+  const flushEditor = useCallback(
+    async (pageId = useWorkspaceStore.getState().activeTabId): Promise<void> => {
+      if (pageId) await editorRefs.current.get(pageId)?.current?.flush();
+    },
+    [],
+  );
+  const flushForTransition = useCallback(
+    async (targetPageId?: string): Promise<void> => {
+      const activePageId = useWorkspaceStore.getState().activeTabId;
+      // Closing or previewing an inactive tab must also flush that tab's editor.
+      const pageIds = new Set([activePageId, targetPageId]);
+      for (const pageId of pageIds) if (pageId) await flushEditor(pageId);
+    },
+    [flushEditor],
+  );
+  const { transition, transitionError } = useWorkspaceTransitions(flushForTransition);
 
   useEffect(() => {
     const removeClosedRefs = (): void => {
@@ -31,15 +42,17 @@ export const useWorkspacePageController = ({ onPageSelected }: { onPageSelected:
     return useWorkspaceStore.subscribe(removeClosedRefs);
   }, []);
 
-  const selectPage = (pageId: string): void => {
-    useWorkspaceStore.getState().selectPage(pageId);
-    onPageSelected();
-  };
+  const selectPage = (pageId: string): Promise<void> =>
+    transition(() => {
+      useWorkspaceStore.getState().selectPage(pageId);
+      onPageSelected();
+    }, pageId);
 
-  const closePage = (pageId: string): void => {
-    useWorkspaceStore.getState().closePage(pageId);
-    editorRefs.current.delete(pageId);
-  };
+  const closePage = (pageId: string): Promise<void> =>
+    transition(() => {
+      useWorkspaceStore.getState().closePage(pageId);
+      editorRefs.current.delete(pageId);
+    }, pageId);
 
   const addPage = (projectId: string, page: PageItem): void => {
     useWorkspaceStore
@@ -49,23 +62,19 @@ export const useWorkspacePageController = ({ onPageSelected }: { onPageSelected:
           project.id === projectId ? { ...project, pages: [...project.pages, page] } : project,
         ),
       );
-    void transition(() => selectPage(page.id));
+    void selectPage(page.id);
   };
 
   const changeMode = async (pageId: string, mode: WorkspaceMode): Promise<void> =>
     transition(() => {
       useWorkspaceStore.getState().setPageMode(pageId, mode);
-    });
+    }, pageId);
 
-  const openPreview = async (pageId: string): Promise<void> => {
-    await editorRefs.current.get(pageId)?.current?.flush();
-    useWorkspaceStore.getState().setPageMode(pageId, 'preview');
-  };
+  const openPreview = (pageId: string): Promise<void> => changeMode(pageId, 'preview');
 
   return {
     editorRefForPage,
     flushEditor,
-    transition,
     transitionError,
     selectPage,
     closePage,
