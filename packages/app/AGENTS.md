@@ -95,3 +95,5 @@ pnpm --filter @origamix/app build
 - Default backend port is 1029 and Renderer development port is 9685. Hosts parse ORIGAMIX_SERVER_PORT and pass it into startServer; explicit 0 is reserved for OS-assigned ports in isolated integrations. Keep loopback-only binding and fail on occupied ports; never connect to or kill the occupying process. Fixed ports do not change the existing development restart policy.
 
 - App owns one backend-status subscription. On replacement invalidate the in-memory connection generation; old getConnection replies and late HTTP responses cannot install stale authority or confirm a write. Recovery re-reads durable state and reconnects SSE, preserving pending request identities and editor drafts. Never use ApiRequestError for an ambiguous replaced-service response, since 4xx handling can retire retry identities.
+
+- Project compatibility UI reports material/Schema support independently of package releases. No page upgrade action exists without a converter. The only current conversion is the explicit legacy 1.0.0 manifest format change; it never writes pages or dependencies.

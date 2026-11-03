@@ -84,7 +84,7 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 这些流程的实现入口见 [编辑会话](src/components/editor)、[版本操作](src/components/workspace/toolbar/revision-actions.tsx) 和 [历史管理](src/components/workspace/history/revision-history-dialog.tsx)。
 
-开发宿主会通过 Server 的模板准备工具，在本地状态目录生成固定 Runtime/Materials npm 版本的模板，供新建项目与显式项目升级共用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
+开发宿主会通过 Server 的模板准备工具，在本地状态目录生成固定 Runtime/Materials npm 版本的模板，供新建项目使用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
 
 ## 开发环境配置
 
@@ -101,7 +101,7 @@ Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默�
 
 这些文件不保存凭据。Web 开发模型密钥仍通过进程环境 DEEPSEEK_API_KEY 注入，仅在后端凭据回调使用；不得写入 VITE_*、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
 
-模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；兼容性检查不更新依赖。发布前本地归档验证不等同于 npm registry 已可安装。
 
 后端默认监听 `127.0.0.1:1029`，可通过宿主的 `ORIGAMIX_SERVER_PORT` 配置覆盖；`0` 表示系统分配端口，供隔离检查使用。网页开发入口默认使用 `9685`，`/api/v1` 继续由开发宿主代理并注入认证信息。固定端口被占用时启动失败，不自动连接或终止占用进程。
 

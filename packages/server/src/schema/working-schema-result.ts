@@ -3,7 +3,6 @@ import type { WorkingSchemaReadResult } from './schema-contracts';
 
 export const workingResult = (working: WorkingSchemaFile): WorkingSchemaReadResult => ({
   schema: working.schema,
-  ...(working.migration ? { migration: working.migration } : {}),
   revisionId: working.lastSavedRevisionId,
   workingVersion: working.workingVersion,
   workingHash: working.workingHash,

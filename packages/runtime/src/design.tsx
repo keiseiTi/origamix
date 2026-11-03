@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode, type HTMLAttributes, type RefAttributes } from 'react';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import { parseLayout } from './core/layout';
 import type { MaterialRegistry, RuntimeSchema } from './core/types';
 import { MaterialView, renderLayout } from './renderer';
@@ -31,7 +31,7 @@ export const DesignRenderer = ({
   const layouts = useMemo(() => {
     if (
       (schema.extensions.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
-      ORIGAMIX_VERSION
+      SCHEMA_VERSION
     )
       throw new Error('页面版本不受支持');
     return parseLayout(schema);

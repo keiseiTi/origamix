@@ -92,7 +92,7 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 ### 统一发布版本
 
-所有自有包统一使用根版本。`pnpm release:version --check` 检查版本与迁移声明，已接入 lint；`pnpm release:version --set <版本>` 更新包版本、Shared 契约版本和模板项目清单。版本更新后需补齐相邻 Schema 迁移步骤，再运行仓库检查。页面按需迁移及数据库启动迁移见 [Server README](packages/server/README.md#页面与数据库升级)。
+所有自有包统一使用根版本。`pnpm release:version --check` 检查包版本对齐及独立契约的 SemVer；`pnpm release:version --set <版本>` 只更新包发布版本，不递增物料契约或 Schema。`MATERIAL_CONTRACT_VERSION`、`SCHEMA_VERSION` 独立维护，遵循 SemVer：patch 修复、minor 向后兼容扩展、major 不兼容变化。当前仅接受明确支持的精确版本，不推断兼容范围。页面打开只检查，不自动转换。见 [Server README](packages/server/README.md#页面与数据库升级)。
 
 ## 开发环境文件
 

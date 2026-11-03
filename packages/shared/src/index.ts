@@ -284,6 +284,7 @@ export {
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
   validateResolvedProjectStack,
+  projectStackCompatibilityIssue,
 } from './project/project-stack.ts';
 export type { ProjectStack } from './project/project-stack.ts';
 
@@ -338,4 +339,13 @@ export type {
   PreviewRenderReport,
 } from './transport/preview-message.ts';
 
-export { ORIGAMIX_VERSION, ORIGAMIX_RELEASES, isSupportedOrigamixVersion } from './version.ts';
+export {
+  ORIGAMIX_VERSION,
+  SCHEMA_VERSION,
+  MATERIAL_CONTRACT_VERSION,
+  SEMVER_PATTERN,
+  isSemanticVersion,
+  SUPPORTED_SCHEMA_VERSIONS,
+  SUPPORTED_MATERIAL_VERSIONS,
+  contractCompatibilityIssue,
+} from './version.ts';

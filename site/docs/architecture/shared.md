@@ -15,7 +15,7 @@ description: Shared：公共契约的职责、使用与开发说明
 
 `project/project-stack.ts` 定义当前项目技术栈与严格解析；`material/material-manifest.ts` 定义物料 Manifest 格式；`flow/flow-node-manifest.ts` 定义内置流程节点身份、默认参数、连接限制与参数校验；`flow/hyper-value.ts` 定义可序列化值及函数配置。
 
-Shared 不保存具体 Ant Design 物料清单，也不执行项目函数。统一发布版本由 `src/version.ts` 声明，当前为 `1.0.0`。持久化旧数据的转换归 Server，不通过放宽 Shared 当前契约实现。
+Shared 不保存具体 Ant Design 物料清单，也不执行项目函数。`src/version.ts` 分别声明统一包发布版本、独立 SemVer Schema 与物料契约，当前均为 `1.0.0`。应用发布不自动递增契约；初期只接受明确支持的精确版本，不通过放宽校验实现兼容，也不自动转换旧数据。
 
 ## 协作边界
 

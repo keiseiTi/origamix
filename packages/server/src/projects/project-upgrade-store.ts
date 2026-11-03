@@ -3,7 +3,6 @@ import { join, dirname } from 'node:path';
 import { metadataPath } from '../schema/metadata-path';
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { conflict, invalid } from '../errors';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
 
 export interface ProjectUpgradeJournal {
   version: 1;
@@ -73,25 +72,7 @@ export const writeProjectUpgrade = async (
 
 export const assertProjectNotUpgrading = async (projectPath: string): Promise<void> => {
   if ((await readProjectUpgrade(projectPath))?.state === 'pending')
-    throw conflict('项目升级尚未完成，请使用原请求继续升级；草稿已保留');
-};
-
-export const assertProjectApplyVersion = async (
-  projectPath: string,
-  version: string,
-  upgradeRequestId?: string,
-): Promise<void> => {
-  const journal = await readProjectUpgrade(projectPath);
-  if (journal?.state === 'pending') {
-    if (
-      journal.requestId !== upgradeRequestId ||
-      journal.to !== ORIGAMIX_VERSION ||
-      ![journal.from, journal.to].includes(version)
-    )
-      throw conflict('项目正在升级，请使用原升级请求继续');
-  } else if (version !== ORIGAMIX_VERSION || upgradeRequestId) {
-    throw conflict(`项目运行环境仍为 ${version}，请执行显式项目升级`);
-  }
+    throw conflict('项目旧版升级尚未完成，请使用原应用恢复或检查是否可安全撤销；草稿已保留');
 };
 
 /** Only fixed project configuration files are used by the upgrade service. */

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { BUILTIN_PROJECT_STACK, ORIGAMIX_VERSION } from '@origamix/shared';
+import { BUILTIN_PROJECT_STACK, SCHEMA_VERSION } from '@origamix/shared';
 
 const mocks = vi.hoisted(() => ({ workingState: vi.fn(), stack: vi.fn(), report: vi.fn() }));
 vi.mock('../../../../src/services/schema', () => ({ schemaService: mocks }));
@@ -27,7 +27,7 @@ const working = (version: number) => ({
     flows: {},
     bindElements: [],
     context: { globalVariables: [] },
-    extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+    extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
   },
 });
 afterEach(() => {

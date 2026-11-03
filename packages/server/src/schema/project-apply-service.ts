@@ -1,5 +1,5 @@
 import { withProjectActivity } from '../projects/project-activity';
-import { assertProjectApplyVersion } from '../projects/project-upgrade-store';
+import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { hashSchema } from './schema-hash';
@@ -30,7 +30,6 @@ interface ApplyReceipt extends ApplyPageResult {
 }
 
 export interface ProjectApplyOptions {
-  upgradeRequestId?: string;
   /** Test/host hook used to simulate interruption after a durable apply stage. */
   afterStage?: (stage: 'target' | 'receipt') => void | Promise<void>;
 }
@@ -139,11 +138,7 @@ export class ProjectApplyService {
     return this.withOwnedPage(projectId, pageId, async (page) => {
       const projectManifest = await new ProjectManifestStore().readManifest(page.projectPath);
       if (projectManifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
-      await assertProjectApplyVersion(
-        page.projectPath,
-        projectManifest.version,
-        this.options.upgradeRequestId,
-      );
+      await new ProjectManifestStore().requireEditable(page.projectPath);
       const requestHash = createHash('sha256')
         .update(
           JSON.stringify({
@@ -199,12 +194,8 @@ export class ProjectApplyService {
               baselineHash: queuedReceipt.schemaHash,
             };
           }
-          const manifest = await new ProjectManifestStore().readManifest(page.projectPath);
-          await assertProjectApplyVersion(
-            page.projectPath,
-            manifest.version,
-            this.options.upgradeRequestId,
-          );
+          await new ProjectManifestStore().requireEditable(page.projectPath);
+          await assertProjectNotUpgrading(page.projectPath);
           const targetSchema = await this.readTarget(page);
           const targetHash = hashSchema(targetSchema);
           if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)

@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import {
@@ -28,7 +28,7 @@ const createPage = (): OrigamixPageSchema => ({
   },
   bindElements: [{ id: 'button_submit', event: 'onClick', flowId: 'flow_submit' }],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 });
 
 describe('Schema Operation Engine', () => {

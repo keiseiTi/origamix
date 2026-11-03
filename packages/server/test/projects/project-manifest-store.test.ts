@@ -18,9 +18,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
           projectId: 'project_test',
           name: 'Test',
           framework: 'react',
-          uiLibrary: 'antd',
-          version: '1.0.0',
-          materialSet: 'official-antd',
+          materialSet: { id: 'official-antd', version: '1.0.0' },
           pageDirectory: 'pages',
           pages: [first, second],
         }),
@@ -32,7 +30,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
   }
 });
 
-it('rejects missing project versions without inferring or rewriting them', async () => {
+it('rejects missing material contract versions without inferring or rewriting them', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-manifest-invalid-'));
   const path = join(directory, 'origamix.project.json');
   const store = new ProjectManifestStore();
@@ -44,7 +42,7 @@ it('rejects missing project versions without inferring or rewriting them', async
       code: 'current-project',
     });
     const manifest = await store.readManifest(directory);
-    const source = JSON.stringify({ ...manifest, version: undefined });
+    const source = JSON.stringify({ ...manifest, materialSet: { id: manifest.materialSet.id } });
     await writeFile(path, source);
     await expect(new ProjectManifestStore().readManifest(directory)).rejects.toThrow();
     expect(await readFile(path, 'utf8')).toBe(source);

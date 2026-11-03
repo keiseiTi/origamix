@@ -24,7 +24,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Material rules
 
-- Built-in materials, material sets and the Materials package share the Origamix release version; `material-set.ts` uses Shared ORIGAMIX_VERSION. Legacy page conversion belongs exclusively to the Server Schema migration chain; materials must not retain legacy property branches.
+- Materials package follows the app release. Built-in material/manifest contracts use independent Shared MATERIAL_CONTRACT_VERSION (SemVer). Never automatically bump it with a package release or add legacy property branches; incompatible pages are rejected without automatic migration.
 
 - This package owns page/runtime materials, not Origamix workbench UI. Ant Design is the only supported material family today; add another family behind a separate entry point and registry rather than mixing its components into `antd/`.
 - Keep the package consumable through declared `@origamix/materials` exports. Do not import App, Desktop, Server, Node.js or Electron source, and do not use aliases that resolve outside this package.

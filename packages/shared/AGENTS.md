@@ -6,12 +6,12 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/index.ts` is the sole public entry. Organize its explicit exports by domain; domain directories do not create package subpaths or secondary barrels.
 - `src/page/page-schema.ts` owns page/element/global-variable shapes, IDs and display labels. `schema-operation.ts` owns typed edits and batches; `page-api.ts` owns Working, Revision and Apply HTTP shapes; `page-validation.ts` owns structural/layout/binding validation.
-- `src/project/` owns project/page manifests, installed stack resolution, project HTTP records/requests and explicit upgrade contracts. Concrete catalogs and module loaders do not belong here. Project manifests have one release version and a material-set ID; project versions must never be inferred from component metadata.
+- `src/project/` owns project/page manifests, installed stack resolution, project HTTP records/requests and explicit upgrade contracts. Concrete catalogs and module loaders do not belong here. Project manifests declare framework and a SemVer materialSet object, without a project release version or uiLibrary. Compatibility is independent of app/package releases.
 - `src/flow/flow-schema.ts` owns executable graphs/bindings; `flow-validation.ts` checks graph safety, including disconnected draft components. `flow-node-manifest.ts` owns pure-data node definitions, parameter schemas and derived types; `hyper-value.ts` owns serializable values/functions. Editor owns forms/layout; Runtime owns execution; Server owns persisted-data migration and material/Agent completeness checks.
 - `src/agent/` separates run/budget/policy, messages/conversations, SSE events, HTTP requests, terminal outcomes/clarifications and evaluation contracts. `agent-schema.ts` holds shared protocol primitives; `runtime-report.ts` holds runtime observations consumed by Agent. `agent-validation.ts` lazily validates the envelopes and their specific payloads.
 - `src/material/material-manifest.ts` owns material Manifest types and format version; concrete material catalogs and converters stay in Materials.
 - `src/transport/` owns the API result envelope, named desktop bridge, credential gateway messages and read-only iframe preview snapshots/reports. `preview-message.ts` must never grant workbench capabilities to a preview.
-- `src/version.ts` declares the unified release and supported release sequence.
+- `src/version.ts` declares the unified package release, independent SemVer Schema/material contracts and explicit supported versions. Never infer compatibility solely from SemVer precedence.
 - Tests mirror these domains under `test/`. Keep implementation imports relative with `.ts` suffixes; external consumers use only `@origamix/shared`.
 
 ## Contract rules

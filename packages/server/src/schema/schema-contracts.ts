@@ -14,7 +14,6 @@ export interface AgentWorkingCommitInput {
 }
 export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'beforeWrite'> {
   validateCandidate?: (schema: OrigamixPageSchema) => void | Promise<void>;
-  migration?: { from: string; to: string };
   agentCommit?: AgentWorkingCommitInput;
   /** Test hook for deterministic interruption at a durable Agent write boundary. */
   afterWorkingStage?: (stage: WorkingDraftWriteStage) => void | Promise<void>;
@@ -25,7 +24,6 @@ export interface SchemaReadResult {
   revisionId: string;
 }
 export interface WorkingSchemaReadResult extends SchemaReadResult {
-  migration?: { from: string; to: string };
   workingVersion: number;
   workingHash: string;
   savedSchemaHash: string;

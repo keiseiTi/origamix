@@ -11,9 +11,7 @@ const manifest = () => ({
   projectId: 'project_one',
   name: '示例项目',
   framework: 'react',
-  uiLibrary: 'antd',
-  version: '1.0.0',
-  materialSet: 'official-antd',
+  materialSet: { id: 'official-antd', version: '1.0.0' },
   pageDirectory: 'pages',
   pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
 });
@@ -25,23 +23,27 @@ describe('project manifest protocol', () => {
     expect(isProjectManifest({ ...manifest(), materialSet: undefined })).toBe(false);
     expect(() => resolveProjectStack({ ...manifest(), materialSet: undefined })).toThrow();
     expect(validateResolvedProjectStack(BUILTIN_PROJECT_STACK)).toEqual(BUILTIN_PROJECT_STACK);
-    const otherTemplate = {
-      ...BUILTIN_PROJECT_STACK,
-      template: { id: 'custom-scaffold', version: '9.0.0' },
-    };
-    expect(validateResolvedProjectStack(otherTemplate)).toEqual(otherTemplate);
-    expect(() =>
-      resolveProjectStack({
+    expect(
+      isProjectManifest({
         ...manifest(),
-        version: '9.0.0',
+        materialSet: { id: 'official-antd', version: '1.0.0\n' },
       }),
-    ).toThrow('9.0.0');
+    ).toBe(false);
     expect(() =>
       validateResolvedProjectStack({
         ...BUILTIN_PROJECT_STACK,
-        runtime: { id: 'origamix.react', version: '9.0.0' },
+        materialSet: { id: 'official-antd', version: '2.0.0' },
       }),
-    ).toThrow();
+    ).toThrow('不受当前应用支持');
+    expect(
+      isProjectManifest({ ...manifest(), materialSet: { id: 'official-antd', version: '01.0.0' } }),
+    ).toBe(false);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        materialSet: { id: 'official-antd', version: '1.2.3-beta.1+build.5' },
+      }),
+    ).toBe(true);
   });
 
   it.each([null, { pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(

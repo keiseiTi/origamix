@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
   bindMaterialEventPayloads,
@@ -179,10 +179,10 @@ const RuntimeCanvas = ({
   const engine = useMemo(() => {
     if (
       (schema.extensions?.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
-      ORIGAMIX_VERSION
+      SCHEMA_VERSION
     )
       throw new Error(
-        `页面版本不受支持，请使用 Origamix ${ORIGAMIX_VERSION} 打开页面、保存版本并应用到项目`,
+        `页面 Schema 版本不受支持，当前支持 ${SCHEMA_VERSION}。请使用兼容应用；页面不会自动转换`,
       );
     const instance = createEngine(schema);
     installMaterialState(instance, materials);

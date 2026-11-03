@@ -16,11 +16,11 @@ import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
 | [agent/](src/agent/)         | Run、消息、事件、请求、终态结果、诊断与评估                       |
 | [material/](src/material/)   | 物料 Manifest 通用契约                                            |
 | [transport/](src/transport/) | HTTP 结果封套、桌面桥、凭据网关与预览消息                         |
-| [version.ts](src/version.ts) | 统一发布版本与支持序列                                            |
+| [version.ts](src/version.ts) | 统一包发布版本、独立 SemVer 契约与兼容检查                        |
 
 统一从 `@origamix/shared` 导入。`src/index.ts` 显式列举公共值与类型导出；上表中的模块路径只描述内部职责，不是公开子路径。测试按领域放在 `test/`，文件名与被验证模块对应；内部新增文件不会自动变成公共 API。工作区与发布包统一解析 `dist` 的 ESM 和类型声明；消费前先构建 Shared。Ajv 实例和各个校验器在首次调用对应校验函数时初始化并缓存，导入根入口不会编译校验器。内部模块之间直接引用，不反向引用根入口。类型断言不能替代接收边界上的校验；Schema 结构、引用关系与 Server 的物料兼容性分别验证不同约束。
 
-`project/project-stack.ts` 提供版本化技术栈契约与解析。当前组合固定为 React + Antd，物料集为 `official-antd@1.0.0`，Runtime 为 `1.0.0`。解析响应在入口校验框架、物料和 Runtime 的兼容性；Template 引用仅提供脚手架信息，不参与编辑或预览的兼容性判断。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
+`project/project-stack.ts` 提供版本化技术栈契约与解析。当前内置 React + Antd，物料集为 `official-antd@1.0.0`。项目仅声明 framework 和带 SemVer 的 materialSet；不声明应用、Runtime、Template 或 uiLibrary 版本。`materialSet` 为必填字段，缺失或不支持的配置均拒绝，不补全、不回退。具体物料内容和模块加载不在 Shared 中。
 
 ## 验证与构建
 
@@ -99,4 +99,4 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 ## 统一版本
 
-`ORIGAMIX_VERSION` 是当前发布契约，`ORIGAMIX_RELEASES` 是明确支持的发布序列。所有自有包统一发布。项目清单只保存 `version` 与 `materialSet` ID，物料、Runtime 和模板的解析版本由当前发布派生。Schema 的 `extensions.origamix.schemaVersion` 记录该份数据的来源版本，当前校验器只接受当前版本；旧数据迁移由 Server 负责。
+`ORIGAMIX_VERSION` 是统一包发布版本；`SCHEMA_VERSION` 和 `MATERIAL_CONTRACT_VERSION` 为独立的 SemVer 契约，应用发布不会自动递增它们。支持版本显式声明，初期精确匹配，不按 major/minor 推断。项目清单保存 framework、materialSet 对象，页面通过 `extensions.origamix.schemaVersion` 声明格式。打开、预览、历史恢复均不自动转换；不兼容时保留原文件并说明原因。

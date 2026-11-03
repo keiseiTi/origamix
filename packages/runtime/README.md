@@ -106,3 +106,5 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 既有页面源码使用旧 `@origamix/runtime/react` 导入时，需要显式改成根入口；Origamix 不自动改写用户已有页面源码。新生成页面直接使用根入口。Schema 数据格式保持兼容。
 
 工作区与发布包统一从 `dist` 消费 JavaScript 和类型声明。单独构建时先构建 Shared，再构建 Runtime；根 `pnpm build:libs` 按依赖顺序准备这些产物。
+
+Runtime 包随应用统一发布，但接受的页面格式由独立 SemVer `SCHEMA_VERSION` 决定。相同契约可跨应用发布使用；当前不推断范围、不自动转换旧页面。

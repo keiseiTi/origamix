@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
+import { VersionedStackReferenceSchema } from './project-stack.ts';
 import { Value } from '@sinclair/typebox/value';
 
 export const ProjectPageManifestSchema = Type.Object({
@@ -11,10 +12,8 @@ export const ProjectPageManifestSchema = Type.Object({
 export const ProjectManifestSchema = Type.Object({
   projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
   name: Type.String({ minLength: 1, maxLength: 80 }),
-  framework: Type.Literal('react'),
-  uiLibrary: Type.Literal('antd'),
-  version: Type.String({ pattern: '^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$' }),
-  materialSet: Type.Literal('official-antd'),
+  framework: Type.String({ minLength: 1, maxLength: 100 }),
+  materialSet: VersionedStackReferenceSchema,
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
 });

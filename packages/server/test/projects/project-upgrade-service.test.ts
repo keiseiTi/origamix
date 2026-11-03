@@ -1,21 +1,20 @@
-import { mkdtemp, readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
 import { ProjectUpgradeService } from '../../src/projects/project-upgrade-service';
-import {
-  getWorkingSchemaState,
-  saveWorkingRevision,
-  updateWorkingSchema,
-} from '../../src/schema/schema-service';
+import { getWorkingSchemaState, updateWorkingSchema } from '../../src/schema/schema-service';
+import { writeProjectUpgrade } from '../../src/projects/project-upgrade-store';
+import { hashSchema } from '../../src/schema/schema-hash';
 
-it('upgrades only saved pages through Apply and resumes an interrupted dependency switch with the same request', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'origamix-project-upgrade-'));
+// Configuration conversion must never migrate pages, change dependencies, lose drafts,
+// overwrite a changed manifest, or silently continue an old dependency upgrade.
+it('checks compatibility without writes and explicitly converts only known legacy configuration', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-project-compatibility-'));
   const database = new ApplicationDatabase(join(directory, 'application.db'));
   try {
     const projects = new ProjectRepository(database);
@@ -25,8 +24,8 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
     );
     service.registerGrant('grant', directory);
     const project = await service.createProject({
-      name: 'Upgrade',
-      code: 'upgrade',
+      name: 'Compatibility',
+      code: 'compatibility',
       directoryGrantId: 'grant',
     });
     const page = await service.createPage(project.id, { name: 'Home', slug: 'home' });
@@ -36,12 +35,8 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
       slug: page.slug,
       relativePath: page.relativePath,
     };
-    const manifestPath = join(project.path, 'origamix.project.json');
-    const manifestSource = await readFile(manifestPath, 'utf8');
-    const manifest = JSON.parse(manifestSource);
-    const targetPath = join(project.path, page.relativePath, 'schema.json');
     const initial = await getWorkingSchemaState(ref);
-    const working = await updateWorkingSchema(ref, {
+    const draft = await updateWorkingSchema(ref, {
       baseWorkingVersion: initial.workingVersion,
       schema: {
         ...initial.schema,
@@ -51,64 +46,101 @@ it('upgrades only saved pages through Apply and resumes an interrupted dependenc
         },
       },
     });
-    const template = join(directory, 'prepared-template');
-    await mkdir(template);
-
-    await writeFile(
-      join(template, 'origamix.project.json'),
-      JSON.stringify({ ...manifest, version: ORIGAMIX_VERSION, materialSet: 'official-antd' }),
-    );
-
-    const input = { expectedVersion: ORIGAMIX_VERSION, clientRequestId: 'upgrade_once' };
-    const interrupted = new ProjectUpgradeService(projects, template, (stage) => {
-      if (stage === 'package') throw new Error('interrupted');
-    });
-    await expect(interrupted.upgrade(project.id, input)).rejects.toThrow('保存');
-    const saved = await saveWorkingRevision(ref, working.workingVersion);
-    await expect(interrupted.upgrade(project.id, input)).rejects.toThrow('interrupted');
-    expect(await readFile(manifestPath, 'utf8')).toBe(manifestSource);
-    expect(JSON.parse(await readFile(targetPath, 'utf8'))).toEqual(saved.schema);
-    expect(await readdir(join(project.path, '.origamix/revisions', page.id))).toHaveLength(2);
-    await expect(
-      updateWorkingSchema(ref, { baseWorkingVersion: saved.workingVersion, schema: saved.schema }),
-    ).rejects.toThrow('升级尚未完成');
-    const resumed = new ProjectUpgradeService(projects, template);
-    await expect(resumed.cancel(project.id, input.clientRequestId)).rejects.toThrow('已修改');
-    await expect(
-      resumed.upgrade(project.id, { ...input, clientRequestId: 'different' }),
-    ).rejects.toThrow('原升级请求');
-    const packagePath = join(project.path, 'package.json');
-    const packageSource = await readFile(packagePath, 'utf8');
-    await writeFile(packagePath, `${packageSource} `);
-    await expect(resumed.upgrade(project.id, input)).rejects.toThrow('外部修改');
-    expect(await readFile(packagePath, 'utf8')).toBe(`${packageSource} `);
-    await writeFile(packagePath, packageSource);
-    expect(await resumed.upgrade(project.id, input)).toMatchObject({
-      version: ORIGAMIX_VERSION,
-      status: 'completed',
-      installRequired: true,
-    });
-    expect(await resumed.upgrade(project.id, input)).toMatchObject({ status: 'completed' });
-    expect(JSON.parse(await readFile(manifestPath, 'utf8'))).toMatchObject({
-      version: ORIGAMIX_VERSION,
+    const manifestPath = join(project.path, 'origamix.project.json');
+    const current = JSON.parse(await readFile(manifestPath, 'utf8'));
+    const legacy = JSON.stringify({
+      ...current,
+      version: '1.0.0',
+      uiLibrary: 'antd',
       materialSet: 'official-antd',
     });
-    expect(JSON.parse(await readFile(packagePath, 'utf8')).dependencies['@origamix/runtime']).toBe(
-      ORIGAMIX_VERSION,
-    );
-    expect((await getWorkingSchemaState(ref)).workingVersion).toBe(saved.workingVersion);
-
-    // When targets/configuration are unchanged, cancellation releases the edit freeze.
-    const paused = new ProjectUpgradeService(projects, template, (stage) => {
-      if (stage === 'pages') throw new Error('pause before configuration');
+    await writeFile(manifestPath, legacy);
+    const targetPath = join(project.path, page.relativePath, 'schema.json');
+    const workingPath = join(project.path, '.origamix/pages', page.id, 'working.json');
+    const workingBytes = await readFile(workingPath, 'utf8');
+    const targetBytes = await readFile(targetPath, 'utf8');
+    const packageBytes = await readFile(join(project.path, 'package.json'), 'utf8');
+    const compatibility = new ProjectUpgradeService(projects);
+    const state = await compatibility.inspect(project.id);
+    expect(state.status).toBe('configuration_conversion_required');
+    expect(await readFile(manifestPath, 'utf8')).toBe(legacy);
+    await expect(getWorkingSchemaState(ref)).rejects.toThrow('显式转换');
+    const input = {
+      expectedVersion: '1.0.0' as const,
+      expectedManifestHash: state.manifestHash,
+      clientRequestId: 'convert_once',
+    };
+    await writeFile(manifestPath, `${legacy} `);
+    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('配置已变化');
+    await writeFile(manifestPath, legacy);
+    await expect(service.upgradeProject(project.id, input)).resolves.toMatchObject({
+      status: 'completed',
+      installRequired: false,
     });
+    await expect(service.upgradeProject(project.id, input)).resolves.toMatchObject({
+      status: 'completed',
+    });
+    expect(JSON.parse(await readFile(manifestPath, 'utf8'))).toEqual(current);
+    expect(await readFile(workingPath, 'utf8')).toBe(workingBytes);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetBytes);
+    expect(await readFile(join(project.path, 'package.json'), 'utf8')).toBe(packageBytes);
+    expect((await getWorkingSchemaState(ref)).workingVersion).toBe(draft.workingVersion);
+    expect(await readdir(join(project.path, '.origamix/revisions', page.id))).toHaveLength(1);
+    expect((await compatibility.inspect(project.id)).status).toBe('compatible');
+
+    await writeFile(
+      manifestPath,
+      JSON.stringify({ ...current, materialSet: { ...current.materialSet, version: '2.0.0' } }),
+    );
+    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
+    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('未提供转换能力');
     await expect(
-      paused.upgrade(project.id, { ...input, clientRequestId: 'cancel_safe' }),
-    ).rejects.toThrow('pause');
-    await expect(paused.cancel(project.id, 'cancel_safe')).resolves.toEqual({ cancelled: true });
+      updateWorkingSchema(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
+    ).rejects.toThrow('不受当前应用支持');
+    await writeFile(manifestPath, JSON.stringify(current));
+    const incompatible = JSON.stringify({
+      ...JSON.parse(workingBytes),
+      schema: { ...draft.schema, extensions: { origamix: { schemaVersion: '2.0.0' } } },
+    });
+    const incompatibleWorking = JSON.parse(incompatible);
+    incompatibleWorking.workingHash = hashSchema(incompatibleWorking.schema);
+    const incompatibleBytes = JSON.stringify(incompatibleWorking);
+    await writeFile(workingPath, incompatibleBytes);
+    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
+    await expect(getWorkingSchemaState(ref)).rejects.toThrow('不受当前应用支持');
+    expect(await readFile(workingPath, 'utf8')).toBe(incompatibleBytes);
+    await writeFile(workingPath, workingBytes);
+
+    const modernBytes = await readFile(manifestPath, 'utf8');
+    await writeProjectUpgrade(project.path, {
+      version: 1,
+      requestId: 'old_request',
+      projectId: project.id,
+      from: '1.0.0',
+      to: '1.0.0',
+      state: 'pending',
+      manifestSource: modernBytes,
+      packageSource: packageBytes,
+      pages: [
+        {
+          pageId: page.id,
+          revisionId: initial.revisionId,
+          workingVersion: draft.workingVersion,
+          schemaHash: draft.workingHash,
+          targetHash: hashSchema(JSON.parse(targetBytes)),
+        },
+      ],
+    });
+    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
+    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('升级尚未完成');
+    await expect(service.cancelProjectUpgrade(project.id, 'old_request')).resolves.toEqual({
+      cancelled: true,
+    });
+    await rm(manifestPath);
+    service.registerGrant('reopen', project.path);
     await expect(
-      updateWorkingSchema(ref, { baseWorkingVersion: saved.workingVersion, schema: saved.schema }),
-    ).resolves.toMatchObject({ workingVersion: saved.workingVersion });
+      service.openProject({ directoryGrantId: 'reopen', initializeIfNeeded: true }),
+    ).rejects.toThrow('配置文件缺失');
   } finally {
     database.close();
     await rm(directory, { recursive: true, force: true });

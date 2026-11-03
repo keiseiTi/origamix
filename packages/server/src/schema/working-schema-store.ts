@@ -12,7 +12,6 @@ export interface WorkingSchemaPageRef {
 }
 
 export interface WorkingSchemaFile {
-  migration?: { from: string; to: string };
   version: 2;
   pageId: string;
   workingVersion: number;

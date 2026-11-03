@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { OrigamixPageSchema } from '@origamix/shared';
@@ -21,7 +21,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 };
 
 describe('useEditorSession', () => {

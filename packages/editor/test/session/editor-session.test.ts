@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ORIGAMIX_VERSION, type OrigamixPageSchema } from '@origamix/shared';
+import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-session';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
@@ -18,7 +18,7 @@ const document = (): OrigamixPageSchema => ({
   bindElements: [{ id: 'button', event: 'onClick', flowId: 'click' }],
   context: { globalVariables: [] },
   extensions: {
-    origamix: { schemaVersion: ORIGAMIX_VERSION },
+    origamix: { schemaVersion: SCHEMA_VERSION },
     flowGraph: { 'button::onClick': { nodes: [] } },
   },
 });

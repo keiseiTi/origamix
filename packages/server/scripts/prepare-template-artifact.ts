@@ -1,6 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { resolveProjectStack } from '@origamix/shared';
+import { resolveProjectStack, validateResolvedProjectStack } from '@origamix/shared';
 import { copyTemplate } from '@origamix/server/template';
 
 export interface TemplateArtifactInput {
@@ -16,8 +16,10 @@ export const prepareTemplateArtifact = async ({
   runtimePackage,
   materialsPackage,
 }: TemplateArtifactInput) => {
-  const stack = resolveProjectStack(
-    JSON.parse(await readFile(join(sourceTemplate, 'origamix.project.json'), 'utf8')),
+  validateResolvedProjectStack(
+    resolveProjectStack(
+      JSON.parse(await readFile(join(sourceTemplate, 'origamix.project.json'), 'utf8')),
+    ),
   );
   const runtimeManifest = JSON.parse(await readFile(join(runtimePackage, 'package.json'), 'utf8'));
   const materialManifest = JSON.parse(
@@ -25,16 +27,15 @@ export const prepareTemplateArtifact = async ({
   );
   const templateManifest = JSON.parse(await readFile(join(sourceTemplate, 'package.json'), 'utf8'));
   if (
-    runtimeManifest.version !== stack.runtime.version ||
-    materialManifest.version !== stack.materialSet.version ||
-    templateManifest.version !== stack.template.version
+    runtimeManifest.version !== templateManifest.version ||
+    materialManifest.version !== templateManifest.version
   )
     throw new Error('Template artifact versions do not match the supported project stack');
   await rm(targetTemplate, { recursive: true, force: true });
   await copyTemplate(sourceTemplate, targetTemplate);
   const packagePath = join(targetTemplate, 'package.json');
   const manifest = JSON.parse(await readFile(packagePath, 'utf8'));
-  manifest.dependencies['@origamix/runtime'] = stack.runtime.version;
-  manifest.dependencies['@origamix/materials'] = stack.materialSet.version;
+  manifest.dependencies['@origamix/runtime'] = runtimeManifest.version;
+  manifest.dependencies['@origamix/materials'] = materialManifest.version;
   await writeFile(packagePath, `${JSON.stringify(manifest, null, 2)}\n`);
 };

@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION, type OrigamixPageSchema } from '@origamix/shared';
+import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 
 export const createInitialPageSchema = (): OrigamixPageSchema => ({
   elements: { element_root: { type: 'container', props: {} } },
@@ -6,5 +6,5 @@ export const createInitialPageSchema = (): OrigamixPageSchema => ({
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 });

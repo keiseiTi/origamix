@@ -1,5 +1,6 @@
 import {
-  ORIGAMIX_VERSION,
+  SCHEMA_VERSION,
+  MATERIAL_CONTRACT_VERSION,
   type OrigamixPageSchema,
   type ValidationMaterialManifest,
 } from '@origamix/shared';
@@ -10,7 +11,7 @@ import type { MaterialValidationRuntime } from '../../src/schema/validation/vali
 // Stable protocol fixtures: material UI configuration must not change generic validator tests.
 const manifest = (type: string, acceptsChildren = false): ValidationMaterialManifest => ({
   type,
-  version: ORIGAMIX_VERSION,
+  version: MATERIAL_CONTRACT_VERSION,
   acceptsChildren,
   role: 'input',
   propsSchema: {
@@ -25,7 +26,7 @@ const manifest = (type: string, acceptsChildren = false): ValidationMaterialMani
   context: { variables: [], writable: [], actions: [], events: [{ name: 'onClick' }] },
 });
 const runtime: MaterialValidationRuntime = {
-  materialSet: { id: 'test-materials', version: ORIGAMIX_VERSION },
+  materialSet: { id: 'test-materials', version: MATERIAL_CONTRACT_VERSION },
   registry: {
     root: manifest('root', true),
     leaf: { ...manifest('leaf'), allowedParentTypes: ['root'] },
@@ -47,7 +48,7 @@ const page = (): OrigamixPageSchema => ({
   },
   bindElements: [{ id: 'child', event: 'onClick', flowId: 'save' }],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 });
 const validate = (schema: OrigamixPageSchema) =>
   validatePageAgainstMaterials(schema, sets, runtime);

@@ -5,17 +5,13 @@ import type {
   SchemaReadResult,
   WorkingSchemaReadResult,
 } from './schema-contracts';
-import {
-  SchemaValidationError,
-  validationMessage,
-  validateWritableSchema,
-} from './validation/schema-validation';
+import { SchemaValidationError, validateWritableSchema } from './validation/schema-validation';
 import { workingResult } from './working-schema-result';
 import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
 import { assertPageNotDeleting } from '../projects/page-deletion-store';
 import { withProjectActivity } from '../projects/project-activity';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { transformSchema, schemaVersionOf } from './schema-migrations';
+import { ProjectManifestStore } from '../projects/project-manifest-store';
+import { requireCompatibleSchema, schemaVersionOf } from './schema-compatibility';
 import { readTargetSchema } from './target-schema-reader';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { RevisionCommit, createRevisionSnapshot, validateSnapshot } from './revision-commit';
@@ -24,7 +20,6 @@ import {
   type OrigamixPageSchema,
   type SchemaOperation,
   type RevisionHistory,
-  validatePage,
 } from '@origamix/shared';
 
 import { conflict, invalid } from '../errors';
@@ -108,11 +103,12 @@ export const initializePageSchema = async (
 };
 
 const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
+  await new ProjectManifestStore().requireEditable(page.projectPath);
   await commits.recover(page);
   if (!(await store.readWorkingIfPresent(page))) {
     // Import the original checkpoint lazily. Preserve its hash as the target baseline.
     const original = await readTargetSchema(page);
-    const candidate = transformSchema(original);
+    const candidate = requireCompatibleSchema(original);
     await validateWritableSchema(page, candidate);
     await assertProjectNotUpgrading(page.projectPath);
     await commits.commit(
@@ -122,16 +118,7 @@ const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile
     );
   }
   const working = await readWorking(page);
-  if (schemaVersionOf(working.schema) !== ORIGAMIX_VERSION) {
-    const candidate = transformSchema(working.schema);
-    await validateWritableSchema(page, candidate);
-    await writeWorkingDraft(page, working, candidate, {
-      migration: { from: schemaVersionOf(working.schema), to: ORIGAMIX_VERSION },
-    });
-    return readWorking(page);
-  }
-  const validation = validatePage(working.schema);
-  if (!validation.valid) throw invalid(validationMessage(validation));
+  requireCompatibleSchema(working.schema);
   return working;
 };
 export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
@@ -148,7 +135,6 @@ export const getWorkingSchemaState = async (
     const current = await getSchemaUnlocked(page);
     return {
       schema: current.schema,
-      ...(current.migration ? { migration: current.migration } : {}),
       revisionId: current.lastSavedRevisionId,
       workingVersion: current.workingVersion,
       workingHash: current.workingHash,
@@ -191,7 +177,6 @@ export const applyWorkingSchemaOperation = async <T>(
       throw conflict('当前草稿尚未保存版本，请先保存版本再应用到项目');
     const completed = await operation({
       schema: current.schema,
-      ...(current.migration ? { migration: current.migration } : {}),
       revisionId: current.lastSavedRevisionId,
       workingVersion: current.workingVersion,
       workingHash: current.workingHash,
@@ -213,7 +198,7 @@ export const reloadWorkingSchemaFromTarget = async (
 ): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async () => {
     await commits.recover(page);
-    const candidate = transformSchema(schema);
+    const candidate = requireCompatibleSchema(schema);
     await validateWritableSchema(page, candidate);
     const current = await getSchemaUnlocked(page);
     await assertProjectNotUpgrading(page.projectPath);
@@ -231,10 +216,6 @@ export const reloadWorkingSchemaFromTarget = async (
       ...working,
       baselineHash: hashSchema(schema),
     });
-    if (schemaVersionOf(schema) !== ORIGAMIX_VERSION) {
-      const migrated = await writeWorkingDraft(page, await readWorking(page), candidate);
-      return { schema: migrated.schema, revisionId: migrated.revisionId };
-    }
     return updated;
   });
 };
@@ -268,7 +249,6 @@ const writeWorkingDraft = async (
       ? current
       : {
           ...current,
-          ...(options.migration ? { migration: options.migration } : {}),
           workingVersion: current.workingVersion + 1,
           workingHash,
           updatedAt: new Date().toISOString(),
@@ -396,7 +376,9 @@ export const saveWorkingRevision = async (
       createRevisionSnapshot(current.schema, { kind: 'user' }, current.lastSavedRevisionId),
       options,
     );
-    return workingResult(await readWorking(page));
+    const retained = await readWorking(page);
+    requireCompatibleSchema(retained.schema);
+    return workingResult(retained);
   });
 };
 
@@ -412,7 +394,7 @@ export const restoreRevisionToWorking = async (
     const snapshot = await store.readRevision(page, revisionId);
     validateSnapshot(snapshot);
     if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
-    const candidate = transformSchema(snapshot.schema);
+    const candidate = requireCompatibleSchema(snapshot.schema);
     await validateWritableSchema(page, candidate);
     return writeWorkingDraft(page, current, candidate);
   });
@@ -437,4 +419,28 @@ export const getRetainedWorkingSchemaState = (
   withSchemaPageQueue(page, async () => {
     await commits.recover(page);
     return workingResult(await readWorking(page));
+  });
+
+/** Read-only: never initializes Working or recovers transactions. */
+export const inspectPageSchemaCompatibility = (
+  page: SchemaPageRef,
+): Promise<{ schemaVersion: string | null; issue: string | null }> =>
+  withSchemaPageQueue(page, async () => {
+    let schemaVersion: string | null = null;
+    try {
+      const working = await store.readWorkingIfPresent(page);
+      if (
+        working &&
+        (working.version !== 2 ||
+          working.pageId !== page.pageId ||
+          hashSchema(working.schema) !== working.workingHash)
+      )
+        throw invalid('保留的 Working 文件无效，请使用兼容应用恢复');
+      const candidate = working?.schema ?? (await readTargetSchema(page));
+      schemaVersion = schemaVersionOf(candidate);
+      requireCompatibleSchema(candidate);
+      return { schemaVersion, issue: null };
+    } catch (reason) {
+      return { schemaVersion, issue: reason instanceof Error ? reason.message : '无法检查页面' };
+    }
   });

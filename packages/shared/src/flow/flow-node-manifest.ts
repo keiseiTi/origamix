@@ -1,10 +1,10 @@
-import { ORIGAMIX_VERSION } from '../version.ts';
+import { SCHEMA_VERSION } from '../version.ts';
 import { Type } from '@sinclair/typebox';
 import type { TSchema, TProperties, Static } from '@sinclair/typebox';
 import { HyperValueSchema, FunctionValueSchema } from './hyper-value.ts';
 import { Check } from '@sinclair/typebox/value';
 
-export const FLOW_NODE_MANIFEST_VERSION = ORIGAMIX_VERSION;
+export const FLOW_NODE_MANIFEST_VERSION = SCHEMA_VERSION;
 
 export interface FlowNodeManifest {
   type: string;

@@ -1,4 +1,3 @@
-import { useProjectUpgrades } from '@/store/project-upgrades';
 import { useEffect, useRef, useState } from 'react';
 import {
   Button,
@@ -11,6 +10,7 @@ import {
 } from '@origamix/ui';
 import type { ProjectUpgradeState } from '@origamix/shared';
 import { projectsService } from '@/services/projects';
+import { useProjectUpgrades } from '@/store/project-upgrades';
 
 export const ProjectUpgradeModal = ({
   project,
@@ -26,75 +26,56 @@ export const ProjectUpgradeModal = ({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
-  const [loadKey, setLoadKey] = useState(0);
-  const requestId = useRef<string>(crypto.randomUUID());
+  const [attempt, setAttempt] = useState(0);
   const mounted = useRef(true);
+  const requestId = useRef(crypto.randomUUID());
   useEffect(() => {
     mounted.current = true;
     let active = true;
     void projectsService
       .upgradeState(project.id)
-      .then((result) => {
-        if (!active) return;
-        setState(result);
-        if (
-          result.version === result.targetVersion &&
-          result.upgrade?.state === 'completed' &&
-          result.upgrade.to === result.targetVersion
-        )
-          setCompleted(true);
-        if (result.upgrade?.state === 'pending') requestId.current = result.upgrade.requestId;
+      .then((value) => {
+        if (active) setState(value);
       })
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : '无法读取升级状态');
+        if (active) setError(reason instanceof Error ? reason.message : '无法检查项目兼容性');
       });
     return () => {
       active = false;
       mounted.current = false;
     };
-  }, [project.id, loadKey]);
-
-  const submit = async (cancel = false) => {
+  }, [project.id, attempt]);
+  const submit = async (cancel = false): Promise<void> => {
     if (!state || busy) return;
     setBusy(true);
     setError(null);
     try {
-      if (cancel) {
-        await projectsService.cancelUpgrade(project.id, requestId.current);
-        if (mounted.current) onClose();
-        return;
-      }
-      if (state.upgrade?.state !== 'pending') await flushEditor();
-      await projectsService.upgrade(project.id, {
-        expectedVersion: state.upgrade?.state === 'pending' ? state.upgrade.from : state.version,
-        clientRequestId: requestId.current,
-      });
-      if (mounted.current) {
-        setCompleted(true);
-        notifyCompleted(project.id);
-      }
-    } catch (reason) {
-      if (!mounted.current) return;
-      setError(reason instanceof Error ? reason.message : '升级结果未确认，请重试');
-      // Read recovery status only; never automatically resend the mutation.
-      try {
-        const next = await projectsService.upgradeState(project.id);
+      if (cancel && state.upgrade?.state === 'pending') {
+        await projectsService.cancelUpgrade(project.id, state.upgrade.requestId);
+      } else {
+        if (state.status !== 'configuration_conversion_required') return;
+        await flushEditor();
+        await projectsService.upgrade(project.id, {
+          expectedVersion: '1.0.0',
+          expectedManifestHash: state.manifestHash,
+          clientRequestId: requestId.current,
+        });
         if (mounted.current) {
-          setState(next);
-          if (next.upgrade?.state === 'completed' && next.upgrade.requestId === requestId.current) {
-            setCompleted(true);
-            notifyCompleted(project.id);
-          }
-          if (next.upgrade?.state === 'pending') requestId.current = next.upgrade.requestId;
+          setCompleted(true);
+          notifyCompleted(project.id);
         }
-      } catch {
-        /* Keep the same request identity for an explicit retry. */
       }
+      const next = await projectsService.upgradeState(project.id);
+      if (mounted.current) setState(next);
+    } catch (reason) {
+      if (mounted.current)
+        setError(
+          reason instanceof Error ? reason.message : '结果未确认，请重新检查；不会自动重试写入',
+        );
     } finally {
       if (mounted.current) setBusy(false);
     }
   };
-
   return (
     <Dialog
       open
@@ -104,29 +85,43 @@ export const ProjectUpgradeModal = ({
     >
       <DialogContent showCloseButton={!busy}>
         <DialogHeader>
-          <DialogTitle>升级项目 · {project.name}</DialogTitle>
-          <DialogDescription>将已保存的页面应用到项目，并统一更新运行依赖。</DialogDescription>
+          <DialogTitle>兼容性检查 · {project.name}</DialogTitle>
+          <DialogDescription>
+            检查物料契约与页面 Schema。检查不会转换页面或更新项目依赖。
+          </DialogDescription>
         </DialogHeader>
-        {completed ? (
-          <p role='status' className='text-sm text-foreground'>
-            项目文件已升级。请在项目目录重新安装依赖，再启动和验证页面。
+        {!state && !error && (
+          <p role='status' className='text-sm text-muted-foreground'>
+            正在检查…
           </p>
-        ) : (
-          <div className='space-y-3 text-sm text-muted-foreground'>
+        )}
+        {completed && (
+          <p role='status' className='text-sm'>
+            项目清单格式已转换，页面和依赖保持原样。
+          </p>
+        )}
+        {state && (
+          <div className='max-h-80 space-y-3 overflow-auto text-sm text-muted-foreground'>
             <p>
-              {state
-                ? state.version === state.targetVersion
-                  ? `当前版本 ${state.version}`
-                  : `${state.version} → ${state.targetVersion}`
-                : '正在读取项目版本…'}
+              项目物料：{state.materialSet.id}@{state.materialSet.version}
             </p>
             <p>
-              请先打开所有页面、验证并保存版本，停止项目运行及
-              Agent。升级会应用这些已保存页面，并更新项目依赖；完成后需要重新安装依赖。
+              当前支持物料：{state.supportedMaterialSet.id}@{state.supportedMaterialSet.version}
+              ；Schema：{state.schemaVersion}
             </p>
-            {state?.upgrade?.state === 'pending' && (
-              <p>上次升级尚未完成。继续会使用原请求恢复；只有目标页面和配置尚未改变时才能撤销。</p>
+            {state.status === 'compatible' && <p role='status'>项目契约兼容，无需升级。</p>}
+            {state.status === 'configuration_conversion_required' && (
+              <p>检测到旧版项目清单。可以转换配置格式，转换不修改页面、草稿或依赖。</p>
             )}
+            {state.issues.map((issue, index) => (
+              <p key={index}>{issue}</p>
+            ))}
+            {state.pages.map((page) => (
+              <p key={page.pageId}>
+                {page.name}：Schema {page.schemaVersion ?? '无法读取'}
+                {page.issue ? '（不兼容）' : '（版本兼容）'}
+              </p>
+            ))}
           </div>
         )}
         {error && (
@@ -136,30 +131,28 @@ export const ProjectUpgradeModal = ({
         )}
         <DialogFooter>
           <Button variant='outline' disabled={busy} onClick={onClose}>
-            {completed ? '完成' : '关闭'}
+            关闭
           </Button>
-          {!completed && !state && error && (
-            <Button
-              onClick={() => {
-                setError(null);
-                setLoadKey((value) => value + 1);
-              }}
-            >
-              重新读取
-            </Button>
-          )}
-          {!completed && state?.upgrade?.state === 'pending' && (
+          <Button
+            variant='outline'
+            disabled={busy}
+            onClick={() => {
+              setCompleted(false);
+              setState(null);
+              setError(null);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            重新检查
+          </Button>
+          {state?.upgrade?.state === 'pending' && (
             <Button variant='outline' disabled={busy} onClick={() => void submit(true)}>
-              撤销未写入的升级
+              撤销未写入的旧版升级
             </Button>
           )}
-          {!completed && state && (
+          {state?.status === 'configuration_conversion_required' && (
             <Button disabled={busy} onClick={() => void submit()}>
-              {busy
-                ? '正在升级…'
-                : state.upgrade?.state === 'pending'
-                  ? '继续升级'
-                  : '升级并应用已保存页面'}
+              {busy ? '正在转换…' : '转换项目清单'}
             </Button>
           )}
         </DialogFooter>

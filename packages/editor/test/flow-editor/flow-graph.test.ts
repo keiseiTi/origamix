@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type LogicFlow from '@logicflow/core';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
@@ -73,7 +73,7 @@ describe('event graph commit', () => {
         },
       },
       extensions: {
-        origamix: { schemaVersion: ORIGAMIX_VERSION },
+        origamix: { schemaVersion: SCHEMA_VERSION },
         flowGraph: { 'button::onClick': graph },
       },
     };
@@ -140,7 +140,7 @@ describe('event graph commit', () => {
       {
         elements: {},
         layout: { root: 'root', structure: {} },
-        extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+        extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
         context: { globalVariables: [] },
         bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
         flows: { flow },
@@ -157,7 +157,7 @@ describe('event graph commit', () => {
       {
         elements: {},
         layout: { root: 'root', structure: {} },
-        extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+        extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
         context: { globalVariables: [] },
         bindElements: [{ id: 'button', event: 'onClick', flowId: 'flow' }],
         flows: { flow: sharedFlow },

@@ -43,7 +43,7 @@ export const SidebarActionMenu = ({
         {onUpgrade && (
           <DropdownMenuItem onClick={onUpgrade}>
             <ArrowUpCircle />
-            升级项目
+            兼容性检查
           </DropdownMenuItem>
         )}
         <DropdownMenuItem variant='destructive' onClick={onDelete}>

@@ -7,13 +7,13 @@ import {
 import { readPageDeletion, writePageDeletion } from './page-deletion-store';
 import { createInitialPageSchema } from './initial-page-schema';
 import { ProjectUpgradeService } from './project-upgrade-service';
-import { assertProjectNotUpgrading, readProjectUpgrade } from './project-upgrade-store';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { assertProjectNotUpgrading } from './project-upgrade-store';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { access, mkdir, rename, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import {
+  type ProjectUpgradeRequest,
   type OpenProjectResult,
   type PageRecord,
   type ProjectRecord,
@@ -119,7 +119,21 @@ export class ProjectService {
     const pageDirectory = normalizePageDirectory(input.pageDirectory);
     try {
       await access(join(path, 'origamix.project.json'));
-    } catch {
+    } catch (error) {
+      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+      if (this.projects.listProjects().some((project) => project.path === path))
+        throw invalid('项目配置文件缺失，请恢复 origamix.project.json 后重新打开');
+      try {
+        await access(join(path, '.origamix'));
+        throw invalid('项目配置文件缺失，请恢复 origamix.project.json 后重新打开');
+      } catch (retainedError) {
+        if (!(
+          retainedError instanceof Error &&
+          'code' in retainedError &&
+          retainedError.code === 'ENOENT'
+        ))
+          throw retainedError;
+      }
       if (!input.initializeIfNeeded)
         return {
           status: 'initialization_required',
@@ -136,7 +150,7 @@ export class ProjectService {
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const manifest = await this.manifest.readManifest(project.path);
     if (manifest.projectId !== projectId) throw invalid('项目清单身份已变化，请重新打开项目');
-    return resolveProjectStack(manifest);
+    return resolveProjectStack(await this.manifest.requireEditable(project.path));
   }
 
   async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
@@ -163,8 +177,7 @@ export class ProjectService {
     const name = input.name.trim();
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
     const manifest = await this.manifest.readManifest(project.path);
-    if (manifest.version !== ORIGAMIX_VERSION)
-      throw conflict('项目版本尚未升级，不能向旧运行环境创建新页面');
+    await this.manifest.requireEditable(project.path);
     const pages = manifest.pages;
     if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
     const relativePath = join('src', manifest.pageDirectory, input.slug);
@@ -361,34 +374,20 @@ export class ProjectService {
     });
   }
 
-  upgradeProject(projectId: string, input: { expectedVersion: string; clientRequestId: string }) {
+  upgradeProject(projectId: string, input: ProjectUpgradeRequest) {
     return this.withDestructiveProject(projectId, () =>
-      new ProjectUpgradeService(this.projects, this.templatePath).upgrade(projectId, input),
+      new ProjectUpgradeService(this.projects).upgrade(projectId, input),
     );
   }
 
   cancelProjectUpgrade(projectId: string, clientRequestId: string) {
     return this.withDestructiveProject(projectId, () =>
-      new ProjectUpgradeService(this.projects, this.templatePath).cancel(
-        projectId,
-        clientRequestId,
-      ),
+      new ProjectUpgradeService(this.projects).cancel(projectId, clientRequestId),
     );
   }
 
   async getUpgradeState(projectId: string) {
-    const project = this.projects.getProject(projectId);
-    if (!project || project.status !== 0) throw notFound('项目不存在');
-    const manifest = await this.manifest.readManifest(project.path);
-    if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
-    const upgrade = await readProjectUpgrade(project.path);
-    return {
-      version: manifest.version,
-      targetVersion: ORIGAMIX_VERSION,
-      upgrade: upgrade
-        ? { requestId: upgrade.requestId, from: upgrade.from, to: upgrade.to, state: upgrade.state }
-        : null,
-    };
+    return new ProjectUpgradeService(this.projects).inspect(projectId);
   }
 
   reconcile = async (path: string): Promise<ProjectRecord> =>

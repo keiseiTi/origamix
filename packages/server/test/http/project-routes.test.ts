@@ -78,9 +78,7 @@ describe('Project and Schema HTTP flows', () => {
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
       framework: 'react',
-      uiLibrary: 'antd',
-      version: '1.0.0',
-      materialSet: 'official-antd',
+      materialSet: { id: 'official-antd', version: '1.0.0' },
       pageDirectory: 'screens',
       pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
@@ -248,9 +246,7 @@ describe('Project and Schema HTTP flows', () => {
     expect(project.name).toBe('导入项目');
     expect(manifest).toMatchObject({
       framework: 'react',
-      uiLibrary: 'antd',
-      version: '1.0.0',
-      materialSet: 'official-antd',
+      materialSet: { id: 'official-antd', version: '1.0.0' },
       pages: [],
     });
     await access(join(directory, 'src', 'router.ts'));

@@ -2,9 +2,10 @@
   "projectId": "project_template",
   "name": "Origamix Project",
   "framework": "react",
-  "uiLibrary": "antd",
   "pageDirectory": "pages",
   "pages": [],
-  "materialSet": "official-antd",
-  "version": "1.0.0"
+  "materialSet": {
+    "id": "official-antd",
+    "version": "1.0.0"
+  }
 }

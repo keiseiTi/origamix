@@ -93,7 +93,7 @@ basicPage 作为 rootMaterials/rootManifests 单独导出：App 注册到 Editor
 
 ## 契约版本
 
-所有内置物料、物料集、Materials、Runtime 与 Template 随 Origamix 统一发布，版本由 Shared 的 `ORIGAMIX_VERSION` 提供；旧 Schema 通过 Server 迁移链转换，物料运行组件只处理当前契约。项目清单只记录一个版本及物料集 ID，Manifest、编辑器、运行时与生成模板使用同一套当前契约。页面字段与能力仍按 Manifest 校验。
+Materials 包与应用统一发布；物料集及各物料 Manifest 的契约版本由 Shared `MATERIAL_CONTRACT_VERSION` 提供，独立遵循 SemVer，不随普通应用发布递增。项目声明物料集 ID 与契约版本，loader 核对实际模块。Schema 使用独立 `SCHEMA_VERSION`；不兼容时不会自动迁移，页面属性与能力继续按 Manifest 校验。
 
 ## 单包与入口隔离
 

@@ -1,10 +1,10 @@
-import { schemaVersionOf } from './schema-migrations';
+import { schemaVersionOf } from './schema-compatibility';
 import { nanoid } from 'nanoid';
 import {
   type ChangeSource,
   type OrigamixPageSchema,
-  ORIGAMIX_VERSION,
-  isSupportedOrigamixVersion,
+  SCHEMA_VERSION,
+  isSemanticVersion,
   validatePage,
 } from '@origamix/shared';
 
@@ -32,8 +32,8 @@ export const validateSnapshot = (snapshot: RevisionSnapshot): void => {
   )
     throw invalid('Revision 内容校验失败');
   const version = schemaVersionOf(snapshot.schema);
-  if (!isSupportedOrigamixVersion(version)) throw invalid('Revision Schema 版本不受支持');
-  if (version === ORIGAMIX_VERSION && !validatePage(snapshot.schema).valid)
+  if (!isSemanticVersion(version)) throw invalid('Revision Schema 版本无效');
+  if (version === SCHEMA_VERSION && !validatePage(snapshot.schema).valid)
     throw invalid('Revision Schema 校验失败');
 };
 export const createRevisionSnapshot = (

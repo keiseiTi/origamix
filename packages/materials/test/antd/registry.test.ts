@@ -1,5 +1,5 @@
 import { validateAntdMaterialProps, validateAntdMaterialSemantics } from '../../antd/validation';
-import { ORIGAMIX_VERSION, type OrigamixPageSchema } from '@origamix/shared';
+import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { materialGroups, rootMaterials } from '../../antd/editor';
 import { describe, expect, it } from 'vitest';
 import materialComponents, { materialSet } from '../../antd/runtime';
@@ -73,7 +73,7 @@ describe('material boundary used by editing and preview', () => {
       flows: {},
       bindElements: [],
       context: { globalVariables: [] },
-      extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+      extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
     };
     expect(validateAntdMaterialSemantics(schema)).toContainEqual(
       expect.objectContaining({ path: '/elements/child/props/tabKey' }),

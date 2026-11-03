@@ -2,7 +2,7 @@
 
 Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Schema 编辑与应用、会话和 Agent 执行。HTTP 只监听 `127.0.0.1`，目录授权和模型凭据由宿主提供。
 
-项目清单中的 `framework`、`uiLibrary` 与 `materialSet` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回匹配的物料集、Runtime 和模板身份/版本；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
+项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
 
 ## 代码组织
 
@@ -94,7 +94,7 @@ Schema 服务只抽离契约、校验与结果转换；页面队列、Agent 回�
 
 Agent 仅通过终态工具 `src/agent/tools/complete-page-run.ts` 提交完整的版本化 Operation Batch，并原子更新 Working Schema，不自动创建 Revision。`src/agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `src/agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
 
-同一页面最多一个活动 Run，全局最多四个；相同请求 ID 仍返回原 Run。项目删除／升级通过 [project-activity.ts](src/projects/project-activity.ts) 关闭新活动准入、等待在途 Working／Apply／Run 启动操作，再检查活动 Run；升级自身的 Schema 操作共享该授权。单页并发返回 409，全局满载返回 429，不自动排队或重放。
+同一页面最多一个活动 Run，全局最多四个；相同请求 ID 仍返回原 Run。项目删除／配置转换通过 [project-activity.ts](src/projects/project-activity.ts) 关闭新活动准入、等待在途 Working／Apply／Run 启动操作，再检查活动 Run；配置转换不会写入 Schema。单页并发返回 409，全局满载返回 429，不自动排队或重放。
 
 默认预算由 [agent-service.ts](src/agent/agent-service.ts) 定义并随 Run 持久化：
 
@@ -270,17 +270,19 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 ## 页面与数据库升级
 
-页面打开走 `schema/schema-service.ts` 的统一入口，按 `schema/schema-migrations.ts` 串联转换，仅在完整校验成功后写入 Working。并发打开只迁移一次；失败保留旧草稿。项目索引重建不会打开所有页面。历史 Revision 保留原文，恢复时转换为当前 Working；启动时恢复 Agent 回执先读取未迁移的持久化状态。
+页面打开通过 `schema/schema-compatibility.ts` 检查独立的 Schema SemVer，受支持后才初始化或恢复 Working；不执行自动迁移。已有 Working 优先，较新、较旧、无效版本都会被保留并拒绝编辑。历史快照可按原文查看，恢复前须兼容，不重写历史。
 
-当前项目全部由最新代码创建，直接使用 `schemaVersion: "1.0.0"` 和带统一 `version` 的项目清单，`materialSet` 只保存 ID。Schema 迁移清单当前为空；不提供 `1.0` 标记转换、旧物料集对象归一化或缺失版本推断。首次真实版本升级时再登记对应转换函数。
+`origamix.project.json` 不再保存项目 version 或 uiLibrary，只保存框架和 `materialSet: { id, version }`。包统一发布，物料与 Schema 契约独立维护。项目菜单“兼容性检查”只读检查契约和各页面；没有具体转换器时只说明原因，不提供页面升级或依赖切换操作。已知旧版 1.0.0 清单可在此显式转换配置格式：检查原文件 hash 后原子写入，只删除旧字段并转换物料引用，不动页面、草稿、Revision 或依赖。未知旧清单不推断物料版本。数据库不存配置快照；清单丢失阻止写入，已登记或含 .origamix 的目录不会被重新初始化。
+
+旧版 `project-upgrade.json` 待处理记录继续阻止写入，不自动恢复；只能使用原应用恢复，或在目标与配置未变化时显式安全撤销。
 
 `database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库直接初始化当前结构并写入存储版本 1；已有数据但缺少版本记录的数据库会被拒绝，不做结构猜测或补登记。当前数据库迁移清单为空。后续真实结构变化才逐级执行已登记 SQL，并将版本记录与结构变更一起提交；失败回滚。升级备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
 
-发布时执行 `pnpm release:version --set <版本>`，同步所有包、Shared 版本和模板清单；然后为相邻发布声明 Schema 转换，无变化也显式声明原样转换。`pnpm release:version --check` 已接入根 lint。数据库结构有变化时另外增加迁移步骤和存储版本，更新当前结构与验证规则。
+发布时执行 `pnpm release:version --set <版本>`，仅同步包发布版本，不改变 Schema 或物料契约。`pnpm release:version --check` 检查包版本对齐、契约 SemVer 和模板物料声明。只有真实契约变化才调整独立版本；首次不兼容变化时再实现具体转换器。数据库结构变化另外增加存储迁移。
 
-打开页面不切换项目依赖。项目菜单的“升级项目”显式调用 `POST /api/v1/projects/upgrade`，提交 `projectId`、`expectedVersion` 和稳定的 `clientRequestId`。所有页面必须已打开、迁移并显式保存；升级按计划中的版本逐页调用原 Apply 服务，然后更新 package.json 依赖和项目清单。不会执行依赖安装命令，用户完成后需重新安装依赖并验证项目。
+`POST /api/v1/projects/upgrade-state/get` 返回兼容性检查结果。保留的 `POST /api/v1/projects/upgrade` 仅用于已知旧清单格式转换，提交 `expectedVersion: "1.0.0"`、`expectedManifestHash` 和稳定的 `clientRequestId`；它不转换页面或更新依赖。
 
-`.origamix/project-upgrade.json` 保留原配置、计划中的 Revision/Working 版本及结果；升级期间阻止普通编辑和 Apply。状态通过 `/projects/upgrade-state/get` 读取，显式重试复用原请求，不在启动时自动重放。项目配置、目标页或草稿出现冲突时停止并保留记录。目标页和配置尚未改变时，可通过 `/projects/upgrade/cancel` 撤销；已经写入时需继续完成。此流程不是跨文件原子替换，升级期间应停止目标项目运行。
+旧版 `.origamix/project-upgrade.json` 记录继续保护中断现场：pending 状态阻止写入，不再由新入口继续升级。配置和目标均未改变时可安全撤销；已经部分写入时应使用原应用恢复，不能删除记录绕过保护。
 
 ## 独立开发环境配置
 

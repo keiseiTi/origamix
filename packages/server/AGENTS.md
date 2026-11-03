@@ -96,17 +96,14 @@ pnpm --filter @origamix/server gate:agent
 
 - Material semantics additionally reject duplicate identifiers, orphan tab content/default-node references, invalid canonical dates/ranges and duplicate Form field names before a Working write. Keep source rejection atomic; do not rewrite retained projects to hide removed property or enum errors.
 
-## Version upgrades
+## Contract compatibility
 
-- `schema/schema-migrations.ts` is the only pure Schema conversion chain. `schema-service.ts` upgrades on page access under the existing page queue; never persist intermediate steps or write the target. Current producers use Shared `ORIGAMIX_VERSION`. Old Revision hashes refer to original bytes/data; restore converts a candidate without rewriting history.
-- Project reconciliation indexes manifest pages without opening them. The first page access imports retained target data if Working is absent. Agent startup receipt recovery uses `getRetainedWorkingSchemaState`, which must not trigger migration before checking the durable commit hash.
-- `origamix.project.json` has one `version` and a material-set ID; resolved stack component versions are derived. New projects use the current descriptor. Unknown/missing versions and unsupported descriptors are rejected without normalization.
-- Applying a current Schema to a project declaring another runtime release is blocked. Project dependency changes are explicit and must coordinate all saved/applied pages; opening a page must never rewrite dependencies.
-- Release updates use root `release:version`; its check enforces package alignment and adjacent Schema migration declarations. Database storage versions advance only for actual database changes, with migrations supplied before enabling that version.
-
-- `projects/project-upgrade-service.ts` runs explicit whole-project upgrades under ProjectService's project queue, with a durable `project-upgrade.json` plan. It accepts only already-opened, clean saved pages; target writes go through ProjectApplyService with stable per-page request IDs. Ordinary Working/manifest writes and Apply reject pending upgrades. Never auto-resume at startup, execute a package manager, or rewrite page shells. Cancellation requires unchanged targets and configuration.
-
-- `scripts/config.ts` owns independent Server dev env loading. Hosted startServer remains parameter-injected and must not read environment files. Credentials remain process-injected, relative paths are package-root-relative, and tests disable personal overrides with ORIGAMIX_ENV_LOCAL=0.
+- Packages share the application release; `SCHEMA_VERSION` and `MATERIAL_CONTRACT_VERSION` are independent SemVer contracts. Current support is explicit exact matching, never an inferred SemVer range.
+- `schema/schema-compatibility.ts` only checks compatibility and content. Opening/reloading/restoring pages never migrates Schema. Unsupported versions preserve Working/target bytes. History snapshots stay immutable.
+- `origamix.project.json` declares framework and materialSet { id, version }; no project version or uiLibrary. Missing configuration blocks writes; known projects or retained .origamix directories must not be reinitialized. No database configuration snapshots.
+- `projects/project-upgrade-service.ts` provides read-only compatibility inspection and explicit hash-checked conversion of the one known legacy 1.0.0 manifest. It never upgrades dependencies or pages. Without a real converter, report reasons only. Historical pending upgrade journals still freeze writes and allow only safe cancellation or recovery with the original application.
+- Page compatibility inspection belongs to schema-service.ts and never initializes Working or recovers transactions. Agent recovery retains existing durable-receipt rules without automatic migration.
+- Root release:version aligns package releases and checks independent contract SemVer, but does not bump contracts or require a migration on every application release. Database versions still advance only on actual storage changes.
 
 ## Source organization
 

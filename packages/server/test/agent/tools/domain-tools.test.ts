@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import { createProjectStackFixture } from '../../fixtures/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
@@ -20,7 +20,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 };
 
 const tools = (maxResultBytes?: number) => {

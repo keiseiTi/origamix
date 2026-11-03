@@ -28,7 +28,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 Generated page shells consume `@origamix/materials/antd/runtime`. Template smoke verifies that standalone installation does not pull editor engines. HeroUI remains a direct scaffold UI dependency.
 
-The scaffold manifest records a material-set ID and one unified `version`. Artifact preparation checks Runtime, Materials and template package versions against the supported resolved stack before packing; unsupported versions must fail instead of silently substituting archives. Existing page shells are never rewritten to implement stack selection.
+The scaffold manifest records framework and materialSet { id, version }; no project version or uiLibrary. Artifact preparation checks Runtime/Materials/template package release alignment separately from the material contract. Opening/checking a project never changes dependencies. Existing page shells are never rewritten to implement stack selection.
 
 From the repository root:
 

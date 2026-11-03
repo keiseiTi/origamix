@@ -1,4 +1,4 @@
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import { loadProjectMaterials } from '../../../src/projects/project-materials';
 import { createProjectStackFixture } from '../../fixtures/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
@@ -32,7 +32,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 };
 
 const setup = (readSchema = vi.fn(async () => ({ schema, revisionId, workingVersion: 1 }))) => {
@@ -144,7 +144,7 @@ describe('read-only Agent tools', () => {
       globalVariables: draft.context.globalVariables,
     });
     expect(await readAll('get_flow_node_manifest', { type: 'interfaceRequest' })).toEqual({
-      formatVersion: ORIGAMIX_VERSION,
+      formatVersion: SCHEMA_VERSION,
       manifest: JSON.parse(JSON.stringify(getFlowNodeManifest('interfaceRequest'))),
     });
     const material = (await readAll('get_material_manifest', { type: 'datePicker' })) as {

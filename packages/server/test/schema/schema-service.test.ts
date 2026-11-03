@@ -1,5 +1,5 @@
 import { hashSchema } from '../../src/schema/schema-hash';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
+import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   mkdtemp,
   mkdir,
@@ -38,7 +38,7 @@ const schema: OrigamixPageSchema = {
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 };
 
 const logicFlow = (): PageFlow => ({
@@ -96,9 +96,7 @@ const createPageFixture = async (): Promise<{
       projectId: 'project_test',
       name: 'Test',
       framework: 'react',
-      uiLibrary: 'antd',
-      version: '1.0.0',
-      materialSet: 'official-antd',
+      materialSet: { id: 'official-antd', version: '1.0.0' },
       pageDirectory: 'pages',
       pages: [{ pageId, name: '测试页面', slug }],
     }),
@@ -585,7 +583,7 @@ describe('Schema Service', () => {
       manifestPath,
       JSON.stringify({
         ...JSON.parse(manifestSource),
-        version: '9.0.0',
+        materialSet: { id: 'official-antd', version: '9.0.0' },
       }),
     );
     await expect(
@@ -594,7 +592,14 @@ describe('Schema Service', () => {
         schema,
       }),
     ).rejects.toThrow('9.0.0');
-    expect((await getWorkingSchemaState(page)).workingVersion).toBe(updated.workingVersion);
+    expect(
+      JSON.parse(
+        await readFile(
+          join(page.projectPath, '.origamix/pages', page.pageId, 'working.json'),
+          'utf8',
+        ),
+      ).workingVersion,
+    ).toBe(updated.workingVersion);
     expect(await readFile(targetPath, 'utf8')).toBe(targetSource);
     expect(await readFile(manifestPath, 'utf8')).toContain('9.0.0');
     await writeFile(manifestPath, manifestSource);
@@ -892,7 +897,7 @@ it('opens the current page repeatedly without migration or additional checkpoint
   expect(first).toEqual(second);
   expect(first.revisionId).toBe(revisionId);
   expect(first.workingHash).toBe(first.savedSchemaHash);
-  expect(first.migration).toBeUndefined();
+  expect(first).not.toHaveProperty('migration');
   expect(await readFile(workingPath, 'utf8')).toBe(originalWorking);
   expect(await readFile(targetPath, 'utf8')).toBe(originalTarget);
   expect(await readdir(join(page.projectPath, '.origamix/revisions', page.pageId))).toHaveLength(1);
@@ -906,6 +911,8 @@ it('rejects unsupported or missing Schema versions without rewriting Working', a
   const working = JSON.parse(await readFile(path, 'utf8'));
   for (const candidate of [
     { ...schema, extensions: { origamix: { schemaVersion: '99.0.0' } } },
+    { ...schema, extensions: { origamix: { schemaVersion: '0.9.0' } } },
+    { ...schema, extensions: { origamix: { schemaVersion: '01.0.0' } } },
     {
       ...schema,
       extensions: { origamix: {} },

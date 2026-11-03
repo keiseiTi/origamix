@@ -1,7 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import { PageFlowSchema, FlowIdSchema, ElementEventBindingSchema } from '../flow/flow-schema.ts';
-import { ORIGAMIX_VERSION } from '../version.ts';
+import { SCHEMA_VERSION } from '../version.ts';
 
 // Element identities remain stable across editor commands and persisted drafts.
 export const ElementIdSchema = Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$' });
@@ -33,7 +33,7 @@ export const PageSchema = Type.Object({
   context: Type.Object({ globalVariables: Type.Array(GlobalVariableSchema) }),
   extensions: Type.Object({
     flowGraph: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-    origamix: Type.Object({ schemaVersion: Type.Literal(ORIGAMIX_VERSION) }),
+    origamix: Type.Object({ schemaVersion: Type.Literal(SCHEMA_VERSION) }),
   }),
 });
 

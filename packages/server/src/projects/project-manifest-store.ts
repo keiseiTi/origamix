@@ -8,6 +8,8 @@ import {
   type ProjectPageManifest,
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
+  validateResolvedProjectStack,
+  isSemanticVersion,
 } from '@origamix/shared';
 
 import { invalid, notFound } from '../errors';
@@ -15,6 +17,12 @@ import { invalid, notFound } from '../errors';
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
     await assertProjectNotUpgrading(projectPath);
+    try {
+      const source = await readFile(join(projectPath, 'origamix.project.json'), 'utf8');
+      if (this.legacyVersion(source)) throw invalid('项目清单需要显式转换，请打开兼容性检查');
+    } catch (error) {
+      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+    }
     await writeFileAtomically(
       join(projectPath, 'origamix.project.json'),
       `${JSON.stringify(manifest, null, 2)}\n`,
@@ -28,21 +36,23 @@ export class ProjectManifestStore {
     await this.writeManifest(projectPath, {
       ...input,
       framework: BUILTIN_PROJECT_STACK.framework,
-      uiLibrary: BUILTIN_PROJECT_STACK.uiLibrary,
-      version: BUILTIN_PROJECT_STACK.materialSet.version,
-      materialSet: BUILTIN_PROJECT_STACK.materialSet.id,
+      materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],
     });
   }
 
-  async readManifest(projectPath: string): Promise<ProjectManifest> {
+  async readSource(projectPath: string): Promise<string> {
     try {
-      return this.parseManifest(await readFile(join(projectPath, 'origamix.project.json'), 'utf8'));
+      return await readFile(join(projectPath, 'origamix.project.json'), 'utf8');
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-        throw invalid('目录尚未初始化为 Origamix 项目');
+        throw invalid('项目配置文件 origamix.project.json 缺失，请恢复后重新打开');
       throw error;
     }
+  }
+
+  async readManifest(projectPath: string): Promise<ProjectManifest> {
+    return this.parseManifest(await this.readSource(projectPath));
   }
 
   parseManifest(source: string): ProjectManifest {
@@ -51,6 +61,15 @@ export class ProjectManifestStore {
       manifest = JSON.parse(source);
     } catch {
       throw invalid('项目清单不是有效的 JSON');
+    }
+    const legacy = this.legacyVersion(source);
+    if (legacy) {
+      if (legacy !== '1.0.0')
+        throw invalid(`旧项目配置 ${legacy} 没有已知的物料版本映射，请使用兼容应用`);
+      const fields = { ...(manifest as Record<string, unknown>) };
+      delete fields.version;
+      delete fields.uiLibrary;
+      manifest = { ...fields, materialSet: { id: 'official-antd', version: '1.0.0' } };
     }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
     this.resolveStack(manifest);
@@ -65,6 +84,33 @@ export class ProjectManifestStore {
     return manifest;
   }
 
+  legacyVersion(source: string): string | null {
+    const value = JSON.parse(source) as Record<string, unknown> | null;
+    if (
+      value &&
+      value.materialSet === 'official-antd' &&
+      value.framework === 'react' &&
+      value.uiLibrary === 'antd' &&
+      isSemanticVersion(value.version)
+    )
+      return value.version;
+    return null;
+  }
+
+  async requireEditable(projectPath: string): Promise<ProjectManifest> {
+    const source = await this.readSource(projectPath);
+    const manifest = this.parseManifest(source);
+    if (this.legacyVersion(source))
+      throw invalid('项目清单需要显式转换，请打开兼容性检查；原数据已保留');
+    try {
+      validateResolvedProjectStack(resolveProjectStack(manifest));
+    } catch (reason) {
+      throw invalid(reason instanceof Error ? reason.message : '项目契约不兼容');
+    }
+    await assertProjectNotUpgrading(projectPath);
+    return manifest;
+  }
+
   private resolveStack(descriptor: unknown) {
     try {
       return resolveProjectStack(descriptor);
@@ -74,7 +120,7 @@ export class ProjectManifestStore {
   }
 
   async readStack(projectPath: string) {
-    return this.resolveStack(await this.readManifest(projectPath));
+    return this.resolveStack(await this.requireEditable(projectPath));
   }
 
   async readPages(projectPath: string): Promise<ProjectPageManifest[]> {
