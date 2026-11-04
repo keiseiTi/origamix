@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   getRevision: vi.fn(),
   restoreRevision: vi.fn(),
   editorMounted: vi.fn(),
+  editorRefresh: vi.fn(),
 }));
 // Model the public editor hooks while keeping the host persistence/recovery real.
 type TestEditor = EditorInstance & { mode: EditorMode; plugins: readonly EditorPlugin[] };
@@ -107,9 +108,11 @@ vi.mock('../../../src/components/editor/index', () => ({
     onWorkingCommitted,
     onSave,
     visible,
+    schemaRefreshKey,
     editor,
   }: {
     visible: boolean;
+    schemaRefreshKey: string;
     onSave?: () => Promise<void>;
     editor: TestEditor;
     readOnly: boolean;
@@ -117,6 +120,7 @@ vi.mock('../../../src/components/editor/index', () => ({
     onWorkingCommitted?: () => void;
   }) => {
     useEffect(() => mocks.editorMounted(), []);
+    useEffect(() => mocks.editorRefresh(schemaRefreshKey), [schemaRefreshKey]);
     return (
       <EditorTestContext.Provider value={{ ...editor, save: onSave ?? editor.save }}>
         {visible &&
@@ -301,7 +305,7 @@ describe('workspace recovery controls', () => {
     expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2);
   });
 
-  it('reloads the editor directly when an Agent commits a newer Working version', async () => {
+  it('signals a Working refresh without replacing the host session when an Agent commits', async () => {
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
@@ -342,8 +346,10 @@ describe('workspace recovery controls', () => {
       payload: { baseWorkingVersion: 2, resultWorkingVersion: 3, operationCount: 1 },
     });
 
-    await waitFor(() => expect(mocks.editorMounted).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.editorRefresh.mock.lastCall?.[0]).toContain('3'));
+    expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
     useWorkspaceStore.getState().setPageMode('page_a', 'edit');
-    await waitFor(() => expect(mocks.editorMounted).toHaveBeenCalledTimes(3));
+    await act(async () => Promise.resolve());
+    expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });
 });

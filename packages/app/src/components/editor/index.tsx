@@ -15,6 +15,7 @@ import { useEditorSession } from './use-editor-session';
 interface EditorProps {
   ref?: Ref<EditorHandle>;
   visible: boolean;
+  schemaRefreshKey: string;
   projectId: string;
   pageId: string;
   readOnly?: boolean;
@@ -32,6 +33,7 @@ export const PageEditor = ({
   projectId,
   pageId,
   visible,
+  schemaRefreshKey,
   onWorkingCommitted,
   onReturnToChat,
   readOnly = false,
@@ -64,14 +66,16 @@ export const PageEditor = ({
     pageId,
     readOnly,
     onWorkingCommitted,
-    Boolean(materials.registration),
+    visible && Boolean(materials.registration),
+    schemaRefreshKey,
   );
   useImperativeHandle(
     ref,
     () => ({
       flush: session.flush,
+      acknowledgeWorking: session.acknowledgeWorking,
     }),
-    [session.flush],
+    [session.flush, session.acknowledgeWorking],
   );
   // Keep host recovery alive without mounting canvas portals in chat or preview.
   if (!visible) return null;
@@ -96,13 +100,16 @@ export const PageEditor = ({
         <Spinner aria-label='加载编辑器' />
       </div>
     );
-  if (!session.initial)
+  if (!session.snapshot)
     return (
       <div
         role='alert'
         className='grid min-h-0 flex-1 place-content-center justify-items-center gap-3 p-6 text-sm text-destructive'
       >
         <span>{session.error ?? 'Schema 不可用'}</span>
+        <Button variant='outline' onClick={session.retryLoad}>
+          重试加载
+        </Button>
         {returnToChatButton}
       </div>
     );
@@ -121,15 +128,21 @@ export const PageEditor = ({
           >
             重试保存草稿
           </Button>
+          <Button size='sm' variant='outline' onClick={session.retryLoad}>
+            重试加载
+          </Button>
         </div>
       )}
       <EditorView
         {...viewProps}
-        schema={session.initial.schema}
-        sessionKey={session.providerKey}
+        schema={session.snapshot.schema}
+        sessionKey={session.snapshot.sessionKey}
         registration={materials.registration}
         theme={theme}
-        readOnly={readOnly}
+        readOnlyMessage={
+          session.refreshing ? '正在加载最新页面，请稍候' : viewProps.readOnlyMessage
+        }
+        readOnly={readOnly || session.refreshing}
         onChange={session.onChange}
       />
     </>

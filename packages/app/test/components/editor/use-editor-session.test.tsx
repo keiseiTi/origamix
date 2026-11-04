@@ -71,6 +71,29 @@ describe('useEditorSession', () => {
     expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     expect(hook.result.current.initial?.revisionId).toBe('revision_saved');
     expect(onWorkingCommitted).toHaveBeenCalledTimes(1);
+    // Hiding the canvas retains the host queue; returning must use the saved draft.
+    const sessionKey = hook.result.current.snapshot?.sessionKey;
+    hook.rerender({ ready: false });
+    hook.rerender({ ready: true });
+    expect(hook.result.current.snapshot?.schema).toEqual(next);
+    expect(hook.result.current.snapshot?.sessionKey).toBe(sessionKey);
+    expect(schemaMocks.workingState).toHaveBeenCalledTimes(1);
+    // Explicit checkpoint creation advances Server's version without replacing history.
+    act(() =>
+      hook.result.current.acknowledgeWorking({
+        scope: { projectId: 'project_one', pageId: 'page_one' },
+        schema: next,
+        workingVersion: 6,
+      }),
+    );
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+    const afterSave = structuredClone(next);
+    afterSave.elements.element_root!.props = { padding: 40 };
+    schemaMocks.applyWorkingOperations.mockResolvedValue({ schema: afterSave, workingVersion: 7 });
+    act(() => hook.result.current.onChange(afterSave));
+    await act(async () => hook.result.current.flush());
+    expect(schemaMocks.applyWorkingOperations.mock.lastCall?.[2]).toBe(6);
+    expect(hook.result.current.snapshot?.sessionKey).toBe(sessionKey);
   });
 
   // App owns this queue: Server cannot prove that a rejected UI flush retains
@@ -106,6 +129,40 @@ describe('useEditorSession', () => {
     );
     expect(hook.result.current.error).toBeNull();
     expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
+  });
+
+  // Only the browser owns external refresh sequencing and local draft retention.
+  it('reloads external Working updates without replacing a rejected local draft', async () => {
+    const hook = renderHook(
+      ({ refresh }) => useEditorSession('project_one', 'page_one', false, undefined, true, refresh),
+      { initialProps: { refresh: '' } },
+    );
+    await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
+    const oldChange = hook.result.current.onChange;
+    const updated = structuredClone(schema);
+    updated.elements.element_root!.props = { padding: 16 };
+    schemaMocks.workingState.mockResolvedValue({ schema: updated, workingVersion: 5 });
+    hook.rerender({ refresh: 'agent_5' });
+    await waitFor(() => expect(hook.result.current.initial?.workingVersion).toBe(5));
+    expect(hook.result.current.initial?.schema).toEqual(updated);
+    // A detached engine may finish cleanup after the new Working is installed.
+    act(() => oldChange(schema));
+    hook.rerender({ refresh: 'agent_5' });
+    expect(hook.result.current.snapshot?.schema).toEqual(updated);
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+    const draft = structuredClone(updated);
+    draft.elements.element_root!.props = { padding: 32 };
+    schemaMocks.applyWorkingOperations.mockRejectedValue(new Error('连接中断'));
+    act(() => hook.result.current.onChange(draft));
+    await act(async () => {
+      await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
+    });
+    hook.rerender({ refresh: 'agent_6' });
+    await act(async () => Promise.resolve());
+    expect(schemaMocks.workingState).toHaveBeenCalledTimes(2);
+    expect(hook.result.current.snapshot?.schema).toEqual(draft);
+    expect(hook.result.current.error).toBeTruthy();
+    expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledTimes(1);
   });
 
   // The extracted view may be rebound to another page while HTTP is pending.

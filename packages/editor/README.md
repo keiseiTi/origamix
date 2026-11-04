@@ -37,7 +37,7 @@ import '@origamix/editor/styles.css';
 
 ## 宿主装配
 
-App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过插件的 `editor.renderToolbar` 组合 Toolbar，其渲染在 EditorProvider 内，使用 `useEditorSelector(selector)` 按需订阅公共状态、`useEditorContext()` 获取稳定实例并执行撤销/重做、切换模式和调整宽度。内部 Store 和任意 setState 不对外开放。主题、物料目录、候选选择、只读状态与实例引用统一存入会话 Zustand Store，通过一个 EditorSessionContext 注入；环境更新只更新对应字段，不重建 Schema、撤销历史或触发 onChange。模式与宽度继续随保留的 EditorInstance 存活。独立使用 CodeEditor 时仍支持显式 theme，未提供时默认浅色。App 的 PageEditor 仅保留宿主 flush 句柄；切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后重新读取 Working。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
+App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过插件的 `editor.renderToolbar` 组合 Toolbar，其渲染在 EditorProvider 内，使用 `useEditorSelector(selector)` 按需订阅公共状态、`useEditorContext()` 获取稳定实例并执行撤销/重做、切换模式和调整宽度。内部 Store 和任意 setState 不对外开放。主题、物料目录、候选选择、只读状态与实例引用统一存入会话 Zustand Store，通过一个 EditorSessionContext 注入；环境更新只更新对应字段，不重建 Schema、撤销历史或触发 onChange。模式与宽度继续随保留的 EditorInstance 存活。独立使用 CodeEditor 时仍支持显式 theme，未提供时默认浅色。App 的 PageEditor 保留宿主 flush 与 acknowledgeWorking 句柄；后者只确认同一 Schema 的服务端版本，不替换草稿或历史。切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后从保留的当前草稿初始化画布；外部 Working 变更通过显式刷新读取。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
 
 宿主在保留的页面会话中调用 `useCreateEditor({ plugins, initialViewportWidth, initialMode, beforeModeChange })`，将稳定实例传给 `<Editor editor={editor} ... />`。初始选项仅用于创建；`beforeModeChange` 使用最新回调，必须等待宿主 flush；失败保持原模式，异步完成时若画布会话已切换则拒绝切换。实例保存宽度和编辑模式，画布卸载后仍保留；Schema、选中元素和撤销历史仍由当前 `sessionKey` 的独立内核维护。一个实例同一时间只能挂载一个编辑器；卸载后 Schema 命令不可用，只读时拒绝修改。实例不公开原始 Store 或任意 setState。
 
@@ -65,7 +65,7 @@ return (
 
 Editor 不内置工具弹窗或工具标识。宿主在 Toolbar 插件或 `children` 中组合弹窗、抽屉及开关；本包导出 `SchemaEditor`、`GlobalVariablesEditor`，它们必须位于当前 Editor 的上下文内，普通 React Portal 保留上下文。表单通过受约束实例命令修改同一草稿并进入撤销历史，`onDone` 只表示确认完成，不创建 Revision。Revision 历史和 Apply 仍完全由 App 提供。
 
-schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置引擎。历史恢复或 Agent 新提交由 App 开启新会话。代码编辑器读取传入主题，独立使用时可显式传 `theme`；Monaco workers 由 CodeEditor 在创建 model 前自动配置；Editor 内部使用 `?worker` 导入，由消费方构建工具（当前为 Vite）产出本地 worker，App 无需额外初始化。
+schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置引擎。历史恢复或 Agent 新提交由 App 读取 Working 后开启新会话。sessionKey、物料注册或实例变化时，Editor 先卸载旧 Provider 内容并清理绑定、插件和浮层，再挂载新会话，不使用 React key。代码编辑器读取传入主题，独立使用时可显式传 `theme`；Monaco workers 由 CodeEditor 在创建 model 前自动配置；Editor 内部使用 `?worker` 导入，由消费方构建工具（当前为 Vite）产出本地 worker，App 无需额外初始化。
 
 `targetSelection` 是通用元素选择能力：宿主传入 `candidates`、可选的 `highlightedElementId` / `disabled` 和 `onSelect`。Editor 呈现候选编号、高亮与禁用反馈，不判断澄清是否过期或管理 Agent Run。App 将业务状态转换为该契约；只读时可通过 `readOnlyMessage` 传入具体原因，Editor 默认显示“当前不可编辑”。
 

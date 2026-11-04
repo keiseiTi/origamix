@@ -1,7 +1,7 @@
 import { equalJson } from '@origamix/shared';
 import { subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorTransaction } from '@origamix/editor';
+import type { EditorTransaction, EditorWorkingState } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
@@ -11,6 +11,7 @@ type Session = {
   scope: { projectId: string; pageId: string };
   active: boolean;
   ready: boolean;
+  generation: number;
   draft: OrigamixPageSchema | null;
   savedSchema: OrigamixPageSchema | null;
   workingVersion: number;
@@ -25,6 +26,7 @@ export const useEditorSession = (
   readOnly: boolean,
   onWorkingCommitted?: () => void,
   readyToEdit = true,
+  schemaRefreshKey = '',
 ) => {
   // A new ref cell per scope isolates queues even when an old request is pending.
   const sessionRef = useMemo<{ current: Session }>(
@@ -33,6 +35,7 @@ export const useEditorSession = (
         scope: { projectId, pageId },
         active: false,
         ready: false,
+        generation: 0,
         draft: null,
         savedSchema: null,
         workingVersion: 0,
@@ -46,6 +49,7 @@ export const useEditorSession = (
   const [loaded, setLoaded] = useState<{
     sessionRef: { current: Session };
     initial: WorkingState | null;
+    refreshKey: string;
     error: string | null;
   } | null>(null);
   const [failure, setFailure] = useState<{
@@ -57,31 +61,54 @@ export const useEditorSession = (
     onWorkingCommittedRef.current = onWorkingCommitted;
   }, [onWorkingCommitted]);
 
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    const ownedSession = sessionRef.current;
+    ownedSession.active = true;
+    return () => {
+      ownedSession.active = false;
+      ownedSession.ready = false;
+      if (ownedSession.timer !== null) window.clearTimeout(ownedSession.timer);
+    };
+  }, [sessionRef]);
+
   useEffect(() => {
     let active = true;
     const ownedSession = sessionRef.current;
-    sessionRef.current.active = true;
-    sessionRef.current.ready = false;
     let sequence = 0;
-    const load = () => {
+    const load = async () => {
       const request = ++sequence;
-      return schemaService
-        .workingState(projectId, pageId)
-        .then((result) => {
-          if (!active || sequence !== request) return;
-          sessionRef.current.draft = result.schema;
-          sessionRef.current.savedSchema = result.schema;
-          sessionRef.current.workingVersion = result.workingVersion;
-          setLoaded({ sessionRef, initial: result, error: null });
-        })
-        .catch((reason: unknown) => {
-          if (active && sequence === request)
-            setLoaded({
-              sessionRef,
-              initial: null,
-              error: reason instanceof Error ? reason.message : '无法读取 Schema',
-            });
-        });
+      try {
+        if (ownedSession.pending) await ownedSession.pending;
+        if (!active || request !== sequence) return;
+        if (ownedSession.failed || !equalJson(ownedSession.draft, ownedSession.savedSchema))
+          throw new Error('Working 已更新，本地草稿已保留；请先重试保存草稿，再重试加载');
+        const baseVersion = ownedSession.workingVersion;
+        const result = await schemaService.workingState(projectId, pageId);
+        if (!active || request !== sequence) return;
+        // Editing may have continued while the read was in flight.
+        if (
+          ownedSession.workingVersion !== baseVersion ||
+          ownedSession.pending ||
+          ownedSession.failed ||
+          !equalJson(ownedSession.draft, ownedSession.savedSchema)
+        )
+          throw new Error('加载期间出现本地编辑，草稿已保留，请重试加载');
+        ownedSession.generation += 1;
+        ownedSession.draft = result.schema;
+        ownedSession.savedSchema = result.schema;
+        ownedSession.workingVersion = result.workingVersion;
+        setLoaded({ sessionRef, initial: result, refreshKey: schemaRefreshKey, error: null });
+      } catch (reason) {
+        if (active && request === sequence)
+          setLoaded((previous) => ({
+            sessionRef,
+            initial: previous?.sessionRef === sessionRef ? previous.initial : null,
+            refreshKey: schemaRefreshKey,
+            error: reason instanceof Error ? reason.message : '无法读取 Schema',
+          }));
+      }
     };
     void load();
     const unsubscribe = subscribeBackendReady(() => {
@@ -91,11 +118,8 @@ export const useEditorSession = (
     return () => {
       unsubscribe();
       active = false;
-      ownedSession.active = false;
-      ownedSession.ready = false;
-      if (ownedSession.timer !== null) window.clearTimeout(ownedSession.timer);
     };
-  }, [projectId, pageId, sessionRef]);
+  }, [projectId, pageId, sessionRef, schemaRefreshKey, retry]);
 
   useEffect(() => {
     if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
@@ -174,8 +198,15 @@ export const useEditorSession = (
     }
   }, [readOnly, sessionRef]);
 
+  const generation = sessionRef.current.generation;
   const onChange = (schema: OrigamixPageSchema, options?: { immediate: boolean }): void => {
-    if (!sessionRef.current.active || !sessionRef.current.ready || readOnly) return;
+    if (
+      generation !== sessionRef.current.generation ||
+      !sessionRef.current.active ||
+      !sessionRef.current.ready ||
+      readOnly
+    )
+      return;
     sessionRef.current.draft = schema;
     if (equalJson(schema, sessionRef.current.savedSchema)) return;
     if (sessionRef.current.timer !== null) window.clearTimeout(sessionRef.current.timer);
@@ -187,15 +218,43 @@ export const useEditorSession = (
       );
   };
 
+  const acknowledgeWorking = useCallback(
+    (working: EditorWorkingState): void => {
+      const current = sessionRef.current;
+      if (
+        !current.active ||
+        working.scope.projectId !== current.scope.projectId ||
+        working.scope.pageId !== current.scope.pageId ||
+        working.workingVersion <= current.workingVersion
+      )
+        return;
+      if (!equalJson(working.schema, current.savedSchema))
+        throw new Error('页面内容已变化，本地草稿已保留，请重新加载');
+      current.workingVersion = working.workingVersion;
+    },
+    [sessionRef],
+  );
+
   const current = loaded?.sessionRef === sessionRef ? loaded : null;
   const initial = current?.initial ?? null;
-  const providerKey = initial ? `${projectId}:${pageId}:${initial.workingVersion}` : '';
+  // A canvas mount consumes the retained draft; ordinary saves do not change
+  // this identity or reset the currently mounted editor's history.
+  const snapshot =
+    initial && sessionRef.current.draft
+      ? {
+          schema: sessionRef.current.draft,
+          sessionKey: `${projectId}:${pageId}:${generation}`,
+        }
+      : null;
   return {
     initial,
     loading: !current,
+    refreshing: Boolean(current && current.refreshKey !== schemaRefreshKey),
+    retryLoad: () => setRetry((value) => value + 1),
     error: failure?.sessionRef === sessionRef ? failure.message : (current?.error ?? null),
     flush,
     onChange,
-    providerKey,
+    snapshot,
+    acknowledgeWorking,
   };
 };

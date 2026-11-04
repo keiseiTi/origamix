@@ -165,7 +165,7 @@ const PageSessionContent = ({
         <WorkspaceToolbarProvider value={{ ...toolbarProps, active: active && mode === 'edit' }}>
           <PageEditor
             visible={active && mode === 'edit'}
-            key={`${projectId}:${page.id}:${active}:${mode}:${editorSchemaRefreshKey}`}
+            schemaRefreshKey={editorSchemaRefreshKey}
             ref={editorRef}
             editor={editor}
             projectId={projectId}

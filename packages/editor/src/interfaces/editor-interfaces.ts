@@ -43,6 +43,8 @@ export type CommitEditorTransaction = (
 
 export type EditorHandle = Readonly<{
   flush: () => Promise<void>;
+  /** Acknowledge a host-confirmed version of the same Schema without replacing the draft. */
+  acknowledgeWorking?: (working: EditorWorkingState) => void;
 }>;
 
 /** Supplied by App after resolving the project's material set. No loader or concrete family here. */
