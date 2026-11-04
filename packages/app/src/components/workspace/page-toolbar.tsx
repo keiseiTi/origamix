@@ -1,3 +1,4 @@
+import { EditorToolbar } from '@origamix/editor';
 import {
   Button,
   DropdownMenu,
@@ -27,6 +28,7 @@ export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
 export interface PageToolbarProps {
   active: boolean;
+  saveBusy?: boolean;
   projectName: string;
   pageName: string;
   projectId: string;
@@ -49,6 +51,7 @@ export interface PageToolbarProps {
 
 export const PageToolbarShell = ({
   active,
+  saveBusy,
   projectName,
   pageName,
   projectId,
@@ -84,7 +87,7 @@ export const PageToolbarShell = ({
   };
   return (
     <>
-      <header className='relative z-10 flex h-12 min-h-12 items-center justify-between gap-3 border-b border-border px-3 text-xs'>
+      <EditorToolbar>
         <div className='flex min-w-0 items-center gap-1'>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -126,6 +129,7 @@ export const PageToolbarShell = ({
         <div className='flex shrink-0 items-center gap-1'>
           <RevisionActions
             active={active}
+            saveBusy={saveBusy}
             previewOpening={opening}
             onSaveVersion={onSaveVersion}
             onApply={onApply}
@@ -185,7 +189,7 @@ export const PageToolbarShell = ({
             <TooltipContent side='bottom'>在应用标签中打开预览</TooltipContent>
           </Tooltip>
         </div>
-      </header>
+      </EditorToolbar>
       {historyOpen && (
         <RevisionHistoryDialog
           isOpen

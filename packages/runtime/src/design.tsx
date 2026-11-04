@@ -36,6 +36,7 @@ export const DesignRenderer = ({
       throw new Error('页面版本不受支持');
     return parseLayout(schema);
   }, [schema]);
+
   return (
     <>
       {renderLayout(layouts, (node, children) => {

@@ -12,7 +12,13 @@ export type EditorSaveOptions = Readonly<{
   onFlush?: () => Promise<void>;
   canSave?: boolean;
 }>;
-type ViewState = Readonly<{ mode: EditorMode; viewportWidth: number; saving: boolean; canSave: boolean; saveError: string | null }>;
+type ViewState = Readonly<{
+  mode: EditorMode;
+  viewportWidth: number;
+  saving: boolean;
+  canSave: boolean;
+  saveError: string | null;
+}>;
 export interface CreateEditorOptions {
   plugins?: readonly EditorPlugin[];
   initialMode?: EditorMode;
@@ -44,7 +50,9 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
   const state: InstanceState = {
     view: createStore<ViewState>(() => ({
       mode: options.initialMode ?? 'view',
-      saving: false, canSave: false, saveError: null,
+      saving: false,
+      canSave: false,
+      saveError: null,
       viewportWidth: Math.max(240, options.initialViewportWidth ?? 1440),
     })),
     plugins: snapshotEditorPlugins(options.plugins ?? []),
@@ -67,11 +75,14 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
       try {
         await binding.save.onFlush?.();
         if (state.binding !== binding) throw new Error('编辑会话已切换，请重试');
-        if (binding.save.canSave === false) throw new Error('当前不可保存');
+        if (!state.view.getState().canSave) throw new Error('当前不可保存');
         await onSave();
         if (state.binding !== binding) throw new Error('编辑会话已切换，请重试');
       } catch (error) {
-        if (state.binding === binding) state.view.setState({ saveError: error instanceof Error ? error.message : '保存失败，草稿已保留' });
+        if (state.binding === binding)
+          state.view.setState({
+            saveError: error instanceof Error ? error.message : '保存失败，草稿已保留',
+          });
         throw error;
       } finally {
         if (state.binding === binding) state.view.setState({ saving: false });
@@ -119,7 +130,11 @@ export const bindEditorSession = (
   if (state.binding)
     throw new Error('An Editor instance cannot be shared by multiple mounted editors');
   const binding = { core, readOnly, save };
-  state.view.setState({ saving: false, saveError: null, canSave: Boolean(save.onSave) && save.canSave !== false });
+  state.view.setState({
+    saving: false,
+    saveError: null,
+    canSave: Boolean(save.onSave) && save.canSave !== false,
+  });
   state.binding = binding;
   let active = true;
   const assertActive = (): void => {
@@ -128,7 +143,10 @@ export const bindEditorSession = (
   };
   // Plugins retain a scoped facade, never the instance that can bind a later page.
   const scoped: EditorInstance = {
-    save: async () => { assertActive(); await editor.save(); },
+    save: async () => {
+      assertActive();
+      await editor.save();
+    },
     undo: () => {
       assertActive();
       editor.undo();
@@ -162,20 +180,35 @@ export const bindEditorSession = (
   }
   return () => {
     active = false;
-    if (state.binding === binding) { state.binding = null; state.view.setState({ saving: false, canSave: false, saveError: null }); }
+    if (state.binding === binding) {
+      state.binding = null;
+      state.view.setState({ saving: false, canSave: false, saveError: null });
+    }
     dispose();
   };
 };
-export const useBindEditor = (editor: EditorInstance, readOnly: boolean, save: EditorSaveOptions): void => {
+export const useBindEditor = (
+  editor: EditorInstance,
+  readOnly: boolean,
+  save: EditorSaveOptions,
+): void => {
   const core = useEditorStoreApi();
   const initialSave = useRef(save);
-  useLayoutEffect(() => bindEditorSession(editor, core, core.getState().readOnly, initialSave.current), [editor, core]);
+  useLayoutEffect(() => {
+    initialSave.current = save;
+  }, [save]);
+  useLayoutEffect(
+    () => bindEditorSession(editor, core, core.getState().readOnly, initialSave.current),
+    [editor, core],
+  );
   useLayoutEffect(() => {
     const binding = getInstance(editor).binding;
     if (binding?.core === core) {
       binding.readOnly = readOnly;
       binding.save = save;
-      getInstance(editor).view.setState({ canSave: Boolean(save.onSave) && save.canSave !== false });
+      getInstance(editor).view.setState({
+        canSave: Boolean(save.onSave) && save.canSave !== false,
+      });
     }
   }, [editor, core, readOnly, save]);
 };
@@ -246,4 +279,5 @@ export const useEditorSelector = <T>(selector: (state: EditorPublicState) => T):
 };
 
 /** Internal immutable plugin definitions for rendering; never exposes the engine. */
-export const getEditorPlugins = (editor: EditorInstance): readonly EditorPlugin[] => getInstance(editor).plugins;
+export const getEditorPlugins = (editor: EditorInstance): readonly EditorPlugin[] =>
+  getInstance(editor).plugins;

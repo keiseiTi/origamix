@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { EditorInstance, EditorMode, CreateEditorOptions } from '@origamix/editor';
+import type {
+  EditorInstance,
+  EditorMode,
+  CreateEditorOptions,
+  EditorPlugin,
+} from '@origamix/editor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
 import { useWorkspaceStore } from '../../../src/store/workspace';
@@ -24,14 +29,36 @@ const mocks = vi.hoisted(() => ({
   editorMounted: vi.fn(),
 }));
 // Model the public editor hooks while keeping the host persistence/recovery real.
-type TestEditor = EditorInstance & { mode: EditorMode };
+type TestEditor = EditorInstance & { mode: EditorMode; plugins: readonly EditorPlugin[] };
+const TestModeTools = () => {
+  const editor = useContext(EditorTestContext)!;
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      {(['view', 'logic'] as const).map((mode) => (
+        <button
+          key={mode}
+          aria-pressed={editor.mode === mode}
+          onClick={() => {
+            void editor.setMode(mode).catch((reason: Error) => setError(reason.message));
+          }}
+        >
+          {mode === 'view' ? '视图' : '逻辑'}
+        </button>
+      ))}
+      {error && <span role='alert'>{error}</span>}
+    </>
+  );
+};
 const EditorTestContext = createContext<TestEditor | null>(null);
 vi.mock('@origamix/editor', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@origamix/editor')>()),
-  useCreateEditor: ({ beforeModeChange }: CreateEditorOptions) => {
+  useCreateEditor: ({ beforeModeChange, plugins = [] }: CreateEditorOptions) => {
     const [mode, setMode] = useState<EditorMode>('view');
     return {
       mode,
+      plugins,
+      save: vi.fn(),
       setMode: async (next: EditorMode) => {
         await beforeModeChange?.();
         setMode(next);
@@ -41,6 +68,29 @@ vi.mock('@origamix/editor', async (importOriginal) => ({
       setSchema: vi.fn(),
       setViewportWidth: vi.fn(),
     };
+  },
+  createEditorModePlugin: () => ({
+    id: 'editor.mode',
+    editor: {
+      renderToolbar: ({ area, children }: { area: string; children: ReactNode }) =>
+        area === 'center' ? (
+          <>
+            <TestModeTools />
+            {children}
+          </>
+        ) : (
+          children
+        ),
+    },
+  }),
+  createViewportPlugin: () => ({ id: 'editor.viewport' }),
+  createHistoryPlugin: () => ({ id: 'editor.history' }),
+  EditorToolbarArea: ({ area }: { area: 'start' | 'center' | 'end' }) => {
+    const editor = useContext(EditorTestContext)!;
+    return editor.plugins.reduceRight<ReactNode>(
+      (children, plugin) => plugin.editor?.renderToolbar?.({ editor, area, children }) ?? children,
+      null,
+    );
   },
   useEditorSelector: (selector: (state: object) => unknown) => {
     const editor = useContext(EditorTestContext)!;
@@ -55,12 +105,12 @@ vi.mock('../../../src/components/editor/index', () => ({
     readOnly,
     readOnlyMessage,
     onWorkingCommitted,
-    toolbar,
+    onSave,
     visible,
     editor,
   }: {
     visible: boolean;
-    toolbar?: ReactNode;
+    onSave?: () => Promise<void>;
     editor: TestEditor;
     readOnly: boolean;
     readOnlyMessage?: string;
@@ -68,8 +118,13 @@ vi.mock('../../../src/components/editor/index', () => ({
   }) => {
     useEffect(() => mocks.editorMounted(), []);
     return (
-      <EditorTestContext.Provider value={editor}>
-        {visible && toolbar}
+      <EditorTestContext.Provider value={{ ...editor, save: onSave ?? editor.save }}>
+        {visible &&
+          editor.plugins.reduceRight<ReactNode>(
+            (children, plugin) =>
+              plugin.editor?.renderToolbar?.({ editor, area: 'all', children }) ?? children,
+            null,
+          )}
         <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
           {readOnlyMessage ?? '画布'}
         </button>
@@ -237,6 +292,13 @@ describe('workspace recovery controls', () => {
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2));
     expect(mocks.listConversations).toHaveBeenCalledTimes(2);
+    // In edit mode the retained hidden chat toolbar must not dispatch a second save.
+    await act(async () => useWorkspaceStore.getState().setPageMode('page_b', 'edit'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '逻辑' })).toBeTruthy());
+    mocks.saveRevision.mockClear();
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledTimes(1));
+    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2);
   });
 
   it('reloads the editor directly when an Agent commits a newer Working version', async () => {

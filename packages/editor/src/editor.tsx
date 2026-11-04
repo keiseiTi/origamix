@@ -6,6 +6,8 @@ import { type Material } from './contracts/material-contracts';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { InsertPositionIndicator } from './canvas/insert-position-indicator';
+import { EditorChrome } from './layout/editor-toolbar';
+import type { EditorSaveOptions } from './session/editor-controls';
 import { EditorLayout } from './layout/editor-layout';
 import type { MaterialGroup } from './panels/material-panel';
 import { useEditorView, type EditorInstance } from './session/editor-controls';
@@ -19,7 +21,9 @@ import type {
 
 export interface EditorProps {
   editor: EditorInstance;
-  toolbar?: ReactNode;
+  onSave?: EditorSaveOptions['onSave'];
+  onFlush?: EditorSaveOptions['onFlush'];
+  canSave?: boolean;
   children?: ReactNode;
   schema: OrigamixPageSchema;
   sessionKey: string;
@@ -66,7 +70,9 @@ const EditorCanvas = ({
 
 export const Editor = ({
   editor,
-  toolbar,
+  onSave,
+  onFlush,
+  canSave,
   children,
   schema,
   sessionKey,
@@ -110,6 +116,7 @@ export const Editor = ({
       <EditorProvider
         key={sessionKey}
         editor={editor}
+        save={{ onSave, onFlush, canSave }}
         readOnly={readOnly}
         theme={theme}
         materialCatalog={registration.catalog.materials}
@@ -118,26 +125,27 @@ export const Editor = ({
         schema={schema as Schema}
         onChange={onEngineChange}
       >
-        {toolbar}
-        <div className='relative flex min-h-0 flex-1 flex-col'>
-          <EditorCanvas
-            groups={groups}
-            viewportWidth={viewportWidth}
-            mode={mode}
-            onModeChange={editor.setMode}
-          />
-          {children}
-          {readOnly && (
-            <div
-              className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
-              role='status'
-            >
-              <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
-                {readOnlyMessage ?? '当前不可编辑'}
-              </span>
-            </div>
-          )}
-        </div>
+        <EditorChrome>
+          <div className='relative flex min-h-0 flex-1 flex-col'>
+            <EditorCanvas
+              groups={groups}
+              viewportWidth={viewportWidth}
+              mode={mode}
+              onModeChange={editor.setMode}
+            />
+            {children}
+            {readOnly && (
+              <div
+                className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
+                role='status'
+              >
+                <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
+                  {readOnlyMessage ?? '当前不可编辑'}
+                </span>
+              </div>
+            )}
+          </div>
+        </EditorChrome>
       </EditorProvider>
     </div>
   );

@@ -1,8 +1,13 @@
 import { Editor as EditorView } from '@origamix/editor';
-import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
+import type {
+  EditorHandle,
+  EditorInstance,
+  EditorTargetSelection,
+  EditorSaveOptions,
+} from '@origamix/editor';
 import { Spinner, Button, useToastManager } from '@origamix/ui';
 
-import { useImperativeHandle, useState, type Ref, type ReactNode } from 'react';
+import { useImperativeHandle, useState, type Ref } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
@@ -15,7 +20,8 @@ interface EditorProps {
   readOnly?: boolean;
   readOnlyMessage?: string;
   editor: EditorInstance;
-  toolbar?: ReactNode;
+  onSave?: EditorSaveOptions['onSave'];
+  canSave?: boolean;
   onWorkingCommitted?: () => void;
   onReturnToChat: () => Promise<void>;
   targetSelection?: EditorTargetSelection;

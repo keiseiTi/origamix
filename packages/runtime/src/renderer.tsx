@@ -24,7 +24,9 @@ export const MaterialView = ({
 }): React.JSX.Element | null => {
   const Material = components[type] as
     (ComponentType<Record<string, unknown>> & { origamixLayout?: MaterialLayout }) | undefined;
+
   if (!Material) throw new Error(`未知物料：${type}`);
+
   const {
     layoutWidth,
     layoutHeight,
@@ -34,6 +36,7 @@ export const MaterialView = ({
     layoutAlignSelf,
     ...materialProps
   } = props;
+
   const block = getMaterialDisplay(Material.origamixLayout, props) === 'block';
   const finiteSize = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
@@ -71,6 +74,7 @@ export const MaterialView = ({
       ? layoutAlignSelf
       : undefined) as CSSProperties['alignSelf'],
   };
+
   const renderFrame = (content: ReactNode) => (
     <>
       {root && (
@@ -107,6 +111,7 @@ export const MaterialView = ({
       </div>
     </>
   );
+
   if (framePlacement === 'content' && props.om_mode === 'design') {
     return (
       <Material {...materialProps} om_renderDesignFrame={renderFrame}>
@@ -114,12 +119,14 @@ export const MaterialView = ({
       </Material>
     );
   }
+
   return renderFrame(
     <Material {...materialProps} data-element-id={id}>
       {children}
     </Material>,
   );
 };
+
 export const renderLayout = (
   nodes: LayoutNode[],
   render: (node: LayoutNode, children: ReactNode) => ReactNode,

@@ -195,3 +195,67 @@ describe('plugin session isolation', () => {
     expect(() => editor.setSchema(document())).toThrow('unavailable');
   });
 });
+
+// Server cannot protect the browser's flush-before-save sequence or stale callback dispatch.
+describe('editor save boundary', () => {
+  it('preserves drafts on flush failure, rejects duplicate saves and stops stale dispatch', async () => {
+    const editor = createEditorInstance();
+    const store = createEditorSession(document(), []);
+    const draft = {
+      ...document(),
+      context: {
+        globalVariables: [{ name: 'draft', type: 'string' as const, defaultValue: 'retained' }],
+      },
+    };
+    store.getState().setSchema(draft);
+    let saves = 0;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const detach = bindEditorSession(editor, store, false, {
+      onFlush: () => pending,
+      onSave: async () => {
+        saves++;
+      },
+    });
+    const saving = editor.save();
+    await expect(editor.save()).rejects.toThrow('正在保存');
+    detach();
+    const detachNext = bindEditorSession(editor, createEditorSession(document(), []), false, {
+      onSave: async () => {
+        saves++;
+      },
+    });
+    release();
+    await expect(saving).rejects.toThrow('会话已切换');
+    expect(saves).toBe(0);
+    detachNext();
+    const detachFailure = bindEditorSession(editor, store, false, {
+      onFlush: async () => {
+        throw new Error('flush rejected');
+      },
+      onSave: async () => {
+        saves++;
+      },
+    });
+    await expect(editor.save()).rejects.toThrow('flush rejected');
+    expect(store.getState().schema).toEqual(draft);
+    expect(saves).toBe(0);
+    detachFailure();
+    let failSave = true;
+    const detachRetry = bindEditorSession(editor, store, true, {
+      onSave: async () => {
+        if (failSave) throw new Error('save rejected');
+        saves++;
+      },
+    });
+    await expect(editor.save()).rejects.toThrow('save rejected');
+    expect(store.getState().schema).toEqual(draft);
+    failSave = false;
+    await editor.save();
+    expect(saves).toBe(1);
+    expect(store.getState().schema).toEqual(draft);
+    detachRetry();
+  });
+});

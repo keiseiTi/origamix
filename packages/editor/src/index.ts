@@ -22,9 +22,16 @@ export {
   type EditorPublicState,
   type EditorInstance,
   type CreateEditorOptions,
+  type EditorSaveOptions,
 } from './session/editor-controls';
 export { SchemaEditor } from './tools/schema-editor';
 export { GlobalVariablesEditor } from './tools/global-variables-editor';
 
 export { defineEditorPlugin } from './contracts/plugin-contracts';
 export type * from './contracts/plugin-contracts';
+
+export { EditorToolbar, EditorToolbarArea, EditorSaveButton } from './layout/editor-toolbar';
+
+export { createEditorModePlugin } from './plugins/toolbar/mode-plugin';
+export { createViewportPlugin } from './plugins/toolbar/viewport-plugin';
+export { createHistoryPlugin } from './plugins/toolbar/history-plugin';

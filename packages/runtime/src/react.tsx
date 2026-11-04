@@ -104,6 +104,7 @@ const RuntimeElement = ({
     () => engine.elements[id],
     () => engine.elements[id],
   );
+
   const callbacks = useMemo(
     () =>
       Object.fromEntries(
@@ -121,7 +122,9 @@ const RuntimeElement = ({
       ),
     [engine, id],
   );
+
   if (!element || element.hidden) return null;
+
   return (
     <MaterialView
       root={engine.layouts.some((node) => node.id === id)}
@@ -134,6 +137,7 @@ const RuntimeElement = ({
     </MaterialView>
   );
 };
+
 const RuntimeTree = ({
   engine,
   components,
@@ -169,13 +173,16 @@ const RuntimeCanvas = ({
 }): React.JSX.Element => {
   const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
   const activeSchema = useRef<Schema | null>(schema);
+
   useLayoutEffect(() => {
     activeSchema.current = schema;
     return () => {
       activeSchema.current = null;
     };
   }, [schema]);
+
   const executionError = flowError?.schema === schema ? flowError.message : null;
+
   const engine = useMemo(() => {
     if (
       (schema.extensions?.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
@@ -201,14 +208,17 @@ const RuntimeCanvas = ({
     bindMaterialEventPayloads(instance);
     return instance;
   }, [schema, materials]);
+
   useLayoutEffect(() => {
     engine.activate();
     return () => engine.dispose();
   }, [engine]);
+
   const unknownTypes = useMemo(
     () => findUnknownMaterialTypes(schema, materials),
     [materials, schema],
   );
+
   useEffect(() => {
     onOutcome?.(
       executionError
@@ -231,7 +241,9 @@ const RuntimeCanvas = ({
           : { outcome: 'success', diagnostics: [] },
     );
   }, [onOutcome, unknownTypes, executionError]);
+
   if (unknownTypes.length) return <main role='alert'>未知物料：{unknownTypes.join('、')}</main>;
+
   return (
     <>
       {executionError && <p role='alert'>流程执行失败：{executionError}</p>}

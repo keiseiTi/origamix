@@ -21,18 +21,28 @@ import {
   type EditorEnvironment,
 } from './editor-session';
 import { getInsertionAxis } from '../canvas/layout-axis';
-import { useBindEditor, type EditorInstance } from './editor-controls';
+import { useBindEditor, type EditorInstance, type EditorSaveOptions } from './editor-controls';
 import { SchemaUtils } from '../schema/schema-utils';
 
+const EMPTY_SAVE: EditorSaveOptions = {};
 const EMPTY_CATALOG: EditorEnvironment['materialCatalog'] = [];
 
-const EditorBinding = ({ editor, readOnly }: { editor: EditorInstance; readOnly: boolean }) => {
-  useBindEditor(editor, readOnly);
+const EditorBinding = ({
+  editor,
+  readOnly,
+  save,
+}: {
+  editor: EditorInstance;
+  readOnly: boolean;
+  save: EditorSaveOptions;
+}) => {
+  useBindEditor(editor, readOnly, save);
   return null;
 };
 
 export interface EditorProviderProps {
   editor?: EditorInstance;
+  save?: EditorSaveOptions;
   readOnly?: boolean;
   theme?: EditorEnvironment['theme'];
   materialCatalog?: EditorEnvironment['materialCatalog'];
@@ -47,6 +57,7 @@ export const EditorProvider = ({
   schema,
   materials,
   editor,
+  save = EMPTY_SAVE,
   readOnly = false,
   theme = 'light',
   materialCatalog = EMPTY_CATALOG,
@@ -166,7 +177,7 @@ export const EditorProvider = ({
   return (
     <Toaster toastManager={notifications}>
       <EditorSessionContext.Provider value={store}>
-        {editor && <EditorBinding editor={editor} readOnly={readOnly} />}
+        {editor && <EditorBinding editor={editor} readOnly={readOnly} save={save} />}
         <DndContext
           sensors={sensors}
           collisionDetection={collision}

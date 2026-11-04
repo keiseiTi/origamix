@@ -13,6 +13,7 @@ export type ApplyStatus =
 
 interface RevisionActionsProps {
   active: boolean;
+  saveBusy?: boolean;
   previewOpening: boolean;
   onSaveVersion: () => Promise<void>;
   onApply: () => Promise<void>;
@@ -26,6 +27,7 @@ interface RevisionActionsProps {
 
 export const RevisionActions = ({
   active,
+  saveBusy = false,
   previewOpening,
   onSaveVersion,
   onApply,
@@ -82,7 +84,7 @@ export const RevisionActions = ({
       if (!active) return;
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
       event.preventDefault();
-      if (canSaveVersion && !savingVersion) void saveVersion();
+      if (canSaveVersion && !savingVersion && !saveBusy) void saveVersion();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -118,13 +120,13 @@ export const RevisionActions = ({
               size='sm'
               variant='secondary'
               className='px-2 text-xs'
-              disabled={savingVersion || applying || !canSaveVersion}
+              disabled={savingVersion || saveBusy || applying || !canSaveVersion}
               onClick={() => void saveVersion()}
             />
           }
         >
           <Save size={14} />
-          {savingVersion ? '保存中…' : '保存版本'}
+          {savingVersion || saveBusy ? '保存中…' : '保存版本'}
         </TooltipTrigger>
         <TooltipContent side='bottom'>把当前草稿保存为可恢复的历史版本</TooltipContent>
       </Tooltip>
@@ -135,7 +137,7 @@ export const RevisionActions = ({
               size='sm'
               variant='secondary'
               className='px-2 text-xs'
-              disabled={previewOpening || applying || !canApply}
+              disabled={previewOpening || savingVersion || saveBusy || applying || !canApply}
               onClick={() => void apply()}
             />
           }
@@ -152,7 +154,7 @@ export const RevisionActions = ({
                 size='icon-sm'
                 variant='ghost'
                 aria-label='重新读取项目内容'
-                disabled={reloading || applying || !canReload}
+                disabled={reloading || savingVersion || saveBusy || applying || !canReload}
                 onClick={() => void reload()}
               />
             }

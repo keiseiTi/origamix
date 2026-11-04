@@ -9,7 +9,9 @@ export const createEngine = (schema: RuntimeSchema): RuntimeEngine => {
   const contexts = new Map<string, Record<string, unknown>>();
   const globals = new Map<string, unknown>();
   let controller = new AbortController();
+
   const notify = () => listeners.get(ELEMENT_UPDATE)?.forEach((listener) => listener());
+
   const visible = (ids: string[], hidden: boolean) => {
     if (engine.disposed) return;
     engine.elements = { ...engine.elements };
@@ -17,6 +19,7 @@ export const createEngine = (schema: RuntimeSchema): RuntimeEngine => {
       if (engine.elements[id]) engine.elements[id] = { ...engine.elements[id]!, hidden };
     notify();
   };
+
   const engine: RuntimeEngine = {
     elements: structuredClone(schema.elements),
     layouts: parseLayout(schema),
@@ -83,5 +86,6 @@ export const createEngine = (schema: RuntimeSchema): RuntimeEngine => {
     }
     engine.setGlobalVariable(variable.name, value);
   }
+
   return engine;
 };
