@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Save } from 'lucide-react';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
 
@@ -38,11 +38,14 @@ export const RevisionActions = ({
   canReload,
   onErrorChange,
 }: RevisionActionsProps): React.JSX.Element => {
+  const savingVersionRef = useRef(false);
   const [savingVersion, setSavingVersion] = useState(false);
   const [applying, setApplying] = useState(false);
   const [reloading, setReloading] = useState(false);
 
   const saveVersion = async (): Promise<void> => {
+    if (!active || !canSaveVersion || saveBusy || savingVersionRef.current) return;
+    savingVersionRef.current = true;
     setSavingVersion(true);
     onErrorChange(null);
     try {
@@ -50,6 +53,7 @@ export const RevisionActions = ({
     } catch (reason) {
       onErrorChange(reason instanceof Error ? reason.message : '保存版本失败');
     } finally {
+      savingVersionRef.current = false;
       setSavingVersion(false);
     }
   };

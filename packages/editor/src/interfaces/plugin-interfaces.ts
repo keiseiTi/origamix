@@ -4,7 +4,8 @@ import type { Material, PanelConfig } from './material-interfaces';
 import type { EditorInstance } from './editor-instance-interfaces';
 
 export type EditorToolbarArea = 'all' | 'start' | 'center' | 'end';
-export type EditorPluginRenderContext = Readonly<{
+export type EditorPluginRenderContext<Props = undefined> = Readonly<{
+  props: Props;
   editor: EditorInstance;
   children: ReactNode;
 }>;
@@ -41,7 +42,7 @@ export type EditorPluginMaterialApi = Readonly<{
     context: EditorPluginMaterialNodeContext & Readonly<{ children: ReactNode }>,
   ) => ReactNode;
 }>;
-export type EditorPlugin = Readonly<{
+export type EditorPlugin<Props = undefined> = Readonly<{
   id: string;
   setup?: (
     context: Readonly<{ editor: EditorInstance; signal: AbortSignal }>,
@@ -49,9 +50,15 @@ export type EditorPlugin = Readonly<{
   material?: EditorPluginMaterialApi;
   editor?: Readonly<{
     renderToolbar?: (
-      context: EditorPluginRenderContext & Readonly<{ area: EditorToolbarArea }>,
+      context: EditorPluginRenderContext<Props> & Readonly<{ area: EditorToolbarArea }>,
     ) => ReactNode;
-    renderTop?: (context: EditorPluginRenderContext) => ReactNode;
-    renderBottom?: (context: EditorPluginRenderContext) => ReactNode;
+    renderTop?: (context: EditorPluginRenderContext<Props>) => ReactNode;
+    renderBottom?: (context: EditorPluginRenderContext<Props>) => ReactNode;
   }>;
 }>;
+
+/** A definition stays fixed; withProps binds the latest render inputs. */
+export type EditorPluginDefinition<Props> = EditorPlugin<Props> &
+  Readonly<{
+    withProps: (props: Props) => EditorPlugin;
+  }>;

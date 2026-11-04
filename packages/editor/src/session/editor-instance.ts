@@ -1,3 +1,4 @@
+import { getPluginPropsBinding, type PluginPropsRuntime } from '../plugins/plugin-props';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { EditorCore } from './editor-store';
 import type {
@@ -21,6 +22,7 @@ type InstanceState = {
   binding: Binding | null;
   options: CreateEditorOptions;
   plugins: readonly EditorPlugin[];
+  pluginProps: readonly (Readonly<{ definition: object; runtime: PluginPropsRuntime }> | null)[];
 };
 const instances = new WeakMap<EditorInstance, InstanceState>();
 const getInstance = (editor: EditorInstance): InstanceState => {
@@ -29,6 +31,10 @@ const getInstance = (editor: EditorInstance): InstanceState => {
   return state;
 };
 export const createEditorInstance = (options: CreateEditorOptions = {}): EditorInstance => {
+  const pluginProps = (options.plugins ?? []).map((plugin) => {
+    const binding = getPluginPropsBinding(plugin);
+    return binding ? { definition: binding.definition, runtime: binding.create() } : null;
+  });
   const state: InstanceState = {
     view: createStore<EditorViewState>(() => ({
       mode: options.initialMode ?? 'view',
@@ -37,7 +43,10 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
       saveError: null,
       viewportWidth: Math.max(240, options.initialViewportWidth ?? 1440),
     })),
-    plugins: snapshotEditorPlugins(options.plugins ?? []),
+    plugins: snapshotEditorPlugins(
+      (options.plugins ?? []).map((plugin, index) => pluginProps[index]?.runtime.plugin ?? plugin),
+    ),
+    pluginProps,
     binding: null,
     options,
   };
@@ -201,7 +210,16 @@ export const getEditorPlugins = (editor: EditorInstance): readonly EditorPlugin[
   getInstance(editor).plugins;
 
 export const updateEditorOptions = (editor: EditorInstance, options: CreateEditorOptions): void => {
-  getInstance(editor).options = options;
+  const state = getInstance(editor);
+  const updates = state.pluginProps.map((entry, index) => {
+    if (!entry) return null;
+    const binding = options.plugins?.[index] && getPluginPropsBinding(options.plugins[index]);
+    if (!binding || binding.definition !== entry.definition)
+      throw new Error('Changing Editor plugin definitions requires a new Editor instance');
+    return { runtime: entry.runtime, props: binding.props };
+  });
+  state.options = options;
+  for (const update of updates) update?.runtime.update(update.props);
 };
 export const updateEditorBinding = (
   editor: EditorInstance,

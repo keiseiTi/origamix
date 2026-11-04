@@ -1,3 +1,7 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement, Fragment } from 'react';
+import { defineEditorPlugin } from '../../src/plugins/define-editor-plugin';
+import { composePluginRenderers } from '../../src/plugins/compose-plugin-renderers';
 import { extendEditorMaterial } from '../../src/plugins/material-plugins';
 import type { MaterialManifest } from '@origamix/shared';
 import type { EditorPlugin } from '../../src/interfaces/plugin-interfaces';
@@ -5,7 +9,12 @@ import type { EditorEvents } from '../../src/interfaces/editor-operation-interfa
 import { describe, expect, it, vi } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-store';
-import { bindEditorSession, createEditorInstance } from '../../src/session/editor-instance';
+import {
+  bindEditorSession,
+  createEditorInstance,
+  getEditorPlugins,
+  updateEditorOptions,
+} from '../../src/session/editor-instance';
 import type { EditorInstance } from '../../src/interfaces/editor-instance-interfaces';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
@@ -149,6 +158,48 @@ describe('editor draft sessions', () => {
 
 // Plugin-held commands must never mutate a subsequently bound page.
 describe('plugin session isolation', () => {
+  // Server cannot prove that retained render callbacks stay current and page-local.
+  it('updates bound host callbacks without replacing drafts or restarting another page plugin', () => {
+    const setup = vi.fn();
+    let currentSave: (() => void) | undefined;
+    const plugin = defineEditorPlugin<{ save: () => void }>({
+      id: 'host.save',
+      setup,
+      editor: {
+        renderTop: ({ props }) => {
+          currentSave = props.save;
+          return null;
+        },
+      },
+    });
+    const firstSave = vi.fn();
+    const latestSave = vi.fn();
+    const otherSave = vi.fn();
+    const first = createEditorInstance({ plugins: [plugin.withProps({ save: firstSave })] });
+    const other = createEditorInstance({ plugins: [plugin.withProps({ save: otherSave })] });
+    const draft = createEditorSession(document(), []);
+    const detach = bindEditorSession(first, draft, false);
+    const detachOther = bindEditorSession(other, createEditorSession(document(), []), false);
+    const readSave = (editor: EditorInstance) => {
+      renderToStaticMarkup(
+        createElement(
+          Fragment,
+          null,
+          composePluginRenderers(getEditorPlugins(editor), editor, 'renderTop', null),
+        ),
+      );
+      return currentSave!;
+    };
+    expect(readSave(first)).toBe(firstSave);
+    updateEditorOptions(first, { plugins: [plugin.withProps({ save: latestSave })] });
+    expect(readSave(first)).toBe(latestSave);
+    expect(readSave(other)).toBe(otherSave);
+    expect(setup).toHaveBeenCalledTimes(2);
+    expect(draft.getState().schema).toEqual(document());
+    detach();
+    detachOther();
+  });
+
   it('starts right-to-left and invalidates old commands before reverse cleanup', () => {
     const calls: string[] = [];
     const captured: EditorInstance[] = [];

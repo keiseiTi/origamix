@@ -1,10 +1,12 @@
 import { defineEditorPlugin } from '@origamix/editor';
+import type { WorkspaceToolbarProps } from './agent-chat-toolbar';
 import { WorkspaceToolbar } from './workspace-toolbar';
 
 export const createWorkspaceToolbarPlugin = () =>
-  defineEditorPlugin({
+  defineEditorPlugin<WorkspaceToolbarProps>({
     id: 'workspace.toolbar',
     editor: {
-      renderToolbar: ({ area, children }) => (area === 'all' ? <WorkspaceToolbar /> : children),
+      renderToolbar: ({ area, children, props }) =>
+        area === 'all' ? <WorkspaceToolbar {...props} /> : children,
     },
   });

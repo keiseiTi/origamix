@@ -12,5 +12,5 @@ export const composePluginRenderers = (
 ): ReactNode =>
   plugins.reduceRight<ReactNode>((content, plugin) => {
     const render = plugin.editor?.[target];
-    return render ? render({ editor, children: content, area }) : content;
+    return render ? render({ editor, children: content, area, props: undefined }) : content;
   }, children);

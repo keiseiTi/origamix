@@ -45,3 +45,7 @@ export { createViewportPlugin } from './plugins/toolbar/viewport-plugin';
 export { createHistoryPlugin } from './plugins/toolbar/history-plugin';
 
 export type * from './interfaces/editor-operation-interfaces';
+
+export { ModeTools } from './plugins/toolbar/mode-tools';
+export { ViewportTools } from './plugins/toolbar/viewport-tools';
+export { HistoryTools } from './plugins/toolbar/history-tools';

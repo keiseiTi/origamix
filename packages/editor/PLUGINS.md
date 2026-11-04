@@ -31,11 +31,31 @@ const editor = useCreateEditor({
 });
 ```
 
-宿主插件定义在实例创建时固定；修改宿主列表需要新实例。物料注册可携带 registration.plugins，Editor 将它们追加到宿主插件后，合并成一个会话级列表、交给同一个插件宿主；更换物料注册或其插件需要新的 sessionKey。ID 不可为空或重复，不提供依赖排序。`[A, B, C]` 按 C → B → A 初始化和组合，按 A → B → C 清理。宿主权限、名称与回调更新不会重跑 setup；App 使用页面级 Context 提供最新业务参数。
+宿主插件定义在实例创建时固定；修改宿主列表需要新实例。物料注册可携带 registration.plugins，Editor 将它们追加到宿主插件后，合并成一个会话级列表、交给同一个插件宿主；更换物料注册或其插件需要新的 sessionKey。ID 不可为空或重复，不提供依赖排序。`[A, B, C]` 按 C → B → A 初始化和组合，按 A → B → C 清理。宿主权限、名称与回调更新不会重跑 setup；动态渲染参数通过 `withProps` 更新，App 不再需要页面级 Context。
 
 `setup({ editor, signal })` 可查询节点、注册监听并返回清理函数。文档修改、保存、模式切换在全部插件初始化完成后才可执行；setup 内提前调用会明确拒绝，避免本地修改被宿主的初始化过滤遗漏。需要编辑的行为应由初始化后的用户操作或明确命令发起。
 
 每次画布绑定建立新的插件作用域。解绑或初始化失败会使 setup 接收的接口失效，并自动移除其订阅。分配资源后立即监听 signal 的 abort，保证 setup 中途抛错、无法返回清理函数时也能释放资源。清理异常不会阻止其他清理函数执行；已开始的外部异步工作仍需使用 signal/会话身份自行终止。
+
+## 动态渲染参数
+
+```tsx
+// 定义保持稳定，放在组件外；每个 Editor 实例独立保存参数。
+const toolbarPlugin = defineEditorPlugin<{ title: string }>({
+  id: 'example.title',
+  editor: {
+    renderToolbar: ({ area, children, props }) =>
+      area === 'start' ? <span>{props.title}</span> : children,
+  },
+});
+
+// 在宿主组件内，每次渲染绑定最新值。
+const editor = useCreateEditor({
+  plugins: [toolbarPlugin.withProps({ title })],
+});
+```
+
+withProps 只为 renderToolbar/renderTop/renderBottom 提供参数，不改变 setup 或物料配置。参数在提交阶段发布，各插件的渲染边界独立订阅；不会写入 Schema、替换物料注册或重新执行 setup。普通父组件渲染仍遵循 React 的更新规则。不要原地修改参数对象；传入新对象触发更新。绑定定义及顺序必须保持固定，更换定义需要新 Editor 实例。物料注册插件仍为会话级静态定义，不使用宿主 Hook 的动态绑定。
 
 ## Toolbar、顶部和底部
 
@@ -55,7 +75,7 @@ const plugin = defineEditorPlugin({
 });
 ```
 
-`renderToolbar` 接收 `{ area, editor, children }`，area 为 start/center/end/all。先分别组合三个局部区域，再将完整 Toolbar 传入 all。每一步都从右到左，children 是右侧插件已处理的内容：保留 children 表示保留，包装或追加 children 表示扩展，自定义内容表示替换，null 表示隐藏。
+`renderToolbar` 接收 `{ area, editor, children, props }`，area 为 start/center/end/all。先分别组合三个局部区域，再将完整 Toolbar 传入 all。每一步都从右到左，children 是右侧插件已处理的内容：保留 children 表示保留，包装或追加 children 表示扩展，自定义内容表示替换，null 表示隐藏。
 
 默认 start/center 为空，end 提供保存按钮。`EditorToolbar` 仅提供布局；`EditorToolbarArea` 只组合局部区域，不执行 all。替换整个工具栏时可继续复用其他插件的局部内容：
 
@@ -71,11 +91,11 @@ const plugin = defineEditorPlugin({
 
 ## 保存边界
 
-Editor 接收 `onSave`、可选 `onFlush` 和 `canSave`。默认或自定义按钮统一调用 `editor.save()`，可通过 `useEditorSelector` 读取 saving/canSave/saveError。未配置 onSave 时不可保存；保存权限独立于 readOnly。
+Editor 接收 `onSave`、可选 `onFlush` 和 `canSave`。使用 Editor 保存能力的按钮调用 `editor.save()`，可通过 `useEditorSelector` 读取 saving/canSave/saveError。未配置 onSave 时不可保存；保存权限独立于 readOnly。
 
 save 先执行可选 onFlush，成功且会话仍有效时调用 onSave。重复调用会被拒绝，失败保留草稿。解绑后未完成的 flush 不会调用保存回调；已经开始的宿主保存不能撤销，宿主必须过滤自己的过期结果。
 
-App 的 saveVersion 已包含 flush → 读取 Working version → 显式保存 Revision，不重复传入 onFlush。编辑模式的保存按钮与快捷键经过 editor.save；对话模式保持原 App 保存入口。只有活动页面当前模式的 Toolbar 响应保存快捷键。Editor 不创建 Revision、不调用 HTTP、不执行 Apply。
+App 的 saveVersion 已包含 flush → 读取 Working version → 显式保存 Revision，不重复传入 onFlush。App 自定义工具栏的按钮和快捷键直接使用宿主 saveVersion，PageEditor 不透传 onSave/canSave。只有活动页面当前模式的 Toolbar 响应保存快捷键。Editor 不创建 Revision、不调用 HTTP、不执行 Apply。
 
 ## 节点查询和编辑
 

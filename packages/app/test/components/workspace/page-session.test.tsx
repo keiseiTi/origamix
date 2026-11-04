@@ -70,29 +70,20 @@ vi.mock('@origamix/editor', async (importOriginal) => ({
       setViewportWidth: vi.fn(),
     };
   },
-  createEditorModePlugin: () => ({
-    id: 'editor.mode',
-    editor: {
-      renderToolbar: ({ area, children }: { area: string; children: ReactNode }) =>
-        area === 'center' ? (
-          <>
-            <TestModeTools />
-            {children}
-          </>
-        ) : (
-          children
-        ),
-    },
+  defineEditorPlugin: <Props,>(plugin: EditorPlugin<Props>) => ({
+    ...plugin,
+    withProps: (props: Props) => ({
+      ...plugin,
+      editor: {
+        renderToolbar: (
+          context: Parameters<NonNullable<NonNullable<EditorPlugin['editor']>['renderToolbar']>>[0],
+        ) => plugin.editor?.renderToolbar?.({ ...context, props }),
+      },
+    }),
   }),
-  createViewportPlugin: () => ({ id: 'editor.viewport' }),
-  createHistoryPlugin: () => ({ id: 'editor.history' }),
-  EditorToolbarArea: ({ area }: { area: 'start' | 'center' | 'end' }) => {
-    const editor = useContext(EditorTestContext)!;
-    return editor.plugins.reduceRight<ReactNode>(
-      (children, plugin) => plugin.editor?.renderToolbar?.({ editor, area, children }) ?? children,
-      null,
-    );
-  },
+  ModeTools: () => <TestModeTools />,
+  ViewportTools: () => null,
+  HistoryTools: () => null,
   useEditorSelector: (selector: (state: object) => unknown) => {
     const editor = useContext(EditorTestContext)!;
     return selector({ mode: editor.mode, canUndo: false, canRedo: false, viewportWidth: 1440 });
@@ -106,14 +97,12 @@ vi.mock('../../../src/components/editor/index', () => ({
     readOnly,
     readOnlyMessage,
     onWorkingCommitted,
-    onSave,
     visible,
     schemaRefreshKey,
     editor,
   }: {
     visible: boolean;
     schemaRefreshKey: string;
-    onSave?: () => Promise<void>;
     editor: TestEditor;
     readOnly: boolean;
     readOnlyMessage?: string;
@@ -122,11 +111,12 @@ vi.mock('../../../src/components/editor/index', () => ({
     useEffect(() => mocks.editorMounted(), []);
     useEffect(() => mocks.editorRefresh(schemaRefreshKey), [schemaRefreshKey]);
     return (
-      <EditorTestContext.Provider value={{ ...editor, save: onSave ?? editor.save }}>
+      <EditorTestContext.Provider value={editor}>
         {visible &&
           editor.plugins.reduceRight<ReactNode>(
             (children, plugin) =>
-              plugin.editor?.renderToolbar?.({ editor, area: 'all', children }) ?? children,
+              plugin.editor?.renderToolbar?.({ editor, area: 'all', children, props: undefined }) ??
+              children,
             null,
           )}
         <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>

@@ -1,3 +1,4 @@
+import { getPluginPropsBinding } from './plugin-props';
 import type { EditorPlugin } from '../interfaces/plugin-interfaces';
 import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
 
@@ -8,6 +9,8 @@ export const snapshotEditorPlugins = (
   const ids = new Set<string>();
   return Object.freeze(
     plugins.map((plugin) => {
+      if (getPluginPropsBinding(plugin))
+        throw new Error('withProps bindings must be installed through useCreateEditor');
       if (!plugin.id.trim() || ids.has(plugin.id))
         throw new Error(`Invalid or duplicate Editor plugin ID: ${plugin.id}`);
       ids.add(plugin.id);
