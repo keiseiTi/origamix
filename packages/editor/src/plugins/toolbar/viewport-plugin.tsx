@@ -1,4 +1,4 @@
-import { defineEditorPlugin } from '../../contracts/plugin-contracts';
+import { defineEditorPlugin } from '../define-editor-plugin';
 import { ViewportTools } from './viewport-tools';
 
 export const createViewportPlugin = () =>

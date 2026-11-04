@@ -1,6 +1,7 @@
 import { Redo2, Undo2 } from 'lucide-react';
 import { Button } from '@origamix/ui';
-import { useEditorContext, useEditorSelector } from '../../session/editor-controls';
+import { useEditorContext } from '../../hooks/use-editor-context';
+import { useEditorSelector } from '../../hooks/use-editor-selector';
 
 export const HistoryTools = () => {
   const editor = useEditorContext();

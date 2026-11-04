@@ -7,20 +7,22 @@
 | `@origamix/editor`            | `Editor`、`CodeEditor`、`JsonAttributeField`、事务工具及全部公开契约类型 |
 | `@origamix/editor/styles.css` | Tailwind 源码扫描入口                                                    |
 
-`src/index.ts` 是统一入口，`src/editor.tsx` 负责编辑器装配，`src/layout/`、`src/panels/`、`src/tools/` 包含画布和面板，`src/flow-editor/` 是内部逻辑编辑模块，不单独公开 visual/flow 入口。
+`src/index.ts` 是统一入口，`src/editor.tsx` 负责编辑器装配，`src/components/` 包含画布和面板，`src/components/flow-editor/` 是内部逻辑编辑模块，不单独公开 visual/flow 入口。
 
 代码按职责组织：
 
-| 目录                                       | 职责                                             |
-| ------------------------------------------ | ------------------------------------------------ |
-| `src/contracts/`                           | 编辑器、物料和属性扩展契约                       |
-| `src/session/`                             | Provider、会话状态、历史与注入上下文             |
-| `src/schema/`                              | Schema 元素、布局和流程修改工具                  |
-| `src/transactions/`                        | 快照差异与提交事务转换                           |
-| `src/canvas/`                              | 设计态渲染、拖拽、选中框与目标标记               |
-| `src/layout/`、`src/panels/`、`src/tools/` | 编辑布局、导航与属性面板、全局变量与 Schema 工具 |
-| `src/flow-editor/`                         | 动态加载的流程编辑、图转换与节点表单             |
-| `src/components/`、`src/prototype/`        | 公共字段组件与隔离实验画布                       |
+| 目录                | 职责                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| `src/components/`   | 按功能组织布局、画布、导航/属性面板、流程编辑和编辑工具；CodeEditor 就近维护 Worker 配置 |
+| `src/hooks/`        | 公共实例、状态订阅与跨功能装配 Hooks                                                     |
+| `src/interfaces/`   | 编辑器、物料、插件和属性扩展的公共接口与类型                                             |
+| `src/session/`      | Provider 装配、独立 Store、Context、实例绑定、命令、事件与历史                           |
+| `src/schema/`       | Schema 元素、布局和流程查询与修改                                                        |
+| `src/transactions/` | 快照差异与提交事务转换                                                                   |
+| `src/plugins/`      | 插件生命周期、物料扩展与工具栏插件                                                       |
+| `src/prototype/`    | 隔离实验画布                                                                             |
+
+功能目录以 `index.tsx` 作为组件入口，专属 Hooks、规则和子组件就近放置。属性面板拆分字段规则、控件、事件入口和失效属性清理；流程画布的生命周期在 `components/flow-editor/hooks/use-flow-canvas.ts`，视图仍动态加载。`session/editor-store.ts` 保留每个 Provider 独立的草稿与历史，`editor-instance.ts` 管理较长生命周期的实例和受保护命令，`editor-context.ts` 提供显式 selector 订阅。
 
 这是私有工作区包，声明出口指向源码以支持 HMR；构建生成 ESM 与类型声明供集成验证。
 
@@ -67,7 +69,7 @@ schema 表示一个 sessionKey 的初始投影，普通 Working 提交不重置�
 
 `targetSelection` 是通用元素选择能力：宿主传入 `candidates`、可选的 `highlightedElementId` / `disabled` 和 `onSelect`。Editor 呈现候选编号、高亮与禁用反馈，不判断澄清是否过期或管理 Agent Run。App 将业务状态转换为该契约；只读时可通过 `readOnlyMessage` 传入具体原因，Editor 默认显示“当前不可编辑”。
 
-FlowEditor 在进入逻辑模式时动态加载，失败可重试，加载过程不替换页面 Schema。`flow-editor/flow-editor-loader.tsx` 是引擎 Store 的唯一流程适配层；流程模块通过内部 `FlowEditorSession` 获取页面快照、物料、Manifest 与修改回调，所有修改仍进入同一编辑会话。
+FlowEditor 在进入逻辑模式时动态加载，失败可重试，加载过程不替换页面 Schema。`components/flow-editor/flow-editor-loader.tsx` 是引擎 Store 的唯一流程适配层；流程模块通过内部 `FlowEditorSession` 获取页面快照、物料、Manifest 与修改回调，所有修改仍进入同一编辑会话。
 
 消费方在已有 Tailwind/UI 样式入口之后导入：
 
@@ -108,7 +110,7 @@ pnpm --filter @origamix/editor build
 
 ## 本地编辑内核
 
-`schema/schema-utils.ts` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`session/editor-session.tsx` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。
+`schema/schema-utils.ts` 拥有元素增删移动、父子查询、属性和流程配置修改；Runtime 只接收渲染投影。`session/editor-store.ts` 在修改前校验候选并记录完整不可变 Schema 历史，覆盖属性、全局变量、流程、绑定和布局扩展；同字段连续输入在 600ms 内合并。撤销重做仍经过 onChange 和宿主 Working 队列，普通保存不清空历史。
 
 `canvas/` 使用 dnd-kit 处理拖拽和占位；调用 `@origamix/runtime` 的 DesignRenderer 展示物料。设计态只允许设计交互，不绑定页面流程或执行函数。选中框和插入指示器只查询当前会话画布。
 

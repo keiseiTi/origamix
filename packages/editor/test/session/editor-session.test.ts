@@ -1,12 +1,12 @@
 import { extendEditorMaterial } from '../../src/plugins/material-plugins';
 import type { MaterialManifest } from '@origamix/shared';
-import type { EditorPlugin } from '../../src/contracts/plugin-contracts';
-import type { EditorEvents } from '../../src/contracts/editor-operation-contracts';
+import type { EditorPlugin } from '../../src/interfaces/plugin-interfaces';
+import type { EditorEvents } from '../../src/interfaces/editor-operation-interfaces';
 import { describe, expect, it, vi } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
-import { createEditorSession } from '../../src/session/editor-session';
-import { bindEditorSession, createEditorInstance } from '../../src/session/editor-controls';
-import type { EditorInstance } from '../../src/session/editor-controls';
+import { createEditorSession } from '../../src/session/editor-store';
+import { bindEditorSession, createEditorInstance } from '../../src/session/editor-instance';
+import type { EditorInstance } from '../../src/interfaces/editor-instance-interfaces';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
 const document = (): OrigamixPageSchema => ({

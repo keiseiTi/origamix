@@ -1,6 +1,9 @@
 import { equalJson, type MaterialManifest } from '@origamix/shared';
-import type { Material, PanelConfig } from '../contracts/material-contracts';
-import type { EditorPlugin, EditorPluginMaterialNodeContext } from '../contracts/plugin-contracts';
+import type { Material, PanelConfig } from '../interfaces/material-interfaces';
+import type {
+  EditorPlugin,
+  EditorPluginMaterialNodeContext,
+} from '../interfaces/plugin-interfaces';
 import { editorSnapshot } from '../session/editor-snapshots';
 
 /** UI additions may only address fields already accepted by the installed Manifest. */

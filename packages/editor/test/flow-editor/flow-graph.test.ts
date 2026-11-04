@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type LogicFlow from '@logicflow/core';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 import { isFlowNodeProps } from '@origamix/shared';
-import { readGraph, toFlow } from '../../src/flow-editor/flow-graph';
+import { readGraph, toFlow } from '../../src/components/flow-editor/flow-graph';
 
 // Server cannot check the canvas-to-engine translation or prevent recursive
 // Engine traversal of a newly connected graph before it becomes a draft.

@@ -5,7 +5,7 @@ import {
   type CanvasPrototypeHandle,
   type CanvasPrototypeSnapshot,
 } from './canvas-prototype';
-import type { EditorMaterialRegistration } from '../contracts/editor-contracts';
+import type { EditorMaterialRegistration } from '../interfaces/editor-interfaces';
 import {
   isRequest,
   isPrototypeSchema,

@@ -1,5 +1,6 @@
 allowBuilds:
   '@google/genai': false
+  '@logicflow/core': set this to true or false
   electron: true
   electron-winstaller: true
   esbuild: true

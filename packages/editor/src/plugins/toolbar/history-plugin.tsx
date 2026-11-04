@@ -1,4 +1,4 @@
-import { defineEditorPlugin } from '../../contracts/plugin-contracts';
+import { defineEditorPlugin } from '../define-editor-plugin';
 import { HistoryTools } from './history-tools';
 
 export const createHistoryPlugin = () =>

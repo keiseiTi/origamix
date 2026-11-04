@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@origamix/ui';
-import { useEditorContext, useEditorSelector } from '../../session/editor-controls';
+import { useEditorContext } from '../../hooks/use-editor-context';
+import { useEditorSelector } from '../../hooks/use-editor-selector';
 
 export const ModeTools = () => {
   const editor = useEditorContext();

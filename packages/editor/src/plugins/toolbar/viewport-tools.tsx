@@ -1,6 +1,7 @@
 import { Monitor, Smartphone } from 'lucide-react';
 import { Button, Input } from '@origamix/ui';
-import { useEditorContext, useEditorSelector } from '../../session/editor-controls';
+import { useEditorContext } from '../../hooks/use-editor-context';
+import { useEditorSelector } from '../../hooks/use-editor-selector';
 
 export const ViewportTools = () => {
   const editor = useEditorContext();

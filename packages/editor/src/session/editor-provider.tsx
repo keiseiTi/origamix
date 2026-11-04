@@ -1,4 +1,4 @@
-import type { EditorPlugin } from '../contracts/plugin-contracts';
+import type { EditorPlugin } from '../interfaces/plugin-interfaces';
 import { Toaster, createToastManager } from '@origamix/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -14,15 +14,15 @@ import {
   type CollisionDetection,
 } from '@dnd-kit/core';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { Material } from '../contracts/material-contracts';
+import type { Material } from '../interfaces/material-interfaces';
+import { createEditorSession, type DragElement, type EditorEnvironment } from './editor-store';
+import { EditorSessionContext } from './editor-context';
+import { getInsertionAxis } from '../components/canvas/layout-axis';
+import { useBindEditor } from './use-bind-editor';
 import {
-  createEditorSession,
-  EditorSessionContext,
-  type DragElement,
-  type EditorEnvironment,
-} from './editor-session';
-import { getInsertionAxis } from '../canvas/layout-axis';
-import { useBindEditor, type EditorInstance, type EditorSaveOptions } from './editor-controls';
+  type EditorInstance,
+  type EditorSaveOptions,
+} from '../interfaces/editor-instance-interfaces';
 import { SchemaUtils } from '../schema/schema-utils';
 
 const EMPTY_ROOT_TYPES: readonly string[] = [];

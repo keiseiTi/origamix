@@ -2,13 +2,13 @@
 /// <reference path="./worker-imports.d.ts" />
 /// <reference path="./styles.d.ts" />
 /* eslint-enable @typescript-eslint/triple-slash-reference */
-export { Editor, type EditorProps } from './editor';
+export { Editor } from './editor';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';
 export { JsonAttributeField } from './components/json-attribute-field';
 export { createEditorTransaction } from './transactions/create-editor-transaction';
 export { deriveSchemaOperations } from './transactions/derive-schema-operations';
-export type * from './contracts/editor-contracts';
-export type * from './contracts/property-editor-contracts';
+export type * from './interfaces/editor-interfaces';
+export type * from './interfaces/property-editor-interfaces';
 export {
   CanvasPrototypeSurface,
   type CanvasPrototypeCommand,
@@ -19,25 +19,29 @@ export { CanvasPrototypeSession } from './prototype/canvas-prototype-session';
 export { mountCanvasPrototypeFrame } from './prototype/mount-canvas-prototype-frame';
 export { createCanvasPrototypeDocument } from './prototype/create-canvas-prototype-document';
 
+export { useCreateEditor } from './hooks/use-create-editor';
+export { useEditorContext } from './hooks/use-editor-context';
+export { useEditorSelector } from './hooks/use-editor-selector';
 export {
-  useCreateEditor,
-  useEditorContext,
-  useEditorSelector,
   type EditorPublicState,
   type EditorInstance,
   type CreateEditorOptions,
   type EditorSaveOptions,
-} from './session/editor-controls';
-export { SchemaEditor } from './tools/schema-editor';
-export { GlobalVariablesEditor } from './tools/global-variables-editor';
+} from './interfaces/editor-instance-interfaces';
+export { SchemaEditor } from './components/schema-editor';
+export { GlobalVariablesEditor } from './components/global-variables-editor';
 
-export { defineEditorPlugin } from './contracts/plugin-contracts';
-export type * from './contracts/plugin-contracts';
+export { defineEditorPlugin } from './plugins/define-editor-plugin';
+export type * from './interfaces/plugin-interfaces';
 
-export { EditorToolbar, EditorToolbarArea, EditorSaveButton } from './layout/editor-toolbar';
+export {
+  EditorToolbar,
+  EditorToolbarArea,
+  EditorSaveButton,
+} from './components/editor-layout/editor-toolbar';
 
 export { createEditorModePlugin } from './plugins/toolbar/mode-plugin';
 export { createViewportPlugin } from './plugins/toolbar/viewport-plugin';
 export { createHistoryPlugin } from './plugins/toolbar/history-plugin';
 
-export type * from './contracts/editor-operation-contracts';
+export type * from './interfaces/editor-operation-interfaces';

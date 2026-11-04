@@ -1,5 +1,5 @@
 import { watchBackendConnection } from '@/services/request';
-import { TooltipProvider } from '@origamix/ui';
+import { Toaster, TooltipProvider } from '@origamix/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SidebarNavigation,
@@ -45,41 +45,43 @@ const App = (): React.JSX.Element => {
   useGlobalShortcuts(openSettings);
 
   return (
-    <TooltipProvider>
-      <AppLayout
-        sidebar={
-          <SidebarNavigation
-            ref={sidebarRef}
-            onOpenSettings={openSettings}
-            flushEditor={pages.flushEditor}
-            onPageCreated={pages.addPage}
+    <Toaster>
+      <TooltipProvider>
+        <AppLayout
+          sidebar={
+            <SidebarNavigation
+              ref={sidebarRef}
+              onOpenSettings={openSettings}
+              flushEditor={pages.flushEditor}
+              onPageCreated={pages.addPage}
+              onSelectPage={pages.selectPage}
+            />
+          }
+        >
+          <Workspace
             onSelectPage={pages.selectPage}
+            onClosePage={pages.closePage}
+            transitionError={pages.transitionError}
+            editorRefForPage={pages.editorRefForPage}
+            onModeChange={pages.changeMode}
+            onPreview={pages.openPreview}
+            onConfigureModel={openModelSettings}
+            onCreateProject={() => setIsHomeProjectModalOpen(true)}
           />
-        }
-      >
-        <Workspace
-          onSelectPage={pages.selectPage}
-          onClosePage={pages.closePage}
-          transitionError={pages.transitionError}
-          editorRefForPage={pages.editorRefForPage}
-          onModeChange={pages.changeMode}
-          onPreview={pages.openPreview}
-          onConfigureModel={openModelSettings}
-          onCreateProject={() => setIsHomeProjectModalOpen(true)}
+        </AppLayout>
+
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          initialSection={settingsSection}
+          onClose={closeSettings}
         />
-      </AppLayout>
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        initialSection={settingsSection}
-        onClose={closeSettings}
-      />
-
-      <CreateProjectModal
-        isOpen={isHomeProjectModalOpen}
-        onClose={() => setIsHomeProjectModalOpen(false)}
-      />
-    </TooltipProvider>
+        <CreateProjectModal
+          isOpen={isHomeProjectModalOpen}
+          onClose={() => setIsHomeProjectModalOpen(false)}
+        />
+      </TooltipProvider>
+    </Toaster>
   );
 };
 

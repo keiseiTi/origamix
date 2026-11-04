@@ -5,7 +5,7 @@ import type {
   EditorEventListener,
   EditorEvents,
   EditorResolvedPosition,
-} from '../contracts/editor-operation-contracts';
+} from '../interfaces/editor-operation-interfaces';
 import { editorSnapshot } from './editor-snapshots';
 
 export const elementPositions = (schema: OrigamixPageSchema): Map<string, EditorResolvedPosition> =>

@@ -1,5 +1,5 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorTransaction, EditorWorkingState } from '../contracts/editor-contracts';
+import type { EditorTransaction, EditorWorkingState } from '../interfaces/editor-interfaces';
 import { deriveSchemaOperations } from './derive-schema-operations';
 
 /** The host decides when to flush; this function only translates a draft. */

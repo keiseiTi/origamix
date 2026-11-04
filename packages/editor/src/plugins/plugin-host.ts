@@ -1,5 +1,5 @@
-import type { EditorPlugin } from '../contracts/plugin-contracts';
-import type { EditorInstance } from '../session/editor-controls';
+import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
 
 /** Capture one session's definitions; later renders cannot replace its plugin set. */
 export const snapshotEditorPlugins = (

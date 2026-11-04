@@ -1,4 +1,4 @@
-import { getInsertionAxis } from '../canvas/layout-axis';
+import { getInsertionAxis } from '../components/canvas/layout-axis';
 import {
   useCallback,
   type Ref,
@@ -8,19 +8,19 @@ import {
   useRef,
   useState,
 } from 'react';
-import { CanvasEditor } from '../canvas/canvas-editor';
-import { DragOverlay } from '../canvas/canvas-drag-controls';
+import { CanvasEditor } from '../components/canvas';
+import { DragOverlay } from '../components/canvas/canvas-drag-controls';
 import { EditorProvider } from '../session/editor-provider';
-import { useEditorCore, useEditorStoreApi } from '../session/editor-session';
+import { useEditorCore, useEditorStoreApi } from '../session/editor-context';
 import { SchemaUtils } from '../schema/schema-utils';
 import { type OrigamixPageSchema as Schema } from '@origamix/shared';
 import { TooltipProvider } from '@origamix/ui';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorMaterialRegistration } from '../contracts/editor-contracts';
-import { DropIndicator } from '../canvas/drop-indicator';
-import { TargetSelectionMarker } from '../canvas/target-selection-marker';
-import { SelectionToolbar } from '../canvas/selection-toolbar';
-import { InsertPositionIndicator } from '../canvas/insert-position-indicator';
+import type { EditorMaterialRegistration } from '../interfaces/editor-interfaces';
+import { DropIndicator } from '../components/canvas/drop-indicator';
+import { TargetSelectionMarker } from '../components/canvas/target-selection-marker';
+import { SelectionToolbar } from '../components/canvas/selection-toolbar';
+import { InsertPositionIndicator } from '../components/canvas/insert-position-indicator';
 
 export type CanvasPrototypeCommand =
   | { kind: 'select'; id: string }

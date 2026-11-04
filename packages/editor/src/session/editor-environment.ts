@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { useStore } from 'zustand';
-import { EditorSessionContext, useEditorCore } from './editor-session';
-import type { EditorTheme } from '../contracts/editor-contracts';
+import { EditorSessionContext, useEditorCore } from './editor-context';
+import type { EditorTheme } from '../interfaces/editor-interfaces';
 
 // Standalone CodeEditor also works outside an editor session.
 const defaultEnvironment = { theme: 'light' as EditorTheme };

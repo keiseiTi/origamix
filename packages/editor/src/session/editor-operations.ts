@@ -1,9 +1,9 @@
-import type { EditorCore } from './editor-session';
+import type { EditorCore } from './editor-store';
 import type {
   EditorElementPosition,
   EditorOperations,
   EditorResolvedPosition,
-} from '../contracts/editor-operation-contracts';
+} from '../interfaces/editor-operation-interfaces';
 import { editorSnapshot } from './editor-snapshots';
 import { SchemaUtils } from '../schema/schema-utils';
 

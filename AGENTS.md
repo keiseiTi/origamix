@@ -15,7 +15,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 | ----------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                                   |
 | [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                                    |
-| [Editor](packages/editor/AGENTS.md)       | Canvas, FlowEditor, reusable editing components and contracts | `packages/editor/src/`, `packages/editor/src/flow-editor/`, `packages/editor/src/contracts/` |
+| [Editor](packages/editor/AGENTS.md)       | Canvas, FlowEditor, reusable editing components and contracts | `packages/editor/src/`, `packages/editor/src/components/flow-editor/`, `packages/editor/src/interfaces/` |
 | [UI](packages/ui/AGENTS.md)               | Shared base controls, utilities and theme foundations         | `packages/ui/src/components/`, `packages/ui/src/styles/styles.css`                           |
 | [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`          |
 | [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                   |
