@@ -112,3 +112,5 @@ Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默�
 PageSession 在 useCreateEditor 中组合 workspace.toolbar、editor.mode、editor.viewport 和 editor.history。Editor 不再接收 toolbar prop；App 的插件统一组合页面工具菜单及弹窗、标题、版本操作、返回对话和预览，中间区域复用 EditorToolbarArea。宿主名称、权限和回调通过页面级 WorkspaceToolbarProvider 更新，不改变插件身份。
 
 编辑器保存按钮和保存快捷键通过 editor.save() 进入现有 saveVersion（内含 flush → 读取 Working version → 显式保存 Revision）。对话与编辑模式的 Toolbar 仅在当前模式和活动页响应快捷键。历史栈及画布/逻辑流快捷键保持现有实现；不引入新的保存或 Apply 路径。
+
+插件生命周期、公开操作与通知、预留物料 API 的完整说明见 [Editor 插件开发指南](../editor/PLUGINS.md)。setup 阶段仅查询和注册监听，文档修改应由初始化后的明确操作发起，避免被 Working 会话的初始化过滤忽略。

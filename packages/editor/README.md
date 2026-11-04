@@ -83,7 +83,7 @@ App 持有最后一次确认的 Working、当前本地候选及版本。flush �
 
 保存失败保留候选、展示错误并阻止切换；继续输入不会自动重放失败请求，用户可显式重试。每个项目/页面拥有独立提交队列，切换后旧响应不能修改新页面或触发新页面的提交回调。保存 Revision 和 Apply 始终属于 App 的显式业务动作。
 
-扩展只能提交受控的元素属性修改，不获取 HTTP、App Store、原始引擎或保存/Apply 权限。Manifest 保持纯数据，Server 继续拥有最终校验权。
+插件通过受控实例执行节点编辑、查询和宿主明确配置的保存能力，不获取 HTTP、App Store、原始引擎或 Apply 权限。属性控件仍只修改选中节点的属性。Manifest 保持纯数据，Server 继续拥有最终校验权。
 
 ```sh
 pnpm --filter @origamix/editor lint
@@ -118,60 +118,8 @@ pnpm --filter @origamix/editor build
 
 编辑器拖放、视图切换和流程更新失败通过共享 shadcn/ui Toast 展示，不占用画布布局。每个 EditorProvider 创建独立通知管理器，切换编辑会话时不会显示上一会话的通知；字段校验提示仍由对应属性控件管理。
 
-## 插件基础（阶段 1）
+## 插件
 
-通过 `useCreateEditor({ plugins: [A, B, C] })` 配置会话插件，使用 `defineEditorPlugin` 定义插件。列表在实例创建时固定；插件 ID 不可为空或重复。初始化按 C → B → A 执行，清理按 A → B → C 执行。权限与宿主回调更新不重复初始化。
+插件契约、四个现有插件、Toolbar 组合、保存、节点操作和通知见 [插件开发指南](PLUGINS.md)。Editor 提供统一会话能力，App 持有 Working/Revision/Apply 业务。物料 API 仅预留类型，尚未执行；属性区、物料区和逻辑流扩展暂不开放。
 
-`setup({ editor, signal })` 中的 editor 是会话限定的操作接口，解绑后失效。返回清理函数释放资源；初始化中途可能失败的资源应立即绑定到 signal 的 abort 事件，保证尚未返回清理函数时也能回收。初始化失败会终止挂载并清理已经启动的插件，清理错误不会阻止其余插件清理。
-
-阶段 2 已接入 `editor.renderToolbar({ area, editor, children })`、`renderTop` 和 `renderBottom`。Toolbar 先分别从右到左组合 start/center/end，再对完整结果组合 all。返回 children 保留已有内容，返回自定义内容替换，返回 null 隐藏。同时预留 `material.extend / getPanels / render`：分别补充默认属性与面板配置、组合当前节点面板、包装设计态物料内容；本阶段不执行这些回调，不开放面板区域替换或逻辑流扩展。
-
-物料回调接收物料及其 Manifest；节点回调额外接收 elementId、节点、最近父节点优先的祖先列表。后续组合按 C → B → A 执行：extend 的默认属性按字段组合，面板追加而非覆盖（冲突必须显式处理）；getPanels 接收已有 panels，自行保留或替换；render 接收上一步 children。新增持久化字段仍须进入版本化 Manifest，浏览器插件不能自行放宽 Server 校验。运行时包装由 Materials 独立提供。
-
-## Toolbar 与保存（阶段 2）
-
-Editor 默认渲染 Toolbar，右侧提供保存按钮。通过 `onSave` 注入保存行为、`canSave` 控制权限；未配置 onSave 时按钮禁用。可选 `onFlush` 在 onSave 之前执行，失败时不调用 onSave；若宿主 onSave 已包含 flush，则不要重复传入 onFlush。Editor 不创建 Revision、不访问 HTTP。保存权限独立于 readOnly。
-
-默认按钮与自定义按钮统一调用 `editor.save()`；公开状态包含 saving/canSave/saveError。重复调用在前次结束前拒绝，失败保留本地草稿。解绑后尚未完成的 flush 不会调用保存回调；已经开始的宿主保存不能由 Editor 撤销，宿主仍须隔离自身异步业务结果。
-
-导出 `EditorToolbar` 布局、`EditorToolbarArea` 区域和 `EditorSaveButton`。插件替换 all 时可以组合这些组件；区域组件仅执行局部渲染，不递归执行 all。渲染回调不能调用 Hook，应返回独立 React 组件。renderTop/renderBottom 只扩展外围，不能替换画布。
-
-阶段 3 已移除 toolbar prop。宿主使用插件替换 all，并可通过 EditorToolbarArea 复用局部工具。
-
-## 内置工具插件（阶段 3）
-
-`createEditorModePlugin()`、`createViewportPlugin()`、`createHistoryPlugin()` 分别提供模式切换、设备宽度控制与撤销重做工具，默认贡献到 center。按此列表装配后，展示顺序为模式、视口、历史。模式切换仍等待 beforeModeChange；视口和历史工具仅在 view 模式显示。历史栈、合并策略及快捷键暂留原有会话，不创建第二套历史。
-
-App 的 workspace.toolbar 插件负责完整页面工具菜单、Schema/全局变量弹窗、Revision 历史、Apply、返回对话和预览。其宿主参数通过页面级 React Context 更新，不重建固定插件列表；保存按钮与快捷键均调用 editor.save()，onSave 继续使用已包含 flush 的 App saveVersion。只有活动页面当前模式的 Toolbar 响应保存快捷键。
-
-## 节点操作与通知（阶段 4）
-
-实例提供只读查询 `getSchema/getElement/getMaterial/getParent/getAncestors/getSelectedElement`，祖先按最近父节点优先排列。节点返回 `{ id, type, props }`；Schema、节点和配置数据为冻结副本，React 组件/元素保留框架身份。
-
-编辑接口为 `insertElement/moveElement/removeElement/updateElementProps/removeElementProps/selectElement`。位置统一使用 `{ parentId, index? }`、`{ beforeId }` 或 `{ afterId }`；移动的 index 是移除自身后的最终索引，省略时追加。插入合并物料默认属性；根专用物料不能重复插入。插入/移动检查容器、dropTypes、根节点与子树关系；Overlay 沿用现有根节点落点规则。更新和移除属性保留其他字段。
-
-所有文档修改仍经同一个 setSchema 校验、历史和 onChange → App Working 队列；返回只表示本地接受，不代表 Server 已保存、创建 Revision 或 Apply。查询和选择允许只读使用，文档修改拒绝只读及解绑会话。
-
-```tsx
-const plugin = defineEditorPlugin({
-  id: 'example.observe',
-  setup: ({ editor }) => {
-    return editor.on('elementInsert', ({ element, materialType, position, source }) => {
-      // position 是最终 parentId/index；这里只观察，不同步发起另一次修改。
-    });
-  },
-});
-```
-
-| 通知               | 数据                                                |
-| ------------------ | --------------------------------------------------- |
-| elementInsert      | 新节点、materialType、最终 position                 |
-| elementMove        | elementId、previousPosition、position               |
-| elementRemove      | 被删根节点、原位置、子树及其绑定/流程/布局扩展快照  |
-| elementPropsChange | elementId、前后 props、变更字段                     |
-| selectionChange    | 前后 elementId；删除选中节点时也通知                |
-| change             | 一次事务的 before/after、changes、可选 historyGroup |
-
-同次文档事务的通知共享 transactionId/source，先发节点通知、再发自动选择变化、最后发一次 change。独立选择操作有自己的事务 ID。来源为 drag/canvas/panel/plugin/history/external；无变化及拒绝操作不发文档通知。完整 Schema 导入或历史恢复的移动摘要按前后关系推导；普通插入/删除造成的兄弟索引偏移不算移动，类型/流程/全局变量等完整变化可从 change 的快照读取。
-
-订阅按注册顺序执行，因此 setup 中注册的插件监听遵循从右到左的初始化顺序。解绑或 setup 失败自动移除订阅，即使插件未返回清理函数；返回的取消订阅函数仍可提前释放。观察者抛错只输出固定故障提示，不包含页面数据、不回滚已接受草稿、不阻断其他监听。同步通知期间禁止嵌套文档修改或选择修改；后续修改须由下一次明确操作发起。逻辑流没有新增插件接口。
+History 插件当前提供工具栏入口，历史栈、600ms 合并和画布/逻辑流快捷键保留在共享会话中。这样完整 Schema 的撤销仍经过原 Working 管线；本轮不将历史存储迁入插件，不引入第二套历史。

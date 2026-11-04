@@ -40,6 +40,7 @@ type Binding = {
   readOnly: boolean;
   save: EditorSaveOptions;
   subscriptions: Set<() => void>;
+  ready: boolean;
 };
 type InstanceState = {
   view: StoreApi<ViewState>;
@@ -72,6 +73,7 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
   };
   const writable = (): EditorCore => {
     if (!state.binding) throw new Error('Editor session is unavailable');
+    if (!state.binding.ready) throw new Error('插件初始化期间不能修改页面，请在初始化完成后操作');
     if (state.binding.readOnly) throw new Error('当前不可编辑，草稿已保留');
     const core = state.binding.core.getState();
     core.assertCanMutate();
@@ -93,6 +95,7 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
     save: async () => {
       const binding = state.binding;
       if (!binding) throw new Error('Editor session is unavailable');
+      if (!binding.ready) throw new Error('插件初始化期间不能保存页面');
       if (state.view.getState().saving) throw new Error('正在保存，请稍候');
       if (!binding.save.onSave || binding.save.canSave === false) throw new Error('当前不可保存');
       const onSave = binding.save.onSave;
@@ -122,6 +125,7 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
     setMode: async (mode) => {
       const binding = state.binding;
       if (!binding) throw new Error('Editor session is unavailable');
+      if (!binding.ready) throw new Error('插件初始化期间不能切换模式');
       await state.options.beforeModeChange?.();
       // A flush may outlive the canvas/page that requested the switch.
       if (state.binding !== binding) throw new Error('编辑会话已切换，请重试');
@@ -154,7 +158,7 @@ export const bindEditorSession = (
   const state = getInstance(editor);
   if (state.binding)
     throw new Error('An Editor instance cannot be shared by multiple mounted editors');
-  const binding: Binding = { core, readOnly, save, subscriptions: new Set() };
+  const binding: Binding = { core, readOnly, save, subscriptions: new Set(), ready: false };
   state.view.setState({
     saving: false,
     saveError: null,
@@ -173,6 +177,7 @@ export const bindEditorSession = (
   };
   const writeScoped = (): EditorCore => {
     const current = readScoped();
+    if (!binding.ready) throw new Error('插件初始化期间不能修改页面，请在初始化完成后操作');
     if (binding.readOnly) throw new Error('当前不可编辑，草稿已保留');
     current.assertCanMutate();
     return current;
@@ -212,8 +217,10 @@ export const bindEditorSession = (
   try {
     dispose = startEditorPlugins(state.plugins, scoped, () => {
       active = false;
+      binding.ready = false;
       for (const off of [...binding.subscriptions]) off();
     });
+    binding.ready = true;
   } catch (error) {
     active = false;
     state.binding = null;

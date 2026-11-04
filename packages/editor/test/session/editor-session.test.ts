@@ -176,6 +176,9 @@ describe('plugin session isolation', () => {
   it('aborts partial setup and releases the binding after initialization fails', () => {
     let signal: AbortSignal | undefined;
     let stale: EditorInstance | undefined;
+    let initializationError: unknown;
+    const edits = vi.fn();
+    const store = createEditorSession(document(), []);
     const editor = createEditorInstance({
       plugins: [
         {
@@ -183,14 +186,28 @@ describe('plugin session isolation', () => {
           setup: (context) => {
             signal = context.signal;
             stale = context.editor;
-            throw new Error('setup failed');
+            context.editor.on('change', edits);
+            try {
+              context.editor.setSchema({
+                ...document(),
+                context: { globalVariables: [{ name: 'untracked', defaultValue: true }] },
+              });
+            } catch (error) {
+              initializationError = error;
+              throw error;
+            }
           },
         },
       ],
     });
-    expect(() => bindEditorSession(editor, createEditorSession(document(), []), false)).toThrow(
-      'broken',
-    );
+    expect(() => bindEditorSession(editor, store, false)).toThrow('broken');
+    expect((initializationError as Error).message).toContain('初始化期间');
+    expect(store.getState().schema).toEqual(document());
+    store.getState().setSchema({
+      ...document(),
+      context: { globalVariables: [{ name: 'later', defaultValue: true }] },
+    });
+    expect(edits).not.toHaveBeenCalled();
     expect(signal?.aborted).toBe(true);
     expect(() => stale!.setSchema(document())).toThrow('unavailable');
     expect(() => editor.setSchema(document())).toThrow('unavailable');
