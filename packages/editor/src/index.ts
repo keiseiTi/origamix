@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference -- Source exports must include ambient bundler declarations without emitting runtime imports of .d.ts files. */
+/// <reference path="./worker-imports.d.ts" />
+/// <reference path="./styles.d.ts" />
+/* eslint-enable @typescript-eslint/triple-slash-reference */
 export { Editor, type EditorProps } from './editor';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';
 export { JsonAttributeField } from './components/json-attribute-field';

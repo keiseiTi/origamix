@@ -120,6 +120,6 @@ pnpm --filter @origamix/editor build
 
 ## 插件
 
-插件契约、四个现有插件、Toolbar 组合、保存、节点操作和通知见 [插件开发指南](PLUGINS.md)。Editor 提供统一会话能力，App 持有 Working/Revision/Apply 业务。物料 API 仅预留类型，尚未执行；属性区、物料区和逻辑流扩展暂不开放。
+插件契约、四个现有插件、Toolbar 组合、保存、节点操作和通知见 [插件开发指南](PLUGINS.md)。Editor 提供统一会话能力，App 持有 Working/Revision/Apply 业务。物料 extend/getPanels 已接入，内置 antd.form 提供原子字段的表单属性扩展；material.render、区域整体替换和逻辑流扩展暂不开放。
 
 History 插件当前提供工具栏入口，历史栈、600ms 合并和画布/逻辑流快捷键保留在共享会话中。这样完整 Schema 的撤销仍经过原 Working 管线；本轮不将历史存储迁入插件，不引入第二套历史。

@@ -215,7 +215,7 @@ export const bindEditorSession = (
   };
   let dispose: () => void;
   try {
-    dispose = startEditorPlugins(state.plugins, scoped, () => {
+    dispose = startEditorPlugins(core.getState().plugins ?? state.plugins, scoped, () => {
       active = false;
       binding.ready = false;
       for (const off of [...binding.subscriptions]) off();

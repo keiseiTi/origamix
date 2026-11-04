@@ -1,3 +1,4 @@
+import type { EditorPlugin } from '../contracts/plugin-contracts';
 import { Toaster, createToastManager } from '@origamix/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -43,6 +44,7 @@ const EditorBinding = ({
 
 export interface EditorProviderProps {
   editor?: EditorInstance;
+  plugins?: readonly EditorPlugin[];
   save?: EditorSaveOptions;
   readOnly?: boolean;
   theme?: EditorEnvironment['theme'];
@@ -59,6 +61,7 @@ export const EditorProvider = ({
   schema,
   materials,
   editor,
+  plugins,
   save = EMPTY_SAVE,
   readOnly = false,
   theme = 'light',
@@ -71,6 +74,7 @@ export const EditorProvider = ({
   const [store] = useState(() =>
     createEditorSession(schema, materials, 100, {
       editor,
+      plugins,
       readOnly,
       theme,
       materialCatalog,

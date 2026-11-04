@@ -1,3 +1,6 @@
+import { snapshotEditorPlugins } from './plugins/plugin-host';
+import { extendEditorMaterial } from './plugins/material-plugins';
+import { getEditorPlugins } from './session/editor-controls';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import { DragOverlay } from './canvas/canvas-drag-controls';
 import { EditorProvider } from './session/editor-provider';
@@ -85,21 +88,45 @@ export const Editor = ({
 }: EditorProps): React.JSX.Element => {
   const mode = useEditorView(editor, (state) => state.mode);
   const viewportWidth = useEditorView(editor, (state) => state.viewportWidth);
+  const plugins = useMemo(
+    () => snapshotEditorPlugins([...getEditorPlugins(editor), ...(registration.plugins ?? [])]),
+    [editor, registration],
+  );
+  const extendedMaterials = useMemo(() => {
+    const registry = new Map(
+      registration.catalog.materials.map((manifest) => [manifest.type, manifest]),
+    );
+    return new Map(
+      [
+        ...(registration.rootMaterials ?? []),
+        ...registration.groups.flatMap((group) => group.children),
+      ].map((material) => {
+        const manifest = registry.get(material.type);
+        if (!manifest) throw new Error(`物料 ${material.type} 缺少 Manifest`);
+        return [material.type, extendEditorMaterial(material, manifest, plugins)];
+      }),
+    );
+  }, [registration, plugins]);
   const groups = useMemo(
     () =>
       registration.groups.map((group) => ({
         title: group.title,
-        children: [...group.children],
+        children: group.children.map((material) => extendedMaterials.get(material.type)!),
       })),
-    [registration],
+    [registration, extendedMaterials],
   );
   const rootMaterialTypes = useMemo(
     () => (registration.rootMaterials ?? []).map((material) => material.type),
     [registration.rootMaterials],
   );
   const materials = useMemo(
-    () => [...(registration.rootMaterials ?? []), ...groups.flatMap((group) => group.children)],
-    [groups, registration.rootMaterials],
+    () => [
+      ...(registration.rootMaterials ?? []).map((material) =>
+        extendedMaterials.get(material.type)!,
+      ),
+      ...groups.flatMap((group) => group.children),
+    ],
+    [groups, registration.rootMaterials, extendedMaterials],
   );
 
   // Host status updates must not rerun the engine's change effect for an unchanged schema.
@@ -120,6 +147,7 @@ export const Editor = ({
       <EditorProvider
         key={sessionKey}
         editor={editor}
+        plugins={plugins}
         save={{ onSave, onFlush, canSave }}
         readOnly={readOnly}
         theme={theme}

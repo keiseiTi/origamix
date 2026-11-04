@@ -1,3 +1,4 @@
+import type { EditorPlugin } from '@origamix/editor';
 import BasicPage from './basic-page/material-config';
 import { basicPageManifest } from './manifest';
 import Button from './button/material-config';
@@ -61,3 +62,7 @@ export default materialGroups;
 
 export const rootMaterials = [BasicPage] as const;
 export const rootManifests = [basicPageManifest] as const;
+
+export { createAntdFormPlugin } from './plugins/form-plugin';
+import { createAntdFormPlugin } from './plugins/form-plugin';
+export const editorPlugins: readonly EditorPlugin[] = [createAntdFormPlugin()];

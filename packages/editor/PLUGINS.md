@@ -13,7 +13,7 @@
 
 History 的存储、600ms 合并与快捷键仍属于共享会话。逻辑流编辑继续共享页面历史，本轮不迁移其内核，也不开放 flow 插件 API。
 
-物料 `material.extend/getPanels/render` 已有契约但尚未执行。属性区、物料区的替换与扩展尚未接入。画布不能整体替换。
+物料 `material.extend/getPanels` 已接入，内置 antd.form 通过它们扩展字段物料。`material.render` 暂未执行；属性区与物料区的整体替换、逻辑流扩展仍未接入。画布不能整体替换。
 
 ## 装配与生命周期
 
@@ -31,7 +31,7 @@ const editor = useCreateEditor({
 });
 ```
 
-插件定义在实例创建时固定；修改列表需要新实例。ID 不可为空或重复，不提供依赖排序。`[A, B, C]` 按 C → B → A 初始化和组合，按 A → B → C 清理。宿主权限、名称与回调更新不会重跑 setup；App 使用页面级 Context 提供最新业务参数。
+宿主插件定义在实例创建时固定；修改宿主列表需要新实例。物料注册可携带 registration.plugins，Editor 将它们追加到宿主插件后，合并成一个会话级列表、交给同一个插件宿主；更换物料注册或其插件需要新的 sessionKey。ID 不可为空或重复，不提供依赖排序。`[A, B, C]` 按 C → B → A 初始化和组合，按 A → B → C 清理。宿主权限、名称与回调更新不会重跑 setup；App 使用页面级 Context 提供最新业务参数。
 
 `setup({ editor, signal })` 可查询节点、注册监听并返回清理函数。文档修改、保存、模式切换在全部插件初始化完成后才可执行；setup 内提前调用会明确拒绝，避免本地修改被宿主的初始化过滤遗漏。需要编辑的行为应由初始化后的用户操作或明确命令发起。
 
@@ -122,8 +122,12 @@ const observerPlugin = defineEditorPlugin({
 
 订阅按注册顺序执行，setup 中的插件监听因此遵循从右到左顺序。返回取消订阅函数可提前释放；解绑和初始化失败也自动清理。监听器故障只输出固定提示，不记录页面内容、不回滚已接受草稿、不阻断其他监听。同步通知期间禁止嵌套文档修改或选择修改。
 
-## 物料 API 预留
+## 物料属性插件
 
-`material.extend` 补充默认属性及面板配置；`getPanels` 接收已有 panels，供上下文面板组合；`render` 接收已有 children，用于设计态物料内容包装。它们目前只保留类型，装配这些回调不会改变物料。
+`material.extend({ material, manifest })` 在会话物料装配时补充默认属性和面板配置；`getPanels({ editor, material, manifest, elementId, element, ancestors, panels })` 根据当前节点上下文返回面板列表。ancestors 按最近父节点优先排列。两者均按 C → B → A 组合，输入为只读快照。
 
-后续接入时按 C → B → A 组合；默认属性按字段、面板按规则合并，不能用浅展开覆盖数组。新增持久化字段必须参与版本化 Manifest 构建，供 Editor、Agent、Server 一致使用；浏览器回调不能放宽 Server 校验。运行时包装由 Materials 独立入口提供，不加载 Editor 插件宿主。
+extend 的 panels 追加到已有面板，不能覆盖右侧插件的贡献；有 ID 的面板不允许重复。getPanels 接收已有 panels，保留它表示保留，返回新列表可以增加或隐藏上下文面板。所有配置字段必须在已安装 Manifest 中声明；新增默认值必须与 Manifest.defaultProps 一致，否则拒绝装配。静态定义仍由物料构建生成，插件不能临时改变 Server 协议。
+
+内置 `antd.form` 由 Materials 的 `/antd/editor` 入口导出 createAntdFormPlugin 和 editorPlugins，App 物料加载器通过 registration.plugins 注入。原子组件只声明 formField: true；Manifest 构建组合公共 Form 字段定义，插件 extend 增加表单项面板，getPanels 在存在 Form 祖先时展示该面板。字段移出 Form 后配置保留且不显示面板，不把此匹配逻辑硬编码进 Editor。
+
+本次未执行 material.render；设计态 Form.Item 与运行时值绑定继续复用 Materials 的现有公共边界，不重复包装。预览/生成项目只加载运行时入口，不加载 Editor 插件宿主。新增持久化字段仍须先参与版本化 Manifest 构建，供 Editor、Agent、Server 一致使用。

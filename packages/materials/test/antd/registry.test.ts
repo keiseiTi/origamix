@@ -1,6 +1,6 @@
 import { validateAntdMaterialProps, validateAntdMaterialSemantics } from '../../antd/validation';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
-import { materialGroups, rootMaterials } from '../../antd/editor';
+import { materialGroups, rootMaterials, createAntdFormPlugin } from '../../antd/editor';
 import { describe, expect, it } from 'vitest';
 import materialComponents, { materialSet } from '../../antd/runtime';
 import { antdMaterialManifest, antdValidationMaterialRegistry } from '../../antd/manifest';
@@ -9,11 +9,21 @@ describe('material boundary used by editing and preview', () => {
   it('publishes serializable materials that validation and rendering both recognize', () => {
     expect(() => structuredClone(antdMaterialManifest)).not.toThrow();
     expect(() => JSON.stringify(antdMaterialManifest)).not.toThrow();
+    const formPlugin = createAntdFormPlugin();
     for (const material of materialGroups.flatMap((group) => group.children)) {
       expect(antdValidationMaterialRegistry[material.type]).toBeDefined();
       expect(material.type in materialComponents).toBe(true);
       const manifest = antdMaterialManifest.materials.find((item) => item.type === material.type)!;
       expect(material.manifest).toEqual(manifest);
+      if (material.formField) {
+        const extension = formPlugin.material?.extend?.({ material, manifest });
+        const properties = manifest.propsSchema.properties as Record<string, unknown>;
+        expect(Object.hasOwn(properties, 'fieldName')).toBe(true);
+        for (const panel of extension?.panels ?? [])
+          for (const config of panel.configs ?? [])
+            expect(Object.hasOwn(properties, config.field)).toBe(true);
+      }
+
       expect(material.acceptsChildren).toBe(manifest.acceptsChildren);
       expect(material.layout).toEqual(manifest.layout);
       expect((material.Component as { origamixLayout?: unknown }).origamixLayout).toEqual(

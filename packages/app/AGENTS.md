@@ -99,3 +99,5 @@ pnpm --filter @origamix/app build
 - Project compatibility UI reports material/Schema support independently of package releases. No page upgrade action exists without a converter. The only current conversion is the explicit legacy 1.0.0 manifest format change; it never writes pages or dependencies.
 
 - `workspace-toolbar-plugin.tsx` contributes the complete workbench toolbar through renderToolbar(all); `workspace-toolbar.tsx` owns its live host Context and dialog state. PageSession composes Editor mode/viewport/history plugins and passes onSave/canSave to PageEditor. Save buttons and edit-mode shortcuts use editor.save(); App saveVersion already flushes, so do not add a second flush. Only the active page current-mode toolbar handles save shortcuts. Chat keeps PageToolbarShell; both use EditorToolbar layout.
+
+- Editor material loaders forward the family editorPlugins as registration.plugins; Editor combines them with workspace plugins in one session host. Do not create an App-only Form panel or install a second Form plugin manually.

@@ -29,6 +29,7 @@ export const loadEditorMaterials = async (
         rootMaterials: module.rootMaterials,
         groups: module.materialGroups,
         propertyEditors: module.propertyEditors,
+        plugins: module.editorPlugins,
       };
     });
     editorLoads.set(key, pending);

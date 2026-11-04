@@ -1,8 +1,9 @@
+import { useEditorCore } from '../session/editor-session';
+import type { EditorPlugin } from '../contracts/plugin-contracts';
 import type { ReactNode } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@origamix/ui';
 import {
-  getEditorPlugins,
   useEditorContext,
   useEditorSelector,
   type EditorInstance,
@@ -52,6 +53,7 @@ export const EditorSaveButton = () => {
 
 const renderToolbarArea = (
   editor: EditorInstance,
+  plugins: readonly EditorPlugin[],
   area: Exclude<ToolbarArea, 'all'>,
   children?: ReactNode,
 ): ReactNode => {
@@ -65,7 +67,7 @@ const renderToolbarArea = (
           : 'flex min-w-0 items-center gap-2'
       }
     >
-      {composePluginRenderers(getEditorPlugins(editor), editor, 'renderToolbar', initial, area)}
+      {composePluginRenderers(plugins, editor, 'renderToolbar', initial, area)}
     </div>
   );
 };
@@ -79,17 +81,18 @@ export const EditorToolbarArea = ({
   children?: ReactNode;
 }) => {
   const editor = useEditorContext();
-  return renderToolbarArea(editor, area, children);
+  const plugins = useEditorCore((state) => state.plugins) ?? [];
+  return renderToolbarArea(editor, plugins, area, children);
 };
 
 export const EditorChrome = ({ children }: { children: ReactNode }) => {
   const editor = useEditorContext();
-  const plugins = getEditorPlugins(editor);
+  const plugins = useEditorCore((state) => state.plugins) ?? [];
   const defaultToolbar = (
     <EditorToolbar>
-      {renderToolbarArea(editor, 'start')}
-      {renderToolbarArea(editor, 'center')}
-      {renderToolbarArea(editor, 'end')}
+      {renderToolbarArea(editor, plugins, 'start')}
+      {renderToolbarArea(editor, plugins, 'center')}
+      {renderToolbarArea(editor, plugins, 'end')}
     </EditorToolbar>
   );
   return (

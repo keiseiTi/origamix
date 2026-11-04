@@ -13,7 +13,7 @@ export interface AttributeConfig {
   linkageMode?: 'any';
 }
 export interface PanelConfig {
-  context?: 'form';
+  id?: string;
   title?: ReactNode;
   configs?: AttributeConfig[];
 }
@@ -23,6 +23,7 @@ export interface EditorConfig {
 }
 /** Minimal structural contract; concrete control configuration belongs to Materials. */
 export interface Material {
+  formField?: boolean;
   Component: ComponentType | LazyExoticComponent<ComponentType>;
   title: string;
   type: string;

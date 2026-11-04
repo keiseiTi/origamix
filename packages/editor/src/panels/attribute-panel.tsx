@@ -1,3 +1,6 @@
+import { resolveMaterialPanels } from '../plugins/material-plugins';
+import { useEditorContext } from '../session/editor-controls';
+import { editorSnapshot } from '../session/editor-snapshots';
 import { getElementLabel } from '@origamix/shared';
 import type { EventFocusProps } from './event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
@@ -20,7 +23,7 @@ import { ChevronRight } from 'lucide-react';
 import { useMaterialCatalog } from '../session/editor-environment';
 import { SchemaUtils } from '../schema/schema-utils';
 import { useEditorCore, type ActiveElement } from '../session/editor-session';
-import { type AttributeConfig } from '../contracts/material-contracts';
+import { type AttributeConfig, type Material } from '../contracts/material-contracts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JsonAttributeConfig } from '../contracts/property-editor-contracts';
 import { JsonAttributeField } from '../components/json-attribute-field';
@@ -62,7 +65,9 @@ export const AttributePanel = ({
 }: {
   onEditEvent: (target: EventTarget) => void;
 } & EventFocusProps): React.JSX.Element => {
-  const { activeElement, materials, schema, setActiveElement, setSchema } = useEditorCore();
+  const { activeElement, materials, schema, plugins, setActiveElement, setSchema } =
+    useEditorCore();
+  const editor = useEditorContext();
   const [activePanel, setActivePanel] = useState(focusTarget ? 'events' : '0');
   const previousElementId = useRef(activeElement?.id);
   const material = activeElement?.material;
@@ -96,38 +101,54 @@ export const AttributePanel = ({
         (binding) => binding.id === activeElement?.id && binding.event === event.name,
       ),
   );
+  const manifest = catalog.find((item) => item.type === material?.type);
+  const materialPanels =
+    activeElement && element && material && manifest
+      ? resolveMaterialPanels(
+          {
+            editor,
+            material: editorSnapshot(material) as Material,
+            manifest,
+            elementId: activeElement.id,
+            element: editorSnapshot(element),
+            ancestors: SchemaUtils.getParents(schema, activeElement.id).flatMap((elementId) => {
+              const ancestor = schema.elements[elementId];
+              const ancestorMaterial = materials.find((item) => item.type === ancestor?.type);
+              return ancestor && ancestorMaterial
+                ? [
+                    {
+                      elementId,
+                      element: editorSnapshot(ancestor),
+                      material: editorSnapshot(ancestorMaterial) as Material,
+                    },
+                  ]
+                : [];
+            }),
+          },
+          plugins ?? [],
+        )
+      : (material?.editorConfig?.panels ?? []);
   const panels = [
-    ...(material?.editorConfig?.panels ?? [])
-      .filter(
-        (panel) =>
-          panel.context !== 'form' ||
-          Boolean(
-            activeElement &&
-            SchemaUtils.getParents(schema, activeElement.id).some(
-              (id) => schema.elements[id]?.type === 'form',
-            ),
-          ),
-      )
-      .map((panel) => ({
-        ...panel,
-        configs: [
-          ...(panel.configs ?? []),
-          ...(panel.title === '属性' && parentTabsId
-            ? [
-                {
-                  field: 'tabKey',
-                  required: false,
-                  label: '所属页签',
-                  uiType: 'select',
-                  props: {
-                    options: tabItems.map((item) => ({ label: item.label, value: item.key })),
-                  },
+    ...materialPanels.map((panel) => ({
+      ...panel,
+      configs: [
+        ...(panel.configs ?? []),
+        ...(panel.title === '属性' && parentTabsId
+          ? [
+              {
+                field: 'tabKey',
+                required: false,
+                label: '所属页签',
+                uiType: 'select',
+                props: {
+                  options: tabItems.map((item) => ({ label: item.label, value: item.key })),
                 },
-              ]
-            : []),
-        ],
-        kind: 'attributes' as const,
-      })),
+              },
+            ]
+          : []),
+      ],
+      kind: 'attributes' as const,
+    })),
     ...(events?.length ? [{ title: '事件', kind: 'events' as const, events }] : []),
   ];
 

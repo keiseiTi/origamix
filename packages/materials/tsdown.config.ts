@@ -10,9 +10,11 @@ const options: import('tsdown').UserConfig = {
   fixedExtension: false,
   dts: true,
   deps: {
+    neverBundle: ['@origamix/editor'],
     dts: {
       alwaysBundle: ['@origamix/shared', '@origamix/runtime'],
       neverBundle: [
+        '@origamix/editor',
         '@sinclair/typebox',
         'ajv',
         'ajv-formats',

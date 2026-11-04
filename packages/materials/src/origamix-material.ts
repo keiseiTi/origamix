@@ -1,4 +1,3 @@
-import { formItemPanel } from './form-item-panel';
 import { registerRuntimeMaterial } from '../antd/runtime-state';
 import { layoutPanel } from './layout-panel';
 import type { Material, PanelConfig, InputAttributeConfig, AttributeConfig } from './material';
@@ -20,15 +19,13 @@ export const defineMaterial = ({
   formField,
   ...metadata
 }: MaterialDefinition): Material => {
-  const effectiveConfig = formField
-    ? { ...editorConfig, panels: [...(editorConfig?.panels ?? []), formItemPanel] }
-    : editorConfig;
   const manifest = createMaterialManifest({
     ...metadata,
     Component,
-    editorConfig: effectiveConfig,
+    editorConfig,
+    formField,
   });
-  const panels = [...(effectiveConfig?.panels ?? []), layoutPanel].map((panel) => ({
+  const panels = [...(editorConfig?.panels ?? []), layoutPanel].map((panel) => ({
     ...panel,
     configs: panel.configs?.filter((config) => !config.hidden),
   })) as PanelConfig[];
@@ -40,6 +37,7 @@ export const defineMaterial = ({
   };
   const editorMaterial: Material = {
     manifest,
+    formField: Boolean(formField),
     Component: registerRuntimeMaterial(Component, manifest),
     title: manifest.title,
     type: manifest.type,

@@ -1,3 +1,4 @@
+import type { EditorPlugin } from './plugin-contracts';
 import type { Material } from './material-contracts';
 import {
   type MaterialManifestCatalog,
@@ -45,6 +46,7 @@ export type EditorHandle = Readonly<{
 /** Supplied by App after resolving the project's material set. No loader or concrete family here. */
 export type EditorMaterialRegistration = Readonly<{
   catalog: MaterialManifestCatalog;
+  plugins?: readonly EditorPlugin[];
   groups: readonly Readonly<{ title: string; children: readonly Material[] }>[];
   propertyEditors: readonly PropertyEditorRegistration[];
   rootMaterials?: readonly Material[];

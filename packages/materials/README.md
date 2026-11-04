@@ -111,4 +111,6 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 
 树、树选择和级联选择的节点数据通过“配置节点”弹窗编辑，支持层级、排序、增删及属性设置，确认后生效。表单初始值、页签及节点选择在属性面板内直接生效；保留无效输入草稿，外部属性变化时同步新值。
 
-支持表单绑定的控件在 `defineMaterial` 中声明 `formField: true`，按需声明 `valueProp`（默认 `value`）。统一生成字段协议与独立“表单项”面板；仅在最近的表单祖先内展示，允许中间包含布局容器，不修改共享 panels。字段名、标签、提示、必填与校验规则分别存于 `fieldName`、`fieldLabel`、`fieldTooltip`、`fieldRequired`、`fieldRules`。设计态展示 Form.Item 外观，运行态在最近的 Form 上下文中绑定值并校验；表单外的配置保留但不启用。规则支持长度、数值范围、邮箱、网址和正则，使用声明式数据，不保存回调。字段名在同一表单的全部后代中唯一，嵌套表单独立计数。
+支持表单绑定的控件在 `defineMaterial` 中声明 `formField: true`，按需声明 `valueProp`（默认 `value`）。构建时组合公共字段协议，antd.form 插件在 Editor 中提供独立“表单项”面板；仅在最近的表单祖先内展示，允许中间包含布局容器，不修改共享 panels。字段名、标签、提示、必填与校验规则分别存于 `fieldName`、`fieldLabel`、`fieldTooltip`、`fieldRequired`、`fieldRules`。设计态展示 Form.Item 外观，运行态在最近的 Form 上下文中绑定值并校验；表单外的配置保留但不启用。规则支持长度、数值范围、邮箱、网址和正则，使用声明式数据，不保存回调。字段名在同一表单的全部后代中唯一，嵌套表单独立计数。
+
+`/antd/editor` 导出 `createAntdFormPlugin` 与 `editorPlugins`。App 通过 EditorMaterialRegistration.plugins 安装到统一插件宿主。defineMaterial 保留 formField 标记并生成协议，不再隐式注入 Form 面板；插件采用同一 EditorPlugin 契约，元数据工厂仅使用其类型，避免 Node Manifest/注册检查加载 Monaco。面板字段由已安装 Manifest 验证，布局和原子物料配置保持原样。运行时及纯 Manifest 发布入口不引用 Editor。

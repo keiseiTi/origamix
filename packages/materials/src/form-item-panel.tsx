@@ -10,7 +10,7 @@ const FormRulesControl = (props: CollectionEditorProps) => (
 );
 export const formItemPanel: PanelConfig = {
   title: '表单项',
-  context: 'form',
+  id: 'antd.form.item',
   configs: [
     { field: 'fieldName', label: '表单字段', uiType: 'input' },
     { field: 'fieldLabel', label: '表单标签', uiType: 'input' },

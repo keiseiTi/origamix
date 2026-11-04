@@ -1,3 +1,4 @@
+import type { EditorPlugin } from '../contracts/plugin-contracts';
 import { equalJson } from '@origamix/shared';
 import { createContext, useContext } from 'react';
 import { createStore, type StoreApi } from 'zustand/vanilla';
@@ -25,6 +26,7 @@ export type DragElement =
   Material | { id: string; props: Record<string, unknown>; material: Material };
 export type InsertPosition = { id: string; position: 'before' | 'after' | 'up' | 'down' };
 export interface EditorEnvironment {
+  plugins: readonly EditorPlugin[] | undefined;
   theme: EditorTheme;
   materialCatalog: readonly MaterialManifest[];
   rootMaterialTypes: readonly string[];
@@ -95,6 +97,7 @@ export const createEditorSession = (
     return {
       on: events.on,
       assertCanMutate,
+      plugins: undefined,
       theme: 'light',
       materialCatalog: [],
       rootMaterialTypes: [],

@@ -1,3 +1,4 @@
+import { formFieldProperties } from './form-field-schema';
 import { equalJson } from '@origamix/shared';
 import type { JsonSchema, MaterialManifest } from '@origamix/shared';
 import type { AttributeConfig } from './material';
@@ -63,7 +64,13 @@ const scopeSchema = (schema: JsonSchema, field: string): JsonSchema => {
 
 /** Extract only protocol data; never copy components, controls or validators. */
 export const createMaterialManifest = (definition: MaterialDefinition): MaterialManifest => {
-  const { Component: _Component, editorConfig, defaultProps = {}, ...metadata } = definition;
+  const {
+    Component: _Component,
+    editorConfig,
+    defaultProps = {},
+    formField,
+    ...metadata
+  } = definition;
   const properties: Record<string, JsonSchema> = {};
   const defaults = { ...defaultProps };
   const required: string[] = [];
@@ -82,6 +89,15 @@ export const createMaterialManifest = (definition: MaterialDefinition): Material
         }
         defaults[config.field] = config.defaultValue;
       }
+    }
+  }
+  if (formField) {
+    for (const [field, schema] of Object.entries({
+      fieldName: { type: 'string' },
+      ...formFieldProperties,
+    })) {
+      if (Object.hasOwn(properties, field)) throw new Error(`${metadata.type}: 重复属性 ${field}`);
+      properties[field] = scopeSchema(schema, field);
     }
   }
   return withCommonMaterialManifest({

@@ -1,3 +1,6 @@
+import { extendEditorMaterial } from '../../src/plugins/material-plugins';
+import type { MaterialManifest } from '@origamix/shared';
+import type { EditorPlugin } from '../../src/contracts/plugin-contracts';
 import type { EditorEvents } from '../../src/contracts/editor-operation-contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
@@ -427,4 +430,61 @@ describe('public editor operations', () => {
       observerError.mockRestore();
     }
   });
+});
+
+// The Server cannot prove editor plugins address only the installed material protocol.
+it('composes material contributions right-to-left and rejects undeclared fields before edits', () => {
+  const material = { type: 'input', title: 'Input', Component: () => null };
+  const manifest: MaterialManifest = {
+    type: 'input',
+    title: 'Input',
+    version: '1.0.0',
+    description: '',
+    keywords: [],
+    role: 'input',
+    propsSchema: {
+      type: 'object',
+      properties: { fieldLabel: { type: 'string' }, fieldRequired: { type: 'boolean' } },
+      additionalProperties: false,
+    },
+    defaultProps: {},
+    acceptsChildren: false,
+    context: { variables: [], actions: [], events: [] },
+    usage: '',
+    constraints: [],
+  };
+  const seen: string[] = [];
+  const plugins: EditorPlugin[] = [
+    {
+      id: 'B',
+      material: {
+        extend: ({ material: current }) => {
+          seen.push(...(current.editorConfig?.panels ?? []).map((panel) => panel.id!));
+          return { panels: [{ id: 'B', configs: [{ field: 'fieldRequired' }] }] };
+        },
+      },
+    },
+    {
+      id: 'C',
+      material: { extend: () => ({ panels: [{ id: 'C', configs: [{ field: 'fieldLabel' }] }] }) },
+    },
+  ];
+  const resolved = extendEditorMaterial(material, manifest, plugins);
+  expect(seen).toEqual(['C']);
+  expect(resolved.editorConfig?.panels?.map((panel) => panel.id)).toEqual(['C', 'B']);
+  expect(() =>
+    extendEditorMaterial(material, manifest, [
+      {
+        id: 'invalid',
+        material: { extend: () => ({ panels: [{ configs: [{ field: 'unregistered' }] }] }) },
+      },
+    ]),
+  ).toThrow('未在 Manifest 中声明');
+  expect(() =>
+    extendEditorMaterial(material, manifest, [
+      { id: 'invalid', material: { extend: () => ({ defaultProps: { unregistered: true } }) } },
+    ]),
+  ).toThrow('未在 Manifest 中声明');
+  expect(material).not.toHaveProperty('editorConfig');
+  expect(manifest.propsSchema.properties).not.toHaveProperty('unregistered');
 });
