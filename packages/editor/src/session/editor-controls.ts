@@ -1,28 +1,38 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState, useRef } from 'react';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import { useEditorCore, useEditorStoreApi, type EditorCore } from './editor-session';
 import type { OrigamixPageSchema } from '@origamix/shared';
+import type { EditorPlugin } from '../contracts/plugin-contracts';
+import { snapshotEditorPlugins, startEditorPlugins } from '../plugins/plugin-host';
 import type { EditorMode } from '../contracts/editor-contracts';
 
-type ViewState = Readonly<{ mode: EditorMode; viewportWidth: number }>;
+export type EditorSaveOptions = Readonly<{
+  onSave?: () => Promise<void>;
+  onFlush?: () => Promise<void>;
+  canSave?: boolean;
+}>;
+type ViewState = Readonly<{ mode: EditorMode; viewportWidth: number; saving: boolean; canSave: boolean; saveError: string | null }>;
 export interface CreateEditorOptions {
+  plugins?: readonly EditorPlugin[];
   initialMode?: EditorMode;
   initialViewportWidth?: number;
   beforeModeChange?: () => Promise<void>;
 }
 export interface EditorInstance {
+  save: () => Promise<void>;
   undo: () => void;
   redo: () => void;
   setSchema: (schema: OrigamixPageSchema) => void;
   setMode: (mode: EditorMode) => Promise<void>;
   setViewportWidth: (width: number) => void;
 }
-type Binding = { core: StoreApi<EditorCore>; readOnly: boolean };
+type Binding = { core: StoreApi<EditorCore>; readOnly: boolean; save: EditorSaveOptions };
 type InstanceState = {
   view: StoreApi<ViewState>;
   binding: Binding | null;
   options: CreateEditorOptions;
+  plugins: readonly EditorPlugin[];
 };
 const instances = new WeakMap<EditorInstance, InstanceState>();
 const getInstance = (editor: EditorInstance): InstanceState => {
@@ -34,8 +44,10 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
   const state: InstanceState = {
     view: createStore<ViewState>(() => ({
       mode: options.initialMode ?? 'view',
+      saving: false, canSave: false, saveError: null,
       viewportWidth: Math.max(240, options.initialViewportWidth ?? 1440),
     })),
+    plugins: snapshotEditorPlugins(options.plugins ?? []),
     binding: null,
     options,
   };
@@ -45,6 +57,26 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
     return state.binding.core.getState();
   };
   const editor: EditorInstance = {
+    save: async () => {
+      const binding = state.binding;
+      if (!binding) throw new Error('Editor session is unavailable');
+      if (state.view.getState().saving) throw new Error('正在保存，请稍候');
+      if (!binding.save.onSave || binding.save.canSave === false) throw new Error('当前不可保存');
+      const onSave = binding.save.onSave;
+      state.view.setState({ saving: true, saveError: null });
+      try {
+        await binding.save.onFlush?.();
+        if (state.binding !== binding) throw new Error('编辑会话已切换，请重试');
+        if (binding.save.canSave === false) throw new Error('当前不可保存');
+        await onSave();
+        if (state.binding !== binding) throw new Error('编辑会话已切换，请重试');
+      } catch (error) {
+        if (state.binding === binding) state.view.setState({ saveError: error instanceof Error ? error.message : '保存失败，草稿已保留' });
+        throw error;
+      } finally {
+        if (state.binding === binding) state.view.setState({ saving: false });
+      }
+    },
     undo: () => writable().undo(),
     redo: () => writable().redo(),
     setSchema: (schema) => writable().setSchema(schema),
@@ -81,19 +113,71 @@ export const bindEditorSession = (
   editor: EditorInstance,
   core: StoreApi<EditorCore>,
   readOnly: boolean,
+  save: EditorSaveOptions = {},
 ): (() => void) => {
   const state = getInstance(editor);
   if (state.binding)
     throw new Error('An Editor instance cannot be shared by multiple mounted editors');
-  const binding = { core, readOnly };
+  const binding = { core, readOnly, save };
+  state.view.setState({ saving: false, saveError: null, canSave: Boolean(save.onSave) && save.canSave !== false });
   state.binding = binding;
+  let active = true;
+  const assertActive = (): void => {
+    if (!active || state.binding !== binding)
+      throw new Error('Editor plugin session is unavailable');
+  };
+  // Plugins retain a scoped facade, never the instance that can bind a later page.
+  const scoped: EditorInstance = {
+    save: async () => { assertActive(); await editor.save(); },
+    undo: () => {
+      assertActive();
+      editor.undo();
+    },
+    redo: () => {
+      assertActive();
+      editor.redo();
+    },
+    setSchema: (schema) => {
+      assertActive();
+      editor.setSchema(schema);
+    },
+    setViewportWidth: (width) => {
+      assertActive();
+      editor.setViewportWidth(width);
+    },
+    setMode: async (mode) => {
+      assertActive();
+      await editor.setMode(mode);
+    },
+  };
+  let dispose: () => void;
+  try {
+    dispose = startEditorPlugins(state.plugins, scoped, () => {
+      active = false;
+    });
+  } catch (error) {
+    active = false;
+    state.binding = null;
+    throw error;
+  }
   return () => {
-    if (state.binding === binding) state.binding = null;
+    active = false;
+    if (state.binding === binding) { state.binding = null; state.view.setState({ saving: false, canSave: false, saveError: null }); }
+    dispose();
   };
 };
-export const useBindEditor = (editor: EditorInstance, readOnly: boolean): void => {
+export const useBindEditor = (editor: EditorInstance, readOnly: boolean, save: EditorSaveOptions): void => {
   const core = useEditorStoreApi();
-  useLayoutEffect(() => bindEditorSession(editor, core, readOnly), [editor, core, readOnly]);
+  const initialSave = useRef(save);
+  useLayoutEffect(() => bindEditorSession(editor, core, core.getState().readOnly, initialSave.current), [editor, core]);
+  useLayoutEffect(() => {
+    const binding = getInstance(editor).binding;
+    if (binding?.core === core) {
+      binding.readOnly = readOnly;
+      binding.save = save;
+      getInstance(editor).view.setState({ canSave: Boolean(save.onSave) && save.canSave !== false });
+    }
+  }, [editor, core, readOnly, save]);
 };
 export const useEditorView = <T>(editor: EditorInstance, selector: (state: ViewState) => T): T =>
   useStore(getInstance(editor).view, selector);
@@ -160,3 +244,6 @@ export const useEditorSelector = <T>(selector: (state: EditorPublicState) => T):
   const source = useMemo(() => createPublicSource(editor, core), [editor, core]);
   return useStore(source, selector);
 };
+
+/** Internal immutable plugin definitions for rendering; never exposes the engine. */
+export const getEditorPlugins = (editor: EditorInstance): readonly EditorPlugin[] => getInstance(editor).plugins;

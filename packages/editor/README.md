@@ -115,3 +115,13 @@ pnpm --filter @origamix/editor build
 [物料与画布布局方案](../materials/src/layout-properties.ts)记录默认占位、容器能力、实例尺寸、共享渲染和拖放规则。编辑器不再通过额外 inline-block 包装改变物料布局。
 
 编辑器拖放、视图切换和流程更新失败通过共享 shadcn/ui Toast 展示，不占用画布布局。每个 EditorProvider 创建独立通知管理器，切换编辑会话时不会显示上一会话的通知；字段校验提示仍由对应属性控件管理。
+
+## 插件基础（阶段 1）
+
+通过 `useCreateEditor({ plugins: [A, B, C] })` 配置会话插件，使用 `defineEditorPlugin` 定义插件。列表在实例创建时固定；插件 ID 不可为空或重复。初始化按 C → B → A 执行，清理按 A → B → C 执行。权限与宿主回调更新不重复初始化。
+
+`setup({ editor, signal })` 中的 editor 是会话限定的操作接口，解绑后失效。返回清理函数释放资源；初始化中途可能失败的资源应立即绑定到 signal 的 abort 事件，保证尚未返回清理函数时也能回收。初始化失败会终止挂载并清理已经启动的插件，清理错误不会阻止其余插件清理。
+
+本阶段声明 `editor.renderToolbar({ area, editor, children })`、`renderTop` 和 `renderBottom`，并提供内部从右到左组合基础；尚未连接到界面。Toolbar 的默认保存及区域渲染将在阶段 2 接入。同时预留 `material.extend / getPanels / render`：分别补充默认属性与面板配置、组合当前节点面板、包装设计态物料内容；本阶段不执行这些回调，不开放面板区域替换或逻辑流扩展。
+
+物料回调接收物料及其 Manifest；节点回调额外接收 elementId、节点、最近父节点优先的祖先列表。后续组合按 C → B → A 执行：extend 的默认属性按字段组合，面板追加而非覆盖（冲突必须显式处理）；getPanels 接收已有 panels，自行保留或替换；render 接收上一步 children。新增持久化字段仍须进入版本化 Manifest，浏览器插件不能自行放宽 Server 校验。运行时包装由 Materials 独立提供。

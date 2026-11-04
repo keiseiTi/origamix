@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-session';
 import { bindEditorSession, createEditorInstance } from '../../src/session/editor-controls';
+import type { EditorInstance } from '../../src/session/editor-controls';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
 const document = (): OrigamixPageSchema => ({
@@ -139,5 +140,58 @@ describe('editor draft sessions', () => {
     store.getState().undo();
     expect(store.getState().schema).toEqual(initial);
     expect(store.getState().schema.elements.layer!.props.open).toBe(false);
+  });
+});
+
+// Plugin-held commands must never mutate a subsequently bound page.
+describe('plugin session isolation', () => {
+  it('starts right-to-left and invalidates old commands before reverse cleanup', () => {
+    const calls: string[] = [];
+    const captured: EditorInstance[] = [];
+    const editor = createEditorInstance({
+      plugins: ['A', 'B', 'C'].map((id) => ({
+        id,
+        setup: ({ editor: scoped, signal }) => {
+          calls.push(id);
+          captured.push(scoped);
+          return () => {
+            expect(signal.aborted).toBe(true);
+            expect(() => scoped.setSchema(document())).toThrow('unavailable');
+            calls.push(`dispose:${id}`);
+          };
+        },
+      })),
+    });
+    const detach = bindEditorSession(editor, createEditorSession(document(), []), false);
+    detach();
+    expect(calls).toEqual(['C', 'B', 'A', 'dispose:A', 'dispose:B', 'dispose:C']);
+    const second = createEditorSession(document(), []);
+    const detachSecond = bindEditorSession(editor, second, false);
+    expect(() => captured[0]!.setSchema(document())).toThrow('unavailable');
+    expect(second.getState().canUndo).toBe(false);
+    detachSecond();
+  });
+
+  it('aborts partial setup and releases the binding after initialization fails', () => {
+    let signal: AbortSignal | undefined;
+    let stale: EditorInstance | undefined;
+    const editor = createEditorInstance({
+      plugins: [
+        {
+          id: 'broken',
+          setup: (context) => {
+            signal = context.signal;
+            stale = context.editor;
+            throw new Error('setup failed');
+          },
+        },
+      ],
+    });
+    expect(() => bindEditorSession(editor, createEditorSession(document(), []), false)).toThrow(
+      'broken',
+    );
+    expect(signal?.aborted).toBe(true);
+    expect(() => stale!.setSchema(document())).toThrow('unavailable');
+    expect(() => editor.setSchema(document())).toThrow('unavailable');
   });
 });

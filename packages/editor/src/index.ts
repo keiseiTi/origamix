@@ -25,3 +25,6 @@ export {
 } from './session/editor-controls';
 export { SchemaEditor } from './tools/schema-editor';
 export { GlobalVariablesEditor } from './tools/global-variables-editor';
+
+export { defineEditorPlugin } from './contracts/plugin-contracts';
+export type * from './contracts/plugin-contracts';
