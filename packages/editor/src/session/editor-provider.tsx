@@ -1,5 +1,5 @@
 import { Toaster, createToastManager } from '@origamix/ui';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -14,11 +14,29 @@ import {
 } from '@dnd-kit/core';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { Material } from '../contracts/material-contracts';
-import { createEditorSession, EditorSessionContext, type DragElement } from './editor-session';
+import {
+  createEditorSession,
+  EditorSessionContext,
+  type DragElement,
+  type EditorEnvironment,
+} from './editor-session';
 import { getInsertionAxis } from '../canvas/layout-axis';
+import { useBindEditor, type EditorInstance } from './editor-controls';
 import { SchemaUtils } from '../schema/schema-utils';
 
+const EMPTY_CATALOG: EditorEnvironment['materialCatalog'] = [];
+
+const EditorBinding = ({ editor, readOnly }: { editor: EditorInstance; readOnly: boolean }) => {
+  useBindEditor(editor, readOnly);
+  return null;
+};
+
 export interface EditorProviderProps {
+  editor?: EditorInstance;
+  readOnly?: boolean;
+  theme?: EditorEnvironment['theme'];
+  materialCatalog?: EditorEnvironment['materialCatalog'];
+  targetSelection?: EditorEnvironment['targetSelection'];
   schema: OrigamixPageSchema;
   materials: Material[];
   children?: ReactNode;
@@ -28,10 +46,26 @@ export interface EditorProviderProps {
 export const EditorProvider = ({
   schema,
   materials,
+  editor,
+  readOnly = false,
+  theme = 'light',
+  materialCatalog = EMPTY_CATALOG,
+  targetSelection,
   children,
   onChange,
 }: EditorProviderProps): React.JSX.Element => {
-  const [store] = useState(() => createEditorSession(schema, materials));
+  const [store] = useState(() =>
+    createEditorSession(schema, materials, 100, {
+      editor,
+      readOnly,
+      theme,
+      materialCatalog,
+      targetSelection,
+    }),
+  );
+  useLayoutEffect(() => {
+    store.setState({ editor, readOnly, theme, materialCatalog, targetSelection });
+  }, [store, editor, readOnly, theme, materialCatalog, targetSelection]);
   const callback = useRef(onChange);
   useEffect(() => {
     callback.current = onChange;
@@ -132,6 +166,7 @@ export const EditorProvider = ({
   return (
     <Toaster toastManager={notifications}>
       <EditorSessionContext.Provider value={store}>
+        {editor && <EditorBinding editor={editor} readOnly={readOnly} />}
         <DndContext
           sensors={sensors}
           collisionDetection={collision}

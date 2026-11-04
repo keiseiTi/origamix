@@ -4,12 +4,14 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { SchemaUtils } from '../schema/schema-utils';
 import { type OrigamixPageSchema as Schema } from '@origamix/shared';
 import { useEditorCore } from '../session/editor-session';
+import { useEditorContext, useEditorSelector } from '../session/editor-controls';
 import { Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.Element => {
+export const SchemaEditor = ({ onDone }: { onDone: () => void }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
-  const setSchema = useEditorCore((state) => state.setSchema);
+  const editor = useEditorContext();
+  const readOnly = useEditorSelector((state) => state.readOnly);
   const [code, setCode] = useState(() => JSON.stringify(schema, null, 2));
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +22,9 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
 
   const save = (): void => {
     try {
-      setSchema(SchemaUtils.normalizeSchema(JSON.parse(code) as Schema));
+      editor.setSchema(SchemaUtils.normalizeSchema(JSON.parse(code) as Schema));
       setError(null);
-      onSaved();
+      onDone();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Schema JSON 解析失败');
     }
@@ -58,7 +60,9 @@ export const SchemaEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.El
             复制 Schema
           </Button>
         </CopyToClipboard>
-        <Button onClick={save}>保存 Schema</Button>
+        <Button disabled={readOnly} onClick={save}>
+          保存 Schema
+        </Button>
       </footer>
     </div>
   );

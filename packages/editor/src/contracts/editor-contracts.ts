@@ -9,7 +9,6 @@ import type { PropertyEditorRegistration } from './property-editor-contracts';
 
 export type EditorTheme = 'light' | 'dark';
 export type EditorMode = 'view' | 'logic';
-export type EditorTool = 'history' | 'globals' | 'schema';
 export type EditorHistoryState = Readonly<{ canUndo: boolean; canRedo: boolean }>;
 
 /** App binds the callback to this page; late results must be ignored after a scope change. */

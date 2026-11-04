@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-session';
+import { bindEditorSession, createEditorInstance } from '../../src/session/editor-controls';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
 const document = (): OrigamixPageSchema => ({
@@ -70,6 +71,38 @@ describe('editor draft sessions', () => {
     expect(first.getState().schema).toEqual(changed);
     expect(second.getState().schema).toEqual(initial);
     expect(second.getState().canUndo).toBe(false);
+  });
+  // New public instance commands must not mutate a detached/read-only session or cross an async flush boundary.
+  it('guards public commands and rejects a mode switch that outlives its draft session', async () => {
+    const initial = document();
+    const first = createEditorSession(initial, []);
+    const second = createEditorSession(document(), []);
+    let resolveFlush = (): void => undefined;
+    const pendingFlush = new Promise<void>((resolve) => {
+      resolveFlush = resolve;
+    });
+    const editor = createEditorInstance({ beforeModeChange: () => pendingFlush });
+    const detach = bindEditorSession(editor, first, false);
+    const changed = {
+      ...initial,
+      context: { globalVariables: [{ name: 'count', type: 'number', defaultValue: 1 }] },
+    };
+    editor.setSchema(changed);
+    editor.undo();
+    expect(first.getState().schema).toEqual(initial);
+    editor.redo();
+    expect(first.getState().schema).toEqual(changed);
+    const switching = editor.setMode('logic');
+    detach();
+    expect(() => editor.setSchema(initial)).toThrow('unavailable');
+    const detachSecond = bindEditorSession(editor, second, true);
+    expect(() => editor.setSchema(changed)).toThrow('不可编辑');
+    expect(() => editor.undo()).toThrow('不可编辑');
+    resolveFlush();
+    await expect(switching).rejects.toThrow('会话已切换');
+    expect(first.getState().schema).toEqual(changed);
+    expect(second.getState().schema).toEqual(initial);
+    detachSecond();
   });
   // Visibility is browser-owned state and must never become a Working edit or undo step.
   it('keeps overlay selection and closing outside schema history', () => {

@@ -20,7 +20,7 @@ import {
   TableOfContents,
 } from 'lucide-react';
 import { RevisionHistoryDialog } from './history/revision-history-dialog';
-import type { EditorTool } from '@origamix/editor';
+import type { EditorTool } from './editor-tool-dialog';
 import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';

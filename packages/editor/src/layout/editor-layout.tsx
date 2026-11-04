@@ -1,5 +1,5 @@
 import { useToastManager } from '@origamix/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { FlowEditorLoader } from '../flow-editor/flow-editor-loader';
 import type { EditorMode } from '../contracts/editor-contracts';
 import type { EventTarget } from '../flow-editor/flow-graph';
@@ -10,6 +10,7 @@ import { TargetSelectionMarker } from '../canvas/target-selection-marker';
 import { SelectionToolbar } from '../canvas/selection-toolbar';
 import { NavigationPanel } from '../panels/navigation-panel';
 import type { MaterialGroup } from '../panels/material-panel';
+import type { EventFocusTarget } from '../panels/event-focus-target';
 
 export const EditorLayout = ({
   groups,
@@ -24,20 +25,11 @@ export const EditorLayout = ({
 }): React.JSX.Element => {
   const notifications = useToastManager();
   const [eventTarget, setEventTarget] = useState<EventTarget | null>(null);
-  const view = useRef<HTMLDivElement>(null);
-  const restoreEvent = useRef<string | null>(null);
-  useEffect(() => {
-    if (mode !== 'view' || !restoreEvent.current) return;
-    const button = [
-      ...(view.current?.querySelectorAll<HTMLButtonElement>('[data-flow-event]') ?? []),
-    ].find((item) => item.dataset.flowEvent === restoreEvent.current);
-    button?.focus();
-    restoreEvent.current = null;
-  }, [mode]);
-  const editEvent = (target: EventTarget): void => {
+  const [pendingFocus, setPendingFocus] = useState<EventFocusTarget | null>(null);
+  const editEvent = (target: EventTarget, source: EventFocusTarget['source']): void => {
     void onModeChange('logic')
       .then(() => {
-        restoreEvent.current = target.event;
+        setPendingFocus({ elementId: target.elementId, eventName: target.event, source });
         setEventTarget(target);
       })
       .catch((reason: unknown) =>
@@ -58,11 +50,13 @@ export const EditorLayout = ({
           onTargetChange={setEventTarget}
         />
       ) : (
-        <div
-          ref={view}
-          className='relative flex size-full min-h-0 min-w-0 bg-zinc-50 dark:bg-zinc-900'
-        >
-          <NavigationPanel groups={groups} onEditEvent={editEvent} />
+        <div className='relative flex size-full min-h-0 min-w-0 bg-zinc-50 dark:bg-zinc-900'>
+          <NavigationPanel
+            groups={groups}
+            onEditEvent={(target) => editEvent(target, 'navigation')}
+            focusTarget={pendingFocus?.source === 'navigation' ? pendingFocus : null}
+            onFocusRestored={() => setPendingFocus(null)}
+          />
           <main className='min-w-0 flex-1 overflow-hidden p-3' aria-label='页面画布'>
             <div
               className='mx-auto h-full min-h-full overflow-hidden border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-950'
@@ -76,7 +70,11 @@ export const EditorLayout = ({
               />
             </div>
           </main>
-          <AttributePanel onEditEvent={editEvent} />
+          <AttributePanel
+            onEditEvent={(target) => editEvent(target, 'attribute')}
+            focusTarget={pendingFocus?.source === 'attribute' ? pendingFocus : null}
+            onFocusRestored={() => setPendingFocus(null)}
+          />
         </div>
       )}
     </div>

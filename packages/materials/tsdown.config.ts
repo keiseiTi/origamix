@@ -6,6 +6,7 @@ const options: import('tsdown').UserConfig = {
     'antd/editor': 'antd/editor.ts',
   },
   format: ['esm'],
+  platform: 'browser',
   fixedExtension: false,
   dts: true,
   deps: {

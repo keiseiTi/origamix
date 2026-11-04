@@ -1,5 +1,4 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import { EditorThemeContext, MaterialCatalogContext } from './session/editor-environment';
 import { DragOverlay } from './canvas/canvas-drag-controls';
 import { EditorProvider } from './session/editor-provider';
 import { useEditorCore } from './session/editor-session';
@@ -9,20 +8,19 @@ import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { InsertPositionIndicator } from './canvas/insert-position-indicator';
 import { EditorLayout } from './layout/editor-layout';
 import type { MaterialGroup } from './panels/material-panel';
-import { EditorToolDialog } from './tools/editor-tool-dialog';
-import { EditorControlsContext } from './session/editor-controls';
-import { TargetSelectionContext } from './canvas/target-selection-context';
+import { useEditorView, type EditorInstance } from './session/editor-controls';
 
 import type {
   EditorMaterialRegistration,
   EditorTheme,
   EditorMode,
-  EditorTool,
   EditorTargetSelection,
 } from './contracts/editor-contracts';
 
 export interface EditorProps {
+  editor: EditorInstance;
   toolbar?: ReactNode;
+  children?: ReactNode;
   schema: OrigamixPageSchema;
   sessionKey: string;
   registration: EditorMaterialRegistration;
@@ -30,13 +28,6 @@ export interface EditorProps {
   onChange: (schema: OrigamixPageSchema, options?: { immediate: boolean }) => void;
   readOnly?: boolean;
   readOnlyMessage?: string;
-  viewportWidth: number;
-  onViewportWidthChange: (width: number) => void;
-  onToolChange: (tool: Exclude<EditorTool, 'history'> | null) => void;
-  mode?: EditorMode;
-  onModeChange?: (mode: EditorMode) => Promise<void>;
-  tool: Exclude<EditorTool, 'history'> | null;
-  onCloseTool: () => void;
   targetSelection?: EditorTargetSelection;
 }
 
@@ -74,7 +65,9 @@ const EditorCanvas = ({
 };
 
 export const Editor = ({
+  editor,
   toolbar,
+  children,
   schema,
   sessionKey,
   registration,
@@ -82,15 +75,10 @@ export const Editor = ({
   onChange,
   readOnly = false,
   readOnlyMessage,
-  viewportWidth,
-  onViewportWidthChange,
-  onToolChange,
-  mode = 'view',
-  onModeChange = async () => undefined,
-  tool,
-  onCloseTool,
   targetSelection,
 }: EditorProps): React.JSX.Element => {
+  const mode = useEditorView(editor, (state) => state.mode);
+  const viewportWidth = useEditorView(editor, (state) => state.viewportWidth);
   const groups = useMemo(
     () =>
       registration.groups.map((group) => ({
@@ -119,50 +107,38 @@ export const Editor = ({
 
   return (
     <div className='relative border-t flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      <EditorThemeContext.Provider value={theme}>
-        <MaterialCatalogContext.Provider value={registration.catalog.materials}>
-          <TargetSelectionContext.Provider value={targetSelection}>
-            <EditorProvider
-              key={sessionKey}
-              materials={materials}
-              schema={schema as Schema}
-              onChange={onEngineChange}
+      <EditorProvider
+        key={sessionKey}
+        editor={editor}
+        readOnly={readOnly}
+        theme={theme}
+        materialCatalog={registration.catalog.materials}
+        targetSelection={targetSelection}
+        materials={materials}
+        schema={schema as Schema}
+        onChange={onEngineChange}
+      >
+        {toolbar}
+        <div className='relative flex min-h-0 flex-1 flex-col'>
+          <EditorCanvas
+            groups={groups}
+            viewportWidth={viewportWidth}
+            mode={mode}
+            onModeChange={editor.setMode}
+          />
+          {children}
+          {readOnly && (
+            <div
+              className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
+              role='status'
             >
-              <EditorControlsContext.Provider
-                value={{
-                  mode,
-                  readOnly,
-                  viewportWidth,
-                  onModeChange,
-                  onViewportWidthChange,
-                  onOpenTool: onToolChange,
-                }}
-              >
-                {toolbar}
-                <div className='relative flex min-h-0 flex-1 flex-col'>
-                  <EditorCanvas
-                    groups={groups}
-                    viewportWidth={viewportWidth}
-                    mode={mode}
-                    onModeChange={onModeChange}
-                  />
-                  <EditorToolDialog tool={tool} onClose={onCloseTool} />
-                  {readOnly && (
-                    <div
-                      className='absolute inset-0 z-20 grid place-items-center bg-white/45 backdrop-blur-[1px] dark:bg-zinc-950/55'
-                      role='status'
-                    >
-                      <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
-                        {readOnlyMessage ?? '当前不可编辑'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </EditorControlsContext.Provider>
-            </EditorProvider>
-          </TargetSelectionContext.Provider>
-        </MaterialCatalogContext.Provider>
-      </EditorThemeContext.Provider>
+              <span className='rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs text-zinc-600 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'>
+                {readOnlyMessage ?? '当前不可编辑'}
+              </span>
+            </div>
+          )}
+        </div>
+      </EditorProvider>
     </div>
   );
 };

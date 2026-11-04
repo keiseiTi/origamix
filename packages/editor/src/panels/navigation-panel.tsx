@@ -4,6 +4,7 @@ import { SchemaUtils } from '../schema/schema-utils';
 import { useEditorCore, type ActiveElement } from '../session/editor-session';
 import { useMemo, useState } from 'react';
 import { MaterialPanel, type MaterialGroup } from './material-panel';
+import type { EventFocusProps } from './event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
 
 interface OutlineNode {
@@ -18,12 +19,14 @@ const OutlineItem = ({
   selectedId,
   onSelect,
   onEditEvent,
+  focusTarget,
+  onFocusRestored,
 }: {
   node: OutlineNode;
   selectedId?: string;
   onSelect: (element: ActiveElement) => void;
   onEditEvent: (target: EventTarget) => void;
-}): React.JSX.Element => {
+} & EventFocusProps): React.JSX.Element => {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0 || node.events.length > 0;
 
@@ -57,7 +60,16 @@ const OutlineItem = ({
             <li key={event.event}>
               <button
                 type='button'
-                data-flow-event={event.event}
+                ref={(button) => {
+                  if (
+                    button &&
+                    focusTarget?.elementId === event.elementId &&
+                    focusTarget.eventName === event.event
+                  ) {
+                    button.focus();
+                    onFocusRestored();
+                  }
+                }}
                 className='flex min-h-7 w-full items-center gap-1.5 rounded px-2 text-left text-xs text-muted-foreground outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-zinc-900'
                 onClick={() => {
                   onSelect(node.activeElement);
@@ -76,6 +88,8 @@ const OutlineItem = ({
               selectedId={selectedId}
               onSelect={onSelect}
               onEditEvent={onEditEvent}
+              focusTarget={focusTarget}
+              onFocusRestored={onFocusRestored}
             />
           ))}
         </ul>
@@ -87,12 +101,16 @@ const OutlineItem = ({
 export const NavigationPanel = ({
   groups,
   onEditEvent,
+  focusTarget,
+  onFocusRestored,
 }: {
   groups: MaterialGroup[];
   onEditEvent: (target: EventTarget) => void;
-}): React.JSX.Element => {
+} & EventFocusProps): React.JSX.Element => {
   const { schema, materials, activeElement, setActiveElement } = useEditorCore();
-  const [activeTab, setActiveTab] = useState<'materials' | 'outline'>('materials');
+  const [activeTab, setActiveTab] = useState<'materials' | 'outline'>(
+    focusTarget ? 'outline' : 'materials',
+  );
 
   const outline = useMemo<OutlineNode[]>(() => {
     const buildNode = (id: string): OutlineNode | null => {
@@ -177,6 +195,8 @@ export const NavigationPanel = ({
                 selectedId={activeElement?.id}
                 onSelect={setActiveElement}
                 onEditEvent={onEditEvent}
+                focusTarget={focusTarget}
+                onFocusRestored={onFocusRestored}
               />
             ))}
           </ul>

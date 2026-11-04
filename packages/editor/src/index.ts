@@ -16,7 +16,12 @@ export { mountCanvasPrototypeFrame } from './prototype/mount-canvas-prototype-fr
 export { createCanvasPrototypeDocument } from './prototype/create-canvas-prototype-document';
 
 export {
-  useEditorStore,
-  useEditorCommands,
+  useCreateEditor,
+  useEditorContext,
+  useEditorSelector,
   type EditorPublicState,
+  type EditorInstance,
+  type CreateEditorOptions,
 } from './session/editor-controls';
+export { SchemaEditor } from './tools/schema-editor';
+export { GlobalVariablesEditor } from './tools/global-variables-editor';

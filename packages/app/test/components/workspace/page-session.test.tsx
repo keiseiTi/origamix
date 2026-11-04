@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import type { EditorMode } from '@origamix/editor';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { EditorInstance, EditorMode, CreateEditorOptions } from '@origamix/editor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
 import { useWorkspaceStore } from '../../../src/store/workspace';
@@ -24,29 +24,29 @@ const mocks = vi.hoisted(() => ({
   editorMounted: vi.fn(),
 }));
 // Model the public editor hooks while keeping the host persistence/recovery real.
-const EditorTestContext = createContext<{
-  mode: EditorMode;
-  onModeChange: (mode: EditorMode) => Promise<void>;
-}>({
-  mode: 'view' as EditorMode,
-  onModeChange: async (): Promise<void> => undefined,
-});
+type TestEditor = EditorInstance & { mode: EditorMode };
+const EditorTestContext = createContext<TestEditor | null>(null);
 vi.mock('@origamix/editor', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@origamix/editor')>()),
-  useEditorStore: (selector: (state: object) => unknown) => {
-    const { mode } = useContext(EditorTestContext);
-    return selector({ mode, canUndo: false, canRedo: false, viewportWidth: 1440 });
-  },
-  useEditorCommands: () => {
-    const { onModeChange } = useContext(EditorTestContext);
+  useCreateEditor: ({ beforeModeChange }: CreateEditorOptions) => {
+    const [mode, setMode] = useState<EditorMode>('view');
     return {
-      setMode: onModeChange,
+      mode,
+      setMode: async (next: EditorMode) => {
+        await beforeModeChange?.();
+        setMode(next);
+      },
       undo: vi.fn(),
       redo: vi.fn(),
-      openTool: vi.fn(),
+      setSchema: vi.fn(),
       setViewportWidth: vi.fn(),
     };
   },
+  useEditorSelector: (selector: (state: object) => unknown) => {
+    const editor = useContext(EditorTestContext)!;
+    return selector({ mode: editor.mode, canUndo: false, canRedo: false, viewportWidth: 1440 });
+  },
+  useEditorContext: () => useContext(EditorTestContext)!,
 }));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
@@ -57,20 +57,18 @@ vi.mock('../../../src/components/editor/index', () => ({
     onWorkingCommitted,
     toolbar,
     visible,
-    mode = 'view',
-    onModeChange = async () => undefined,
+    editor,
   }: {
     visible: boolean;
     toolbar?: ReactNode;
-    mode?: EditorMode;
-    onModeChange?: (mode: EditorMode) => Promise<void>;
+    editor: TestEditor;
     readOnly: boolean;
     readOnlyMessage?: string;
     onWorkingCommitted?: () => void;
   }) => {
     useEffect(() => mocks.editorMounted(), []);
     return (
-      <EditorTestContext.Provider value={{ mode, onModeChange }}>
+      <EditorTestContext.Provider value={editor}>
         {visible && toolbar}
         <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
           {readOnlyMessage ?? '画布'}
@@ -152,7 +150,7 @@ describe('workspace recovery controls', () => {
       .mockResolvedValue(undefined);
     const editorRef = { current: { flush, undo: vi.fn(), redo: vi.fn() } };
     render(<PageSession {...props} editorRef={editorRef} active />);
-    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: '逻辑' }));
     await waitFor(() => expect(screen.getByText('草稿保存失败')).toBeTruthy());
     expect(screen.getByRole('button', { name: '视图' }).getAttribute('aria-pressed')).toBe('true');

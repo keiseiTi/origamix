@@ -1,10 +1,10 @@
-import { useContext, useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
 import { configureMonacoWorkers } from './monaco-workers';
 import { cn } from '@origamix/ui';
-import { EditorThemeContext } from '../session/editor-environment';
+import { useEditorTheme } from '../session/editor-environment';
 import type { EditorTheme } from '../contracts/editor-contracts';
 
 export interface CodeEditorProps {
@@ -28,7 +28,7 @@ export const CodeEditor = ({
   readOnly = false,
   ariaLabel = '代码编辑器',
 }: CodeEditorProps): React.JSX.Element => {
-  const inheritedTheme = useContext(EditorThemeContext);
+  const inheritedTheme = useEditorTheme();
   const theme = themeOverride ?? inheritedTheme;
   const container = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);

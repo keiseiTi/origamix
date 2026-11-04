@@ -4,8 +4,8 @@ import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { PageEditor } from '@/components/editor';
-import type { EditorHandle, EditorMode, EditorTool } from '@origamix/editor';
-import { PageToolbarShell, type WorkspaceMode } from './page-toolbar';
+import { useCreateEditor, type EditorHandle } from '@origamix/editor';
+import type { WorkspaceMode } from './page-toolbar';
 import { AgentChatToolbar } from './agent-chat-toolbar';
 import { EditorToolbar } from './editor-toolbar';
 import { usePageSession } from './hooks/use-page-session';
@@ -78,13 +78,11 @@ const PageSessionContent = ({
   );
   const theme = usePreferencesStore((state) => state.theme);
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
-  const [editorMode, setEditorMode] = useState<EditorMode>('view');
-  const changeEditorMode = async (next: EditorMode): Promise<void> => {
-    await editorRef.current?.flush();
-    setEditorMode(next);
-  };
-  const [viewportWidth, setViewportWidth] = useState(1440);
-  const [editorTool, setEditorTool] = useState<EditorTool | null>(null);
+  const editor = useCreateEditor({
+    beforeModeChange: async () => {
+      await editorRef.current?.flush();
+    },
+  });
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
   useEffect(() => {
     if (mode !== 'preview') previousMode.current = mode;
@@ -98,7 +96,8 @@ const PageSessionContent = ({
   const setPageStatus = useWorkspaceStore((state) => state.setPageStatus);
   const onWorkingCommitted = useCallback((): void => {
     void application.refreshApplyState();
-  }, [application.refreshApplyState]);
+  }, [application]);
+
   useEffect(() => {
     const status = application.applyStatus;
     if (
@@ -134,68 +133,60 @@ const PageSessionContent = ({
     canReload: capabilities.canReload,
     canRestore: capabilities.canEdit,
   };
-  const chat = (
-    <ChatWorkspace
-      pageName={page.name}
-      draft={draft}
-      onDraftChange={(value) => setPageDraft(page.id, value)}
-      session={agent}
-      onViewChanges={() => onModeChange('edit')}
-      onConfigureModel={onConfigureModel}
-      onClarificationHover={setClarificationHighlight}
-    />
-  );
+
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      {mode === 'chat' && <AgentChatToolbar {...toolbarProps} />}
-      <>
-        <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>{chat}</div>
-        <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-          <PageEditor
-            visible={active && mode === 'edit'}
-            key={`${projectId}:${page.id}:${active}:${mode}:${editorSchemaRefreshKey}`}
-            ref={editorRef}
-            projectId={projectId}
-            pageId={page.id}
-            viewportWidth={viewportWidth}
-            mode={editorMode}
-            onModeChange={changeEditorMode}
-            tool={editorTool === 'history' ? null : editorTool}
-            onCloseTool={() => setEditorTool(null)}
-            toolbar={<EditorToolbar {...toolbarProps} />}
-            loadingToolbar={<PageToolbarShell {...toolbarProps} navigation='chat' />}
-            onViewportWidthChange={setViewportWidth}
-            onToolChange={setEditorTool}
-            onWorkingCommitted={onWorkingCommitted}
-            readOnly={!capabilities.canEdit}
-            readOnlyMessage={
-              capabilities.agentChecking
-                ? '正在确认页面运行状态，请稍候'
-                : 'AI 正在修改，编辑暂时锁定'
-            }
-            targetSelection={{
-              candidates: agent.clarificationExpired
-                ? []
-                : (agent.state.run?.clarification?.candidates ?? []),
-              highlightedElementId: clarificationHighlight,
-              disabled: agent.clarificationExpired,
-              onSelect: (elementId) =>
-                void agent.selectClarification(elementId).catch(() => undefined),
-            }}
-          />
-        </div>
-        <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-          <PagePreviewFrame
-            active={active && mode === 'preview'}
-            projectId={projectId}
-            pageId={page.id}
-            pageName={page.name}
-            schemaRefreshKey={editorSchemaRefreshKey}
-            theme={theme}
-            onExit={() => void onModeChange(previousMode.current)}
-          />
-        </div>
-      </>
+      <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+        <AgentChatToolbar {...toolbarProps} />
+        <ChatWorkspace
+          pageName={page.name}
+          draft={draft}
+          onDraftChange={(value) => setPageDraft(page.id, value)}
+          session={agent}
+          onViewChanges={() => onModeChange('edit')}
+          onConfigureModel={onConfigureModel}
+          onClarificationHover={setClarificationHighlight}
+        />
+      </div>
+      <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+        <PageEditor
+          visible={active && mode === 'edit'}
+          key={`${projectId}:${page.id}:${active}:${mode}:${editorSchemaRefreshKey}`}
+          ref={editorRef}
+          editor={editor}
+          projectId={projectId}
+          pageId={page.id}
+          onReturnToChat={() => onModeChange('chat')}
+          toolbar={<EditorToolbar {...toolbarProps} />}
+          onWorkingCommitted={onWorkingCommitted}
+          readOnly={!capabilities.canEdit}
+          readOnlyMessage={
+            capabilities.agentChecking
+              ? '正在确认页面运行状态，请稍候'
+              : 'AI 正在修改，编辑暂时锁定'
+          }
+          targetSelection={{
+            candidates: agent.clarificationExpired
+              ? []
+              : (agent.state.run?.clarification?.candidates ?? []),
+            highlightedElementId: clarificationHighlight,
+            disabled: agent.clarificationExpired,
+            onSelect: (elementId) =>
+              void agent.selectClarification(elementId).catch(() => undefined),
+          }}
+        />
+      </div>
+      <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+        <PagePreviewFrame
+          active={active && mode === 'preview'}
+          projectId={projectId}
+          pageId={page.id}
+          pageName={page.name}
+          schemaRefreshKey={editorSchemaRefreshKey}
+          theme={theme}
+          onExit={() => void onModeChange(previousMode.current)}
+        />
+      </div>
     </section>
   );
 };

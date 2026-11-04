@@ -1,9 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@origamix/ui';
-import type { EditorTool } from '../contracts/editor-contracts';
-import { GlobalVariablesEditor } from './global-variables-editor';
-import { SchemaEditor } from './schema-editor';
+import { GlobalVariablesEditor, SchemaEditor } from '@origamix/editor';
 
-const titles: Record<Exclude<EditorTool, 'history'>, string> = {
+export type EditorTool = 'globals' | 'schema';
+
+const titles: Record<EditorTool, string> = {
   globals: '全局变量',
   schema: 'Schema 编辑器',
 };
@@ -12,7 +12,7 @@ export const EditorToolDialog = ({
   tool,
   onClose,
 }: {
-  tool: Exclude<EditorTool, 'history'> | null;
+  tool: EditorTool | null;
   onClose: () => void;
 }): React.JSX.Element | null => {
   if (!tool) return null;
@@ -38,9 +38,9 @@ export const EditorToolDialog = ({
           <DialogTitle>{titles[tool]}</DialogTitle>
         </DialogHeader>
         {tool === 'globals' ? (
-          <GlobalVariablesEditor onSaved={onClose} />
+          <GlobalVariablesEditor onDone={onClose} />
         ) : tool === 'schema' ? (
-          <SchemaEditor onSaved={onClose} />
+          <SchemaEditor onDone={onClose} />
         ) : null}
       </DialogContent>
     </Dialog>

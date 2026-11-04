@@ -11,6 +11,7 @@ import {
 } from '@origamix/ui';
 
 import { useEditorCore } from '../session/editor-session';
+import { useEditorContext, useEditorSelector } from '../session/editor-controls';
 import type { GlobalVariable } from '@origamix/shared';
 import { Plus, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
@@ -35,9 +36,10 @@ const isEmptyTemporaryRow = ({ temporary, variable }: VariableRow): boolean =>
   variable.type === 'string' &&
   variable.defaultValue === '';
 
-export const GlobalVariablesEditor = ({ onSaved }: { onSaved: () => void }): React.JSX.Element => {
+export const GlobalVariablesEditor = ({ onDone }: { onDone: () => void }): React.JSX.Element => {
   const schema = useEditorCore((state) => state.schema);
-  const setSchema = useEditorCore((state) => state.setSchema);
+  const editor = useEditorContext();
+  const readOnly = useEditorSelector((state) => state.readOnly);
   const [rows, setRows] = useState<VariableRow[]>(() =>
     schema.context?.globalVariables?.length
       ? schema.context.globalVariables.map((variable) => ({
@@ -81,9 +83,9 @@ export const GlobalVariablesEditor = ({ onSaved }: { onSaved: () => void }): Rea
       return;
     }
     try {
-      setSchema({ ...schema, context: { ...schema.context, globalVariables: variables } });
+      editor.setSchema({ ...schema, context: { ...schema.context, globalVariables: variables } });
       setError(null);
-      onSaved();
+      onDone();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '保存失败，请重试');
     }
@@ -220,7 +222,9 @@ export const GlobalVariablesEditor = ({ onSaved }: { onSaved: () => void }): Rea
         </p>
       )}
       <footer className='flex shrink-0 justify-end border-t border-border bg-muted/40 px-4 py-3'>
-        <Button onClick={save}>保存全局变量</Button>
+        <Button disabled={readOnly} onClick={save}>
+          保存全局变量
+        </Button>
       </footer>
     </div>
   );

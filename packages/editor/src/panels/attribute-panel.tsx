@@ -1,4 +1,5 @@
 import { getElementLabel } from '@origamix/shared';
+import type { EventFocusProps } from './event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
 import {
   Button,
@@ -20,7 +21,7 @@ import { useMaterialCatalog } from '../session/editor-environment';
 import { SchemaUtils } from '../schema/schema-utils';
 import { useEditorCore, type ActiveElement } from '../session/editor-session';
 import { type AttributeConfig } from '../contracts/material-contracts';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JsonAttributeConfig } from '../contracts/property-editor-contracts';
 import { JsonAttributeField } from '../components/json-attribute-field';
 
@@ -56,11 +57,14 @@ const optionsOf = (config: AttributeConfig): OptionItem[] => {
 
 export const AttributePanel = ({
   onEditEvent,
+  focusTarget,
+  onFocusRestored,
 }: {
   onEditEvent: (target: EventTarget) => void;
-}): React.JSX.Element => {
+} & EventFocusProps): React.JSX.Element => {
   const { activeElement, materials, schema, setActiveElement, setSchema } = useEditorCore();
-  const [activePanel, setActivePanel] = useState('0');
+  const [activePanel, setActivePanel] = useState(focusTarget ? 'events' : '0');
+  const previousElementId = useRef(activeElement?.id);
   const material = activeElement?.material;
   const catalog = useMaterialCatalog();
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
@@ -128,7 +132,8 @@ export const AttributePanel = ({
   ];
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (previousElementId.current === activeElement?.id) return;
+    previousElementId.current = activeElement?.id;
     setActivePanel('0');
   }, [activeElement?.id]);
 
@@ -413,9 +418,13 @@ export const AttributePanel = ({
                     key={`${String(panel.title)}-${index}`}
                     type='button'
                     role='tab'
-                    aria-selected={activePanel === String(index)}
-                    className={`h-full shrink-0 border-b-2 px-2 text-xs font-medium ${activePanel === String(index) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setActivePanel(String(index))}
+                    aria-selected={
+                      activePanel === (panel.kind === 'events' ? 'events' : String(index))
+                    }
+                    className={`h-full shrink-0 border-b-2 px-2 text-xs font-medium ${activePanel === (panel.kind === 'events' ? 'events' : String(index)) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    onClick={() =>
+                      setActivePanel(panel.kind === 'events' ? 'events' : String(index))
+                    }
                   >
                     {panel.title}
                   </button>
@@ -423,7 +432,8 @@ export const AttributePanel = ({
               </div>
               <div className='min-h-0 flex-1 overflow-auto p-3'>
                 {panels.map((panel, index) => {
-                  if (activePanel !== String(index)) return null;
+                  if (activePanel !== (panel.kind === 'events' ? 'events' : String(index)))
+                    return null;
                   if (panel.kind === 'events') {
                     return (
                       <div key='events'>
@@ -440,7 +450,16 @@ export const AttributePanel = ({
                           <Button
                             variant='outline'
                             key={event.name}
-                            data-flow-event={event.name}
+                            ref={(button) => {
+                              if (
+                                button &&
+                                focusTarget?.elementId === activeElement.id &&
+                                focusTarget.eventName === event.name
+                              ) {
+                                button.focus();
+                                onFocusRestored();
+                              }
+                            }}
                             className='mb-2 w-full justify-start text-xs'
                             onClick={() =>
                               onEditEvent({

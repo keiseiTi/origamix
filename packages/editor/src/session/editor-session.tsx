@@ -4,6 +4,9 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import { isPageSchema, type OrigamixPageSchema } from '@origamix/shared';
 import { SchemaUtils } from '../schema/schema-utils';
+import type { EditorInstance } from './editor-controls';
+import type { EditorTheme, EditorTargetSelection } from '../contracts/editor-contracts';
+import type { MaterialManifest } from '@origamix/shared';
 import type { Material } from '../contracts/material-contracts';
 
 export type ActiveElement = {
@@ -16,7 +19,14 @@ export type ActiveElement = {
 export type DragElement =
   Material | { id: string; props: Record<string, unknown>; material: Material };
 export type InsertPosition = { id: string; position: 'before' | 'after' | 'up' | 'down' };
-export interface EditorCore {
+export interface EditorEnvironment {
+  theme: EditorTheme;
+  materialCatalog: readonly MaterialManifest[];
+  targetSelection: EditorTargetSelection | undefined;
+  readOnly: boolean;
+  editor: EditorInstance | undefined;
+}
+export interface EditorCore extends EditorEnvironment {
   schema: OrigamixPageSchema;
   canvasRoot: HTMLElement | null;
   setCanvasRoot: (root: HTMLElement | null) => void;
@@ -40,6 +50,7 @@ export const createEditorSession = (
   schema: OrigamixPageSchema,
   materials: Material[],
   limit = 100,
+  environment: Partial<EditorEnvironment> = {},
 ): StoreApi<EditorCore> => {
   const undos: OrigamixPageSchema[] = [],
     redos: OrigamixPageSchema[] = [];
@@ -64,6 +75,12 @@ export const createEditorSession = (
       });
     };
     return {
+      theme: 'light',
+      materialCatalog: [],
+      targetSelection: undefined,
+      readOnly: false,
+      editor: undefined,
+      ...environment,
       schema,
       materials,
       canvasRoot: null,
