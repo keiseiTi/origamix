@@ -3,6 +3,11 @@ import { createContext, useContext } from 'react';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import { isPageSchema, type OrigamixPageSchema } from '@origamix/shared';
+import { createEditorEvents } from './editor-events';
+import type {
+  EditorChangeOptions,
+  EditorOperations,
+} from '../contracts/editor-operation-contracts';
 import { SchemaUtils } from '../schema/schema-utils';
 import type { EditorInstance } from './editor-controls';
 import type { EditorTheme, EditorTargetSelection } from '../contracts/editor-contracts';
@@ -22,6 +27,7 @@ export type InsertPosition = { id: string; position: 'before' | 'after' | 'up' |
 export interface EditorEnvironment {
   theme: EditorTheme;
   materialCatalog: readonly MaterialManifest[];
+  rootMaterialTypes: readonly string[];
   targetSelection: EditorTargetSelection | undefined;
   readOnly: boolean;
   editor: EditorInstance | undefined;
@@ -38,8 +44,10 @@ export interface EditorCore extends EditorEnvironment {
   closeOverlay: (id: string) => void;
   canUndo: boolean;
   canRedo: boolean;
-  setSchema: (schema: OrigamixPageSchema, options?: { historyGroup?: string }) => void;
-  setActiveElement: (element: ActiveElement | null) => void;
+  on: EditorOperations['on'];
+  assertCanMutate: () => void;
+  setSchema: (schema: OrigamixPageSchema, options?: EditorChangeOptions) => void;
+  setActiveElement: (element: ActiveElement | null, source?: EditorChangeOptions['source']) => void;
   setDragElement: (element: DragElement | null) => void;
   setInsertPosition: (position: InsertPosition | null) => void;
   undo: () => void;
@@ -52,6 +60,7 @@ export const createEditorSession = (
   limit = 100,
   environment: Partial<EditorEnvironment> = {},
 ): StoreApi<EditorCore> => {
+  const events = createEditorEvents();
   const undos: OrigamixPageSchema[] = [],
     redos: OrigamixPageSchema[] = [];
   let lastGroup: string | undefined,
@@ -63,7 +72,12 @@ export const createEditorSession = (
           materials.find((material) => material.type === next.elements[elementId]?.type)
             ?.editorConfig?.presentation === 'overlay',
       );
-    const project = (next: OrigamixPageSchema) => {
+    const assertCanMutate = (): void => {
+      events.guard();
+      if (get().readOnly) throw new Error('当前不可编辑，草稿已保留');
+    };
+    const project = (next: OrigamixPageSchema, options: EditorChangeOptions) => {
+      const before = get().schema;
       const active = get().activeElement;
       const element = active ? next.elements[active.id] : undefined;
       set({
@@ -73,10 +87,17 @@ export const createEditorSession = (
         canUndo: undos.length > 0,
         canRedo: redos.length > 0,
       });
+      events.change(before, next, options, {
+        previousElementId: active?.id ?? null,
+        elementId: get().activeElement?.id ?? null,
+      });
     };
     return {
+      on: events.on,
+      assertCanMutate,
       theme: 'light',
       materialCatalog: [],
+      rootMaterialTypes: [],
       targetSelection: undefined,
       readOnly: false,
       editor: undefined,
@@ -96,7 +117,9 @@ export const createEditorSession = (
       insertPosition: null,
       canUndo: false,
       canRedo: false,
-      setSchema: (next, options) => {
+      setSchema: (candidate, options = {}) => {
+        assertCanMutate();
+        const next = structuredClone(candidate);
         const current = get().schema;
         if (equalJson(current, next)) return;
         if (!isPageSchema(next)) throw new Error('编辑结果无效，原有草稿已保留');
@@ -115,29 +138,37 @@ export const createEditorSession = (
         lastGroup = group;
         lastEdit = now;
         redos.length = 0;
-        project(next);
+        project(next, options);
       },
-      setActiveElement: (activeElement) =>
+      setActiveElement: (activeElement, source = 'canvas') => {
+        events.guard();
+        const previousElementId = get().activeElement?.id ?? null;
+        if (activeElement && !get().schema.elements[activeElement.id])
+          throw new Error('元素不存在');
         set({
           activeElement,
           openOverlayIds: activeElement ? overlayPath(get().schema, activeElement.id) : [],
-        }),
+        });
+        events.selection(previousElementId, activeElement?.id ?? null, source);
+      },
       setDragElement: (dragElement) => set({ dragElement }),
       setInsertPosition: (insertPosition) => set({ insertPosition }),
       undo: () => {
+        assertCanMutate();
         lastGroup = undefined;
         const previous = undos.pop();
         if (previous) {
           redos.push(get().schema);
-          project(previous);
+          project(previous, { source: 'history' });
         }
       },
       redo: () => {
+        assertCanMutate();
         lastGroup = undefined;
         const next = redos.pop();
         if (next) {
           undos.push(get().schema);
-          project(next);
+          project(next, { source: 'history' });
         }
       },
     };

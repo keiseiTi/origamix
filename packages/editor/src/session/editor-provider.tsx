@@ -24,6 +24,7 @@ import { getInsertionAxis } from '../canvas/layout-axis';
 import { useBindEditor, type EditorInstance, type EditorSaveOptions } from './editor-controls';
 import { SchemaUtils } from '../schema/schema-utils';
 
+const EMPTY_ROOT_TYPES: readonly string[] = [];
 const EMPTY_SAVE: EditorSaveOptions = {};
 const EMPTY_CATALOG: EditorEnvironment['materialCatalog'] = [];
 
@@ -46,6 +47,7 @@ export interface EditorProviderProps {
   readOnly?: boolean;
   theme?: EditorEnvironment['theme'];
   materialCatalog?: EditorEnvironment['materialCatalog'];
+  rootMaterialTypes?: readonly string[];
   targetSelection?: EditorEnvironment['targetSelection'];
   schema: OrigamixPageSchema;
   materials: Material[];
@@ -61,6 +63,7 @@ export const EditorProvider = ({
   readOnly = false,
   theme = 'light',
   materialCatalog = EMPTY_CATALOG,
+  rootMaterialTypes = EMPTY_ROOT_TYPES,
   targetSelection,
   children,
   onChange,
@@ -71,12 +74,20 @@ export const EditorProvider = ({
       readOnly,
       theme,
       materialCatalog,
+      rootMaterialTypes,
       targetSelection,
     }),
   );
   useLayoutEffect(() => {
-    store.setState({ editor, readOnly, theme, materialCatalog, targetSelection });
-  }, [store, editor, readOnly, theme, materialCatalog, targetSelection]);
+    store.setState({
+      editor,
+      readOnly,
+      theme,
+      materialCatalog,
+      rootMaterialTypes,
+      targetSelection,
+    });
+  }, [store, editor, readOnly, theme, materialCatalog, rootMaterialTypes, targetSelection]);
   const callback = useRef(onChange);
   useEffect(() => {
     callback.current = onChange;
@@ -232,9 +243,12 @@ export const EditorProvider = ({
                         )
                       : SchemaUtils.insertElement(state.schema, hit.target.id, element);
                   })();
-              state.setSchema(result.schema);
+              state.setSchema(result.schema, {
+                source: 'drag',
+                ...(moving ? { movedElementId: drag.id } : {}),
+              });
               const id = result.operation.elementId;
-              state.setActiveElement({ id, ...result.schema.elements[id]!, material });
+              state.setActiveElement({ id, ...result.schema.elements[id]!, material }, 'drag');
             } catch (reason) {
               notifications.add({
                 id: 'editor-drag-error',

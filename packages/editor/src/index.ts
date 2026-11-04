@@ -35,3 +35,5 @@ export { EditorToolbar, EditorToolbarArea, EditorSaveButton } from './layout/edi
 export { createEditorModePlugin } from './plugins/toolbar/mode-plugin';
 export { createViewportPlugin } from './plugins/toolbar/viewport-plugin';
 export { createHistoryPlugin } from './plugins/toolbar/history-plugin';
+
+export type * from './contracts/editor-operation-contracts';

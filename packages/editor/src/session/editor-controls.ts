@@ -4,6 +4,8 @@ import { useStore } from 'zustand';
 import { useEditorCore, useEditorStoreApi, type EditorCore } from './editor-session';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorPlugin } from '../contracts/plugin-contracts';
+import { createEditorOperations } from './editor-operations';
+import type { EditorOperations } from '../contracts/editor-operation-contracts';
 import { snapshotEditorPlugins, startEditorPlugins } from '../plugins/plugin-host';
 import type { EditorMode } from '../contracts/editor-contracts';
 
@@ -25,7 +27,7 @@ export interface CreateEditorOptions {
   initialViewportWidth?: number;
   beforeModeChange?: () => Promise<void>;
 }
-export interface EditorInstance {
+export interface EditorInstance extends EditorOperations {
   save: () => Promise<void>;
   undo: () => void;
   redo: () => void;
@@ -33,7 +35,12 @@ export interface EditorInstance {
   setMode: (mode: EditorMode) => Promise<void>;
   setViewportWidth: (width: number) => void;
 }
-type Binding = { core: StoreApi<EditorCore>; readOnly: boolean; save: EditorSaveOptions };
+type Binding = {
+  core: StoreApi<EditorCore>;
+  readOnly: boolean;
+  save: EditorSaveOptions;
+  subscriptions: Set<() => void>;
+};
 type InstanceState = {
   view: StoreApi<ViewState>;
   binding: Binding | null;
@@ -59,12 +66,30 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
     binding: null,
     options,
   };
+  const readable = (): EditorCore => {
+    if (!state.binding) throw new Error('Editor session is unavailable');
+    return state.binding.core.getState();
+  };
   const writable = (): EditorCore => {
     if (!state.binding) throw new Error('Editor session is unavailable');
     if (state.binding.readOnly) throw new Error('当前不可编辑，草稿已保留');
-    return state.binding.core.getState();
+    const core = state.binding.core.getState();
+    core.assertCanMutate();
+    return core;
   };
   const editor: EditorInstance = {
+    ...createEditorOperations(readable, writable),
+    on: (event, listener) => {
+      const core = readable();
+      const binding = state.binding!;
+      const off = core.on(event, listener);
+      const unsubscribe = (): void => {
+        off();
+        binding.subscriptions.delete(unsubscribe);
+      };
+      binding.subscriptions.add(unsubscribe);
+      return unsubscribe;
+    },
     save: async () => {
       const binding = state.binding;
       if (!binding) throw new Error('Editor session is unavailable');
@@ -90,7 +115,7 @@ export const createEditorInstance = (options: CreateEditorOptions = {}): EditorI
     },
     undo: () => writable().undo(),
     redo: () => writable().redo(),
-    setSchema: (schema) => writable().setSchema(schema),
+    setSchema: (schema) => writable().setSchema(schema, { source: 'external' }),
     setViewportWidth: (width) => {
       if (Number.isFinite(width)) state.view.setState({ viewportWidth: Math.max(240, width) });
     },
@@ -129,7 +154,7 @@ export const bindEditorSession = (
   const state = getInstance(editor);
   if (state.binding)
     throw new Error('An Editor instance cannot be shared by multiple mounted editors');
-  const binding = { core, readOnly, save };
+  const binding: Binding = { core, readOnly, save, subscriptions: new Set() };
   state.view.setState({
     saving: false,
     saveError: null,
@@ -142,7 +167,22 @@ export const bindEditorSession = (
       throw new Error('Editor plugin session is unavailable');
   };
   // Plugins retain a scoped facade, never the instance that can bind a later page.
+  const readScoped = (): EditorCore => {
+    assertActive();
+    return core.getState();
+  };
+  const writeScoped = (): EditorCore => {
+    const current = readScoped();
+    if (binding.readOnly) throw new Error('当前不可编辑，草稿已保留');
+    current.assertCanMutate();
+    return current;
+  };
   const scoped: EditorInstance = {
+    ...createEditorOperations(readScoped, writeScoped),
+    on: (event, listener) => {
+      assertActive();
+      return editor.on(event, listener);
+    },
     save: async () => {
       assertActive();
       await editor.save();
@@ -157,7 +197,7 @@ export const bindEditorSession = (
     },
     setSchema: (schema) => {
       assertActive();
-      editor.setSchema(schema);
+      writeScoped().setSchema(schema, { source: 'plugin' });
     },
     setViewportWidth: (width) => {
       assertActive();
@@ -172,6 +212,7 @@ export const bindEditorSession = (
   try {
     dispose = startEditorPlugins(state.plugins, scoped, () => {
       active = false;
+      for (const off of [...binding.subscriptions]) off();
     });
   } catch (error) {
     active = false;

@@ -14,6 +14,7 @@ export const withFlowEngine = ({
   for (const binding of schema.bindElements) {
     const flow = schema.flows[binding.flowId];
     if (!flow) throw new Error(`流程不存在：${binding.flowId}`);
+
     engine.injectCallback(binding.id, binding.event, () => {
       if (engine.disposed) return;
       const signal = engine.signal;
@@ -45,6 +46,7 @@ export const withFlowEngine = ({
       void promise.catch((error) => {
         if (!signal.aborted) onError?.(error);
       });
+
       return promise;
     });
   }

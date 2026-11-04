@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import type { EditorEvents } from '../../src/contracts/editor-operation-contracts';
+import { describe, expect, it, vi } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-session';
 import { bindEditorSession, createEditorInstance } from '../../src/session/editor-controls';
@@ -257,5 +258,156 @@ describe('editor save boundary', () => {
     expect(saves).toBe(1);
     expect(store.getState().schema).toEqual(draft);
     detachRetry();
+  });
+});
+
+// Plugin mutations introduce a browser-owned path into Working; Server cannot prove
+// local atomicity, immutable notifications or observer/session isolation.
+describe('public editor operations', () => {
+  const materials = [
+    { type: 'container', title: 'Container', Component: () => null, acceptsChildren: true },
+    { type: 'button', title: 'Button', Component: () => null, defaultProps: { text: 'default' } },
+  ];
+  it('uses the shared draft/history path and reports actual positions without shifted-sibling moves', () => {
+    const editor = createEditorInstance();
+    const store = createEditorSession(document(), materials);
+    const detach = bindEditorSession(editor, store, false);
+    const changes: EditorEvents['change'][] = [];
+    const inserts: EditorEvents['elementInsert'][] = [];
+    const removes: EditorEvents['elementRemove'][] = [];
+    editor.on('change', (event) => changes.push(event));
+    editor.on('elementInsert', (event) => inserts.push(event));
+    editor.on('elementRemove', (event) => removes.push(event));
+    const id = editor.insertElement({ materialType: 'button', position: { beforeId: 'button' } });
+    expect(inserts[0]).toMatchObject({
+      source: 'plugin',
+      materialType: 'button',
+      element: { id, props: { text: 'default' } },
+      position: { parentId: 'root', index: 0 },
+    });
+    expect(changes[0]!.transactionId).toBe(inserts[0]!.transactionId);
+    expect(changes[0]!.changes.map((change) => change.type)).toEqual(['elementInsert']);
+    expect(Object.isFrozen(editor.getSchema().elements[id]!.props)).toBe(true);
+    const patch = { nested: { value: 1 } };
+    editor.updateElementProps(id, patch);
+    patch.nested.value = 99;
+    expect(editor.getElement(id)!.props.nested).toEqual({ value: 1 });
+    editor.removeElementProps(id, ['nested']);
+    expect(editor.getElement(id)!.props).toEqual({ text: 'default' });
+    editor.moveElement({ elementId: id, position: { afterId: 'button' } });
+    expect(changes.at(-1)!.changes).toEqual([
+      {
+        type: 'elementMove',
+        elementId: id,
+        previousPosition: { parentId: 'root', index: 0 },
+        position: { parentId: 'root', index: 1 },
+      },
+    ]);
+    const accepted = changes.length;
+    const beforeInvalid = store.getState().schema;
+    expect(() =>
+      editor.insertElement({ materialType: 'missing', position: { parentId: 'root' } }),
+    ).toThrow('未知物料');
+    expect(() => editor.moveElement({ elementId: id, position: { parentId: 'button' } })).toThrow(
+      '不允许',
+    );
+    expect(() =>
+      editor.insertElement({ materialType: 'button', position: { parentId: 'root', index: -1 } }),
+    ).toThrow('索引');
+    expect(changes).toHaveLength(accepted);
+    expect(store.getState().schema).toBe(beforeInvalid);
+    editor.selectElement(id);
+    expect(editor.getSelectedElement()!.id).toBe(id);
+    expect(editor.getParent(id)!.id).toBe('root');
+    expect(editor.getAncestors(id).map((element) => element.id)).toEqual(['root']);
+    editor.removeElement(id);
+    expect(removes[0]).toMatchObject({
+      element: { id },
+      previousPosition: { parentId: 'root', index: 1 },
+      subtree: { elements: { [id]: { type: 'button' } } },
+    });
+    expect(editor.getSelectedElement()).toBeNull();
+    editor.undo();
+    expect(editor.getElement(id)).toBeTruthy();
+    expect(changes.at(-1)!.source).toBe('history');
+    const containerId = editor.insertElement({
+      materialType: 'container',
+      position: { parentId: 'root' },
+    });
+    editor.moveElement({ elementId: 'button', position: { parentId: containerId } });
+    expect(() =>
+      editor.moveElement({ elementId: containerId, position: { parentId: containerId } }),
+    ).toThrow('自身子树');
+    const removedBefore = removes.length;
+    editor.removeElement(containerId);
+    expect(removes).toHaveLength(removedBefore + 1);
+    expect(Object.keys(removes.at(-1)!.subtree.elements).sort()).toEqual(
+      [containerId, 'button'].sort(),
+    );
+    expect(removes.at(-1)!.subtree.flows.click).toBeTruthy();
+    expect(editor.getSchema().bindElements).toEqual([]);
+    detach();
+  });
+
+  it('isolates failed/reentrant observers and unsubscribes them at the session boundary', () => {
+    const observerError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const observed: string[] = [];
+      let reentrantError: unknown;
+      let immutableError: unknown;
+      let scoped!: EditorInstance;
+      const editor = createEditorInstance({
+        plugins: [
+          {
+            id: 'observer',
+            setup: ({ editor: instance }) => {
+              scoped = instance;
+              instance.on('elementInsert', (event) => {
+                try {
+                  instance.removeElement('button');
+                } catch (error) {
+                  reentrantError = error;
+                }
+                try {
+                  (event.element.props as Record<string, unknown>).text = 'tampered';
+                } catch (error) {
+                  immutableError = error;
+                }
+                throw new Error('observer failure');
+              });
+              instance.on('elementInsert', (event) => observed.push(event.element.id));
+            },
+          },
+        ],
+      });
+      const first = createEditorSession(document(), materials);
+      const detach = bindEditorSession(editor, first, false);
+      // The canvas uses the same accepted-snapshot entry, with drag source metadata.
+      const inserted = SchemaUtils.insertElement(first.getState().schema, 'root', {
+        id: 'dragged',
+        type: 'button',
+      }).schema;
+      first.getState().setSchema(inserted, { source: 'drag' });
+      expect(observed).toEqual(['dragged']);
+      expect(reentrantError).toBeInstanceOf(Error);
+      expect((reentrantError as Error).message).toContain('同步修改');
+      expect(immutableError).toBeInstanceOf(TypeError);
+      expect(first.getState().schema.elements.dragged).toBeTruthy();
+      expect(observerError).toHaveBeenCalledTimes(1);
+      const oldScoped = scoped;
+      detach();
+      const second = createEditorSession(document(), materials);
+      const detachSecond = bindEditorSession(editor, second, true);
+      expect(() => oldScoped.getSchema()).toThrow('unavailable');
+      expect(() => oldScoped.on('change', () => undefined)).toThrow('unavailable');
+      expect(() => editor.removeElement('button')).toThrow('不可编辑');
+      first.getState().setSchema(document());
+      first.getState().setSchema(inserted);
+      expect(observed).toEqual(['dragged']);
+      expect(second.getState().canUndo).toBe(false);
+      detachSecond();
+    } finally {
+      observerError.mockRestore();
+    }
   });
 });

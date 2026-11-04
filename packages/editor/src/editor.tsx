@@ -93,6 +93,10 @@ export const Editor = ({
       })),
     [registration],
   );
+  const rootMaterialTypes = useMemo(
+    () => (registration.rootMaterials ?? []).map((material) => material.type),
+    [registration.rootMaterials],
+  );
   const materials = useMemo(
     () => [...(registration.rootMaterials ?? []), ...groups.flatMap((group) => group.children)],
     [groups, registration.rootMaterials],
@@ -120,6 +124,7 @@ export const Editor = ({
         readOnly={readOnly}
         theme={theme}
         materialCatalog={registration.catalog.materials}
+        rootMaterialTypes={rootMaterialTypes}
         targetSelection={targetSelection}
         materials={materials}
         schema={schema as Schema}

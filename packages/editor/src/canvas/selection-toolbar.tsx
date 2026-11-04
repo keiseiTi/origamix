@@ -17,7 +17,7 @@ export const SelectionToolbar = (): React.JSX.Element | null => {
   const remove = (): void => {
     if (isRoot) return;
     const nextSchema = SchemaUtils.removeElement(schema, id).schema;
-    setSchema(nextSchema);
+    setSchema(nextSchema, { source: 'canvas' });
     setActiveElement(null);
   };
 
