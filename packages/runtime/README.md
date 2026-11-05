@@ -83,7 +83,11 @@ export default Page;
 
 调用项目需要直接声明 Runtime、Materials 及其 peer dependencies，并启用 TypeScript JSON 导入；Schema 示例见 [Shared README](../shared/README.md)。样式由调用者导入，生成项目的 [index.css](../template/src/index.css) 包含 Tailwind 与 HeroUI 样式入口，Runtime 不会注入工作台主题。
 
-`onOutcome` 可以接收 `UNKNOWN_MATERIAL` 或 `RENDER_ERROR` 诊断。未知物料由 Runtime 显示提示；`renderError` 自定义的是渲染异常界面，不替换未知物料提示。`resetKey` 变化或点击重试可重置错误边界，但仍需先修正造成错误的 Schema/组件。成功诊断不证明所有交互、样式或服务端校验已通过。
+渲染异常由页面级边界兜底；每个 Schema 元素另有局部边界，运行态与设计态共用。未知物料或单个物料失败时，仅替换对应子树，兄弟元素继续显示；容器自身失败仍会隐藏其子树。`renderError` 自定义页面级错误，`renderElementError({ diagnostic, error, retry })` 自定义元素占位。默认占位保留布局框和设计态 frame 属性，提供错误详情与重试；设计弹层即使尚未打开也能显示失败占位。普通事件处理器、异步回调和 SSR 异常不由 React ErrorBoundary 捕获，流程执行继续使用原有错误入口。
+
+`OrigamixPage` 和 `DesignRenderer` 均接受 `onDiagnosticsChange`、`onOutcome`、`onRenderError` 与 `renderElementError`。`onDiagnosticsChange` 返回当前诊断集合，元素诊断含 `elementId`、`materialType`、`scope: 'page'`；`onOutcome` 从相同集合派生，只要仍有诊断就为 `failed`，不代表整个页面不可用。删除、隐藏或成功恢复元素会移除对应诊断。`safeMessage` 是适合宿主传输的通用摘要；`onRenderError(error, diagnostic, componentStack)` 及展示钩子的 `error` 提供本地原始异常，宿主不要直接传输或持久化其中的敏感内容。
+
+点击重试仅重挂失败子树，不重放事件或流程。元素输入或对应物料实现发生变化时自动重试，无关元素更新不会重试。运行会话的 `resetKey` 变化会清空原会话诊断；保持自定义 `resetKey` 时由宿主保证页面会话身份正确。成功诊断不证明所有交互、样式或服务端校验已通过。
 
 请求头、查询参数和请求体通过函数返回值配置；条件节点直接按表达式或函数结果判断真假，不维护额外比较操作符。请求保留 10 秒超时与无宿主凭据的执行约束。
 

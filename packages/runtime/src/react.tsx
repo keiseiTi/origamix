@@ -6,7 +6,6 @@ import {
 } from './material-state';
 import {
   Component,
-  useEffect,
   useMemo,
   useState,
   useRef,
@@ -20,17 +19,14 @@ import { createEngine, ELEMENT_UPDATE, VIEW_UPDATE } from './core/engine';
 import { withFlowEngine } from './core/flow';
 import type { RuntimeSchema as Schema, MaterialRegistry } from './core/types';
 import { MaterialView, renderLayout } from './renderer';
-
-export interface RuntimeDiagnostic {
-  code: 'UNKNOWN_MATERIAL' | 'RENDER_ERROR' | 'FLOW_EXECUTION_ERROR';
-  stage: 'material' | 'render' | 'event';
-  safeMessage: string;
-  materialType?: string;
-}
-
-export type RuntimeOutcome =
-  | { outcome: 'success'; diagnostics: RuntimeDiagnostic[] }
-  | { outcome: 'failed'; diagnostics: RuntimeDiagnostic[] };
+import {
+  DiagnosticsContext,
+  DiagnosticsProvider,
+  useRuntimeDiagnostic,
+  type RuntimeDiagnosticsProps,
+  type RuntimeDiagnostic,
+} from './diagnostics';
+export type { RuntimeDiagnostic, RuntimeOutcome } from './diagnostics';
 
 export const findUnknownMaterialTypes = (schema: Schema, materials: MaterialRegistry): string[] => {
   return [...new Set(Object.values(schema.elements).map((element) => element.type))].filter(
@@ -41,11 +37,12 @@ export const findUnknownMaterialTypes = (schema: Schema, materials: MaterialRegi
 interface ErrorBoundaryProps {
   children: ReactNode;
   resetKey: string;
-  onOutcome?: (outcome: RuntimeOutcome) => void;
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
 class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error | null }> {
+  static contextType = DiagnosticsContext;
+  declare context: React.ContextType<typeof DiagnosticsContext>;
   state = { error: null as Error | null };
 
   static getDerivedStateFromError(error: Error): { error: Error } {
@@ -59,15 +56,19 @@ class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error 
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Origamix page render failed', error, info.componentStack);
-    this.props.onOutcome?.({
-      outcome: 'failed',
-      diagnostics: [{ code: 'RENDER_ERROR', stage: 'render', safeMessage: error.message }],
-    });
+    this.context?.set(this, { code: 'RENDER_ERROR', stage: 'render', safeMessage: '页面渲染失败' });
+  }
+
+  componentWillUnmount(): void {
+    this.context?.set(this, null);
   }
 
   render(): ReactNode {
     if (!this.state.error) return this.props.children;
-    const retry = (): void => this.setState({ error: null });
+    const retry = (): void => {
+      this.context?.set(this, null);
+      this.setState({ error: null });
+    };
     return (
       this.props.renderError?.(this.state.error, retry) ?? (
         <main role='alert'>页面渲染失败：{this.state.error.message}</main>
@@ -127,6 +128,7 @@ const RuntimeElement = ({
 
   return (
     <MaterialView
+      resetToken={element}
       root={engine.layouts.some((node) => node.id === id)}
       id={id}
       type={element.type}
@@ -165,11 +167,9 @@ const RuntimeTree = ({
 const RuntimeCanvas = ({
   schema,
   materials,
-  onOutcome,
 }: {
   schema: Schema;
   materials: MaterialRegistry;
-  onOutcome?: (outcome: RuntimeOutcome) => void;
 }): React.JSX.Element => {
   const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
   const activeSchema = useRef<Schema | null>(schema);
@@ -214,35 +214,18 @@ const RuntimeCanvas = ({
     return () => engine.dispose();
   }, [engine]);
 
-  const unknownTypes = useMemo(
-    () => findUnknownMaterialTypes(schema, materials),
-    [materials, schema],
-  );
-
-  useEffect(() => {
-    onOutcome?.(
+  const flowDiagnostic = useMemo<RuntimeDiagnostic | null>(
+    () =>
       executionError
         ? {
-            outcome: 'failed',
-            diagnostics: [
-              { code: 'FLOW_EXECUTION_ERROR', stage: 'event', safeMessage: executionError },
-            ],
+            code: 'FLOW_EXECUTION_ERROR',
+            stage: 'event',
+            safeMessage: '流程执行失败',
           }
-        : unknownTypes.length
-          ? {
-              outcome: 'failed',
-              diagnostics: unknownTypes.map((materialType) => ({
-                code: 'UNKNOWN_MATERIAL',
-                stage: 'material',
-                materialType,
-                safeMessage: `未知物料：${materialType}`,
-              })),
-            }
-          : { outcome: 'success', diagnostics: [] },
-    );
-  }, [onOutcome, unknownTypes, executionError]);
-
-  if (unknownTypes.length) return <main role='alert'>未知物料：{unknownTypes.join('、')}</main>;
+        : null,
+    [executionError],
+  );
+  useRuntimeDiagnostic(flowDiagnostic);
 
   return (
     <>
@@ -252,11 +235,10 @@ const RuntimeCanvas = ({
   );
 };
 
-export interface OrigamixPageProps {
+export interface OrigamixPageProps extends RuntimeDiagnosticsProps {
   schema: Schema;
   materials: MaterialRegistry;
   resetKey?: string;
-  onOutcome?: (outcome: RuntimeOutcome) => void;
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
@@ -266,10 +248,21 @@ export const OrigamixPage = ({
   resetKey = JSON.stringify(schema),
   onOutcome,
   renderError,
+  onDiagnosticsChange,
+  onRenderError,
+  renderElementError,
 }: OrigamixPageProps): React.JSX.Element => {
   return (
-    <RuntimeErrorBoundary resetKey={resetKey} onOutcome={onOutcome} renderError={renderError}>
-      <RuntimeCanvas key={resetKey} schema={schema} materials={materials} onOutcome={onOutcome} />
-    </RuntimeErrorBoundary>
+    <DiagnosticsProvider
+      key={resetKey}
+      onOutcome={onOutcome}
+      onDiagnosticsChange={onDiagnosticsChange}
+      onRenderError={onRenderError}
+      renderElementError={renderElementError}
+    >
+      <RuntimeErrorBoundary resetKey={resetKey} renderError={renderError}>
+        <RuntimeCanvas schema={schema} materials={materials} />
+      </RuntimeErrorBoundary>
+    </DiagnosticsProvider>
   );
 };

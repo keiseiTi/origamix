@@ -1,9 +1,10 @@
+import { MaterialErrorBoundary, UnknownMaterialError } from './diagnostics';
 import { getMaterialDisplay, type MaterialLayout } from '@origamix/shared';
 import type { ComponentType, ReactNode, HTMLAttributes, RefAttributes, CSSProperties } from 'react';
 import type { LayoutNode, MaterialRegistry } from './core/types';
 
 /** Stable material identity is shared by run and design rendering. */
-export const MaterialView = ({
+const MaterialContent = ({
   id,
   type,
   components,
@@ -12,7 +13,11 @@ export const MaterialView = ({
   frameProps,
   framePlacement,
   root,
+  errorContent,
+  failed = false,
 }: {
+  errorContent?: ReactNode;
+  failed?: boolean;
   id: string;
   type: string;
   components: MaterialRegistry;
@@ -25,7 +30,7 @@ export const MaterialView = ({
   const Material = components[type] as
     (ComponentType<Record<string, unknown>> & { origamixLayout?: MaterialLayout }) | undefined;
 
-  if (!Material) throw new Error(`未知物料：${type}`);
+  if (!Material && !failed) throw new UnknownMaterialError(`未知物料：${type}`);
 
   const {
     layoutWidth,
@@ -37,7 +42,7 @@ export const MaterialView = ({
     ...materialProps
   } = props;
 
-  const block = getMaterialDisplay(Material.origamixLayout, props) === 'block';
+  const block = getMaterialDisplay(Material?.origamixLayout, props) === 'block';
   const finiteSize = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
   const style: CSSProperties = {
@@ -112,6 +117,9 @@ export const MaterialView = ({
     </>
   );
 
+  if (failed) return renderFrame(errorContent);
+  if (!Material) return null;
+
   if (framePlacement === 'content' && props.om_mode === 'design') {
     return (
       <Material {...materialProps} om_renderDesignFrame={renderFrame}>
@@ -126,6 +134,21 @@ export const MaterialView = ({
     </Material>,
   );
 };
+
+type MaterialViewProps = Omit<Parameters<typeof MaterialContent>[0], 'errorContent' | 'failed'> & {
+  resetToken?: unknown;
+};
+export const MaterialView = ({ resetToken, ...props }: MaterialViewProps): React.JSX.Element => (
+  <MaterialErrorBoundary
+    id={props.id}
+    type={props.type}
+    resetToken={resetToken ?? props.props}
+    material={props.components[props.type]}
+    fallback={(content) => <MaterialContent {...props} errorContent={content} failed />}
+  >
+    <MaterialContent {...props} />
+  </MaterialErrorBoundary>
+);
 
 export const renderLayout = (
   nodes: LayoutNode[],

@@ -22,3 +22,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - Design renderMaterial may place its shared frame inside overlay content through framePlacement and om_renderDesignFrame. These design-only callbacks provide layout/selection geometry without creating an execution engine or mutating Schema.
 
 - Runtime material metadata supplies role and valueProp. Portal actions and Form writes use these capabilities, never concrete Ant Design names; initial state and event projection remain component-owned. Runtime snapshots the first event callback argument as serializable event.payload, without per-material event converters. Components publish initial state and register actions before lifecycle init runs.
+
+- `src/diagnostics.tsx` owns per-element error isolation and session-local diagnostic aggregation for run/design modes. Preserve sibling state and design frame attributes on fallback; never report page success independently of active element/flow failures. Raw exceptions are local presentation/debug data, not diagnostic transport payloads.

@@ -2,6 +2,7 @@ import { useMemo, type ReactNode, type HTMLAttributes, type RefAttributes } from
 import { SCHEMA_VERSION } from '@origamix/shared';
 import { parseLayout } from './core/layout';
 import type { MaterialRegistry, RuntimeSchema } from './core/types';
+import { DiagnosticsProvider, type RuntimeDiagnosticsProps } from './diagnostics';
 import { MaterialView, renderLayout } from './renderer';
 
 export interface DesignElementProps {
@@ -17,7 +18,7 @@ export interface DesignElementProps {
     options?: { framePlacement?: 'content' },
   ) => React.JSX.Element;
 }
-export interface DesignRendererProps {
+export interface DesignRendererProps extends RuntimeDiagnosticsProps {
   schema: RuntimeSchema;
   materials: MaterialRegistry;
   renderElement: (element: DesignElementProps) => ReactNode;
@@ -27,6 +28,10 @@ export const DesignRenderer = ({
   schema,
   materials,
   renderElement,
+  onOutcome,
+  onDiagnosticsChange,
+  onRenderError,
+  renderElementError,
 }: DesignRendererProps): React.JSX.Element => {
   const layouts = useMemo(() => {
     if (
@@ -38,7 +43,12 @@ export const DesignRenderer = ({
   }, [schema]);
 
   return (
-    <>
+    <DiagnosticsProvider
+      onOutcome={onOutcome}
+      onDiagnosticsChange={onDiagnosticsChange}
+      onRenderError={onRenderError}
+      renderElementError={renderElementError}
+    >
       {renderLayout(layouts, (node, children) => {
         const element = schema.elements[node.id]!;
         return (
@@ -55,7 +65,7 @@ export const DesignRenderer = ({
           />
         );
       })}
-    </>
+    </DiagnosticsProvider>
   );
 };
 const DesignElement = ({
@@ -82,6 +92,7 @@ const DesignElement = ({
     children,
     renderMaterial: (extraProps = {}, frameProps, options) => (
       <MaterialView
+        resetToken={props}
         root={root}
         frameProps={frameProps}
         framePlacement={options?.framePlacement}
