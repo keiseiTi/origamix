@@ -85,7 +85,7 @@ export default Page;
 
 渲染异常由页面级边界兜底；每个 Schema 元素另有局部边界，运行态与设计态共用。未知物料或单个物料失败时，仅替换对应子树，兄弟元素继续显示；容器自身失败仍会隐藏其子树。`renderError` 自定义页面级错误，`renderElementError({ diagnostic, error, retry })` 自定义元素占位。默认占位保留布局框和设计态 frame 属性，提供错误详情与重试；设计弹层即使尚未打开也能显示失败占位。普通事件处理器、异步回调和 SSR 异常不由 React ErrorBoundary 捕获，流程执行继续使用原有错误入口。
 
-`OrigamixPage` 和 `DesignRenderer` 均接受 `onDiagnosticsChange`、`onOutcome`、`onRenderError` 与 `renderElementError`。`onDiagnosticsChange` 返回当前诊断集合，元素诊断含 `elementId`、`materialType`、`scope: 'page'`；`onOutcome` 从相同集合派生，只要仍有诊断就为 `failed`，不代表整个页面不可用。删除、隐藏或成功恢复元素会移除对应诊断。`safeMessage` 是适合宿主传输的通用摘要；`onRenderError(error, diagnostic, componentStack)` 及展示钩子的 `error` 提供本地原始异常，宿主不要直接传输或持久化其中的敏感内容。
+`OrigamixPage` 和 `DesignRenderer` 均接受 `onDiagnosticsChange`、`onOutcome`、`onRenderError` 与 `renderElementError`。`onDiagnosticsChange` 返回当前诊断集合，元素诊断含 `elementId`、`materialType`、`scope: 'page' | 'layout'`；`onOutcome` 从相同集合派生，只要仍有诊断就为 `failed`，不代表整个页面不可用。删除、隐藏或成功恢复元素会移除对应诊断。`safeMessage` 是适合宿主传输的通用摘要；`onRenderError(error, diagnostic, componentStack)` 及展示钩子的 `error` 提供本地原始异常，宿主不要直接传输或持久化其中的敏感内容。
 
 点击重试仅重挂失败子树，不重放事件或流程。元素输入或对应物料实现发生变化时自动重试，无关元素更新不会重试。运行会话的 `resetKey` 变化会清空原会话诊断；保持自定义 `resetKey` 时由宿主保证页面会话身份正确。成功诊断不证明所有交互、样式或服务端校验已通过。
 
@@ -112,3 +112,29 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 工作区与发布包统一从 `dist` 消费 JavaScript 和类型声明。单独构建时先构建 Shared，再构建 Runtime；根 `pnpm build:libs` 按依赖顺序准备这些产物。
 
 Runtime 包随应用统一发布，但接受的页面格式由独立 SemVer `SCHEMA_VERSION` 决定。相同契约可跨应用发布使用；当前不推断范围、不自动转换旧页面。
+
+## 布局与页面组合
+
+`OrigamixApplicationPage` 接收 pageId、页面 Schema、项目级 `ApplicationLayout` 和物料注册表。宿主从项目 manifest 的 `layout.enabled` 派生开关：关闭时传 `{ enabled: false }`，直接渲染页面；开启时传 `{ enabled: true, document }`，所有页面使用项目唯一布局。没有页面级选择或覆盖。
+
+```tsx
+import { OrigamixApplicationPage } from '@origamix/runtime';
+
+<OrigamixApplicationPage
+  pageId={pageId}
+  schema={pageSchema}
+  layout={{ enabled: true, document: layoutDocument }}
+  materials={materials}
+  onOutcome={onOutcome}
+/>;
+```
+
+布局文档的 `schema` 与 PageSchema 使用完全相同的节点表和父子结构。`OrigamixLayout` 将 `children` 放到唯一 `PageOutlet` 中；这个系统节点由 Runtime 注册，不能被物料表替换。渲染时不拼接 Schema，布局没有执行引擎、变量或业务事件，页面保留自己的运行会话，同名节点也不共享执行状态。组合层复用页面错误边界和诊断出口。
+
+`DesignLayoutRenderer` 复用 DesignRenderer 的元素装饰回调，并接受只读样例 `outlet`；编辑宿主负责将选择和命令限制在布局目标内。它不执行页面或布局业务逻辑，不提供导航适配。
+
+布局物料可通过 `useLayoutNavigation()` 使用受限导航。宿主提供当前 pageId、允许的 pageIds 与跳转回调；未知目标返回 false。Runtime 不持有路由、文件或工作台凭证。Template 已通过应用外壳提供完整路由和已应用数据装配；iframe 草稿应用预览仍由后续阶段接入。
+
+`resolveApplicationLayout(projectId, enabled, document)` 为应用外壳验证布局契约及项目归属；关闭时无需加载布局文档。系统节点 `PageNavigation` 根据受限导航适配器的 pages 描述符渲染链接，按 currentPageId 标记当前项。只有允许的 pageId 与项目 slug 路径会展示，设计态没有跳转能力；普通点击走宿主导航，修饰键点击使用 href。Template 负责路由，Runtime 不依赖 react-router。
+
+布局与页面嵌套时共用最外层诊断集合和结果回调，避免页面成功覆盖布局失败；独立 `OrigamixLayout` 与 `DesignLayoutRenderer` 也接受诊断及展示钩子。`PageOutlet` 内的元素标记为 `page`，布局元素标记为 `layout`，即使元素 ID 相同也分别保留与清理。嵌套渲染时结果回调仅由最外层诊断提供方发送。

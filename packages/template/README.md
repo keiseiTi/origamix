@@ -15,7 +15,7 @@ pnpm preview
 
 ## 职责与入口
 
-`src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面。页面入口使用 `@origamix/runtime` 和 `@origamix/materials/antd/runtime` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
+`src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面，`src/application.tsx` 负责项目公共布局、主题和导航。页面入口使用 `@origamix/runtime` 和 `@origamix/materials/antd/runtime` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
 
 项目清单记录 `framework: react` 与 `materialSet: { id: "official-antd", version: "1.0.0" }`，不记录项目 version 或 uiLibrary。页面 Schema 与物料契约采用独立 SemVer；包版本跟随应用发布。打开页面仅检查兼容性，不转换数据或更新依赖。
 
@@ -39,6 +39,9 @@ pnpm build
 origamix.project.json        项目清单、pageDirectory 和页面注册
 src/main.tsx                React 入口
 src/router.ts               清单驱动的浏览器路由
+src/application.tsx         项目应用外壳、公共布局与导航
+src/application-error.tsx   应用加载/渲染错误反馈
+src/origamix-layout/schema.json 显式应用后的项目布局投影
 src/index.css               全局样式
 src/pages/<slug>/index.tsx   页面渲染入口
 src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
@@ -48,6 +51,16 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 路由从清单 `pages` 注册：`home` 映射到 `/`，其他 slug 映射到 `/<slug>`；目录名由 `pageDirectory` 决定。不要只移动页面目录而不更新清单，否则入口解析会失败。
 
 页面入口、样式和业务代码可在项目内继续开发。普通编辑、保存版本和历史恢复不重写这些源码；Apply 只更新目标 `schema.json`。直接修改该文件会被 Origamix 识别为外部变化，下一次 Apply 前需要处理冲突。增加或删除页面属于项目管理操作，不能由“Apply 只更新 Schema”推断这些操作不创建或删除页面源码。
+
+## 项目布局
+
+每个项目只有一份固定名称的“布局配置”。`origamix.project.json` 的 `layout.enabled` 是唯一开关，作用于所有页面，不支持页面覆盖。默认关闭；开启后应用外壳读取固定的 `src/origamix-layout/schema.json`，没有该文件或项目归属不符时显示提示，要求先保存并应用布局。
+
+布局投影由 Origamix 的显式 layout Apply 写入；编辑、保存版本和历史恢复只更新 `.origamix/layout/`。布局节点与页面节点不拼接，页面继续由自己的稳定入口渲染，在唯一 `PageOutlet` 中显示。普通 Apply 不重写应用外壳、页面入口、项目路由或依赖。
+
+可在布局中使用系统节点 `PageNavigation`（`direction: horizontal | vertical`）。它从项目 `pages` 读取名称与稳定 pageId，外壳解析路由，跳转时更新选中项。`home` 对应 `/`，其余页面对应 `/<slug>`；没有 home 时 `/` 跳转到第一个页面。未知路由显示返回首页入口。导航不携带工作台凭证或后端能力，Ctrl/Command 点击仍使用普通浏览器链接。
+
+应用默认亮色。宿主或项目代码切换根元素的 `dark` class 后，外壳与 Ant Design RuntimeProvider 同步切换主题；Runtime 系统导航类已纳入 Tailwind 扫描。此阶段仅面向新建项目，不包含旧项目外壳迁移或草稿应用预览。
 
 ## 本地运行与部署排查
 

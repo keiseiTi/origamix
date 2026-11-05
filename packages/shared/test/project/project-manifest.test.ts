@@ -5,7 +5,7 @@ import {
   validateResolvedProjectStack,
 } from '../../src/project/project-stack.ts';
 
-import { isProjectManifest } from '../../src/project/project-manifest.ts';
+import { isProjectManifest, isProjectLayoutEnabled } from '../../src/project/project-manifest.ts';
 
 const manifest = () => ({
   projectId: 'project_one',
@@ -19,6 +19,14 @@ const manifest = () => ({
 describe('project manifest protocol', () => {
   it('accepts the supported project and page format', () => {
     expect(isProjectManifest(manifest())).toBe(true);
+    expect(isProjectLayoutEnabled(manifest())).toBe(false);
+    expect(isProjectManifest({ ...manifest(), layout: { enabled: true } })).toBe(true);
+    expect(isProjectLayoutEnabled({ ...manifest(), layout: { enabled: true } })).toBe(true);
+    expect(isProjectManifest({ ...manifest(), layout: { enabled: 'true' } })).toBe(false);
+    expect(isProjectManifest({ ...manifest(), layout: { enabled: true, name: 'custom' } })).toBe(
+      false,
+    );
+
     expect(resolveProjectStack(manifest())).toEqual(BUILTIN_PROJECT_STACK);
     expect(isProjectManifest({ ...manifest(), materialSet: undefined })).toBe(false);
     expect(() => resolveProjectStack({ ...manifest(), materialSet: undefined })).toThrow();

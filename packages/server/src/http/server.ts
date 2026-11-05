@@ -1,3 +1,4 @@
+import { registerLayoutRoutes } from './layout-routes';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { nanoid } from 'nanoid';
 import type { ApiResult } from '@origamix/shared';
@@ -107,6 +108,7 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   const context = { server, input, route };
   registerProjectRoutes(context);
   registerSchemaRoutes(context);
+  registerLayoutRoutes(context);
   registerApplyRoutes(context);
   registerRuntimeRoutes(context);
   registerAgentRoutes(context);

@@ -1,3 +1,4 @@
+import type { LayoutService } from '../layout/layout-service';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ProjectService } from '../projects/project-service';
@@ -14,6 +15,15 @@ export interface HttpServerInput {
   projects: Pick<ProjectRepository, 'getProject' | 'getPage' | 'listProjects' | 'listPages'>;
   projectService: ProjectService;
   projectApplyService?: ProjectApplyService;
+  layoutService?: Pick<
+    LayoutService,
+    | 'getWorking'
+    | 'applyOperations'
+    | 'saveRevision'
+    | 'listRevisions'
+    | 'getRevision'
+    | 'restoreRevision'
+  >;
   allowedOrigins?: readonly string[];
   agent?: {
     conversations: Pick<ConversationService, 'list' | 'history'>;

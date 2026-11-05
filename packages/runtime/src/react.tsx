@@ -40,7 +40,7 @@ interface ErrorBoundaryProps {
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
-class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error | null }> {
+export class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error | null }> {
   static contextType = DiagnosticsContext;
   declare context: React.ContextType<typeof DiagnosticsContext>;
   state = { error: null as Error | null };
@@ -50,8 +50,10 @@ class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error 
   }
 
   componentDidUpdate(previous: Readonly<ErrorBoundaryProps>): void {
-    if (previous.resetKey !== this.props.resetKey && this.state.error)
+    if (previous.resetKey !== this.props.resetKey && this.state.error) {
+      this.context?.set(this, null);
       this.setState({ error: null });
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {

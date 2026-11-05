@@ -59,6 +59,7 @@ const createDiagnostics = () => {
 };
 type DiagnosticsStore = ReturnType<typeof createDiagnostics>;
 export const DiagnosticsContext = createContext<DiagnosticsStore | null>(null);
+export const DiagnosticScopeContext = createContext<'page' | 'layout'>('page');
 const PresentationContext = createContext<
   Pick<RuntimeDiagnosticsProps, 'renderElementError' | 'onRenderError'>
 >({});
@@ -84,13 +85,21 @@ export const DiagnosticsProvider = ({
   onRenderError,
   ...callbacks
 }: RuntimeDiagnosticsProps & { children: ReactNode }) => {
-  const store = useMemo(createDiagnostics, []);
+  const parentStore = useContext(DiagnosticsContext);
+  const parentPresentation = useContext(PresentationContext);
+  const localStore = useMemo(createDiagnostics, []);
+  const store = parentStore ?? localStore;
+  const presentation = useMemo(
+    () => ({
+      renderElementError: renderElementError ?? parentPresentation.renderElementError,
+      onRenderError: onRenderError ?? parentPresentation.onRenderError,
+    }),
+    [renderElementError, onRenderError, parentPresentation],
+  );
   return (
     <DiagnosticsContext.Provider value={store}>
-      <PresentationContext.Provider value={{ renderElementError, onRenderError }}>
-        {children}
-      </PresentationContext.Provider>
-      <DiagnosticReporter store={store} {...callbacks} />
+      <PresentationContext.Provider value={presentation}>{children}</PresentationContext.Provider>
+      {!parentStore && <DiagnosticReporter store={store} {...callbacks} />}
     </DiagnosticsContext.Provider>
   );
 };
@@ -110,6 +119,7 @@ interface MaterialBoundaryProps {
   type: string;
   resetToken: unknown;
   material: unknown;
+  scope?: 'page' | 'layout';
   fallback: (content: ReactNode) => ReactNode;
   renderError?: RuntimeDiagnosticsProps['renderElementError'];
   onRenderError?: RuntimeDiagnosticsProps['onRenderError'];
@@ -126,7 +136,7 @@ class MaterialBoundary extends Component<MaterialBoundaryProps, { error: Error |
     stage: this.state.error instanceof UnknownMaterialError ? 'material' : 'render',
     elementId: this.props.id,
     materialType: this.props.type,
-    scope: 'page',
+    scope: this.props.scope ?? 'page',
     safeMessage:
       this.state.error instanceof UnknownMaterialError
         ? `未知物料：${this.props.type}`
@@ -186,7 +196,13 @@ class MaterialBoundary extends Component<MaterialBoundaryProps, { error: Error |
 }
 export const MaterialErrorBoundary = (props: MaterialBoundaryProps) => {
   const { renderElementError, onRenderError } = useContext(PresentationContext);
+  const scope = useContext(DiagnosticScopeContext);
   return (
-    <MaterialBoundary {...props} renderError={renderElementError} onRenderError={onRenderError} />
+    <MaterialBoundary
+      {...props}
+      scope={scope}
+      renderError={renderElementError}
+      onRenderError={onRenderError}
+    />
   );
 };

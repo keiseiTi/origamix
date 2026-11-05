@@ -1,3 +1,6 @@
+import { LayoutService } from '../layout/layout-service';
+import type { LayoutApplyReceipt } from '../layout/layout-apply-contracts';
+import { hashJson } from '../infrastructure/json-hash';
 import { withProjectActivity } from '../projects/project-activity';
 import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
@@ -9,6 +12,9 @@ import { dirname } from 'node:path';
 import { metadataPath } from './metadata-path';
 import {
   type ApplyPageResult,
+  type LayoutApplyRequest,
+  type LayoutApplyResult,
+  isLayoutDocument,
   type PageApplyState,
   type OrigamixPageSchema,
 } from '@origamix/shared';
@@ -31,7 +37,7 @@ interface ApplyReceipt extends ApplyPageResult {
 
 export interface ProjectApplyOptions {
   /** Test/host hook used to simulate interruption after a durable apply stage. */
-  afterStage?: (stage: 'target' | 'receipt') => void | Promise<void>;
+  afterStage?: (stage: 'prepared' | 'target' | 'receipt') => void | Promise<void>;
 }
 
 const readJson = async <T>(path: string): Promise<T> => {
@@ -52,6 +58,7 @@ export class ProjectApplyService {
     private readonly projects: ProjectRepository,
     private readonly targets = new TargetSchemaStore(),
     private readonly options: ProjectApplyOptions = {},
+    private readonly layouts = new LayoutService(projects),
   ) {}
 
   private resolve(projectId: string, pageId: string): SchemaPageRef {
@@ -75,6 +82,89 @@ export class ProjectApplyService {
     const page = this.resolve(projectId, pageId);
     return withProjectActivity(page.projectPath, () => action(this.resolve(projectId, pageId)));
   }
+
+  private readLayoutHash = async (path: string, projectId: string): Promise<string | null> => {
+    const target = await this.targets.readLayout(path);
+    if (target === undefined) return null;
+    if (!isLayoutDocument(target) || target.projectId !== projectId)
+      throw conflict('项目布局文件无效或归属已变化，请恢复原文件后重试');
+    return hashJson(target);
+  };
+  getLayoutState = (projectId: string) =>
+    this.layouts.withApplyState(projectId, async (path, working, baselineHash, pending) => {
+      const targetSchemaHash = await this.readLayoutHash(path, projectId);
+      return {
+        projectId,
+        revisionId: working.revisionId,
+        workingVersion: working.workingVersion,
+        workingHash: working.workingHash,
+        savedSchemaHash: working.savedSchemaHash,
+        baselineHash,
+        targetSchemaHash,
+        status: pending
+          ? ('apply_pending' as const)
+          : working.savedSchemaHash !== working.workingHash
+            ? ('draft_unsaved' as const)
+            : targetSchemaHash !== baselineHash
+              ? ('external_change' as const)
+              : targetSchemaHash === working.workingHash
+                ? ('in_sync' as const)
+                : ('saved_pending_apply' as const),
+      };
+    });
+  applyLayout = (input: LayoutApplyRequest): Promise<LayoutApplyResult> =>
+    this.layouts.withApply(input, async (context) => {
+      const targetHash = await this.readLayoutHash(context.path, input.projectId);
+      const receipt = context.receipt;
+      const resultOf = (value: LayoutApplyReceipt): LayoutApplyResult => ({
+        projectId: value.projectId,
+        revisionId: value.revisionId,
+        schemaHash: value.schemaHash,
+        appliedAt: value.appliedAt,
+        status: 'applied',
+      });
+      if (receipt?.state === 'committed') {
+        if (targetHash !== receipt.schemaHash)
+          throw conflict('布局应用回执与项目文件不一致，请检查外部修改');
+        return resultOf(receipt);
+      }
+      if (receipt) {
+        if (
+          receipt.schemaHash !== context.working.workingHash ||
+          (targetHash !== receipt.baselineHash && targetHash !== receipt.schemaHash)
+        )
+          throw conflict('待恢复布局应用与项目文件不一致，请恢复原文件，不会自动覆盖');
+      } else if (targetHash !== context.baselineHash)
+        throw conflict('项目布局文件已被外部修改，请恢复原文件后再应用');
+      const prepared: LayoutApplyReceipt = receipt ?? {
+        version: 1,
+        state: 'prepared',
+        projectId: input.projectId,
+        revisionId: input.expectedRevisionId,
+        expectedWorkingVersion: input.expectedWorkingVersion,
+        clientRequestId: input.clientRequestId,
+        requestHash: hashJson({
+          projectId: input.projectId,
+          revisionId: input.expectedRevisionId,
+          workingVersion: input.expectedWorkingVersion,
+        }),
+        schemaHash: context.working.workingHash,
+        baselineHash: context.baselineHash,
+        appliedAt: new Date().toISOString(),
+        status: 'applied',
+      };
+      if (!receipt) await context.prepare(prepared);
+      await this.options.afterStage?.('prepared');
+      if (targetHash !== prepared.schemaHash)
+        await this.targets.writeLayout(context.path, context.working.document);
+      await this.options.afterStage?.('target');
+      if ((await this.readLayoutHash(context.path, input.projectId)) !== prepared.schemaHash)
+        throw invalid('布局应用后校验失败');
+      const committed = { ...prepared, state: 'committed' as const };
+      await context.complete(committed);
+      await this.options.afterStage?.('receipt');
+      return resultOf(committed);
+    });
 
   async initializeTarget(page: SchemaPageRef, schema: OrigamixPageSchema): Promise<void> {
     await this.targets.write(page, schema);

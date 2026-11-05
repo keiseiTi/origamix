@@ -349,3 +349,78 @@ export {
   SUPPORTED_MATERIAL_VERSIONS,
   contractCompatibilityIssue,
 } from './version.ts';
+
+// One fixed-name layout per project; its enabled flag belongs to the project manifest.
+export {
+  LAYOUT_SCHEMA_VERSION,
+  PAGE_OUTLET_TYPE,
+  PAGE_NAVIGATION_TYPE,
+  PageNavigationPropsSchema,
+  LAYOUT_NAME,
+  LayoutSchema,
+  PageOutletPropsSchema,
+  ApplicationLayoutSchema,
+  ProjectLayoutDocumentSchema,
+  SessionTargetSchema,
+  AgentTargetSchema,
+  LayoutFocusSchema,
+  createEmptyLayoutDocument,
+} from './layout/layout-schema.ts';
+export type {
+  ProjectLayoutDocument,
+  ApplicationLayout,
+  SessionTarget,
+  AgentTarget,
+  LayoutFocus,
+} from './layout/layout-schema.ts';
+export {
+  validateLayoutSchema,
+  isLayoutSchema,
+  validateLayoutDocument,
+  isLayoutDocument,
+} from './layout/layout-validation.ts';
+export type { LayoutValidationIssue } from './layout/layout-validation.ts';
+export {
+  LayoutOperationSchema,
+  LayoutScopeSchema,
+  LayoutOperationsRequestSchema,
+  LayoutSaveRevisionRequestSchema,
+  LayoutRevisionRequestSchema,
+  LayoutRestoreRevisionRequestSchema,
+  LayoutWorkingStateSchema,
+  LayoutRevisionSnapshotSchema,
+  LayoutRevisionHistorySchema,
+  LayoutConfigRequestSchema,
+  LayoutConfigUpdateRequestSchema,
+  LayoutConfigStateSchema,
+} from './layout/layout-api.ts';
+export type {
+  LayoutOperation,
+  LayoutOperationsRequest,
+  LayoutWorkingState,
+  LayoutRevisionSnapshot,
+  LayoutRevisionHistory,
+  LayoutConfigState,
+} from './layout/layout-api.ts';
+export {
+  ApplicationSnapshotSchema,
+  isApplicationSnapshot,
+  ApplicationRenderReportSchema,
+} from './transport/application-snapshot.ts';
+export type {
+  ApplicationSnapshot,
+  ApplicationRenderReport,
+} from './transport/application-snapshot.ts';
+
+export { ProjectLayoutConfigSchema, isProjectLayoutEnabled } from './project/project-manifest.ts';
+
+export {
+  LayoutApplyRequestSchema,
+  LayoutApplyResultSchema,
+  LayoutApplyStateSchema,
+} from './layout/layout-api.ts';
+export type {
+  LayoutApplyRequest,
+  LayoutApplyResult,
+  LayoutApplyState,
+} from './layout/layout-api.ts';

@@ -1,6 +1,7 @@
 import {
   SCHEMA_VERSION,
   MATERIAL_CONTRACT_VERSION,
+  LAYOUT_SCHEMA_VERSION,
   isSemanticVersion,
 } from '../packages/shared/src/version.ts';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
@@ -39,8 +40,8 @@ if (mode === '--set') {
   );
   console.log(`统一包版本已更新至 ${requested}；物料契约和 Schema 版本保持不变。`);
 } else if (mode === '--check') {
-  if (![SCHEMA_VERSION, MATERIAL_CONTRACT_VERSION].every(isSemanticVersion))
-    throw new Error('Schema 和物料契约必须使用有效 SemVer');
+  if (![SCHEMA_VERSION, MATERIAL_CONTRACT_VERSION, LAYOUT_SCHEMA_VERSION].every(isSemanticVersion))
+    throw new Error('Schema、layout 和物料契约必须使用有效 SemVer');
   const template = await readJson('packages/template/origamix.project.json');
   if (
     template.version ||

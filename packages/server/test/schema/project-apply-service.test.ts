@@ -1,3 +1,5 @@
+import { LayoutService } from '../../src/layout/layout-service';
+import { PAGE_OUTLET_TYPE, PAGE_NAVIGATION_TYPE } from '@origamix/shared';
 import { hashSchema } from '../../src/schema/schema-hash';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -59,7 +61,14 @@ const setup = async () => {
     name: 'Customers',
     slug: 'customers',
   });
-  return { database, projects, project, page, apply: new ProjectApplyService(projects) };
+  return {
+    database,
+    projects,
+    projectService,
+    project,
+    page,
+    apply: new ProjectApplyService(projects),
+  };
 };
 
 describe('ProjectApplyService', () => {
@@ -377,5 +386,174 @@ describe('ProjectApplyService', () => {
       '页面目标路径不属于当前项目',
     );
     fixture.database.close();
+  });
+});
+
+// Project layout Apply introduces a separate target projection and durable pending outcome.
+describe('Project layout Apply', () => {
+  const prepared = async () => {
+    const fixture = await setup();
+    await fixture.projectService.setLayoutEnabled(fixture.project.id, true);
+    const layouts = new LayoutService(fixture.projects);
+    const initial = await layouts.getWorking(fixture.project.id);
+    const draft = await layouts.applyOperations({
+      projectId: fixture.project.id,
+      baseWorkingVersion: initial.workingVersion,
+      clientRequestId: 'layout-edit',
+      operations: [
+        {
+          operation: 'replaceElement',
+          elementId: 'outlet',
+          element: { type: 'container', props: { padding: 12, heightConfig: 'auto' } },
+        },
+        {
+          operation: 'addElement',
+          elementId: 'navigation',
+          parentId: 'outlet',
+          element: { type: PAGE_NAVIGATION_TYPE, props: { direction: 'horizontal' } },
+        },
+        {
+          operation: 'addElement',
+          elementId: 'content',
+          parentId: 'outlet',
+          element: { type: PAGE_OUTLET_TYPE, props: {} },
+        },
+      ],
+    });
+    return {
+      ...fixture,
+      layouts,
+      draft,
+      target: join(fixture.project.path, 'src', 'origamix-layout', 'schema.json'),
+    };
+  };
+  it('requires the current clean saved version and applies only the layout projection with a stable receipt', async () => {
+    const f = await prepared();
+    try {
+      const pagePath = join(f.project.path, f.page.relativePath, 'schema.json');
+      const pageBefore = await readFile(pagePath, 'utf8');
+      const routerBefore = await readFile(join(f.project.path, 'src/router.ts'), 'utf8');
+      const shellBefore = await readFile(
+        join(f.project.path, f.page.relativePath, 'index.tsx'),
+        'utf8',
+      );
+      await expect(
+        f.apply.applyLayout({
+          projectId: f.project.id,
+          expectedRevisionId: 'revision_missing',
+          expectedWorkingVersion: f.draft.workingVersion,
+          clientRequestId: 'unsaved',
+        }),
+      ).rejects.toThrow('先保存');
+      await expect(readFile(f.target)).rejects.toThrow();
+      const saved = await f.layouts.saveRevision(f.project.id, f.draft.workingVersion);
+      const input = {
+        projectId: f.project.id,
+        expectedRevisionId: saved.revisionId!,
+        expectedWorkingVersion: saved.workingVersion,
+        clientRequestId: 'layout-apply',
+      };
+      await expect(
+        f.apply.applyLayout({ ...input, expectedWorkingVersion: 1, clientRequestId: 'stale' }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      const result = await f.apply.applyLayout(input);
+      expect(JSON.parse(await readFile(f.target, 'utf8'))).toEqual(saved.document);
+      expect(await f.apply.applyLayout(input)).toEqual(result);
+      expect((await f.apply.getLayoutState(f.project.id)).status).toBe('in_sync');
+      expect(await readFile(pagePath, 'utf8')).toBe(pageBefore);
+      expect(await readFile(join(f.project.path, 'src/router.ts'), 'utf8')).toBe(routerBefore);
+      expect(await readFile(join(f.project.path, f.page.relativePath, 'index.tsx'), 'utf8')).toBe(
+        shellBefore,
+      );
+      await expect(
+        f.apply.applyLayout({ ...input, expectedRevisionId: 'revision_other' }),
+      ).rejects.toThrow('请求 ID');
+      const external = {
+        ...saved.document,
+        schema: {
+          ...saved.document.schema,
+          elements: {
+            ...saved.document.schema.elements,
+            outlet: { type: 'container', props: { padding: 99 } },
+          },
+        },
+      };
+      await writeFile(f.target, JSON.stringify(external));
+      expect((await f.apply.getLayoutState(f.project.id)).status).toBe('external_change');
+      await expect(f.apply.applyLayout({ ...input, clientRequestId: 'external' })).rejects.toThrow(
+        '外部修改',
+      );
+      expect(JSON.parse(await readFile(f.target, 'utf8'))).toEqual(external);
+      expect(await f.layouts.getWorking(f.project.id)).toEqual(saved);
+    } finally {
+      f.database.close();
+    }
+  });
+  it.each(['prepared', 'target', 'receipt'] as const)(
+    'recovers interruption after %s only through the same request identity',
+    async (stage) => {
+      const f = await prepared();
+      try {
+        const saved = await f.layouts.saveRevision(f.project.id, f.draft.workingVersion);
+        const input = {
+          projectId: f.project.id,
+          expectedRevisionId: saved.revisionId!,
+          expectedWorkingVersion: saved.workingVersion,
+          clientRequestId: 'recover-layout',
+        };
+        const interrupted = new ProjectApplyService(f.projects, undefined, {
+          afterStage: (current) => {
+            if (current === stage) throw new Error('interrupted');
+          },
+        });
+        await expect(interrupted.applyLayout(input)).rejects.toThrow('interrupted');
+        await expect(
+          f.layouts.applyOperations({
+            projectId: f.project.id,
+            baseWorkingVersion: saved.workingVersion,
+            clientRequestId: 'blocked',
+            operations: [
+              { operation: 'updateElementProps', elementId: 'outlet', set: { padding: 24 } },
+            ],
+          }),
+        ).rejects.toThrow('尚未确认');
+        await expect(f.apply.applyLayout({ ...input, clientRequestId: 'another' })).rejects.toThrow(
+          '原请求',
+        );
+        const restarted = new ProjectApplyService(f.projects);
+        const result = await restarted.applyLayout(input);
+        expect(await restarted.applyLayout(input)).toEqual(result);
+        expect((await restarted.getLayoutState(f.project.id)).status).toBe('in_sync');
+        expect((await f.layouts.listRevisions(f.project.id)).revisions).toHaveLength(1);
+      } finally {
+        f.database.close();
+      }
+    },
+  );
+  it('rejects symlinked layout paths before preparing an Apply or touching outside data', async () => {
+    const f = await prepared();
+    try {
+      const saved = await f.layouts.saveRevision(f.project.id, f.draft.workingVersion);
+      const outside = join(dirname(f.project.path), 'external-layout');
+      await mkdir(outside);
+      await writeFile(join(outside, 'schema.json'), JSON.stringify(saved.document));
+      await symlink(outside, dirname(f.target), 'dir');
+      await expect(
+        f.apply.applyLayout({
+          projectId: f.project.id,
+          expectedRevisionId: saved.revisionId!,
+          expectedWorkingVersion: saved.workingVersion,
+          clientRequestId: 'symlink',
+        }),
+      ).rejects.toThrow('符号链接');
+      expect(JSON.parse(await readFile(join(outside, 'schema.json'), 'utf8'))).toEqual(
+        saved.document,
+      );
+      expect(await readdir(join(f.project.path, '.origamix/layout'))).not.toContain(
+        'apply-pending.json',
+      );
+    } finally {
+      f.database.close();
+    }
   });
 });
