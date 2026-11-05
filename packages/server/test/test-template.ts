@@ -1,4 +1,4 @@
-import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
+import { BUILTIN_PROJECT_STACK, PAGE_OUTLET_TYPE, PAGE_NAVIGATION_TYPE } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -154,6 +154,105 @@ try {
   assert.equal(target.elements.element_root.props.height, 321);
   assert.equal(target.elements.delivery_button.props.text, 'Migration delivery verified');
   assert.equal(await readFile(shellPath, 'utf8'), originalShell);
+
+  const about = await request('/pages/create', {
+    projectId: created.id,
+    name: 'About',
+    slug: 'about',
+  });
+  const aboutWorking = await request('/pages/working-state/get', {
+    projectId: created.id,
+    pageId: about.id,
+  });
+  const aboutDraft = await request('/pages/working-operations/apply', {
+    projectId: created.id,
+    pageId: about.id,
+    baseWorkingVersion: aboutWorking.workingVersion,
+    operations: [
+      {
+        operation: 'addElement',
+        elementId: 'about_title',
+        parentId: 'element_root',
+        element: { type: 'text', props: { type: 'h1', text: 'About application page' } },
+      },
+    ],
+  });
+  const aboutSaved = await request('/pages/revisions/save', {
+    projectId: created.id,
+    pageId: about.id,
+    expectedWorkingVersion: aboutDraft.workingVersion,
+  });
+  await request('/pages/apply', {
+    projectId: created.id,
+    pageId: about.id,
+    expectedRevisionId: aboutSaved.revisionId,
+    expectedWorkingVersion: aboutSaved.workingVersion,
+    clientRequestId: 'about-apply',
+  });
+  await request('/layout/config/update', { projectId: created.id, enabled: true });
+  const layoutWorking = await request('/layout/working/get', { projectId: created.id });
+  const layoutDraft = await request('/layout/working/operations', {
+    projectId: created.id,
+    baseWorkingVersion: layoutWorking.workingVersion,
+    clientRequestId: 'layout-edit',
+    operations: [
+      {
+        operation: 'replaceElement',
+        elementId: 'outlet',
+        element: {
+          type: 'container',
+          props: {
+            padding: 24,
+            heightConfig: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          },
+        },
+      },
+      {
+        operation: 'addElement',
+        elementId: 'brand',
+        parentId: 'outlet',
+        element: { type: 'text', props: { type: 'h2', text: 'Origamix application layout' } },
+      },
+      {
+        operation: 'addElement',
+        elementId: 'navigation',
+        parentId: 'outlet',
+        element: { type: PAGE_NAVIGATION_TYPE, props: { direction: 'horizontal' } },
+      },
+      {
+        operation: 'addElement',
+        elementId: 'content',
+        parentId: 'outlet',
+        element: { type: PAGE_OUTLET_TYPE, props: {} },
+      },
+    ],
+  });
+  const layoutTarget = join(project, 'src/origamix-layout/schema.json');
+  await assert.rejects(readFile(layoutTarget));
+  const layoutSaved = await request('/layout/revisions/save', {
+    projectId: created.id,
+    expectedWorkingVersion: layoutDraft.workingVersion,
+  });
+  await assert.rejects(readFile(layoutTarget));
+  const layoutInput = {
+    projectId: created.id,
+    expectedRevisionId: layoutSaved.revisionId,
+    expectedWorkingVersion: layoutSaved.workingVersion,
+    clientRequestId: 'layout-apply',
+  };
+  const layoutReceipt = await request('/layout/apply', layoutInput);
+  assert.deepEqual(JSON.parse(await readFile(layoutTarget, 'utf8')), layoutSaved.document);
+  await backend.close();
+  backend = await startServer(backendOptions);
+  assert.deepEqual(await request('/layout/apply', layoutInput), layoutReceipt);
+  assert.equal(
+    (await request('/layout/apply-state/get', { projectId: created.id })).status,
+    'in_sync',
+  );
+  assert.equal(await readFile(shellPath, 'utf8'), originalShell);
   const readme = await readFile(join(project, 'README.md'), 'utf8');
   assert.ok(readme.startsWith('# Template smoke'));
   assert.ok(readme.includes('## 职责与入口'));
@@ -219,7 +318,7 @@ try {
     );
   }
   console.info(
-    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, independent installation, typecheck and build.',
+    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, project layout Apply/retry after restart, independent two-page application installation, typecheck and build.',
   );
 } finally {
   await backend?.close();

@@ -304,21 +304,31 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 
 具名 POST 接口沿用认证、来源和服务实例检查：
 
-| 接口（前缀 `/api/v1`）       | 请求                                                       | 结果                   |
-| ---------------------------- | ---------------------------------------------------------- | ---------------------- |
-| `/layout/config/get`         | projectId                                                  | 固定 name 与 enabled   |
-| `/layout/config/update`      | projectId、enabled                                         | 固定 name 与 enabled   |
-| `/layout/working/get`        | projectId                                                  | LayoutWorkingState     |
-| `/layout/working/operations` | projectId、baseWorkingVersion、clientRequestId、operations | LayoutWorkingState     |
-| `/layout/revisions/save`     | projectId、expectedWorkingVersion                          | LayoutWorkingState     |
-| `/layout/revisions/list`     | projectId                                                  | LayoutRevisionHistory  |
-| `/layout/revisions/get`      | projectId、revisionId                                      | LayoutRevisionSnapshot |
-| `/layout/revisions/restore`  | projectId、revisionId、expectedWorkingVersion              | LayoutWorkingState     |
+| 接口（前缀 `/api/v1`）       | 请求                                                                   | 结果                   |
+| ---------------------------- | ---------------------------------------------------------------------- | ---------------------- |
+| `/layout/config/get`         | projectId                                                              | 固定 name 与 enabled   |
+| `/layout/config/update`      | projectId、enabled                                                     | 固定 name 与 enabled   |
+| `/layout/apply`              | projectId、expectedRevisionId、expectedWorkingVersion、clientRequestId | LayoutApplyResult      |
+| `/layout/apply-state/get`    | projectId                                                              | LayoutApplyState       |
+| `/layout/working/get`        | projectId                                                              | LayoutWorkingState     |
+| `/layout/working/operations` | projectId、baseWorkingVersion、clientRequestId、operations             | LayoutWorkingState     |
+| `/layout/revisions/save`     | projectId、expectedWorkingVersion                                      | LayoutWorkingState     |
+| `/layout/revisions/list`     | projectId                                                              | LayoutRevisionHistory  |
+| `/layout/revisions/get`      | projectId、revisionId                                                  | LayoutRevisionSnapshot |
+| `/layout/revisions/restore`  | projectId、revisionId、expectedWorkingVersion                          | LayoutWorkingState     |
 
-关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。当前阶段未实现 layout Apply、Template 外壳升级或 layout Agent，开启开关不会自动改写运行项目的路由/页面壳。
+关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。layout Agent 尚未接入。新建项目包含应用外壳；此功能不处理旧项目迁移。开启开关不会自动生成布局投影或重写路由/页面壳。
 
 布局直接复用 PageSchema 的节点表与父子结构，操作批次也直接复用页面编辑器协议。第一次读取只初始化包含 PageOutlet 的 Working，不创建 Revision。每个有效批次递增 Working 版本，最终候选经过布局约束和物料校验后才原子写入。
 
 最新操作的请求身份和摘要随 Working 原子提交，紧邻重复请求返回当前结果；已有后续操作时拒绝旧版本重试，不自动重放。保存不改变 Working 内容版本，同内容重复保存不增加 Revision。保存按 journal → 不可变 Revision → Working 指针 → 清理 journal 执行，下一次访问根据保留内容恢复。历史恢复只更新 Working，不创建/应用版本，也不改变项目开关。读写使用固定 metadata 路径、同一 layout 队列与项目生命周期租约，拒绝符号链接、错误归属和不支持版本。
 
 核心验证见 [layout-service.test.ts](test/layout/layout-service.test.ts) 与 [layout-http.test.ts](test/layout/layout-http.test.ts)：覆盖项目开关、保留草稿、原子编辑、冲突、保存中断、物料与路径拒绝。页面场景不能替代项目级文档的这些风险。
+
+### layout Apply 的写入与恢复
+
+`ProjectApplyService.applyLayout` 在 LayoutService 的同一 Working 队列中执行，接受当前显式保存且干净的版本。固定目标为 `src/origamix-layout/schema.json`，只由现有 TargetSchemaStore 写入。目标和 metadata 都检查所有已存在路径组件，拒绝符号链接；未建立应用基线时，已存在的目标视为外部文件，不能覆盖或自动导入。
+
+顺序为：准备 durable pending 回执 → 写入并校验目标 → 提交完成回执 → 更新 Working 基线 → 清理 pending。中断后不自动重放；原请求身份可验证目标是否仍等于之前基线或本次结果，并显式完成恢复。未确认时阻止其他 Apply 及布局修改/保存/恢复。已完成请求重试验证目标，不能回退后来版本的基线；外部变化保留文件与草稿。接口状态包含 `apply_pending`、`draft_unsaved`、`saved_pending_apply`、`in_sync`、`external_change`。
+
+Template smoke 通过编译后的 HTTP 创建两页项目，分别保存并应用页面与布局，重启后验证布局回执，再独立安装、类型检查和构建。它不等同于图形交互检查；页面导航、主题和错误状态需要在生成项目中实际操作验证。

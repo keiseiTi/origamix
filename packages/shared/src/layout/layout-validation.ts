@@ -2,6 +2,8 @@ import { Value } from '@sinclair/typebox/value';
 import { isPageSchema } from '../page/page-validation.ts';
 import {
   PAGE_OUTLET_TYPE,
+  PAGE_NAVIGATION_TYPE,
+  PageNavigationPropsSchema,
   PageOutletPropsSchema,
   ProjectLayoutDocumentSchema,
   type LayoutSchema,
@@ -29,6 +31,17 @@ export const validateLayoutSchema = (value: unknown): LayoutValidationIssue[] =>
       path: '/',
       message: '布局暂不支持业务流程、事件绑定或全局变量',
     });
+  for (const [id, element] of Object.entries(value.elements))
+    if (
+      element.type === PAGE_NAVIGATION_TYPE &&
+      ((value.layout.structure[id]?.length ?? 0) > 0 ||
+        !Value.Check(PageNavigationPropsSchema, element.props))
+    )
+      errors.push({
+        code: 'INVALID_PAGE_NAVIGATION',
+        path: `/elements/${id}`,
+        message: '页面导航属性无效或包含子节点',
+      });
   const outlets = Object.entries(value.elements).filter(
     ([, element]) => element.type === PAGE_OUTLET_TYPE,
   );

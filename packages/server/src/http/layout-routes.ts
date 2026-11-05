@@ -1,6 +1,7 @@
 import type { Static } from '@sinclair/typebox';
 import {
   LayoutScopeSchema,
+  LayoutApplyRequestSchema,
   LayoutConfigRequestSchema,
   LayoutConfigUpdateRequestSchema,
   LayoutOperationsRequestSchema,
@@ -25,6 +26,19 @@ export const registerLayoutRoutes = ({ server, input, route }: RouteRegistration
       input.projectService.setLayoutEnabled(body.projectId, body.enabled),
     ),
   );
+  const apply = input.projectApplyService;
+  if (apply) {
+    server.post(
+      '/api/v1/layout/apply',
+      { schema: { body: LayoutApplyRequestSchema } },
+      route<Static<typeof LayoutApplyRequestSchema>>(({ body }) => apply.applyLayout(body)),
+    );
+    server.post(
+      '/api/v1/layout/apply-state/get',
+      { schema: { body: LayoutScopeSchema } },
+      route<Static<typeof LayoutScopeSchema>>(({ body }) => apply.getLayoutState(body.projectId)),
+    );
+  }
   const layout = input.layoutService;
   if (!layout) return;
   server.post(

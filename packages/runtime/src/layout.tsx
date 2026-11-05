@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode, type MouseEvent } from 'react';
 import {
   PAGE_OUTLET_TYPE,
+  PAGE_NAVIGATION_TYPE,
   isLayoutSchema,
   isLayoutDocument,
   type ApplicationLayout,
@@ -15,6 +16,7 @@ export interface LayoutNavigation {
   currentPageId: string;
   /** Return false for a page outside the application's declared page set. */
   navigateToPage: (pageId: string) => boolean;
+  pages: readonly { pageId: string; name: string; path: string }[];
 }
 const NavigationContext = createContext<LayoutNavigation | null>(null);
 /** Layout materials can navigate without receiving a router, engine, credentials or host APIs. */
@@ -23,6 +25,56 @@ const OutletContext = createContext<ReactNode>(null);
 const PageOutlet = () => <>{useContext(OutletContext)}</>;
 PageOutlet.origamixLayout = { display: 'block' as const };
 
+const PageNavigation = (props: Record<string, unknown>): React.JSX.Element => {
+  const navigation = useLayoutNavigation();
+  const horizontal = props.direction === 'horizontal';
+  return (
+    <nav
+      aria-label='页面导航'
+      className={horizontal ? 'flex flex-wrap gap-2' : 'flex flex-col gap-2'}
+    >
+      {navigation?.pages.length ? (
+        navigation.pages.map((page) => (
+          <a
+            key={page.pageId}
+            href={page.path}
+            aria-current={navigation.currentPageId === page.pageId ? 'page' : undefined}
+            className='rounded px-3 py-2 text-inherit hover:underline focus-visible:outline-2 aria-[current=page]:font-semibold aria-[current=page]:underline'
+            onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              if (navigation.navigateToPage(page.pageId)) event.preventDefault();
+            }}
+          >
+            {page.name}
+          </a>
+        ))
+      ) : (
+        <span>页面导航</span>
+      )}
+    </nav>
+  );
+};
+PageNavigation.origamixLayout = { display: 'block' as const };
+
+/** Enabled state comes only from the project manifest; runtime never reads local editor data. */
+export const resolveApplicationLayout = (
+  projectId: string,
+  enabled: boolean,
+  document: unknown,
+): ApplicationLayout => {
+  if (!enabled) return { enabled: false };
+  if (!isLayoutDocument(document) || document.projectId !== projectId)
+    throw new Error('项目已开启布局，请先在 Origamix 中保存版本并应用布局配置。');
+  return { enabled: true, document };
+};
+
 export interface OrigamixLayoutProps {
   schema: RuntimeSchema;
   materials: MaterialRegistry;
@@ -30,6 +82,7 @@ export interface OrigamixLayoutProps {
   navigation?: {
     currentPageId: string;
     pageIds: readonly string[];
+    pages?: readonly { pageId: string; name: string; path: string }[];
     navigateToPage: (pageId: string) => void;
   };
 }
@@ -41,12 +94,24 @@ export const OrigamixLayout = ({
   children,
   navigation,
 }: OrigamixLayoutProps): React.JSX.Element => {
-  const registry = useMemo(() => ({ ...materials, [PAGE_OUTLET_TYPE]: PageOutlet }), [materials]);
+  const registry = useMemo(
+    () => ({
+      ...materials,
+      [PAGE_OUTLET_TYPE]: PageOutlet,
+      [PAGE_NAVIGATION_TYPE]: PageNavigation,
+    }),
+    [materials],
+  );
   const adapter = useMemo<LayoutNavigation | null>(
     () =>
       navigation
         ? {
             currentPageId: navigation.currentPageId,
+            pages: (navigation.pages ?? []).filter(
+              (page) =>
+                navigation.pageIds.includes(page.pageId) &&
+                /^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.path),
+            ),
             navigateToPage: (pageId) => {
               if (!navigation.pageIds.includes(pageId)) return false;
               navigation.navigateToPage(pageId);
@@ -92,7 +157,14 @@ export const DesignLayoutRenderer = ({
   renderElement,
   outlet,
 }: DesignLayoutRendererProps): React.JSX.Element => {
-  const registry = useMemo(() => ({ ...materials, [PAGE_OUTLET_TYPE]: PageOutlet }), [materials]);
+  const registry = useMemo(
+    () => ({
+      ...materials,
+      [PAGE_OUTLET_TYPE]: PageOutlet,
+      [PAGE_NAVIGATION_TYPE]: PageNavigation,
+    }),
+    [materials],
+  );
   if (!isLayoutSchema(schema)) throw new Error('布局 Schema 无效');
   return (
     <NavigationContext.Provider value={null}>

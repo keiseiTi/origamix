@@ -91,3 +91,45 @@ export const LayoutConfigStateSchema = Type.Object(
   strict,
 );
 export type LayoutConfigState = Static<typeof LayoutConfigStateSchema>;
+
+const hash = Type.String({ pattern: '^[a-f0-9]{64}$' });
+export const LayoutApplyRequestSchema = Type.Object(
+  {
+    ...LayoutScopeSchema.properties,
+    expectedRevisionId: RevisionIdSchema,
+    expectedWorkingVersion: Type.Integer({ minimum: 1 }),
+    clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
+  },
+  strict,
+);
+export const LayoutApplyResultSchema = Type.Object(
+  {
+    projectId: LayoutProjectIdSchema,
+    revisionId: RevisionIdSchema,
+    schemaHash: hash,
+    appliedAt: Type.String({ minLength: 1 }),
+    status: Type.Literal('applied'),
+  },
+  strict,
+);
+export type LayoutApplyRequest = Static<typeof LayoutApplyRequestSchema>;
+export type LayoutApplyResult = Static<typeof LayoutApplyResultSchema>;
+
+export const LayoutApplyStateSchema = Type.Object(
+  {
+    ...LayoutScopeSchema.properties,
+    revisionId: Type.Union([RevisionIdSchema, Type.Null()]),
+    workingVersion: Type.Integer({ minimum: 1 }),
+    workingHash: hash,
+    savedSchemaHash: Type.Union([hash, Type.Null()]),
+    baselineHash: Type.Union([hash, Type.Null()]),
+    targetSchemaHash: Type.Union([hash, Type.Null()]),
+    status: Type.Union(
+      ['draft_unsaved', 'saved_pending_apply', 'in_sync', 'external_change', 'apply_pending'].map(
+        (value) => Type.Literal(value),
+      ),
+    ),
+  },
+  strict,
+);
+export type LayoutApplyState = Static<typeof LayoutApplyStateSchema>;

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @source '../node_modules/@origamix/materials/dist';
+@source '../node_modules/@origamix/runtime/dist';
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

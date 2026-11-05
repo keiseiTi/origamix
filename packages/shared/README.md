@@ -105,8 +105,10 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 [layout/](src/layout/) 定义独立的 `LAYOUT_SCHEMA_VERSION`、`ProjectLayoutDocument` 和 `/layout` 请求/响应。每个项目只有一份固定名称的“布局配置”（`LAYOUT_NAME`），没有多布局 ID、重命名、默认布局或页面覆盖。项目清单的 `layout.enabled` 是唯一开关；未声明的旧清单按关闭读取，不自动补写文件。
 
-布局文档的 `schema` 直接使用 `PageSchema`：`elements` 存放节点定义，`layout.root/structure` 存放根节点与父子关系，`flows`、`bindElements`、`context`、`extensions` 保持相同形状。`LayoutOperationSchema` 直接复用 `SchemaOperationSchema`，没有另一套节点编辑协议。布局额外要求唯一、可达且无子节点的 `PageOutlet`；首期流程、事件绑定和全局变量必须为空。实际项目物料由 Server 校验。
+布局文档的 `schema` 直接使用 `PageSchema`：`elements` 存放节点定义，`layout.root/structure` 存放根节点与父子关系，`flows`、`bindElements`、`context`、`extensions` 保持相同形状。`LayoutOperationSchema` 直接复用 `SchemaOperationSchema`，没有另一套节点编辑协议。布局额外要求唯一、可达且无子节点的 `PageOutlet`，可选的系统 `PageNavigation` 只支持方向和占位属性；首期流程、事件绑定和全局变量必须为空。实际项目物料由 Server 校验。
 
 布局开关只存在项目 manifest；Working/Revision 只保存布局内容，恢复历史不会重新开启或关闭项目开关。布局与页面 Schema 在渲染时通过 Outlet 组合，不合并节点表。未发布阶段的旧多布局草稿不自动转换；不匹配的新契约会拒绝并保留原文件。
 
 `SessionTarget` / `AgentTarget` 定义后续 PageSession 与 Run 的 `page | layout` 目标，不改变当前仅支持页面的 Agent Run 接口。[ApplicationSnapshot](src/transport/application-snapshot.ts) 定义只读应用快照和诊断身份，包含从项目配置解析的 enabled；关闭时无需加载布局文档。已应用文件不依赖本地 Working，因此其 workingVersion 可为空。实际预览组装与传输由后续 App/Server 接入负责。
+
+layout Apply 请求绑定 projectId、当前保存 Revision、Working 版本和请求身份；响应与状态契约见 `LayoutApplyRequestSchema` / `LayoutApplyResultSchema` / `LayoutApplyStateSchema`。固定目标投影不属于项目 manifest，项目开关也不属于布局 Revision。

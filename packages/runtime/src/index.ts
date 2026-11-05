@@ -7,6 +7,7 @@ export {
   OrigamixLayout,
   DesignLayoutRenderer,
   OrigamixApplicationPage,
+  resolveApplicationLayout,
   useLayoutNavigation,
 } from './layout';
 export type {

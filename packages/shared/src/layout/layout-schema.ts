@@ -6,6 +6,7 @@ import { LAYOUT_SCHEMA_VERSION, SCHEMA_VERSION } from '../version.ts';
 /** Independent persisted contract; existing page schemas are not migrated. */
 export { LAYOUT_SCHEMA_VERSION } from '../version.ts';
 export const PAGE_OUTLET_TYPE = 'PageOutlet' as const;
+export const PAGE_NAVIGATION_TYPE = 'PageNavigation' as const;
 export const LAYOUT_NAME = '布局配置' as const;
 export const LayoutProjectIdSchema = Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' });
 export const LayoutPageIdSchema = Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' });
@@ -32,6 +33,15 @@ export const PageOutletPropsSchema = Type.Object(
         Type.Literal('stretch'),
       ]),
     ),
+  },
+  { additionalProperties: false },
+);
+
+/** Optional system navigation uses the application page directory, never arbitrary URLs. */
+export const PageNavigationPropsSchema = Type.Object(
+  {
+    ...PageOutletPropsSchema.properties,
+    direction: Type.Optional(Type.Union([Type.Literal('horizontal'), Type.Literal('vertical')])),
   },
   { additionalProperties: false },
 );

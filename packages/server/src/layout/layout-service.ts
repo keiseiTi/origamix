@@ -1,3 +1,4 @@
+import { LayoutApplyReceiptSchema, type LayoutApplyReceipt } from './layout-apply-contracts';
 import { nanoid } from 'nanoid';
 import { Value } from '@sinclair/typebox/value';
 import {
@@ -6,7 +7,12 @@ import {
   validateLayoutDocument,
   PageOutletPropsSchema,
   PAGE_OUTLET_TYPE,
+  PAGE_NAVIGATION_TYPE,
+  PageNavigationPropsSchema,
   LayoutScopeSchema,
+  LayoutApplyRequestSchema,
+  type LayoutApplyRequest,
+  type LayoutApplyResult,
   LayoutOperationsRequestSchema,
   LayoutSaveRevisionRequestSchema,
   LayoutRevisionRequestSchema,
@@ -181,6 +187,14 @@ export class LayoutService {
       ...materials.validation,
       registry: {
         ...materials.validation.registry,
+        [PAGE_NAVIGATION_TYPE]: {
+          type: PAGE_NAVIGATION_TYPE,
+          version: materials.manifest.materialSet.version,
+          propsSchema: PageNavigationPropsSchema,
+          acceptsChildren: false,
+          role: 'layout' as const,
+          context: { variables: [], writable: [], actions: [], events: [] },
+        },
         [PAGE_OUTLET_TYPE]: {
           type: PAGE_OUTLET_TYPE,
           version: materials.manifest.materialSet.version,
@@ -200,6 +214,114 @@ export class LayoutService {
     if (issue) throw invalid(`${issue.code} at ${issue.path}: ${issue.message}`);
   };
 
+  private requireNoPendingApply = async (path: string): Promise<void> => {
+    if (await this.store.readPendingApply(path))
+      throw conflict('布局应用结果尚未确认，请使用原请求恢复后再编辑');
+  };
+  private checkedReceipt = (
+    receipt: LayoutApplyReceipt | undefined,
+    projectId: string,
+  ): LayoutApplyReceipt | undefined => {
+    if (
+      receipt &&
+      (!Value.Check(LayoutApplyReceiptSchema, receipt) ||
+        receipt.projectId !== projectId ||
+        Number.isNaN(Date.parse(receipt.appliedAt)))
+    )
+      throw invalid('布局 Apply 回执无效');
+    return receipt;
+  };
+  withApplyState = <T>(
+    projectId: string,
+    inspect: (
+      path: string,
+      working: LayoutWorkingState,
+      baselineHash: string | null,
+      pending: boolean,
+    ) => Promise<T>,
+  ): Promise<T> =>
+    this.scoped(projectId, async (path) => {
+      const current = await this.current(path, projectId);
+      return inspect(
+        path,
+        stateOf(current),
+        current.baselineHash ?? null,
+        !!this.checkedReceipt(await this.store.readPendingApply(path), projectId),
+      );
+    });
+
+  /** Sole layout Apply lease: shares the Working queue and delegates only the target projection. */
+  withApply = (
+    input: LayoutApplyRequest,
+    apply: (context: {
+      path: string;
+      working: LayoutWorkingState;
+      baselineHash: string | null;
+      receipt?: LayoutApplyReceipt;
+      prepare: (receipt: LayoutApplyReceipt) => Promise<void>;
+      complete: (receipt: LayoutApplyReceipt) => Promise<void>;
+    }) => Promise<LayoutApplyResult>,
+  ): Promise<LayoutApplyResult> => {
+    if (!Value.Check(LayoutApplyRequestSchema, input)) throw invalid('布局 Apply 请求无效');
+    return this.scoped(input.projectId, async (path) => {
+      const current = await this.current(path, input.projectId);
+      const pending = this.checkedReceipt(await this.store.readPendingApply(path), input.projectId);
+      if (pending && pending.clientRequestId !== input.clientRequestId)
+        throw conflict('另一个布局应用尚未确认，请先恢复原请求');
+      const receipt =
+        this.checkedReceipt(
+          await this.store.readApplyReceipt(path, input.clientRequestId),
+          input.projectId,
+        ) ?? pending;
+      const requestHash = hashJson({
+        projectId: input.projectId,
+        revisionId: input.expectedRevisionId,
+        workingVersion: input.expectedWorkingVersion,
+      });
+      if (receipt && receipt.requestHash !== requestHash)
+        throw conflict('请求 ID 已用于其他布局应用');
+      const completedRetry = receipt?.state === 'committed' && !pending;
+      if (!completedRetry) {
+        this.checkVersion(current, input.expectedWorkingVersion);
+        if (
+          current.revisionId !== input.expectedRevisionId ||
+          current.workingHash !== current.savedSchemaHash
+        )
+          throw conflict('请先保存当前布局版本，再应用到项目');
+        await this.validateCandidate(path, input.projectId, current.document);
+      }
+      const check = (value: LayoutApplyReceipt): void => {
+        this.checkedReceipt(value, input.projectId);
+        if (
+          value.clientRequestId !== input.clientRequestId ||
+          value.requestHash !== requestHash ||
+          value.schemaHash !== current.workingHash ||
+          value.revisionId !== current.revisionId
+        )
+          throw invalid('布局应用回执与当前保存版本不匹配');
+      };
+      const result = await apply({
+        path,
+        working: stateOf(current),
+        baselineHash: current.baselineHash ?? null,
+        receipt,
+        prepare: async (value) => {
+          check(value);
+          await this.store.writePendingApply(path, value);
+        },
+        complete: async (value) => {
+          check(value);
+          await this.store.writeApplyReceipt(path, value);
+        },
+      });
+      if (!completedRetry) {
+        await this.store.writeWorking(path, { ...current, baselineHash: result.schemaHash });
+        await this.store.removePendingApply(path);
+      }
+      return result;
+    });
+  };
+
   private checkVersion = (current: LayoutWorkingFile, version: number): void => {
     if (current.workingVersion !== version) throw conflict('布局草稿已更新，请重新加载后再提交');
   };
@@ -210,6 +332,7 @@ export class LayoutService {
     if (!Value.Check(LayoutOperationsRequestSchema, input)) throw invalid('布局操作请求无效');
     return this.scoped(input.projectId, async (path) => {
       const current = await this.current(path, input.projectId);
+      await this.requireNoPendingApply(path);
       const digest = hashJson(input);
       if (current.lastMutation?.requestId === input.clientRequestId) {
         if (current.lastMutation.digest !== digest) throw conflict('请求身份已用于其他布局操作');
@@ -246,6 +369,7 @@ export class LayoutService {
       throw invalid('布局保存请求无效');
     return this.scoped(projectId, async (path) => {
       const current = await this.current(path, projectId);
+      await this.requireNoPendingApply(path);
       this.checkVersion(current, expectedWorkingVersion);
       await this.validateCandidate(path, projectId, current.document);
       if (current.workingHash === current.savedSchemaHash) return stateOf(current);
@@ -327,6 +451,7 @@ export class LayoutService {
       throw invalid('布局恢复请求无效');
     return this.scoped(projectId, async (path) => {
       const current = await this.current(path, projectId);
+      await this.requireNoPendingApply(path);
       this.checkVersion(current, expectedWorkingVersion);
       const snapshot = this.assertRevision(
         await this.store.readRevision(path, revisionId),

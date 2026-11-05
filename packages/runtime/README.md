@@ -129,4 +129,6 @@ import { OrigamixApplicationPage } from '@origamix/runtime';
 
 `DesignLayoutRenderer` 复用 DesignRenderer 的元素装饰回调，并接受只读样例 `outlet`；编辑宿主负责将选择和命令限制在布局目标内。它不执行页面或布局业务逻辑，不提供导航适配。
 
-布局物料可通过 `useLayoutNavigation()` 使用受限导航。宿主提供当前 pageId、允许的 pageIds 与跳转回调；未知目标返回 false。Runtime 不持有路由、文件或工作台凭证。完整应用路由、Template 数据装配和 iframe 应用预览由后续阶段接入。
+布局物料可通过 `useLayoutNavigation()` 使用受限导航。宿主提供当前 pageId、允许的 pageIds 与跳转回调；未知目标返回 false。Runtime 不持有路由、文件或工作台凭证。Template 已通过应用外壳提供完整路由和已应用数据装配；iframe 草稿应用预览仍由后续阶段接入。
+
+`resolveApplicationLayout(projectId, enabled, document)` 为应用外壳验证布局契约及项目归属；关闭时无需加载布局文档。系统节点 `PageNavigation` 根据受限导航适配器的 pages 描述符渲染链接，按 currentPageId 标记当前项。只有允许的 pageId 与项目 slug 路径会展示，设计态没有跳转能力；普通点击走宿主导航，修饰键点击使用 href。Template 负责路由，Runtime 不依赖 react-router。

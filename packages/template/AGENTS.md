@@ -44,3 +44,5 @@ pnpm --filter @origamix/server test:template
 - For UI changes run the template dev server and verify both themes. Run root gates for source changes; coordinate Desktop resource checks when scaffold packaging changes.
 
 - Keep eslint.config.mjs in the scaffold copy allowlist and standalone installation checks.
+
+- `src/application.tsx` owns the new-project application shell: manifest-enabled layout projection at `src/origamix-layout/schema.json`, Material RuntimeProvider theme, page-ID routing adapter and Outlet composition. `application-error.tsx` owns actionable application errors. Router adds home fallback/unknown routes. Both Materials and Runtime dist are Tailwind sources. No old-project migration or draft-preview transport is part of this shell.

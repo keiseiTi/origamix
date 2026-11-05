@@ -1,3 +1,4 @@
+import type { LayoutApplyReceipt } from './layout-apply-contracts';
 import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { Type, type Static } from '@sinclair/typebox';
@@ -17,6 +18,7 @@ export const LayoutWorkingFileSchema = Type.Object(
     version: Type.Literal(1),
     ...LayoutWorkingStateSchema.properties,
     updatedAt: Type.String(),
+    baselineHash: Type.Optional(Type.Union([hash, Type.Null()])),
     lastMutation: Type.Optional(
       Type.Object(
         {
@@ -104,6 +106,24 @@ export class LayoutStore {
     this.write(await this.path(projectPath, 'commit.json'), journal);
   removeJournal = async (projectPath: string): Promise<void> =>
     rm(await this.path(projectPath, 'commit.json'), { force: true });
+
+  private receiptPath = (projectPath: string, requestId: string): Promise<string> => {
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(requestId)) throw invalid('布局 Apply 请求 ID 无效');
+    return this.path(projectPath, 'apply-receipts', `${requestId}.json`);
+  };
+  readPendingApply = async (projectPath: string): Promise<LayoutApplyReceipt | undefined> =>
+    readOptional(await this.path(projectPath, 'apply-pending.json'));
+  writePendingApply = async (projectPath: string, receipt: LayoutApplyReceipt): Promise<void> =>
+    this.write(await this.path(projectPath, 'apply-pending.json'), receipt);
+  removePendingApply = async (projectPath: string): Promise<void> =>
+    rm(await this.path(projectPath, 'apply-pending.json'), { force: true });
+  readApplyReceipt = async (
+    projectPath: string,
+    requestId: string,
+  ): Promise<LayoutApplyReceipt | undefined> =>
+    readOptional(await this.receiptPath(projectPath, requestId));
+  writeApplyReceipt = async (projectPath: string, receipt: LayoutApplyReceipt): Promise<void> =>
+    this.write(await this.receiptPath(projectPath, receipt.clientRequestId), receipt);
   validateWorking = (value: unknown): value is LayoutWorkingFile =>
     Value.Check(LayoutWorkingFileSchema, value);
 }

@@ -354,6 +354,8 @@ export {
 export {
   LAYOUT_SCHEMA_VERSION,
   PAGE_OUTLET_TYPE,
+  PAGE_NAVIGATION_TYPE,
+  PageNavigationPropsSchema,
   LAYOUT_NAME,
   LayoutSchema,
   PageOutletPropsSchema,
@@ -411,3 +413,14 @@ export type {
 } from './transport/application-snapshot.ts';
 
 export { ProjectLayoutConfigSchema, isProjectLayoutEnabled } from './project/project-manifest.ts';
+
+export {
+  LayoutApplyRequestSchema,
+  LayoutApplyResultSchema,
+  LayoutApplyStateSchema,
+} from './layout/layout-api.ts';
+export type {
+  LayoutApplyRequest,
+  LayoutApplyResult,
+  LayoutApplyState,
+} from './layout/layout-api.ts';
