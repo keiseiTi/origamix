@@ -3,3 +3,15 @@ export { DesignRenderer } from './design';
 export type { OrigamixPageProps, RuntimeDiagnostic, RuntimeOutcome } from './react';
 export type { DesignRendererProps, DesignElementProps } from './design';
 export type { MaterialRegistry, RuntimeMaterialProps, RuntimeSchema } from './core/types';
+export {
+  OrigamixLayout,
+  DesignLayoutRenderer,
+  OrigamixApplicationPage,
+  useLayoutNavigation,
+} from './layout';
+export type {
+  OrigamixLayoutProps,
+  DesignLayoutRendererProps,
+  OrigamixApplicationPageProps,
+  LayoutNavigation,
+} from './layout';

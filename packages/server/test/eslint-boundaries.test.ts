@@ -34,6 +34,9 @@ for (const [file, code] of [
   ['agent/tools/new-tool.ts', "import { createRequire } from 'node:module';"],
   ['schema/new-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/new-service.ts', "import { helper } from '../http/helper';"],
+  ['layout/new-service.ts', "import { helper } from '../http/helper';"],
+  ['http/new-route.ts', "import { LayoutStore } from '../layout/layout-store';"],
+  ['agent/new-service.ts', "import { LayoutStore } from '../layout/layout-store';"],
   [
     'schema/new-service.ts',
     "export { FakeAgentEngine } from '../../test/fixtures/fake-agent-engine';",
@@ -81,6 +84,11 @@ for (const [file, code] of [
   ],
   ['schema/schema-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/schema-service.ts', "import { WorkingSchemaStore } from './working-schema-store';"],
+  ['layout/layout-service.ts', "import { LayoutStore } from './layout-store';"],
+  [
+    'layout/layout-store.ts',
+    "import { writeJsonAtomically } from '../infrastructure/atomic-file';",
+  ],
   ['schema/project-apply-service.ts', "import { TargetSchemaStore } from './target-schema-store';"],
   [
     'schema/working-schema-store.ts',

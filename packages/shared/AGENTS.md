@@ -50,3 +50,5 @@ pnpm --filter @origamix/shared build
 - MaterialLayout declares serializable default occupancy independently of acceptsChildren. getMaterialDisplay resolves only static property values; never evaluate expressions for design layout. Instance layout properties remain validated material props and use the existing version-checked operation pipeline.
 
 - Page validation owns unique-parent layout semantics (including rejection of a parent for the root). Consumers reuse this rule; Runtime retains rendering-boundary checks. equalJson compares acyclic JSON values independently of object key order; compileJsonSchema caches strict property validators by schema identity.
+
+- `src/layout/` owns the sole fixed-name project layout document, PageOutlet rules, reused page operations and `/layout` contracts. ProjectManifest.layout.enabled is the sole enablement source; no page bindings or multiple layouts. SessionTarget/AgentTarget describe future page/layout dispatch; current page-only Run producers remain unchanged until Agent integration. `transport/application-snapshot.ts` owns full-application snapshot/report identities. No layout migration on read.

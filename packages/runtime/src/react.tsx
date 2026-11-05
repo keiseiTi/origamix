@@ -45,7 +45,7 @@ interface ErrorBoundaryProps {
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
-class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error | null }> {
+export class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error: Error | null }> {
   state = { error: null as Error | null };
 
   static getDerivedStateFromError(error: Error): { error: Error } {

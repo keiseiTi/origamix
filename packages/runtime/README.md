@@ -108,3 +108,25 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 工作区与发布包统一从 `dist` 消费 JavaScript 和类型声明。单独构建时先构建 Shared，再构建 Runtime；根 `pnpm build:libs` 按依赖顺序准备这些产物。
 
 Runtime 包随应用统一发布，但接受的页面格式由独立 SemVer `SCHEMA_VERSION` 决定。相同契约可跨应用发布使用；当前不推断范围、不自动转换旧页面。
+
+## 布局与页面组合
+
+`OrigamixApplicationPage` 接收 pageId、页面 Schema、项目级 `ApplicationLayout` 和物料注册表。宿主从项目 manifest 的 `layout.enabled` 派生开关：关闭时传 `{ enabled: false }`，直接渲染页面；开启时传 `{ enabled: true, document }`，所有页面使用项目唯一布局。没有页面级选择或覆盖。
+
+```tsx
+import { OrigamixApplicationPage } from '@origamix/runtime';
+
+<OrigamixApplicationPage
+  pageId={pageId}
+  schema={pageSchema}
+  layout={{ enabled: true, document: layoutDocument }}
+  materials={materials}
+  onOutcome={onOutcome}
+/>;
+```
+
+布局文档的 `schema` 与 PageSchema 使用完全相同的节点表和父子结构。`OrigamixLayout` 将 `children` 放到唯一 `PageOutlet` 中；这个系统节点由 Runtime 注册，不能被物料表替换。渲染时不拼接 Schema，布局没有执行引擎、变量或业务事件，页面保留自己的运行会话，同名节点也不共享执行状态。组合层复用页面错误边界和诊断出口。
+
+`DesignLayoutRenderer` 复用 DesignRenderer 的元素装饰回调，并接受只读样例 `outlet`；编辑宿主负责将选择和命令限制在布局目标内。它不执行页面或布局业务逻辑，不提供导航适配。
+
+布局物料可通过 `useLayoutNavigation()` 使用受限导航。宿主提供当前 pageId、允许的 pageIds 与跳转回调；未知目标返回 false。Runtime 不持有路由、文件或工作台凭证。完整应用路由、Template 数据装配和 iframe 应用预览由后续阶段接入。

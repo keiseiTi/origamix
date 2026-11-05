@@ -297,3 +297,28 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 后端默认监听 `127.0.0.1:1029`，可通过宿主的 `ORIGAMIX_SERVER_PORT` 配置覆盖；`0` 表示系统分配端口，供隔离检查使用。网页开发入口默认使用 `9685`，`/api/v1` 继续由开发宿主代理并注入认证信息。固定端口被占用时启动失败，不自动连接或终止占用进程。
 
 物料协议与校验分工：Shared 检查页面结构及唯一父节点；Server 检查通用 Manifest 属性、层级和安全边界；Materials 的 React-free `antd/validation` 入口检查该物料族的字段与跨元素语义。Server 校验器单测使用固定测试清单，Materials 生成器检查真实默认值。
+
+## 项目 layout Working 与版本
+
+[LayoutService](src/layout/layout-service.ts) 管理每个项目唯一的布局内容；名称固定为“布局配置”。项目清单的 `layout.enabled` 是唯一启用来源，不支持页面覆盖。配置入口由 [ProjectService](src/projects/project-service.ts) 负责读取与修改，复用项目 manifest 队列、独占生命周期租约和原子文件写入，不在 SQLite 复制开关。缺少该字段的旧清单按关闭处理，读取不补写文件；新项目显式声明 `layout: { enabled: false }`。
+
+具名 POST 接口沿用认证、来源和服务实例检查：
+
+| 接口（前缀 `/api/v1`）       | 请求                                                       | 结果                   |
+| ---------------------------- | ---------------------------------------------------------- | ---------------------- |
+| `/layout/config/get`         | projectId                                                  | 固定 name 与 enabled   |
+| `/layout/config/update`      | projectId、enabled                                         | 固定 name 与 enabled   |
+| `/layout/working/get`        | projectId                                                  | LayoutWorkingState     |
+| `/layout/working/operations` | projectId、baseWorkingVersion、clientRequestId、operations | LayoutWorkingState     |
+| `/layout/revisions/save`     | projectId、expectedWorkingVersion                          | LayoutWorkingState     |
+| `/layout/revisions/list`     | projectId                                                  | LayoutRevisionHistory  |
+| `/layout/revisions/get`      | projectId、revisionId                                      | LayoutRevisionSnapshot |
+| `/layout/revisions/restore`  | projectId、revisionId、expectedWorkingVersion              | LayoutWorkingState     |
+
+关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。当前阶段未实现 layout Apply、Template 外壳升级或 layout Agent，开启开关不会自动改写运行项目的路由/页面壳。
+
+布局直接复用 PageSchema 的节点表与父子结构，操作批次也直接复用页面编辑器协议。第一次读取只初始化包含 PageOutlet 的 Working，不创建 Revision。每个有效批次递增 Working 版本，最终候选经过布局约束和物料校验后才原子写入。
+
+最新操作的请求身份和摘要随 Working 原子提交，紧邻重复请求返回当前结果；已有后续操作时拒绝旧版本重试，不自动重放。保存不改变 Working 内容版本，同内容重复保存不增加 Revision。保存按 journal → 不可变 Revision → Working 指针 → 清理 journal 执行，下一次访问根据保留内容恢复。历史恢复只更新 Working，不创建/应用版本，也不改变项目开关。读写使用固定 metadata 路径、同一 layout 队列与项目生命周期租约，拒绝符号链接、错误归属和不支持版本。
+
+核心验证见 [layout-service.test.ts](test/layout/layout-service.test.ts) 与 [layout-http.test.ts](test/layout/layout-http.test.ts)：覆盖项目开关、保留草稿、原子编辑、冲突、保存中断、物料与路径拒绝。页面场景不能替代项目级文档的这些风险。

@@ -1,3 +1,4 @@
+import { LayoutService } from './layout/layout-service';
 import { assertProjectNotUpgrading } from './projects/project-upgrade-store';
 import { loadProjectMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
@@ -170,6 +171,7 @@ export const startServer = async (input: {
       projects,
       projectService,
       projectApplyService,
+      layoutService: new LayoutService(projects),
       runtimeDiagnostics,
       agent: {
         conversations: conversationService,

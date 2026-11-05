@@ -19,6 +19,9 @@ import {
   type ProjectRecord,
   type OrigamixPageSchema,
   resolveProjectStack,
+  isProjectLayoutEnabled,
+  LAYOUT_NAME,
+  type LayoutConfigState,
 } from '@origamix/shared';
 
 import {
@@ -152,6 +155,32 @@ export class ProjectService {
     if (manifest.projectId !== projectId) throw invalid('项目清单身份已变化，请重新打开项目');
     return resolveProjectStack(await this.manifest.requireEditable(project.path));
   }
+
+  getLayoutConfig = (projectId: string): Promise<LayoutConfigState> =>
+    withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withProjectActivity(project.path, async () => {
+        const manifest = await this.manifest.requireEditable(project.path);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        return { name: LAYOUT_NAME, enabled: isProjectLayoutEnabled(manifest) };
+      });
+    });
+
+  setLayoutEnabled = (projectId: string, enabled: boolean): Promise<LayoutConfigState> =>
+    withProjectQueue(projectId, async () => {
+      if (typeof enabled !== 'boolean') throw invalid('布局开关无效');
+      const project = this.projects.getProject(projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      // Drain in-flight layout writes before disabling; keep retained drafts/history intact.
+      return withExclusiveProjectActivity(project.path, async () => {
+        const manifest = await this.manifest.requireEditable(project.path);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        if (manifest.layout?.enabled !== enabled)
+          await this.manifest.writeManifest(project.path, { ...manifest, layout: { enabled } });
+        return { name: LAYOUT_NAME, enabled };
+      });
+    });
 
   async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
     return this.createPageWithSchema(projectId, input, createInitialPageSchema());

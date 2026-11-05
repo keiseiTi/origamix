@@ -38,6 +38,7 @@ export class ProjectManifestStore {
       framework: BUILTIN_PROJECT_STACK.framework,
       materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],
+      layout: { enabled: false },
     });
   }
 
