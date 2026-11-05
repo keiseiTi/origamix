@@ -6,11 +6,12 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
   Spinner,
 } from '@origamix/ui';
 
-import { schemaService } from '@/services/schema';
+import { sessionService } from '@/services/session';
 import { type RevisionHistoryItem, type OrigamixPageSchema } from '@origamix/shared';
 
 import { Braces, History, RotateCcw } from 'lucide-react';
@@ -18,6 +19,7 @@ import { useEffect, useRef, useState } from 'react';
 
 interface RevisionHistoryProps {
   projectId: string;
+  targetKind?: 'page' | 'layout';
   pageId: string;
   canRestore: boolean;
   onClose: () => void;
@@ -33,11 +35,13 @@ const formatTime = (value: string): string => {
 const RevisionHistoryContent = ({
   projectId,
   pageId,
+  targetKind = 'page',
   canRestore,
   onClose,
   onRestore,
 }: RevisionHistoryProps): React.JSX.Element => {
   const theme = usePreferencesStore((state) => state.theme);
+  const [restoreCandidate, setRestoreCandidate] = useState<string | null>(null);
   const [revisions, setRevisions] = useState<RevisionHistoryItem[]>([]);
   const [selected, setSelected] = useState<RevisionHistoryItem | null>(null);
   const [schema, setSchema] = useState<OrigamixPageSchema | null>(null);
@@ -61,7 +65,7 @@ const RevisionHistoryContent = ({
 
   useEffect(() => {
     let active = true;
-    schemaService
+    sessionService(targetKind)
       .listRevisions(projectId, pageId)
       .then((result) => active && setRevisions(result.revisions))
       .catch((reason) => {
@@ -71,12 +75,12 @@ const RevisionHistoryContent = ({
     return () => {
       active = false;
     };
-  }, [projectId, pageId, listAttempt]);
+  }, [projectId, pageId, listAttempt, targetKind]);
 
   useEffect(() => {
     if (!selected) return;
     let active = true;
-    schemaService
+    sessionService(targetKind)
       .getRevision(projectId, pageId, selected.revisionId)
       .then((result) => active && setSchema(result.schema))
       .catch((reason) => {
@@ -86,7 +90,7 @@ const RevisionHistoryContent = ({
     return () => {
       active = false;
     };
-  }, [projectId, pageId, selected, viewAttempt]);
+  }, [projectId, pageId, selected, viewAttempt, targetKind]);
 
   const view = (revision: RevisionHistoryItem): void => {
     setSelected(revision);
@@ -98,7 +102,10 @@ const RevisionHistoryContent = ({
 
   const restore = async (revisionId: string): Promise<void> => {
     if (!canRestore || restorePending.current) return;
-    if (!window.confirm('恢复此版本将替换当前草稿，不会自动保存版本或应用到项目。是否继续？'))
+    if (
+      targetKind === 'page' &&
+      !window.confirm('恢复此版本将替换当前草稿，不会自动保存版本或应用到项目。是否继续？')
+    )
       return;
     restorePending.current = true;
     setRestoring(revisionId);
@@ -117,6 +124,31 @@ const RevisionHistoryContent = ({
 
   return (
     <>
+      <Dialog
+        open={restoreCandidate !== null}
+        onOpenChange={(open) => !open && setRestoreCandidate(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>恢复布局版本</DialogTitle>
+            <DialogDescription>将替换当前草稿，不会保存新版本或应用到项目。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setRestoreCandidate(null)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                const revisionId = restoreCandidate;
+                setRestoreCandidate(null);
+                if (revisionId) void restore(revisionId);
+              }}
+            >
+              恢复为草稿
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <DialogHeader className='shrink-0 border-b border-border px-5 py-4 pr-12'>
         <DialogTitle className='flex items-center gap-2'>
           <History className='size-4 text-muted-foreground' />
@@ -214,7 +246,11 @@ const RevisionHistoryContent = ({
                             variant='ghost'
                             disabled={!canRestore || restoring !== null}
                             aria-label={`恢复 ${formatTime(revision.createdAt)} 的版本`}
-                            onClick={() => void restore(revision.revisionId)}
+                            onClick={() =>
+                              targetKind === 'layout'
+                                ? setRestoreCandidate(revision.revisionId)
+                                : void restore(revision.revisionId)
+                            }
                           >
                             {restoring === revision.revisionId ? (
                               <Spinner />

@@ -59,11 +59,15 @@
         "link": "/guide/editor"
       },
       {
+        "text": "布局配置",
+        "link": "/guide/layout"
+      },
+      {
         "text": "逻辑流与函数配置",
         "link": "/guide/flow-editor"
       },
       {
-        "text": "页面预览",
+        "text": "完整应用预览",
         "link": "/guide/preview"
       },
       {
@@ -124,6 +128,10 @@
       {
         "text": "Template：生成项目骨架",
         "link": "/architecture/template"
+      },
+      {
+        "text": "Layout：契约与接口",
+        "link": "/architecture/layout"
       },
       {
         "text": "开发与验证",

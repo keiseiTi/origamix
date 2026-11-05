@@ -21,10 +21,11 @@ const DiagnosticsSchema = strictObject({});
 
 export interface DomainToolScope {
   projectId: string;
-  pageId: string;
+  pageId?: string;
 }
 
 export interface DomainToolDependencies {
+  validateLayout?: (projectId: string, schema: OrigamixPageSchema) => Promise<unknown>;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   docs: Pick<ProductDocsProvider, 'search'>;
   diagnostics: Pick<RuntimeDiagnosticService, 'getState'>;
@@ -56,12 +57,12 @@ export const createDomainAgentTools = (
   const assertPage = (): void => {
     if (
       !dependencies.projects.getProject(scope.projectId) ||
-      !dependencies.projects.getPage(scope.projectId, scope.pageId)
+      (scope.pageId !== undefined && !dependencies.projects.getPage(scope.projectId, scope.pageId!))
     ) {
       throw notFound('页面不存在或不属于当前项目');
     }
   };
-  return [
+  const tools: AgentEngineTool[] = [
     {
       name: 'search_product_docs',
       description:
@@ -78,13 +79,18 @@ export const createDomainAgentTools = (
       },
     },
     {
-      name: 'validate_page_schema',
+      name: scope.pageId ? 'validate_page_schema' : 'validate_layout_schema',
       description: 'Preflight a candidate page Schema. This never authorizes or commits a write.',
       parameters: ValidateSchema,
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
         const input = parse<{ schema: unknown }>(ValidateSchema, raw);
         assertPage();
+        if (!scope.pageId)
+          return bounded(
+            await dependencies.validateLayout!(scope.projectId, input.schema as OrigamixPageSchema),
+            maxBytes,
+          );
         const structural = validatePage(input.schema);
         const result = structural.valid
           ? await validateProjectPageAgainstMaterials(
@@ -122,10 +128,11 @@ export const createDomainAgentTools = (
         if (signal.aborted) throw signal.reason;
         parse<Record<string, never>>(DiagnosticsSchema, raw);
         return bounded(
-          await dependencies.diagnostics.getState(scope.projectId, scope.pageId),
+          await dependencies.diagnostics.getState(scope.projectId, scope.pageId!),
           maxBytes,
         );
       },
     },
   ];
+  return tools.filter((tool) => scope.pageId || tool.name !== 'get_page_diagnostics');
 };

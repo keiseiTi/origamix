@@ -1,3 +1,6 @@
+import { Button } from '@origamix/ui';
+import { useLayoutConfig } from '@/components/layout/use-layout-config';
+import { LayoutConfiguration } from '@/components/layout/layout-configuration';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
@@ -5,7 +8,7 @@ import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { PageEditor } from '@/components/editor';
 import { useCreateEditor, type EditorHandle } from '@origamix/editor';
-import type { WorkspaceMode } from './page-toolbar';
+import { PageToolbarShell, type WorkspaceMode } from './page-toolbar';
 import { AgentChatToolbar } from './agent-chat-toolbar';
 import { createWorkspaceToolbarPlugin } from './workspace-toolbar-plugin';
 import { usePageSession } from './hooks/use-page-session';
@@ -32,12 +35,11 @@ export const PageSession = ({
 }: PageSessionProps): React.JSX.Element => {
   const { page, project } = useWorkspaceStore(
     useShallow((state) => {
-      const project = state.projects.find((item) =>
-        item.pages.some((candidate) => candidate.id === pageId),
-      );
+      const tab = state.openPages.find((item) => item.id === pageId);
+      const project = state.projects.find((item) => item.id === tab?.projectId);
       return {
         project,
-        page: project?.pages.find((candidate) => candidate.id === pageId),
+        page: tab?.kind === 'layout' ? tab : project?.pages.find((item) => item.id === pageId),
       };
     }),
   );
@@ -78,6 +80,9 @@ const PageSessionContent = ({
       setPageDraft: state.setPageDraft,
     })),
   );
+  const kind = page.kind ?? 'page';
+  const layout = useLayoutConfig(projectId, kind === 'layout' && active, editorRef);
+  const available = kind === 'page' || layout.config?.enabled === true;
   const theme = usePreferencesStore((state) => state.theme);
   const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
@@ -87,6 +92,8 @@ const PageSessionContent = ({
   const { application, agent, capabilities, schemaRefreshKey } = usePageSession({
     projectId,
     pageId: page.id,
+    kind,
+    available,
     active,
     editorRef,
   });
@@ -114,6 +121,8 @@ const PageSessionContent = ({
   const editorSchemaRefreshKey = `${schemaRefreshKey}:${agent.state.workingRefreshKey ?? ''}`;
   const toolbarProps = {
     active: active,
+    targetKind: kind,
+    canPreview: true,
     projectName: projectName ?? '未命名项目',
     pageName: page.name,
     projectId: projectId,
@@ -121,13 +130,14 @@ const PageSessionContent = ({
     onModeChange: onModeChange,
     onPreview: onPreview,
     onSaveVersion: application.saveVersion,
+    onRefreshState: application.refreshApplyState,
     onApply: application.applyPage,
     onReloadFromProject: application.reloadFromProject,
     onRestoreRevision: application.restoreRevision,
-    applyStatus: application.applyStatus,
+    applyStatus: available ? application.applyStatus : ('disabled' as const),
     canApply: capabilities.canApply,
     canSaveVersion: capabilities.canSaveVersion,
-    canReload: capabilities.canReload,
+    canReload: kind === 'page' && capabilities.canReload,
     canRestore: capabilities.canEdit,
   };
 
@@ -142,10 +152,27 @@ const PageSessionContent = ({
 
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
+      {kind === 'layout' && mode !== 'preview' && (
+        <LayoutConfiguration
+          projectId={projectId}
+          config={layout}
+          editor={editor}
+          editorRef={editorRef}
+          projectName={projectName}
+          editing={mode === 'edit' && available}
+          canEdit={capabilities.canEdit}
+        />
+      )}
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
         <ChatWorkspace
           pageName={page.name}
+          targetKind={kind}
+          unavailableReason={
+            kind === 'layout' && !available
+              ? '请先开启项目布局，再通过对话修改布局配置。'
+              : undefined
+          }
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
           session={agent}
@@ -155,34 +182,64 @@ const PageSessionContent = ({
         />
       </div>
       <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-        <PageEditor
-          visible={active && mode === 'edit'}
-          schemaRefreshKey={editorSchemaRefreshKey}
-          ref={editorRef}
-          editor={editor}
-          projectId={projectId}
-          pageId={page.id}
-          onReturnToChat={() => onModeChange('chat')}
-          onWorkingCommitted={onWorkingCommitted}
-          readOnly={!capabilities.canEdit}
-          readOnlyMessage={
-            capabilities.agentChecking
-              ? '正在确认页面运行状态，请稍候'
-              : 'AI 正在修改，编辑暂时锁定'
-          }
-          targetSelection={{
-            candidates: agent.clarificationExpired
-              ? []
-              : (agent.state.run?.clarification?.candidates ?? []),
-            highlightedElementId: clarificationHighlight,
-            disabled: agent.clarificationExpired,
-            onSelect: (elementId) =>
-              void agent.selectClarification(elementId).catch(() => undefined),
-          }}
-        />
+        {!available && (
+          <PageToolbarShell
+            {...toolbarProps}
+            navigation='chat'
+            active={active && mode === 'edit'}
+          />
+        )}
+        {!available ? (
+          <div className='grid min-h-0 flex-1 place-content-center justify-items-center gap-3 p-6 text-sm text-muted-foreground'>
+            <p>
+              {layout.config
+                ? '开启项目布局后，可编辑布局内容。'
+                : (layout.error ?? '正在读取项目布局设置…')}
+            </p>
+            <Button
+              variant='outline'
+              disabled={!layout.config || layout.busy}
+              onClick={() => void layout.toggle(true)}
+            >
+              开启项目布局
+            </Button>
+          </div>
+        ) : (
+          <PageEditor
+            targetKind={kind}
+            visible={active && mode === 'edit'}
+            schemaRefreshKey={editorSchemaRefreshKey}
+            ref={editorRef}
+            editor={editor}
+            projectId={projectId}
+            pageId={page.id}
+            onReturnToChat={() => onModeChange('chat')}
+            onWorkingCommitted={onWorkingCommitted}
+            readOnly={!capabilities.canEdit || (kind === 'layout' && layout.busy)}
+            readOnlyMessage={
+              kind === 'layout'
+                ? layout.busy
+                  ? '正在更新项目布局设置'
+                  : '正在确认布局状态；未确认的应用需通过原请求恢复'
+                : capabilities.agentChecking
+                  ? '正在确认页面运行状态，请稍候'
+                  : 'AI 正在修改，编辑暂时锁定'
+            }
+            targetSelection={{
+              candidates: agent.clarificationExpired
+                ? []
+                : (agent.state.run?.clarification?.candidates ?? []),
+              highlightedElementId: clarificationHighlight,
+              disabled: agent.clarificationExpired,
+              onSelect: (elementId) =>
+                void agent.selectClarification(elementId).catch(() => undefined),
+            }}
+          />
+        )}
       </div>
       <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <PagePreviewFrame
+          targetKind={kind}
           active={active && mode === 'preview'}
           projectId={projectId}
           pageId={page.id}

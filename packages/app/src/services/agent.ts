@@ -1,3 +1,4 @@
+import type { SessionKind } from './session';
 import type {
   AgentEvent,
   CancelAgentRunResponse,
@@ -14,6 +15,12 @@ import {
   subscribeBackendStatus,
 } from './request';
 
+const agentPrefix = (kind: SessionKind) => (kind === 'layout' ? '/layout/agent' : '/agent');
+const agentScope = (projectId: string, pageId: string, kind: SessionKind) => ({
+  projectId,
+  ...(kind === 'page' ? { pageId } : {}),
+});
+
 const isAgentEvent = (value: unknown): value is AgentEvent => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const event = value as Record<string, unknown>;
@@ -27,8 +34,11 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
     event['type'].length > 0 &&
     typeof event['runId'] === 'string' &&
     /^run_[A-Za-z0-9_-]+$/.test(event['runId']) &&
-    typeof event['pageId'] === 'string' &&
-    /^page_[A-Za-z0-9_-]+$/.test(event['pageId']) &&
+    ((event['pageId'] === undefined &&
+      !!event['target'] &&
+      typeof event['target'] === 'object' &&
+      (event['target'] as { kind?: string }).kind === 'layout') ||
+      (typeof event['pageId'] === 'string' && /^page_[A-Za-z0-9_-]+$/.test(event['pageId']))) &&
     typeof event['requestId'] === 'string' &&
     event['requestId'].length > 0 &&
     typeof event['occurredAt'] === 'string' &&
@@ -82,18 +92,21 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
   return false;
 };
 
-export const listConversations = (projectId: string, pageId: string) =>
-  request<ListConversationsResponse>('/agent/conversations/list', { projectId, pageId });
+export const listConversations = (projectId: string, pageId: string, kind: SessionKind = 'page') =>
+  request<ListConversationsResponse>(
+    `${agentPrefix(kind)}/conversations/list`,
+    agentScope(projectId, pageId, kind),
+  );
 
 export const listMessages = (
   projectId: string,
   pageId: string,
   conversationId: string,
   afterSequence = -1,
+  kind: SessionKind = 'page',
 ) =>
-  request<ListMessagesResponse>('/agent/messages/list', {
-    projectId,
-    pageId,
+  request<ListMessagesResponse>(`${agentPrefix(kind)}/messages/list`, {
+    ...agentScope(projectId, pageId, kind),
     conversationId,
     afterSequence,
   });
@@ -102,11 +115,12 @@ export const listAllMessages = async (
   projectId: string,
   pageId: string,
   conversationId: string,
+  kind: SessionKind = 'page',
 ): Promise<ListMessagesResponse> => {
   const messages: ListMessagesResponse['messages'] = [];
   let afterSequence = -1;
   while (true) {
-    const page = await listMessages(projectId, pageId, conversationId, afterSequence);
+    const page = await listMessages(projectId, pageId, conversationId, afterSequence, kind);
     messages.push(...page.messages);
     if (page.messages.length < 100) break;
     const next = page.messages.at(-1)?.sequence;
@@ -117,13 +131,21 @@ export const listAllMessages = async (
 };
 
 export const createAgentRun = (input: CreateAgentRunRequest) =>
-  request<CreateAgentRunResponse>('/agent/runs/create', input);
+  request<CreateAgentRunResponse>(
+    `${agentPrefix(input.target?.kind ?? 'page')}/runs/create`,
+    input,
+  );
 
-export const getAgentRun = (projectId: string, runId: string) =>
-  request<GetAgentRunResponse>('/agent/runs/get', { projectId, runId });
+export const getAgentRun = (projectId: string, runId: string, kind: SessionKind = 'page') =>
+  request<GetAgentRunResponse>(`${agentPrefix(kind)}/runs/get`, { projectId, runId });
 
-export const cancelAgentRun = (projectId: string, runId: string, requestId: string) =>
-  request<CancelAgentRunResponse>('/agent/runs/cancel', {
+export const cancelAgentRun = (
+  projectId: string,
+  runId: string,
+  requestId: string,
+  kind: SessionKind = 'page',
+) =>
+  request<CancelAgentRunResponse>(`${agentPrefix(kind)}/runs/cancel`, {
     version: '1',
     projectId,
     runId,
@@ -143,6 +165,7 @@ export const subscribeAgentEvents = (
   projectId: string,
   runId: string,
   options: AgentEventSubscriptionOptions,
+  kind: SessionKind = 'page',
 ): (() => void) => {
   let controller = new AbortController();
   let generation = 0;
@@ -155,7 +178,7 @@ export const subscribeAgentEvents = (
     const current = refresh ? await refreshBackendConnection() : await getApiConnection();
     if (!active()) return;
     const response = await fetch(
-      `${current.baseUrl}/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
+      `${current.baseUrl}/projects/${encodeURIComponent(projectId)}${agentPrefix(kind)}/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
       {
         signal: ownedController.signal,
         headers: {

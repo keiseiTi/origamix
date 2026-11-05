@@ -10,7 +10,8 @@ import {
 } from '@/services/agent';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
-import { schemaService } from '@/services/schema';
+import { sessionService, type SessionKind } from '@/services/session';
+import { useMemo } from 'react';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 import { uniqueId } from '@/utils';
 
@@ -28,7 +29,13 @@ export type AgentChatSession = {
   refresh: () => Promise<void>;
 };
 
-export const useAgentChat = (projectId: string, pageId: string): AgentChatSession => {
+export const useAgentChat = (
+  projectId: string,
+  pageId: string,
+  enabled = true,
+  kind: SessionKind = 'page',
+): AgentChatSession => {
+  const schema = useMemo(() => sessionService(kind), [kind]);
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
   const generation = useRef(0);
@@ -47,6 +54,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
   } | null>(null);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
+    if (!enabled) return;
     const currentGeneration = generation.current;
     const request = ++authorityRequest.current;
     const current = () =>
@@ -55,7 +63,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       authorityRequest.current === request;
     dispatch({ type: 'connection.changed', connection: 'recovering' });
     try {
-      const listed = await listConversations(projectId, pageId);
+      const listed = await listConversations(projectId, pageId, kind);
       if (!current()) return;
       const conversation = listed.conversations[0];
       conversationId.current = conversation?.conversationId ?? null;
@@ -64,10 +72,10 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
-      const history = await listAllMessages(projectId, pageId, conversation.conversationId);
+      const history = await listAllMessages(projectId, pageId, conversation.conversationId, kind);
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
-      if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
+      if (lastRunId) run = (await getAgentRun(projectId, lastRunId, kind)).run;
       if (current()) {
         setVerifiedPageKey(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
@@ -79,7 +87,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           message: error instanceof Error ? error.message : '无法加载对话记录',
         });
     }
-  }, [pageId, projectId, pageKey]);
+  }, [pageId, projectId, pageKey, enabled, kind]);
 
   useEffect(() => {
     generation.current += 1;
@@ -130,7 +138,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     if (!clarification) return;
     let disposed = false;
     const refresh = () => {
-      void schemaService
+      void schema
         .workingState(projectId, pageId)
         .then((working) => {
           if (!disposed) setLatestWorking({ pageKey, version: working.workingVersion });
@@ -141,7 +149,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     return () => {
       disposed = true;
     };
-  }, [clarification, pageId, pageKey, projectId]);
+  }, [clarification, pageId, pageKey, projectId, schema]);
   useEffect(() => {
     if (!activeRunId) return;
     dispatch({ type: 'connection.changed', connection: 'connecting' });
@@ -162,32 +170,40 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
           });
       }, 750);
     };
-    const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
-      afterEventId,
-      onOpen: () => {
-        if (current()) dispatch({ type: 'connection.changed', connection: 'connected' });
+    const unsubscribe = subscribeAgentEvents(
+      projectId,
+      activeRunId,
+      {
+        afterEventId,
+        onOpen: () => {
+          if (current()) dispatch({ type: 'connection.changed', connection: 'connected' });
+        },
+        onEvent: (event: AgentEvent) => {
+          if (!current()) return;
+          if (event.target && (event.target.kind !== kind || event.target.projectId !== projectId))
+            return;
+          if (kind === 'layout' && event.target?.kind !== 'layout') return;
+          dispatch({ type: 'event.received', event });
+          if (
+            event.type === 'run.completed' ||
+            event.type === 'run.failed' ||
+            event.type === 'run.cancelled' ||
+            event.type === 'run.interrupted'
+          ) {
+            terminalReceived = true;
+            setVerifiedPageKey(null);
+            void loadAuthority();
+          }
+        },
+        onError: () => {
+          if (!terminalReceived) reconnect();
+        },
+        onClose: () => {
+          if (!terminalReceived) reconnect();
+        },
       },
-      onEvent: (event: AgentEvent) => {
-        if (!current()) return;
-        dispatch({ type: 'event.received', event });
-        if (
-          event.type === 'run.completed' ||
-          event.type === 'run.failed' ||
-          event.type === 'run.cancelled' ||
-          event.type === 'run.interrupted'
-        ) {
-          terminalReceived = true;
-          setVerifiedPageKey(null);
-          void loadAuthority();
-        }
-      },
-      onError: () => {
-        if (!terminalReceived) reconnect();
-      },
-      onClose: () => {
-        if (!terminalReceived) reconnect();
-      },
-    });
+      kind,
+    );
     return () => {
       disposed = true;
       window.clearTimeout(timer);
@@ -196,7 +212,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     // Event ids are per Run. The current cursor is captured only when opening a stream;
     // received deltas must not tear down and recreate the same connection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRunId, loadAuthority, projectId, reconnectAttempt]);
+  }, [activeRunId, loadAuthority, projectId, reconnectAttempt, kind]);
 
   const submit = useCallback(
     async (
@@ -207,6 +223,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       },
       retryInput?: CreateAgentRunRequest,
     ): Promise<void> => {
+      if (!enabled) throw new Error('请先开启项目布局配置');
       const content = submission.text.trim();
       const operations = usePendingOperations.getState();
       if (
@@ -234,9 +251,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       let input: CreateAgentRunRequest | undefined;
       let accepted = false;
       try {
-        const working = retryInput
-          ? undefined
-          : await schemaService.workingState(projectId, pageId);
+        const working = retryInput ? undefined : await schema.workingState(projectId, pageId);
         const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
         const latest = usePendingOperations.getState().agents[pageKey];
         if (latest?.inFlight || (!retryInput && latest))
@@ -244,7 +259,9 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         input = retryInput ?? {
           version: '1',
           projectId,
-          pageId,
+          ...(kind === 'page'
+            ? { pageId, target: { kind: 'page' as const, projectId, pageId } }
+            : { target: { kind: 'layout' as const, projectId } }),
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
           clientRequestId: requestId(),
           baseWorkingVersion,
@@ -262,12 +279,12 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         const replayEvents = isRunActive(created.status);
         // A renderer can briefly outlive an older desktop Server during a dev
         // rebuild. Recover the Run snapshot instead of silently skipping SSE.
-        const run = created.run ?? (await getAgentRun(projectId, created.runId)).run;
+        const run = created.run ?? (await getAgentRun(projectId, created.runId, kind)).run;
         if (!current()) return;
         // The create response includes the Run snapshot, so subscribe before
         // loading message history or making another backend state request.
         if (replayEvents) dispatch({ type: 'run.queued', run });
-        const history = await listAllMessages(projectId, pageId, created.conversationId);
+        const history = await listAllMessages(projectId, pageId, created.conversationId, kind);
         // A terminal SSE event may have started a newer backend state reload while
         // this initial reconciliation was in flight. Never let this older
         // snapshot overwrite the persisted final assistant message.
@@ -312,7 +329,17 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         sending.current = false;
       }
     },
-    [pageId, projectId, pageKey, verifiedPageKey, state.stage, loadAuthority],
+    [
+      pageId,
+      projectId,
+      pageKey,
+      verifiedPageKey,
+      state.stage,
+      loadAuthority,
+      enabled,
+      kind,
+      schema,
+    ],
   );
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
@@ -322,7 +349,7 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
       const clarification = state.run?.clarification;
       const candidate = clarification?.candidates?.find((item) => item.elementId === elementId);
       if (!state.run || !clarification || !candidate) throw new Error('澄清选项不存在');
-      const working = await schemaService.workingState(projectId, pageId);
+      const working = await schema.workingState(projectId, pageId);
       if (working.workingVersion !== clarification.baseWorkingVersion) {
         throw new Error('选项已过期，请重新描述你的需求');
       }
@@ -335,14 +362,14 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
         },
       });
     },
-    [pageId, projectId, state.run, submit],
+    [pageId, projectId, state.run, submit, schema],
   );
 
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
-    await cancelAgentRun(projectId, state.run.runId, requestId());
+    await cancelAgentRun(projectId, state.run.runId, requestId(), kind);
     await loadAuthority();
-  }, [loadAuthority, projectId, state.run, state.stage]);
+  }, [loadAuthority, projectId, state.run, state.stage, kind]);
 
   const retry = useCallback(async (): Promise<void> => {
     const request = usePendingOperations.getState().agents[pageKey];
@@ -362,8 +389,9 @@ export const useAgentChat = (projectId: string, pageId: string): AgentChatSessio
     else await loadAuthority();
   }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
 
-  const activity =
-    verifiedPageKey !== pageKey || pending || preparing
+  const activity = !enabled
+    ? 'idle'
+    : verifiedPageKey !== pageKey || pending || preparing
       ? 'unknown'
       : isRunActive(state.stage)
         ? 'running'

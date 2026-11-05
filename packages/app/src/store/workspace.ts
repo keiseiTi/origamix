@@ -1,10 +1,14 @@
+import { LAYOUT_NAME } from '@origamix/shared';
 import { create } from 'zustand';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 export type PageLifecycleStatus =
   'in_sync' | 'draft_unsaved' | 'saved_pending_apply' | 'external_change';
 
+export const layoutTabId = (projectId: string): string => `layout:${projectId}`;
+
 export interface PageItem {
+  kind?: 'page' | 'layout';
   id: string;
   name: string;
   fileName: string;
@@ -81,7 +85,8 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           seen.has(tab.id) ||
           typeof tab.projectId !== 'string' ||
           typeof tab.name !== 'string' ||
-          typeof tab.fileName !== 'string'
+          typeof tab.fileName !== 'string' ||
+          (tab.kind === 'layout' && tab.id !== layoutTabId(tab.projectId as string))
         )
           continue;
         seen.add(tab.id);
@@ -92,6 +97,7 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           fileName: tab.fileName,
           mode: isMode(tab.mode) && tab.mode !== 'preview' ? tab.mode : 'chat',
           status: null,
+          ...(tab.kind === 'layout' ? { kind: 'layout' as const, name: LAYOUT_NAME } : {}),
         });
       }
     }
@@ -114,7 +120,13 @@ const readSession = (): WorkspaceSession => {
   }
 };
 
-const pageLocation = (projects: ProjectItem[], pageId: string) => {
+export const pageLocation = (projects: ProjectItem[], pageId: string) => {
+  const layoutProject = projects.find((project) => layoutTabId(project.id) === pageId);
+  if (layoutProject)
+    return {
+      project: layoutProject,
+      page: { id: pageId, name: LAYOUT_NAME, fileName: '', kind: 'layout' as const },
+    };
   for (const project of projects) {
     const page = project.pages.find((item) => item.id === pageId);
     if (page) return { project, page };
@@ -132,6 +144,7 @@ const reconcileTabs = (projects: ProjectItem[], tabs: OpenPageTab[]): OpenPageTa
             projectId: location.project.id,
             name: location.page.name,
             fileName: location.page.fileName,
+            ...(location.page.kind ? { kind: location.page.kind } : {}),
           },
         ]
       : [];
@@ -170,7 +183,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         openPages,
         pageDrafts: withoutDrafts(
           state.pageDrafts,
-          new Set(projects.flatMap((project) => project.pages.map((page) => page.id))),
+          new Set(
+            projects.flatMap((project) => [
+              layoutTabId(project.id),
+              ...project.pages.map((page) => page.id),
+            ]),
+          ),
         ),
       };
     }),
@@ -186,7 +204,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             {
               ...location.page,
               projectId: location.project.id,
-              mode: 'chat' as const,
+              mode: location.page.kind === 'layout' ? ('edit' as const) : ('chat' as const),
               status: null,
             },
           ];

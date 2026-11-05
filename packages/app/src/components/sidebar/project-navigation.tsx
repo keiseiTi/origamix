@@ -1,7 +1,7 @@
-import { Folder, MessageSquareText, Plus } from 'lucide-react';
+import { Folder, MessageSquareText, Plus, PanelsTopLeft } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@origamix/ui';
-import { useWorkspaceStore, type ProjectItem } from '@/store/workspace';
+import { useWorkspaceStore, layoutTabId, type ProjectItem } from '@/store/workspace';
 import { SidebarActionMenu } from './action-menu';
 import type { LifecycleTarget } from './mod/lifecycle-modal';
 
@@ -43,6 +43,16 @@ const ProjectNavigationRow = ({
         <Plus size={14} />
       </Button>
     </div>
+    <Button
+      variant='ghost'
+      aria-current={activePageId === layoutTabId(project.id) ? 'page' : undefined}
+      className={`ml-2.5 h-8.5 w-[calc(100%-10px)] justify-start gap-2 px-4 text-xs ${activePageId === layoutTabId(project.id) ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400'}`}
+      onClick={() => onSelectPage(layoutTabId(project.id))}
+      aria-label={`${project.name} 布局配置`}
+    >
+      <PanelsTopLeft size={13} />
+      布局配置
+    </Button>
     {project.pages.map((page) => (
       <div
         key={page.id}

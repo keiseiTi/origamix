@@ -20,7 +20,7 @@ const stageLabels = {
   queued: '已排队',
   preparing: '正在准备',
   reasoning: '正在处理请求',
-  reading: '正在读取页面',
+  reading: '正在读取内容',
   deciding: '正在整理结果',
   validating: '正在校验',
   repairing: '正在修正',
@@ -73,8 +73,12 @@ export const ChatWorkspace = ({
   onViewChanges,
   onConfigureModel,
   onClarificationHover,
+  unavailableReason,
+  targetKind = 'page',
 }: {
   pageName: string;
+  targetKind?: 'page' | 'layout';
+  unavailableReason?: string;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
@@ -96,7 +100,7 @@ export const ChatWorkspace = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
   const active = isRunActive(state.stage);
-  const modelConfigurationRequired = hasModelApiKey === false;
+  const modelConfigurationRequired = !unavailableReason && hasModelApiKey === false;
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -115,7 +119,8 @@ export const ChatWorkspace = ({
   );
 
   const submit = async (): Promise<void> => {
-    if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
+    if (unavailableReason || !draft.trim() || activity !== 'idle' || modelConfigurationRequired)
+      return;
     try {
       await send(draft);
       if (mountedRef.current) onDraftChange('');
@@ -135,7 +140,10 @@ export const ChatWorkspace = ({
             <div>
               <strong className='text-sm'>准备好修改“{pageName}”</strong>
               <p className='mt-1 max-w-155 text-zinc-600 dark:text-zinc-300'>
-                只处理当前页面的搭建与使用问题。页面变更会先通过校验并保留为草稿，由你决定何时保存版本。
+                {unavailableReason ??
+                  (targetKind === 'layout'
+                    ? '修改项目唯一的布局配置。布局变更会先校验并保留为草稿，由你决定何时保存版本和应用。'
+                    : '只处理当前页面的搭建与使用问题。页面变更会先通过校验并保留为草稿，由你决定何时保存版本。')}
               </p>
             </div>
           </div>
@@ -146,7 +154,9 @@ export const ChatWorkspace = ({
             </div>
           ) : state.messages.length === 0 && !state.error ? (
             <p className='rounded-xl border border-dashed border-zinc-200 p-4 text-center text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-              可以从“创建一个表单表格”开始。
+              {targetKind === 'layout'
+                ? '可以从“创建顶部导航和侧边栏布局”开始。'
+                : '可以从“创建一个表单表格”开始。'}
             </p>
           ) : (
             <ol className='space-y-4' aria-label='对话记录'>
@@ -204,7 +214,7 @@ export const ChatWorkspace = ({
           {state.run?.clarification?.candidates?.length ? (
             <div className='mt-4 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700'>
               <p className='mb-2 text-xs text-zinc-500 dark:text-zinc-400'>
-                {clarificationExpired ? '选项已过期，请重新描述需求。' : '请选择页面中的目标：'}
+                {clarificationExpired ? '选项已过期，请重新描述需求。' : '请选择要修改的元素：'}
               </p>
               <div className='flex flex-wrap gap-2'>
                 {state.run.clarification.candidates.map((candidate, index) => (
@@ -279,23 +289,31 @@ export const ChatWorkspace = ({
                   void submit();
                 }
               }}
-              disabled={activity !== 'idle' || modelConfigurationRequired}
+              disabled={
+                Boolean(unavailableReason) || activity !== 'idle' || modelConfigurationRequired
+              }
               className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
               aria-label='发送消息'
               placeholder={
-                modelConfigurationRequired
-                  ? '请先配置 DeepSeek API Key'
-                  : activity === 'unknown'
-                    ? '正在确认页面状态…'
-                    : active
-                      ? '本轮完成后可继续修改'
-                      : '描述你想创建或修改的页面'
+                unavailableReason
+                  ? unavailableReason
+                  : modelConfigurationRequired
+                    ? '请先配置 DeepSeek API Key'
+                    : activity === 'unknown'
+                      ? targetKind === 'layout'
+                        ? '正在确认布局状态…'
+                        : '正在确认页面状态…'
+                      : active
+                        ? '本轮完成后可继续修改'
+                        : targetKind === 'layout'
+                          ? '描述你想创建或修改的布局'
+                          : '描述你想创建或修改的页面'
               }
             />
             <footer className='flex items-center justify-between mt-2'>
               <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
                 <LayoutPanelLeft size={14} />
-                当前页面
+                {targetKind === 'layout' ? '项目布局' : '当前页面'}
               </span>
 
               {active ? (
@@ -313,7 +331,12 @@ export const ChatWorkspace = ({
                   size='icon-sm'
                   className='h-6 min-h-6 w-6 min-w-6'
                   aria-label='发送'
-                  disabled={!draft.trim() || activity !== 'idle' || modelConfigurationRequired}
+                  disabled={
+                    Boolean(unavailableReason) ||
+                    !draft.trim() ||
+                    activity !== 'idle' ||
+                    modelConfigurationRequired
+                  }
                   onClick={() => void submit()}
                 >
                   <Send size={14} />

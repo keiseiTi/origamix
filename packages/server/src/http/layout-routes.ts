@@ -1,6 +1,7 @@
 import type { Static } from '@sinclair/typebox';
 import {
   LayoutScopeSchema,
+  LayoutUpdateRequestSchema,
   LayoutApplyRequestSchema,
   LayoutConfigRequestSchema,
   LayoutConfigUpdateRequestSchema,
@@ -45,6 +46,11 @@ export const registerLayoutRoutes = ({ server, input, route }: RouteRegistration
     '/api/v1/layout/working/get',
     { schema: { body: LayoutScopeSchema } },
     route<Static<typeof LayoutScopeSchema>>(({ body }) => layout.getWorking(body.projectId)),
+  );
+  server.post(
+    '/api/v1/layout/working/update',
+    { schema: { body: LayoutUpdateRequestSchema } },
+    route<Static<typeof LayoutUpdateRequestSchema>>(({ body }) => layout.updateWorking(body)),
   );
   server.post(
     '/api/v1/layout/working/operations',

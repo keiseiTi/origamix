@@ -47,6 +47,7 @@ export interface EditorProviderProps {
   plugins?: readonly EditorPlugin[];
   save?: EditorSaveOptions;
   readOnly?: boolean;
+  validateSchema?: EditorEnvironment['validateSchema'];
   theme?: EditorEnvironment['theme'];
   materialCatalog?: EditorEnvironment['materialCatalog'];
   rootMaterialTypes?: readonly string[];
@@ -64,6 +65,7 @@ export const EditorProvider = ({
   plugins,
   save = EMPTY_SAVE,
   readOnly = false,
+  validateSchema,
   theme = 'light',
   materialCatalog = EMPTY_CATALOG,
   rootMaterialTypes = EMPTY_ROOT_TYPES,
@@ -80,6 +82,7 @@ export const EditorProvider = ({
       materialCatalog,
       rootMaterialTypes,
       targetSelection,
+      validateSchema,
     }),
   );
   useLayoutEffect(() => {
@@ -90,8 +93,18 @@ export const EditorProvider = ({
       materialCatalog,
       rootMaterialTypes,
       targetSelection,
+      validateSchema,
     });
-  }, [store, editor, readOnly, theme, materialCatalog, rootMaterialTypes, targetSelection]);
+  }, [
+    store,
+    editor,
+    readOnly,
+    theme,
+    materialCatalog,
+    rootMaterialTypes,
+    targetSelection,
+    validateSchema,
+  ]);
   const callback = useRef(onChange);
   useEffect(() => {
     callback.current = onChange;

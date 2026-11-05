@@ -517,6 +517,11 @@ describe('Project layout Apply', () => {
             ],
           }),
         ).rejects.toThrow('尚未确认');
+        expect((await f.apply.getLayoutState(f.project.id)).pendingRequest).toEqual({
+          clientRequestId: input.clientRequestId,
+          revisionId: input.expectedRevisionId,
+          workingVersion: input.expectedWorkingVersion,
+        });
         await expect(f.apply.applyLayout({ ...input, clientRequestId: 'another' })).rejects.toThrow(
           '原请求',
         );

@@ -1,3 +1,5 @@
+import { withAgentTarget } from './agent-target.ts';
+import { AgentTargetSchema } from '../layout/layout-schema.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import {
@@ -65,16 +67,19 @@ export const AgentMessageSchema = strictObject({
   createdAt: IsoDateTimeSchema,
 });
 
-export const ConversationSchema = strictObject({
-  version: AgentProtocolVersionSchema,
-  conversationId: ConversationIdSchema,
-  projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
-  pageId: PageIdSchema,
-  title: Type.String({ minLength: 1, maxLength: 500 }),
-  status: Type.Union([Type.Literal('active'), Type.Literal('archived')]),
-  createdAt: IsoDateTimeSchema,
-  updatedAt: IsoDateTimeSchema,
-});
+export const ConversationSchema = withAgentTarget(
+  strictObject({
+    version: AgentProtocolVersionSchema,
+    conversationId: ConversationIdSchema,
+    projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
+    pageId: Type.Optional(PageIdSchema),
+    target: Type.Optional(AgentTargetSchema),
+    title: Type.String({ minLength: 1, maxLength: 500 }),
+    status: Type.Union([Type.Literal('active'), Type.Literal('archived')]),
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
+  }),
+);
 
 export type MessageContentBlock = Static<typeof MessageContentBlockSchema>;
 

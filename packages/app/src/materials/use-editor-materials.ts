@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EditorMaterialRegistration } from '@origamix/editor';
 import { projectsService } from '@/services/projects';
-import { loadEditorMaterials } from './loaders';
+import { loadEditorMaterials, loadRuntimeMaterials } from './loaders';
 
 export const useEditorMaterials = (projectId: string, enabled: boolean) => {
   const [attempt, setAttempt] = useState(0);
@@ -9,6 +9,7 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
   const [result, setResult] = useState<{
     scope: typeof scope;
     registration?: EditorMaterialRegistration;
+    Provider?: Awaited<ReturnType<typeof loadRuntimeMaterials>>['Provider'];
     error?: string;
   } | null>(null);
   useEffect(() => {
@@ -16,9 +17,14 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
     let active = true;
     projectsService
       .stack(scope.projectId)
-      .then((stack) => loadEditorMaterials(stack.materialSet))
-      .then((registration) => {
-        if (active) setResult({ scope, registration });
+      .then((stack) =>
+        Promise.all([
+          loadEditorMaterials(stack.materialSet),
+          loadRuntimeMaterials(stack.materialSet),
+        ]),
+      )
+      .then(([registration, runtime]) => {
+        if (active) setResult({ scope, registration, Provider: runtime.Provider });
       })
       .catch((reason: unknown) => {
         if (active)
@@ -33,6 +39,7 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
   }, [scope, enabled]);
   return {
     registration: result?.scope === scope ? result.registration : undefined,
+    Provider: result?.scope === scope ? result.Provider : undefined,
     error: result?.scope === scope ? result.error : undefined,
     retry: () => setAttempt((value) => value + 1),
   };

@@ -30,6 +30,7 @@ export interface EditorEnvironment {
   rootMaterialTypes: readonly string[];
   targetSelection: EditorTargetSelection | undefined;
   readOnly: boolean;
+  validateSchema?: (schema: OrigamixPageSchema) => void;
   editor: EditorInstance | undefined;
 }
 export interface EditorCore extends EditorEnvironment {
@@ -124,6 +125,7 @@ export const createEditorSession = (
         const current = get().schema;
         if (equalJson(current, next)) return;
         if (!isPageSchema(next)) throw new Error('编辑结果无效，原有草稿已保留');
+        get().validateSchema?.(next);
         const knownTypes = new Set(materials.map((material) => material.type));
         if (
           materials.length &&

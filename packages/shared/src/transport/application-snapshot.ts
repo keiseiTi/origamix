@@ -24,7 +24,11 @@ export const ApplicationSnapshotSchema = Type.Object(
     initialPageId: Type.Union([LayoutPageIdSchema, Type.Null()]),
     pages: Type.Array(
       Type.Object(
-        { pageId: LayoutPageIdSchema, name: Type.String(), path: Type.String({ pattern: '^/' }) },
+        {
+          pageId: LayoutPageIdSchema,
+          name: Type.String(),
+          path: Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' }),
+        },
         strict,
       ),
     ),
@@ -88,3 +92,5 @@ export const ApplicationRenderReportSchema = Type.Object(
   strict,
 );
 export type ApplicationRenderReport = Static<typeof ApplicationRenderReportSchema>;
+export const isApplicationRenderReport = (value: unknown): value is ApplicationRenderReport =>
+  Value.Check(ApplicationRenderReportSchema, value);

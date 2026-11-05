@@ -1,3 +1,4 @@
+import { SchemaValidationError } from '../schema/validation/schema-validation';
 import { LayoutApplyReceiptSchema, type LayoutApplyReceipt } from './layout-apply-contracts';
 import { nanoid } from 'nanoid';
 import { Value } from '@sinclair/typebox/value';
@@ -5,15 +6,13 @@ import {
   createEmptyLayoutDocument,
   isProjectLayoutEnabled,
   validateLayoutDocument,
-  PageOutletPropsSchema,
-  PAGE_OUTLET_TYPE,
-  PAGE_NAVIGATION_TYPE,
-  PageNavigationPropsSchema,
   LayoutScopeSchema,
   LayoutApplyRequestSchema,
   type LayoutApplyRequest,
   type LayoutApplyResult,
   LayoutOperationsRequestSchema,
+  LayoutUpdateRequestSchema,
+  type LayoutUpdateRequest,
   LayoutSaveRevisionRequestSchema,
   LayoutRevisionRequestSchema,
   LayoutRestoreRevisionRequestSchema,
@@ -26,7 +25,7 @@ import {
 import type { ProjectRepository } from '../projects/project-repository';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
 import { withProjectActivity } from '../projects/project-activity';
-import { loadProjectMaterials } from '../projects/project-materials';
+import { loadLayoutMaterials } from '../projects/project-materials';
 import { validatePageAgainstMaterials } from '../schema/validation/material-validation';
 import { SchemaOperationError } from '../schema/schema-operation-engine';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
@@ -75,7 +74,7 @@ export class LayoutService {
 
   private assertDocument = (value: unknown, projectId: string): ProjectLayoutDocument => {
     const issue = validateLayoutDocument(value)[0];
-    if (issue) throw invalid(`${issue.code} at ${issue.path}: ${issue.message}`);
+    if (issue) throw new SchemaValidationError(issue);
     if ((value as ProjectLayoutDocument).projectId !== projectId) throw invalid('布局文档归属无效');
     return value as ProjectLayoutDocument;
   };
@@ -182,36 +181,14 @@ export class LayoutService {
     this.assertDocument(document, projectId);
     if (Buffer.byteLength(JSON.stringify(document), 'utf8') > 2 * 1024 * 1024)
       throw invalid('布局文档超过 2 MiB 限制');
-    const materials = await loadProjectMaterials(path);
-    const runtime = {
-      ...materials.validation,
-      registry: {
-        ...materials.validation.registry,
-        [PAGE_NAVIGATION_TYPE]: {
-          type: PAGE_NAVIGATION_TYPE,
-          version: materials.manifest.materialSet.version,
-          propsSchema: PageNavigationPropsSchema,
-          acceptsChildren: false,
-          role: 'layout' as const,
-          context: { variables: [], writable: [], actions: [], events: [] },
-        },
-        [PAGE_OUTLET_TYPE]: {
-          type: PAGE_OUTLET_TYPE,
-          version: materials.manifest.materialSet.version,
-          propsSchema: PageOutletPropsSchema,
-          acceptsChildren: false,
-          role: 'layout' as const,
-          context: { variables: [], writable: [], actions: [], events: [] },
-        },
-      },
-    };
+    const materials = await loadLayoutMaterials(path);
     const result = validatePageAgainstMaterials(
       document.schema,
       [materials.manifest.materialSet],
-      runtime,
+      materials.validation,
     );
     const issue = result.errors[0];
-    if (issue) throw invalid(`${issue.code} at ${issue.path}: ${issue.message}`);
+    if (issue) throw new SchemaValidationError(issue);
   };
 
   private requireNoPendingApply = async (path: string): Promise<void> => {
@@ -237,7 +214,7 @@ export class LayoutService {
       path: string,
       working: LayoutWorkingState,
       baselineHash: string | null,
-      pending: boolean,
+      pending: LayoutApplyReceipt | undefined,
     ) => Promise<T>,
   ): Promise<T> =>
     this.scoped(projectId, async (path) => {
@@ -246,7 +223,7 @@ export class LayoutService {
         path,
         stateOf(current),
         current.baselineHash ?? null,
-        !!this.checkedReceipt(await this.store.readPendingApply(path), projectId),
+        this.checkedReceipt(await this.store.readPendingApply(path), projectId),
       );
     });
 
@@ -328,9 +305,17 @@ export class LayoutService {
   getWorking = (projectId: string): Promise<LayoutWorkingState> =>
     this.scoped(projectId, async (path) => stateOf(await this.current(path, projectId)));
 
-  applyOperations = (input: LayoutOperationsRequest): Promise<LayoutWorkingState> => {
-    if (!Value.Check(LayoutOperationsRequestSchema, input)) throw invalid('布局操作请求无效');
-    return this.scoped(input.projectId, async (path) => {
+  private commitCandidate = (
+    input: LayoutOperationsRequest | LayoutUpdateRequest,
+    create: (current: ProjectLayoutDocument) => ProjectLayoutDocument,
+    agent?: {
+      runId: string;
+      operationDigest: string;
+      beforeWrite: () => void;
+      maxSchemaBytes: number;
+    },
+  ): Promise<LayoutWorkingState> =>
+    this.scoped(input.projectId, async (path) => {
       const current = await this.current(path, input.projectId);
       await this.requireNoPendingApply(path);
       const digest = hashJson(input);
@@ -341,12 +326,30 @@ export class LayoutService {
       this.checkVersion(current, input.baseWorkingVersion);
       let document: ProjectLayoutDocument;
       try {
-        document = applyLayoutOperations(current.document, input.operations);
+        document = create(current.document);
       } catch (error) {
-        if (error instanceof SchemaOperationError) throw invalid(`${error.code}: ${error.message}`);
+        if (error instanceof SchemaOperationError) {
+          if (agent)
+            throw new SchemaValidationError({
+              code: error.code,
+              path: error.path ?? '/',
+              message: error.message,
+              operationIndex: error.operationIndex,
+            });
+          throw invalid(`${error.code}: ${error.message}`);
+        }
         throw error;
       }
       await this.validateCandidate(path, input.projectId, document);
+      if (
+        agent &&
+        Buffer.byteLength(JSON.stringify(document.schema), 'utf8') > agent.maxSchemaBytes
+      )
+        throw new SchemaValidationError({
+          code: 'SCHEMA_SIZE_LIMIT',
+          path: '/',
+          message: '最终布局超过本 Run 的 Schema 大小预算',
+        });
       const next: LayoutWorkingFile = {
         ...current,
         document,
@@ -355,10 +358,79 @@ export class LayoutService {
         updatedAt: new Date().toISOString(),
         lastMutation: { requestId: input.clientRequestId, digest },
       };
-      // Identity and draft commit together, so a lost response cannot repeat a mutation.
+      if (agent) {
+        agent.beforeWrite();
+        await this.store.writeAgentReceipt(path, {
+          runId: agent.runId,
+          projectId: input.projectId,
+          baseWorkingVersion: input.baseWorkingVersion,
+          resultWorkingVersion: next.workingVersion,
+          resultWorkingHash: next.workingHash,
+          operationDigest: agent.operationDigest,
+        });
+        agent.beforeWrite();
+      }
       await this.store.writeWorking(path, next);
       return stateOf(next);
     });
+  applyOperations = (input: LayoutOperationsRequest): Promise<LayoutWorkingState> => {
+    if (!Value.Check(LayoutOperationsRequestSchema, input)) throw invalid('布局操作请求无效');
+    return this.commitCandidate(input, (current) =>
+      applyLayoutOperations(current, input.operations),
+    );
+  };
+  validateSchema = (projectId: string, schema: ProjectLayoutDocument['schema']) =>
+    this.scoped(projectId, async (path) => {
+      try {
+        await this.validateCandidate(path, projectId, {
+          ...createEmptyLayoutDocument(projectId),
+          schema,
+        });
+        return { valid: true, errors: [] };
+      } catch (error) {
+        if (error instanceof SchemaValidationError) return { valid: false, errors: [error.issue] };
+        throw error;
+      }
+    });
+  applyAgentOperations = (
+    input: LayoutOperationsRequest,
+    agent: {
+      runId: string;
+      operationDigest: string;
+      beforeWrite: () => void;
+      maxSchemaBytes: number;
+    },
+  ): Promise<LayoutWorkingState> => {
+    if (!Value.Check(LayoutOperationsRequestSchema, input)) throw invalid('布局操作请求无效');
+    return this.commitCandidate(
+      input,
+      (current) => applyLayoutOperations(current, input.operations),
+      agent,
+    );
+  };
+  getAgentReceipt = async (projectId: string, runId: string) => {
+    const project = this.projects.getProject(projectId);
+    if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+    return withProjectActivity(project.path, () =>
+      queue.run(project.path, async () => {
+        // Recovery only inspects retained bytes, including after the project switch is off.
+        const manifest = await new ProjectManifestStore().requireEditable(project.path);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        const retained = await this.store.readWorking(project.path);
+        if (!retained) return undefined;
+        return {
+          working: stateOf(this.assertWorking(retained, projectId)),
+          receipt: await this.store.readAgentReceipt(project.path, runId),
+        };
+      }),
+    );
+  };
+  updateWorking = (input: LayoutUpdateRequest): Promise<LayoutWorkingState> => {
+    if (!Value.Check(LayoutUpdateRequestSchema, input)) throw invalid('布局候选请求无效');
+    return this.commitCandidate(input, (current) => ({
+      ...current,
+      schema: structuredClone(input.schema),
+    }));
   };
   saveRevision = (
     projectId: string,

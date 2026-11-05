@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
 import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import {
@@ -80,7 +80,7 @@ export class ProjectRepository {
       .all()
       .map((row) => pageRecord(row, this.client));
   }
-  hasActiveRuns(projectId: string, pageId?: string): boolean {
+  hasActiveRuns(projectId: string, pageId?: string | null): boolean {
     return Boolean(
       this.client
         .select({ id: agentRuns.id })
@@ -88,7 +88,11 @@ export class ProjectRepository {
         .where(
           and(
             eq(agentRuns.projectId, projectKey(this.client, projectId)),
-            ...(pageId ? [eq(agentRuns.pageId, pageKey(this.client, pageId))] : []),
+            ...(pageId === null
+              ? [isNull(agentRuns.pageId)]
+              : pageId
+                ? [eq(agentRuns.pageId, pageKey(this.client, pageId))]
+                : []),
             notInArray(agentRuns.status, terminal),
           ),
         )

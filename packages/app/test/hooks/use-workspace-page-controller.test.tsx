@@ -82,5 +82,45 @@ describe('workspace page operations', () => {
     await act(async () => hook.result.current.openPreview('b'));
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('preview');
     expect(hook.result.current.transitionError).toBeNull();
+
+    // Only the browser owns unsent drafts in retained editors: the preview
+    // barrier must include an inactive layout, without touching other projects.
+    useWorkspaceStore.setState((state) => ({
+      openPages: [
+        { ...state.openPages[0]!, mode: 'edit' },
+        {
+          id: 'layout:project',
+          projectId: 'project',
+          kind: 'layout',
+          name: '布局配置',
+          fileName: '',
+          mode: 'edit',
+          status: null,
+        },
+        {
+          id: 'other',
+          projectId: 'other_project',
+          name: 'Other',
+          fileName: 'other',
+          mode: 'edit',
+          status: null,
+        },
+      ],
+    }));
+    const layoutSave = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('layout draft failed'))
+      .mockResolvedValue(undefined);
+    const otherSave = vi.fn();
+    hook.result.current.editorRefForPage('layout:project').current = { flush: layoutSave };
+    hook.result.current.editorRefForPage('other').current = { flush: otherSave };
+    await act(async () => hook.result.current.openPreview('b'));
+    expect(hook.result.current.transitionError).toBe('layout draft failed');
+    expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('edit');
+    expect(otherSave).not.toHaveBeenCalled();
+    await act(async () => hook.result.current.openPreview('b'));
+    expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('preview');
+    expect(layoutSave).toHaveBeenCalledTimes(2);
+    expect(otherSave).not.toHaveBeenCalled();
   });
 });

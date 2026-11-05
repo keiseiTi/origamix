@@ -11,10 +11,14 @@ const mocks = vi.hoisted(() => ({
   cancelAgentRun: vi.fn(),
   subscribeAgentEvents: vi.fn(),
   workingState: vi.fn(),
+  layoutWorkingState: vi.fn(),
 }));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({
   schemaService: { workingState: mocks.workingState },
+}));
+vi.mock('../../../src/services/layout', () => ({
+  layoutService: { workingState: mocks.layoutWorkingState },
 }));
 import { useAgentChat } from '../../../src/components/agent-chat/use-agent-chat';
 
@@ -33,6 +37,11 @@ describe('Agent recovery', () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.listAllMessages.mockResolvedValue({ messages: [] });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
+    mocks.layoutWorkingState.mockResolvedValue({
+      revisionId: null,
+      workingVersion: 1,
+      document: { schema: {} },
+    });
     mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'completed' } });
     mocks.subscribeAgentEvents.mockReturnValue(() => undefined);
   });
@@ -281,36 +290,47 @@ describe('Agent recovery', () => {
     expect(mocks.subscribeAgentEvents).toHaveBeenCalledTimes(1);
   });
 
-  it('retries the exact uncertain request after unmount without automatically resending', async () => {
-    mocks.createAgentRun.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({
-      conversationId: 'conversation_1',
-      runId: 'run_1',
-      status: 'completed',
-      run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
-    });
-    const first = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(first.result.current.activity).toBe('idle'));
-    await act(async () => {
-      await expect(first.result.current.send('hello')).rejects.toThrow();
-    });
-    const original = mocks.createAgentRun.mock.calls[0]![0];
-    first.unmount();
-    // Recovery discovers a conversation created by the ambiguous request. Retry must
-    // still omit conversationId exactly as the original request did.
-    mocks.listConversations.mockResolvedValue({
-      conversations: [{ conversationId: 'conversation_1' }],
-    });
-    mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
-    const next = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
-    expect(next.result.current.pendingSubmission).toBe(true);
-    expect(next.result.current.activity).toBe('unknown');
-    expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
-    await act(async () => next.result.current.retry());
-    expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
-    expect(usePendingOperations.getState().agents).toEqual({});
-    expect(next.result.current.activity).toBe('idle');
-  });
+  it.each(['page', 'layout'] as const)(
+    'retries the exact uncertain %s request after unmount without automatically resending',
+    async (kind) => {
+      const pageId = kind === 'layout' ? 'layout:project_1' : 'page_a';
+      mocks.createAgentRun
+        .mockRejectedValueOnce(new Error('connection lost'))
+        .mockResolvedValueOnce({
+          conversationId: 'conversation_1',
+          runId: 'run_1',
+          status: 'completed',
+          run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
+        });
+      const first = renderHook(() => useAgentChat('project_1', pageId, true, kind));
+      await waitFor(() => expect(first.result.current.activity).toBe('idle'));
+      await act(async () => {
+        await expect(first.result.current.send('hello')).rejects.toThrow();
+      });
+      const original = mocks.createAgentRun.mock.calls[0]![0];
+      expect(original.target.kind).toBe(kind);
+      if (kind === 'layout') {
+        expect(original.pageId).toBeUndefined();
+        expect(mocks.workingState).not.toHaveBeenCalled();
+      }
+      first.unmount();
+      // Recovery discovers a conversation created by the ambiguous request. Retry must
+      // still omit conversationId exactly as the original request did.
+      mocks.listConversations.mockResolvedValue({
+        conversations: [{ conversationId: 'conversation_1' }],
+      });
+      mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
+      const next = renderHook(() => useAgentChat('project_1', pageId, true, kind));
+      await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
+      expect(next.result.current.pendingSubmission).toBe(true);
+      expect(next.result.current.activity).toBe('unknown');
+      expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
+      await act(async () => next.result.current.retry());
+      expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
+      expect(usePendingOperations.getState().agents).toEqual({});
+      expect(next.result.current.activity).toBe('idle');
+    },
+  );
 
   it('continues a prepared submission after closing its tab and blocks a reopened tab', async () => {
     const working = deferred<{ workingVersion: number }>();

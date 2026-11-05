@@ -123,7 +123,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     if (!project) return;
     await projectsService.delete(projectId);
     setProjects((current) => current.filter((item) => item.id !== projectId));
-    removePages(project.pages.map((page) => page.id));
+    removePages([`layout:${project.id}`, ...project.pages.map((page) => page.id)]);
   };
 
   const deletePage = async (projectId: string, pageId: string): Promise<void> => {

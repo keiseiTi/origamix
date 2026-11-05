@@ -1,8 +1,10 @@
+import { validateLayoutSchema } from '@origamix/shared';
+import { withLayoutMaterials } from '@/materials/layout-materials';
 import { Editor as EditorView } from '@origamix/editor';
 import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
 import { Spinner, Button, useToastManager } from '@origamix/ui';
 
-import { useImperativeHandle, useState, type Ref } from 'react';
+import { useImperativeHandle, useMemo, useState, type Ref } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
@@ -10,6 +12,7 @@ import { useEditorSession } from './use-editor-session';
 interface EditorProps {
   ref?: Ref<EditorHandle>;
   visible: boolean;
+  targetKind?: 'page' | 'layout';
   schemaRefreshKey: string;
   projectId: string;
   pageId: string;
@@ -26,6 +29,7 @@ export const PageEditor = ({
   projectId,
   pageId,
   visible,
+  targetKind = 'page',
   schemaRefreshKey,
   onWorkingCommitted,
   onReturnToChat,
@@ -54,6 +58,15 @@ export const PageEditor = ({
   );
   const theme = usePreferencesStore((state) => state.theme);
   const materials = useEditorMaterials(projectId, visible);
+  const registration = useMemo(
+    () =>
+      materials.registration &&
+      (targetKind === 'layout'
+        ? withLayoutMaterials(materials.registration)
+        : materials.registration),
+    [materials.registration, targetKind],
+  );
+  const MaterialProvider = materials.Provider;
   const session = useEditorSession(
     projectId,
     pageId,
@@ -61,6 +74,7 @@ export const PageEditor = ({
     onWorkingCommitted,
     visible && Boolean(materials.registration),
     schemaRefreshKey,
+    targetKind,
   );
   useImperativeHandle(
     ref,
@@ -87,7 +101,7 @@ export const PageEditor = ({
         </div>
       </div>
     );
-  if (session.loading || !materials.registration)
+  if (session.loading || !materials.registration || !MaterialProvider)
     return (
       <div className='grid min-h-0 flex-1 place-items-center'>
         <Spinner aria-label='加载编辑器' />
@@ -126,18 +140,26 @@ export const PageEditor = ({
           </Button>
         </div>
       )}
-      <EditorView
-        {...viewProps}
-        schema={session.snapshot.schema}
-        sessionKey={session.snapshot.sessionKey}
-        registration={materials.registration}
-        theme={theme}
-        readOnlyMessage={
-          session.refreshing ? '正在加载最新页面，请稍候' : viewProps.readOnlyMessage
-        }
-        readOnly={readOnly || session.refreshing}
-        onChange={session.onChange}
-      />
+      <MaterialProvider mode={theme}>
+        <EditorView
+          {...viewProps}
+          schema={session.snapshot.schema}
+          sessionKey={session.snapshot.sessionKey}
+          registration={registration!}
+          validateSchema={targetKind === 'layout' ? validateLayoutCandidate : undefined}
+          theme={theme}
+          readOnlyMessage={
+            session.refreshing ? '正在加载最新页面，请稍候' : viewProps.readOnlyMessage
+          }
+          readOnly={readOnly || session.refreshing}
+          onChange={session.onChange}
+        />
+      </MaterialProvider>
     </>
   );
+};
+
+const validateLayoutCandidate = (schema: Parameters<typeof validateLayoutSchema>[0]): void => {
+  const issue = validateLayoutSchema(schema)[0];
+  if (issue) throw new Error(issue.message);
 };

@@ -1,5 +1,6 @@
+import { requireAgentTarget } from '../agent/agent-target';
 import { nanoid } from 'nanoid';
-import type { AgentRunKind, MessageContent, RunBudget } from '@origamix/shared';
+import type { AgentRunKind, MessageContent, RunBudget, AgentTarget } from '@origamix/shared';
 import type { ApplicationDatabase } from '../database/database';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from '../agent/run-repository';
@@ -12,7 +13,8 @@ import { ProjectRepository } from '../projects/project-repository';
 
 export interface StartConversationRunInput {
   projectId: string;
-  pageId: string;
+  pageId?: string;
+  target?: AgentTarget;
   conversationId?: string;
   clientRequestId: string;
   baseWorkingVersion: number;
@@ -38,7 +40,7 @@ export class ConversationService {
     private readonly runs: AgentRunRepository,
   ) {}
 
-  getOrCreateActive(projectId: string, pageId: string): ConversationRecord {
+  getOrCreateActive(projectId: string, pageId: string | undefined): ConversationRecord {
     this.requirePage(projectId, pageId);
     const active = this.conversations.findActive(projectId, pageId);
     if (active) return active;
@@ -54,7 +56,7 @@ export class ConversationService {
     });
   }
 
-  list(projectId: string, pageId: string, limit = 50): ConversationRecord[] {
+  list(projectId: string, pageId: string | undefined, limit = 50): ConversationRecord[] {
     this.requirePage(projectId, pageId);
     return this.conversations.list(projectId, pageId, Math.min(Math.max(limit, 1), 100));
   }
@@ -65,6 +67,9 @@ export class ConversationService {
     run: AgentRunRecord;
     created: boolean;
   } {
+    const target = requireAgentTarget(input);
+    if ((target.kind === 'layout') !== (input.runKind === 'layout_assistant'))
+      throw conflict('Agent Run 类型与目标不一致');
     try {
       return this.database.transaction(() =>
         this.startRunInTransaction(input, this.projects, this.conversations, this.runs),
@@ -219,7 +224,7 @@ export class ConversationService {
 
   history(
     projectId: string,
-    pageId: string,
+    pageId: string | undefined,
     conversationId: string,
     afterSequence = -1,
     limit = 100,
@@ -231,7 +236,7 @@ export class ConversationService {
 
   recentHistory(
     projectId: string,
-    pageId: string,
+    pageId: string | undefined,
     conversationId: string,
     limit = 500,
   ): StoredMessage[] {
@@ -266,15 +271,20 @@ export class ConversationService {
     return { conversation, message: storedMessage, run, created: false };
   }
 
-  private requirePage(projectId: string, pageId: string, projects = this.projects): void {
+  private requirePage(
+    projectId: string,
+    pageId: string | undefined,
+    projects = this.projects,
+  ): void {
     if (!projects.getProject(projectId)) throw notFound('项目不存在');
-    if (!projects.getPage(projectId, pageId)) throw notFound('页面不存在或不属于项目');
+    if (pageId !== undefined && !projects.getPage(projectId, pageId))
+      throw notFound('页面不存在或不属于项目');
   }
 
   private requireConversation(
     id: string,
     projectId: string,
-    pageId: string,
+    pageId: string | undefined,
     conversations = this.conversations,
   ): ConversationRecord {
     const conversation = conversations.get(id);

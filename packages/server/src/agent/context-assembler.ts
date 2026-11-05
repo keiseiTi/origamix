@@ -1,6 +1,6 @@
 import { AgentEngineError } from './agent-engine';
-import { loadProjectMaterials } from '../projects/project-materials';
-import { flowNodeManifests, type OrigamixPageSchema } from '@origamix/shared';
+import { loadProjectMaterials, loadLayoutMaterials } from '../projects/project-materials';
+import { flowNodeManifests, type OrigamixPageSchema, type AgentTarget } from '@origamix/shared';
 import { FLOW_GENERATION_GUIDE } from './flow-guidance';
 import { conflict } from '../errors';
 import type { StoredMessage } from '../conversations/conversation-repository';
@@ -29,7 +29,9 @@ export interface ContextBudget {
 }
 
 export interface AssembleContextInput {
-  page: SchemaPageRef;
+  page?: SchemaPageRef;
+  layout?: { projectId: string; projectPath: string };
+  target?: AgentTarget;
   conversationId: string;
   currentRequest: string;
   expectedWorkingVersion?: number;
@@ -40,7 +42,8 @@ export interface AssembleContextInput {
 
 export interface AssembledAgentContext {
   version: '1';
-  savedRevisionId: string;
+  savedRevisionId: string | null;
+  target?: AgentTarget;
   currentWorkingVersion: number;
   systemPolicy: string;
   currentRequest: string;
@@ -202,6 +205,9 @@ export class ContextAssembler {
     private readonly historyProvider: ContextHistoryProvider,
     private readonly docsProvider: ProductDocsProvider,
     budget: Partial<ContextBudget> = {},
+    private readonly readLayout?: (
+      projectId: string,
+    ) => Promise<{ schema: OrigamixPageSchema; revisionId: string | null; workingVersion: number }>,
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     if (this.budget.maxChars < 2_000) throw new Error('Context maxChars 不能小于 2000');
@@ -209,7 +215,12 @@ export class ContextAssembler {
 
   async assemble(input: AssembleContextInput): Promise<AssembledAgentContext> {
     // This read intentionally happens on every assembly; no Schema is cached in conversation state.
-    const current = await this.schemaReader.getCurrent(input.page);
+    const current = input.layout
+      ? await this.readLayout?.(input.layout.projectId)
+      : input.page
+        ? await this.schemaReader.getCurrent(input.page)
+        : undefined;
+    if (!current) throw conflict('Agent 目标上下文不可用');
     if (
       input.expectedWorkingVersion !== undefined &&
       input.expectedWorkingVersion !== current.workingVersion
@@ -237,27 +248,42 @@ export class ContextAssembler {
       docsTruncated = true;
     }
 
-    const materials = await loadProjectMaterials(input.page.projectPath);
+    const materials = input.layout
+      ? await loadLayoutMaterials(input.layout.projectPath)
+      : await loadProjectMaterials(input.page!.projectPath);
+    const layoutPolicy =
+      SYSTEM_POLICY.split('\n')
+        .filter(
+          (line) =>
+            !line.includes('重置或清空页面') && !line.includes('支持同时生成组件与事件逻辑'),
+        )
+        .join('\n')
+        .replaceAll('页面', '布局')
+        .replaceAll('complete_page_run', 'complete_layout_run') +
+      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。必须且只能有一个可达无子节点的 PageOutlet；清空/重排仍须保留它。PageNavigation 只使用项目页面目录，不生成任意 URL。flows、bindElements、globalVariables 必须为空；不提供逻辑流程工具。根 ID 不可删除或移动；初始根可能就是 PageOutlet，此时先 replaceElement 将同一根 ID 改为 container，再 addElement 在根下添加新的唯一 PageOutlet，整批最终状态必须合法。不支持 setLayout 操作。';
     let materialCatalog = JSON.stringify(materials.agentCatalog);
     let context: Omit<AssembledAgentContext, 'sizeChars'> = {
       version: '1',
       savedRevisionId: current.revisionId,
       currentWorkingVersion: current.workingVersion,
-      systemPolicy: SYSTEM_POLICY,
+      ...(input.target ? { target: input.target } : {}),
+      systemPolicy: input.layout ? layoutPolicy : SYSTEM_POLICY,
       currentRequest: input.currentRequest,
       history: historyResult.selected,
       ...(summary ? { summarySlot: summary.value } : {}),
       materialCatalog,
-      flowNodeCatalog: JSON.stringify(
-        flowNodeManifests.map(({ type, title, description, connections }) => ({
-          type,
-          title,
-          description,
-          connections,
-        })),
-      ),
+      flowNodeCatalog: input.layout
+        ? '[]'
+        : JSON.stringify(
+            flowNodeManifests.map(({ type, title, description, connections }) => ({
+              type,
+              title,
+              description,
+              connections,
+            })),
+          ),
       logicSummary: logicSummary(current.schema),
-      flowGuide: FLOW_GENERATION_GUIDE,
+      flowGuide: input.layout ? '布局不支持业务流程、事件绑定、全局变量。' : FLOW_GENERATION_GUIDE,
       schemaOutline: outline(current.schema),
       schemaFragment: schema.value,
       productDocs: docs,
@@ -292,8 +318,9 @@ export class ContextAssembler {
         ...context,
         flowNodeCatalog: '{"truncated":true}',
         logicSummary: '{"truncated":true}',
-        flowGuide:
-          '先读取 get_page_logic_context、get_flow_node_manifest 和完整 get_event_flow；使用局部绑定，保留无关逻辑。',
+        flowGuide: input.layout
+          ? '布局不支持业务流程。'
+          : '先读取 get_page_logic_context、get_flow_node_manifest 和完整 get_event_flow；使用局部绑定，保留无关逻辑。',
       };
     }
     if (totalSize(context) > this.budget.maxChars) {

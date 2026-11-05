@@ -112,3 +112,9 @@ pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库�
 公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
 
 自定义 Node 工具使用 TypeScript 和 tsx 执行；根目录、Desktop、App、Server 及调用公开归档工具的 Shared/Runtime/Materials 分别声明 tsx 开发依赖。`pnpm install --frozen-lockfile` 后使用原有 pnpm 命令即可。脚本由 tsc 严格检查，tsx 只负责执行。子进程继承 tsx loader；通过 Node 显式启动 TypeScript 子脚本时保留 `process.execArgv`。ESLint 配置统一使用 `.mjs`，边界规则和测试保持 TypeScript。Electron 验收入口使用 `.cts`，由 Node 启动器注册 `tsx/cjs` 后加载；启动器不会把加载配置传给被验收的后端进程。
+
+## 项目布局
+
+项目导航中的固定“布局配置”入口复用页面编辑器和 Agent 对话。项目开关控制全部页面，布局草稿、版本与应用独立于页面；完整应用预览使用当前草稿，独立生成项目读取已应用文件。
+
+操作步骤见 [布局配置指南](site/docs/guide/layout.md)，契约与接口见 [Layout 说明](site/docs/architecture/layout.md)，本轮验证范围及限制见 [布局集成验收](docs/layout-acceptance.md)。

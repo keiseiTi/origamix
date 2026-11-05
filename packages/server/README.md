@@ -332,3 +332,11 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 顺序为：准备 durable pending 回执 → 写入并校验目标 → 提交完成回执 → 更新 Working 基线 → 清理 pending。中断后不自动重放；原请求身份可验证目标是否仍等于之前基线或本次结果，并显式完成恢复。未确认时阻止其他 Apply 及布局修改/保存/恢复。已完成请求重试验证目标，不能回退后来版本的基线；外部变化保留文件与草稿。接口状态包含 `apply_pending`、`draft_unsaved`、`saved_pending_apply`、`in_sync`、`external_change`。
 
 Template smoke 通过编译后的 HTTP 创建两页项目，分别保存并应用页面与布局，重启后验证布局回执，再独立安装、类型检查和构建。它不等同于图形交互检查；页面导航、主题和错误状态需要在生成项目中实际操作验证。
+
+## Layout Agent
+
+`/layout/agent/conversations/list`、`messages/list`、`runs/create|get|cancel` 和 `/projects/:projectId/layout/agent/runs/:runId/events` 复用现有 Agent 服务。Run 明确绑定 `{ kind: 'layout', projectId }` 与起始 Working 版本；页面接口拒绝布局 Run，布局接口也不能读取页面 Run。布局会话不产生伪造页面记录。
+
+上下文读取当前 Layout Working 和包含 PageOutlet/PageNavigation 的物料目录；不注入页面 Schema 或开放业务流程工具。`complete_layout_run` 复用终态决策、预算与修复机制，在 LayoutService 校验后原子提交 Working。保存 Revision 和应用仍由用户显式触发。提交凭据位于受检的 `.origamix/layout/agent-receipts/`，用于启动恢复而非自动重放。
+
+SQLite 存储版本 2 允许会话/Run 的页面键为空，以表达唯一的项目布局，并通过部分唯一索引保护布局请求身份。数据库升级保留页面会话、消息及序列号；项目 Schema/manifest 不随之转换。

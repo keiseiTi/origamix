@@ -14,6 +14,12 @@ const schemaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
+const layoutMocks = vi.hoisted(() => ({
+  workingState: vi.fn(),
+  applyState: vi.fn(),
+  apply: vi.fn(),
+}));
+vi.mock('../../../../src/services/layout', () => ({ layoutService: layoutMocks }));
 
 import { useProjectUpgrades } from '../../../../src/store/project-upgrades';
 import { usePendingOperations } from '../../../../src/store/pending-operations';
@@ -158,5 +164,43 @@ describe('usePageApplicationState', () => {
     expect(schemaMocks.apply.mock.calls[1]![3]).toBe(1);
     expect(usePendingOperations.getState().applies).toEqual({});
     next.unmount();
+  });
+  // Window memory may be lost; only the browser can prove it reuses the recovered Server identity.
+  it('recovers layout Apply identity without creating a new logical request', async () => {
+    layoutMocks.workingState.mockResolvedValue({
+      document: { schema: {} },
+      revisionId: 'revision_saved',
+      workingVersion: 5,
+    });
+    layoutMocks.applyState.mockResolvedValue({
+      status: 'apply_pending',
+      pendingRequest: {
+        revisionId: 'revision_saved',
+        workingVersion: 5,
+        clientRequestId: 'durable-layout-request',
+      },
+    });
+    layoutMocks.apply.mockResolvedValue({ status: 'applied' });
+    const hook = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'layout:project_1',
+        kind: 'layout',
+        active: true,
+        schemaRefreshKey: '',
+        editorRef,
+        onSchemaCommitted: vi.fn(),
+      }),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(layoutMocks.apply).not.toHaveBeenCalled();
+    await act(async () => hook.result.current.applyPage());
+    expect(layoutMocks.apply).toHaveBeenCalledWith(
+      'project_1',
+      'revision_saved',
+      5,
+      'durable-layout-request',
+    );
+    expect(schemaMocks.apply).not.toHaveBeenCalled();
   });
 });

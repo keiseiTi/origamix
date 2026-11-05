@@ -19,6 +19,7 @@ export interface HttpServerInput {
     LayoutService,
     | 'getWorking'
     | 'applyOperations'
+    | 'updateWorking'
     | 'saveRevision'
     | 'listRevisions'
     | 'getRevision'

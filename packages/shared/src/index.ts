@@ -406,11 +406,13 @@ export {
   ApplicationSnapshotSchema,
   isApplicationSnapshot,
   ApplicationRenderReportSchema,
+  isApplicationRenderReport,
 } from './transport/application-snapshot.ts';
 export type {
   ApplicationSnapshot,
   ApplicationRenderReport,
 } from './transport/application-snapshot.ts';
+export { agentTargetFields, resolveAgentTarget } from './agent/agent-target.ts';
 
 export { ProjectLayoutConfigSchema, isProjectLayoutEnabled } from './project/project-manifest.ts';
 
@@ -424,3 +426,15 @@ export type {
   LayoutApplyResult,
   LayoutApplyState,
 } from './layout/layout-api.ts';
+
+export {
+  isLayoutConfigState,
+  isLayoutWorkingState,
+  isLayoutRevisionHistory,
+  isLayoutRevisionSnapshot,
+  isLayoutApplyState,
+  isLayoutApplyResult,
+} from './layout/layout-response-validation.ts';
+
+export { LayoutUpdateRequestSchema } from './layout/layout-api.ts';
+export type { LayoutUpdateRequest } from './layout/layout-api.ts';

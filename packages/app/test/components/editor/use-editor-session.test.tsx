@@ -12,6 +12,12 @@ const schemaMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../src/services/schema', () => ({ schemaService: schemaMocks }));
+const layoutMocks = vi.hoisted(() => ({
+  workingState: vi.fn(),
+  operations: vi.fn(),
+  update: vi.fn(),
+}));
+vi.mock('../../../src/services/layout', () => ({ layoutService: layoutMocks }));
 
 import { useEditorSession } from '../../../src/components/editor/use-editor-session';
 
@@ -218,5 +224,48 @@ describe('useEditorSession', () => {
       [{ operation: 'updateElementProps', elementId: 'element_root', set: { padding: 24 } }],
     );
     expect(onWorkingCommitted).toHaveBeenCalledTimes(1);
+  });
+  // Server cannot prove that the browser retries the exact ambiguous candidate before newer edits.
+  it('keeps layout retry identity and candidate stable, then commits newer local edits without page requests', async () => {
+    const initial = structuredClone(schema);
+    initial.elements.content = { type: 'PageOutlet', props: {} };
+    initial.layout.structure.element_root = ['content'];
+    const first = structuredClone(initial);
+    first.elements.element_root!.props = { padding: 24 };
+    const latest = structuredClone(initial);
+    latest.elements.element_root!.props = { padding: 32 };
+    const state = (candidate: OrigamixPageSchema, version: number) => ({
+      document: { schemaVersion: '1.0.0', projectId: 'project_one', schema: candidate },
+      revisionId: null,
+      workingVersion: version,
+      workingHash: 'hash',
+      savedSchemaHash: null,
+    });
+    layoutMocks.workingState.mockResolvedValue(state(initial, 4));
+    layoutMocks.operations
+      .mockRejectedValueOnce(new Error('连接中断'))
+      .mockResolvedValueOnce(state(first, 5))
+      .mockResolvedValueOnce(state(latest, 6));
+    const hook = renderHook(() =>
+      useEditorSession('project_one', 'layout:project_one', false, undefined, true, '', 'layout'),
+    );
+    await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+    vi.useFakeTimers();
+    act(() => hook.result.current.onChange(first));
+    await act(async () => {
+      await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
+    });
+    const original = layoutMocks.operations.mock.calls[0]!;
+    act(() => hook.result.current.onChange(latest, { immediate: true }));
+    await act(async () => vi.advanceTimersByTimeAsync(1000));
+    expect(layoutMocks.operations).toHaveBeenCalledTimes(1);
+    await act(async () => hook.result.current.flush());
+    expect(layoutMocks.operations.mock.calls[1]).toEqual(original);
+    expect(layoutMocks.operations.mock.calls[2]?.[1]).toBe(5);
+    expect(layoutMocks.operations.mock.calls[2]?.[3]).not.toBe(original[3]);
+    expect(schemaMocks.workingState).not.toHaveBeenCalled();
+    expect(schemaMocks.applyWorkingOperations).not.toHaveBeenCalled();
+    expect(hook.result.current.error).toBeNull();
   });
 });

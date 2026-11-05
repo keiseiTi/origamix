@@ -11,7 +11,7 @@ description: Template：生成项目骨架的职责、使用与开发说明
 
 ## 关键入口
 
-`src/main.tsx` 启动 React；`src/router.ts` 按项目清单注册路由；页面入口使用 Runtime 和 Materials 渲染目标 Schema。
+`src/main.tsx` 启动 React；`src/router.ts` 按项目清单注册路由；`src/application.tsx` 解析项目布局、注入导航并同步主题；页面入口使用 Runtime 和 Materials 渲染目标 Schema。
 
 ## 协作边界
 
@@ -36,3 +36,5 @@ Runtime／Materials 源码变化会更新开发宿主准备的模板版本配置
 返回[整体架构](/architecture/index)。
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
+
+项目布局由清单 `layout.enabled` 控制，读取固定的 `src/origamix-layout/schema.json`。页面与布局通过 Outlet 组合，不合并节点表；`.origamix/` 不参与运行。此阶段不迁移旧项目外壳，更多说明见[Layout 契约与接口](/architecture/layout)。

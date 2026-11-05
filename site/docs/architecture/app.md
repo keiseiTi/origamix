@@ -34,3 +34,9 @@ pnpm --filter @origamix/app build
 源码目录：`packages/app`。详细接口、维护规则与集成命令见[包 README](https://github.com/keiseiTi/origamix/tree/main/packages/app)。
 
 返回[整体架构](/architecture/index)。
+
+## 布局与应用预览
+
+同一 PageSession 按 page/layout 目标复用编辑器、对话、历史和保存操作。App 只把布局文档的 schema 投影给 Editor，持久化仍归 Server；布局 UI 标签身份不成为后端 pageId。
+
+可信工作台读取并校验应用快照，隔离 iframe 复用 Runtime 组合布局与页面，在固定快照内导航。刷新失败保留旧快照；就绪握手使用当前快照引用，避免数据读取与 React 提交之间的竞态。详见[Layout 契约与接口](/architecture/layout)。

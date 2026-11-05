@@ -5,6 +5,17 @@ type EventInput = Omit<AgentEvent, 'version' | 'eventId' | 'sequence' | 'occurre
   occurredAt?: string;
 };
 
+const eventScope = (input: EventInput) => {
+  const target = input.target;
+  if (input.pageId) {
+    if (target && (target.kind !== 'page' || target.pageId !== input.pageId))
+      throw new ApiError('Agent 事件目标无效', 500);
+    return { pageId: input.pageId, ...(target ? { target } : {}) };
+  }
+  if (target?.kind !== 'layout') throw new ApiError('Agent 事件目标无效', 500);
+  return { target };
+};
+
 export interface AgentEventSubscription {
   replay: readonly AgentEvent[];
   close(): void;
@@ -38,7 +49,7 @@ export class AgentEventBroker {
       sequence: channel.nextEventId,
       type: input.type,
       runId: input.runId,
-      pageId: input.pageId,
+      ...eventScope(input),
       requestId: input.requestId,
       occurredAt: input.occurredAt ?? new Date().toISOString(),
       ...(input.revisionId ? { revisionId: input.revisionId } : {}),

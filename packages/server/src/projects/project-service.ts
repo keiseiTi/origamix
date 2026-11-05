@@ -176,6 +176,8 @@ export class ProjectService {
       return withExclusiveProjectActivity(project.path, async () => {
         const manifest = await this.manifest.requireEditable(project.path);
         if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        if (!enabled && this.projects.hasActiveRuns(projectId, null))
+          throw conflict('布局 Agent 正在运行，请先取消或等待完成');
         if (manifest.layout?.enabled !== enabled)
           await this.manifest.writeManifest(project.path, { ...manifest, layout: { enabled } });
         return { name: LAYOUT_NAME, enabled };

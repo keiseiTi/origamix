@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, eq, isNull, inArray, notInArray } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import {
   AgentRunStatusSchema,
@@ -27,7 +27,7 @@ import { agentRunStatus } from '../database/status-codecs';
 export interface AgentRunRecord {
   id: string;
   projectId: string;
-  pageId: string;
+  pageId?: string;
   conversationId: string;
   userMessageId: string;
   clientRequestId: string;
@@ -88,7 +88,7 @@ const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
   return {
     id: row.runId,
     projectId: projectPublicId(client, row.projectId),
-    pageId: pagePublicId(client, row.pageId),
+    ...(row.pageId === null ? {} : { pageId: pagePublicId(client, row.pageId) }),
     conversationId: encodeDatabaseId('conversation', row.conversationId),
     userMessageId: encodeDatabaseId('message', row.userMessageId),
     clientRequestId: row.clientRequestId,
@@ -131,7 +131,7 @@ const toRow = (run: AgentRunRecord, client: DatabaseClient): typeof agentRuns.$i
   id: undefined,
   runId: run.id,
   projectId: projectKey(client, run.projectId),
-  pageId: pageKey(client, run.pageId),
+  pageId: run.pageId ? pageKey(client, run.pageId) : null,
   conversationId: decodeDatabaseId('conversation', run.conversationId),
   userMessageId: decodeDatabaseId('message', run.userMessageId),
   status: agentRunStatus.encode(run.status),
@@ -166,7 +166,7 @@ export class AgentRunRepository {
   }
   findByClientRequest(
     projectId: string,
-    pageId: string,
+    pageId: string | undefined,
     clientRequestId: string,
   ): AgentRunRecord | undefined {
     const row = this.client
@@ -175,7 +175,7 @@ export class AgentRunRepository {
       .where(
         and(
           eq(agentRuns.projectId, projectKey(this.client, projectId)),
-          eq(agentRuns.pageId, pageKey(this.client, pageId)),
+          pageId ? eq(agentRuns.pageId, pageKey(this.client, pageId)) : isNull(agentRuns.pageId),
           eq(agentRuns.clientRequestId, clientRequestId),
         ),
       )

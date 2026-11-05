@@ -1,3 +1,5 @@
+import { withAgentTarget } from './agent-target.ts';
+import { AgentTargetSchema } from '../layout/layout-schema.ts';
 import {
   strictObject,
   AgentProtocolVersionSchema,
@@ -13,17 +15,20 @@ import { MessageContentSchema, ConversationSchema, AgentMessageSchema } from './
 import { ClarificationSelectionSchema } from './agent-outcome.ts';
 import { AgentRunSchema, AgentRunKindSchema, AgentRunStatusSchema } from './agent-run.ts';
 
-export const CreateAgentRunRequestSchema = strictObject({
-  version: AgentProtocolVersionSchema,
-  projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
-  pageId: PageIdSchema,
-  conversationId: Type.Optional(ConversationIdSchema),
-  clientRequestId: RequestIdSchema,
-  baseWorkingVersion: Type.Integer({ minimum: 1 }),
-  content: MessageContentSchema,
-  clarification: Type.Optional(ClarificationSelectionSchema),
-  retryOfRunId: Type.Optional(AgentRunIdSchema),
-});
+export const CreateAgentRunRequestSchema = withAgentTarget(
+  strictObject({
+    version: AgentProtocolVersionSchema,
+    projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
+    pageId: Type.Optional(PageIdSchema),
+    target: Type.Optional(AgentTargetSchema),
+    conversationId: Type.Optional(ConversationIdSchema),
+    clientRequestId: RequestIdSchema,
+    baseWorkingVersion: Type.Integer({ minimum: 1 }),
+    content: MessageContentSchema,
+    clarification: Type.Optional(ClarificationSelectionSchema),
+    retryOfRunId: Type.Optional(AgentRunIdSchema),
+  }),
+);
 
 export const CreateAgentRunResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,

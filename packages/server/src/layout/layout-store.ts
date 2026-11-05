@@ -13,6 +13,18 @@ import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { invalid } from '../errors';
 
 const hash = Type.String({ pattern: '^[a-f0-9]{64}$' });
+const AgentReceiptSchema = Type.Object(
+  {
+    runId: Type.String({ pattern: '^run_[A-Za-z0-9_-]+$' }),
+    projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
+    baseWorkingVersion: Type.Integer({ minimum: 1 }),
+    resultWorkingVersion: Type.Integer({ minimum: 2 }),
+    resultWorkingHash: hash,
+    operationDigest: hash,
+  },
+  { additionalProperties: false },
+);
+type AgentReceipt = Static<typeof AgentReceiptSchema>;
 export const LayoutWorkingFileSchema = Type.Object(
   {
     version: Type.Literal(1),
@@ -56,6 +68,26 @@ const readOptional = async <T>(path: string): Promise<T | undefined> => {
 
 /** All paths are fixed below the authorized project's metadata; no target writes. */
 export class LayoutStore {
+  private agentReceiptPath = (projectPath: string, runId: string): Promise<string> => {
+    if (!/^run_[A-Za-z0-9_-]+$/.test(runId)) throw invalid('布局 Agent Run ID 无效');
+    return this.path(projectPath, 'agent-receipts', `${runId}.json`);
+  };
+  readAgentReceipt = async (
+    projectPath: string,
+    runId: string,
+  ): Promise<AgentReceipt | undefined> => {
+    const receipt: unknown = await readOptional(await this.agentReceiptPath(projectPath, runId));
+    if (receipt === undefined) return undefined;
+    if (
+      !Value.Check(AgentReceiptSchema, receipt) ||
+      receipt.runId !== runId ||
+      receipt.resultWorkingVersion !== receipt.baseWorkingVersion + 1
+    )
+      throw invalid('布局 Agent 提交凭据无效');
+    return receipt;
+  };
+  writeAgentReceipt = async (projectPath: string, receipt: AgentReceipt): Promise<void> =>
+    this.write(await this.agentReceiptPath(projectPath, receipt.runId), receipt);
   private path = (projectPath: string, ...segments: string[]) =>
     metadataPath(projectPath, 'layout', ...segments);
   private write = async (path: string, value: unknown): Promise<void> => {

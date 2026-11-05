@@ -1,3 +1,5 @@
+import { withAgentTarget } from './agent-target.ts';
+import { AgentTargetSchema } from '../layout/layout-schema.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import {
@@ -12,7 +14,10 @@ import {
 } from './agent-schema.ts';
 import { PageAgentOutcomeSchema, ClarificationResultSchema } from './agent-outcome.ts';
 
-export const AgentRunKindSchema = Type.Literal('page_assistant');
+export const AgentRunKindSchema = Type.Union([
+  Type.Literal('page_assistant'),
+  Type.Literal('layout_assistant'),
+]);
 
 export const AgentRunStatusSchema = Type.Union([
   Type.Literal('queued'),
@@ -46,37 +51,44 @@ export const RunBudgetSchema = strictObject({
 
 export const ToolPolicySchema = strictObject({
   toolName: Type.String({ pattern: '^[a-z][a-z0-9_]*$' }),
-  scope: Type.Union([Type.Literal('read'), Type.Literal('page_write')]),
+  scope: Type.Union([
+    Type.Literal('read'),
+    Type.Literal('page_write'),
+    Type.Literal('layout_write'),
+  ]),
   risk: Type.Union([Type.Literal('low'), Type.Literal('medium'), Type.Literal('high')]),
   requiresConfirmation: Type.Boolean(),
 });
 
-export const AgentRunSchema = strictObject({
-  version: AgentProtocolVersionSchema,
-  runId: AgentRunIdSchema,
-  projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
-  pageId: PageIdSchema,
-  conversationId: ConversationIdSchema,
-  userMessageId: MessageIdSchema,
-  requestId: RequestIdSchema,
-  baseWorkingVersion: Type.Integer({ minimum: 1 }),
-  runKind: AgentRunKindSchema,
-  status: AgentRunStatusSchema,
-  budget: RunBudgetSchema,
-  modelRef: Type.String({ minLength: 1 }),
-  promptVersion: Type.String({ minLength: 1 }),
-  policyVersion: Type.String({ minLength: 1 }),
-  toolsetVersion: Type.String({ minLength: 1 }),
-  materialManifestVersion: Type.String({ minLength: 1 }),
-  outcome: Type.Optional(PageAgentOutcomeSchema),
-  clarification: Type.Optional(ClarificationResultSchema),
-  repairAttempts: Type.Optional(Type.Integer({ minimum: 0 })),
-  resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
-  resultWorkingHash: Type.Optional(Type.String({ pattern: '^[a-f0-9]{64}$' })),
-  retryOfRunId: Type.Optional(AgentRunIdSchema),
-  createdAt: IsoDateTimeSchema,
-  updatedAt: IsoDateTimeSchema,
-});
+export const AgentRunSchema = withAgentTarget(
+  strictObject({
+    version: AgentProtocolVersionSchema,
+    runId: AgentRunIdSchema,
+    projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
+    pageId: Type.Optional(PageIdSchema),
+    target: Type.Optional(AgentTargetSchema),
+    conversationId: ConversationIdSchema,
+    userMessageId: MessageIdSchema,
+    requestId: RequestIdSchema,
+    baseWorkingVersion: Type.Integer({ minimum: 1 }),
+    runKind: AgentRunKindSchema,
+    status: AgentRunStatusSchema,
+    budget: RunBudgetSchema,
+    modelRef: Type.String({ minLength: 1 }),
+    promptVersion: Type.String({ minLength: 1 }),
+    policyVersion: Type.String({ minLength: 1 }),
+    toolsetVersion: Type.String({ minLength: 1 }),
+    materialManifestVersion: Type.String({ minLength: 1 }),
+    outcome: Type.Optional(PageAgentOutcomeSchema),
+    clarification: Type.Optional(ClarificationResultSchema),
+    repairAttempts: Type.Optional(Type.Integer({ minimum: 0 })),
+    resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+    resultWorkingHash: Type.Optional(Type.String({ pattern: '^[a-f0-9]{64}$' })),
+    retryOfRunId: Type.Optional(AgentRunIdSchema),
+    createdAt: IsoDateTimeSchema,
+    updatedAt: IsoDateTimeSchema,
+  }),
+);
 
 export type AgentRunKind = Static<typeof AgentRunKindSchema>;
 

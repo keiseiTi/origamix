@@ -1,6 +1,7 @@
+import { agentTarget } from './agent/agent-target';
 import { LayoutService } from './layout/layout-service';
 import { assertProjectNotUpgrading } from './projects/project-upgrade-store';
-import { loadProjectMaterials } from './projects/project-materials';
+import { loadProjectMaterials, loadLayoutMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
 import { AgentRunRepository } from './agent/run-repository';
@@ -54,12 +55,13 @@ export const startServer = async (input: {
     const runService = new AgentRunService(runs);
     const agentEvents = new AgentEventBroker();
     runService.setTransitionListener((run) => {
-      const payload = progressPayload(run.status);
+      const payload = progressPayload(run.status, run.pageId ? 'page' : 'layout');
       if (!payload) return;
       agentEvents.publish({
         type: 'run.progress',
         runId: run.id,
         pageId: run.pageId,
+        target: agentTarget(run.projectId, run.pageId),
         requestId: run.clientRequestId,
         payload,
       });
@@ -87,11 +89,18 @@ export const startServer = async (input: {
       projectApplyService,
       (projectId, pageId) => runtimeDiagnostics.clear(projectId, pageId),
     );
+    const layoutService = new LayoutService(projects);
+    const readLayout = async (projectId: string) => {
+      const value = await layoutService.getWorking(projectId);
+      return { ...value, schema: value.document.schema };
+    };
     const productDocs = new ProductDocsProvider();
     const context = new ContextAssembler(
       { getCurrent: getWorkingSchemaState },
       conversations,
       productDocs,
+      {},
+      readLayout,
     );
     const pi = createPiModels();
     const executor = new RunExecutor({
@@ -117,14 +126,29 @@ export const startServer = async (input: {
               pageId: scope.pageId,
               workingVersion: scope.baseWorkingVersion,
             },
-            { projects, loadMaterials: loadProjectMaterials },
+            {
+              projects,
+              loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
+              readLayout,
+            },
           ),
           ...createDomainAgentTools(
             { projectId: scope.projectId, pageId: scope.pageId },
-            { projects, docs: productDocs, diagnostics: runtimeDiagnostics },
+            {
+              projects,
+              docs: productDocs,
+              diagnostics: runtimeDiagnostics,
+              validateLayout: layoutService.validateSchema,
+            },
           ),
           createCompletePageRunTool(
-            { projects, runs, runService, loadMaterials: loadProjectMaterials },
+            {
+              projects,
+              runs,
+              runService,
+              layouts: layoutService,
+              loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
+            },
             scope,
           ),
         ]),
@@ -136,6 +160,7 @@ export const startServer = async (input: {
           type: 'tool.activity',
           runId: run.id,
           pageId: run.pageId,
+          target: agentTarget(run.projectId, run.pageId),
           requestId: run.clientRequestId,
           payload: {
             toolName: event.toolName,
@@ -154,6 +179,7 @@ export const startServer = async (input: {
       executor,
       getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
       getCurrentState: async (projectId, pageId) => {
+        if (!pageId) return readLayout(projectId);
         const project = projects.getProject(projectId);
         const page = projects.getPage(projectId, pageId);
         if (!project || !page) throw new Error('页面不存在或不属于当前项目');
@@ -171,7 +197,7 @@ export const startServer = async (input: {
       projects,
       projectService,
       projectApplyService,
-      layoutService: new LayoutService(projects),
+      layoutService,
       runtimeDiagnostics,
       agent: {
         conversations: conversationService,
@@ -228,7 +254,7 @@ export const startServer = async (input: {
       projectService.registerGrant('startup-project', input.projectPath);
       await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
-    await recoverAgentRunsOnStartup(runs, projects, conversationService);
+    await recoverAgentRunsOnStartup(runs, projects, conversationService, layoutService);
     await server.listen({ host: '127.0.0.1', port });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');

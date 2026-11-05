@@ -15,13 +15,18 @@
     "type": "file"
   },
   {
+    "name": "layout",
+    "label": "布局配置",
+    "type": "file"
+  },
+  {
     "name": "flow-editor",
     "label": "逻辑流与函数配置",
     "type": "file"
   },
   {
     "name": "preview",
-    "label": "页面预览",
+    "label": "完整应用预览",
     "type": "file"
   },
   {

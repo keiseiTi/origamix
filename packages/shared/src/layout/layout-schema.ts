@@ -76,7 +76,7 @@ export const SessionTargetSchema = Type.Union([
     { additionalProperties: false },
   ),
 ]);
-/** Contract for future target-aware Runs; current page Run transport stays page-only. */
+/** Explicit page/layout authority shared by Agent Runs and UI sessions. */
 export const AgentTargetSchema = SessionTargetSchema;
 export const LayoutFocusSchema = Type.Object(
   {

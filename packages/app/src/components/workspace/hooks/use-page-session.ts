@@ -25,11 +25,15 @@ export const usePageSession = ({
   projectId,
   pageId,
   active = true,
+  kind = 'page',
+  available = true,
   editorRef,
 }: {
   projectId: string;
   pageId: string;
   active?: boolean;
+  kind?: 'page' | 'layout';
+  available?: boolean;
   editorRef: RefObject<EditorHandle | null>;
 }) => {
   const [refresh, setRefresh] = useState<{ pageId: string; key: string } | null>(null);
@@ -44,11 +48,12 @@ export const usePageSession = ({
     projectId,
     pageId,
     schemaRefreshKey,
-    active,
+    active: active && available,
+    kind,
     editorRef,
     onSchemaCommitted,
   });
-  const agent = useAgentChat(projectId, pageId);
+  const agent = useAgentChat(projectId, pageId, available, kind);
   const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
 
   useEffect(() => {
@@ -67,9 +72,18 @@ export const usePageSession = ({
     application,
     agent,
     schemaRefreshKey,
-    capabilities: derivePageCapabilities({
-      agentActivity: agent.activity,
-      applyStatus: application.applyStatus,
-    }),
+    capabilities: {
+      ...derivePageCapabilities({
+        agentActivity:
+          available &&
+          !(kind === 'layout' && ['loading', 'error'].includes(application.applyStatus))
+            ? agent.activity
+            : 'unknown',
+        applyStatus: application.applyStatus,
+      }),
+      ...(kind === 'layout' && application.applyStatus === 'result_pending'
+        ? { canEdit: false, canSaveVersion: false }
+        : {}),
+    },
   };
 };

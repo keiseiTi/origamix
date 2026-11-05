@@ -149,6 +149,38 @@ it('rejects stale, invalid and foreign edits atomically and serializes concurren
   ]);
   expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
   expect(competing.filter((result) => result.status === 'rejected')).toHaveLength(1);
+  const beforeFallback = await service.getWorking('project_test');
+  const candidate = structuredClone(beforeFallback.document.schema);
+  candidate.elements.layout_root = { type: 'container', props: {} };
+  candidate.layout.structure.layout_root = [candidate.layout.root];
+  candidate.layout.root = 'layout_root';
+  const updated = await service.updateWorking({
+    projectId: 'project_test',
+    baseWorkingVersion: beforeFallback.workingVersion,
+    clientRequestId: 'editor-candidate',
+    schema: candidate,
+  });
+  expect(updated.document.schema).toEqual(candidate);
+  expect(updated.revisionId).toBeNull();
+  await expect(
+    service.updateWorking({
+      projectId: 'project_test',
+      baseWorkingVersion: beforeFallback.workingVersion,
+      clientRequestId: 'stale-candidate',
+      schema: candidate,
+    }),
+  ).rejects.toMatchObject({ statusCode: 409 });
+  const invalid = structuredClone(candidate);
+  delete invalid.elements.content;
+  await expect(
+    service.updateWorking({
+      projectId: 'project_test',
+      baseWorkingVersion: updated.workingVersion,
+      clientRequestId: 'invalid-candidate',
+      schema: invalid,
+    }),
+  ).rejects.toThrow('INVALID_LAYOUT_SCHEMA');
+  expect(await service.getWorking('project_test')).toEqual(updated);
 });
 
 it.each(['prepared', 'revision', 'working'] as const)(

@@ -3,6 +3,7 @@ import { SchemaOperationSchema } from '../page/schema-operation.ts';
 import { RevisionIdSchema } from '../page/page-schema.ts';
 import {
   LAYOUT_NAME,
+  LayoutSchema,
   LayoutProjectIdSchema,
   ProjectLayoutDocumentSchema,
 } from './layout-schema.ts';
@@ -124,12 +125,38 @@ export const LayoutApplyStateSchema = Type.Object(
     savedSchemaHash: Type.Union([hash, Type.Null()]),
     baselineHash: Type.Union([hash, Type.Null()]),
     targetSchemaHash: Type.Union([hash, Type.Null()]),
-    status: Type.Union(
-      ['draft_unsaved', 'saved_pending_apply', 'in_sync', 'external_change', 'apply_pending'].map(
-        (value) => Type.Literal(value),
+    pendingRequest: Type.Optional(
+      Type.Object(
+        {
+          clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
+          revisionId: RevisionIdSchema,
+          workingVersion: Type.Integer({ minimum: 1 }),
+        },
+        strict,
       ),
+    ),
+    status: Type.Union(
+      (
+        [
+          'draft_unsaved',
+          'saved_pending_apply',
+          'in_sync',
+          'external_change',
+          'apply_pending',
+        ] as const
+      ).map((value) => Type.Literal(value)),
     ),
   },
   strict,
 );
 export type LayoutApplyState = Static<typeof LayoutApplyStateSchema>;
+
+/** Editor-only fallback when node operations cannot safely express a complete candidate. */
+export const LayoutUpdateRequestSchema = Type.Object(
+  {
+    ...Type.Omit(LayoutOperationsRequestSchema, ['operations']).properties,
+    schema: LayoutSchema,
+  },
+  strict,
+);
+export type LayoutUpdateRequest = Static<typeof LayoutUpdateRequestSchema>;

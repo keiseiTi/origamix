@@ -54,3 +54,5 @@ UI verification must exercise actual visual/flow switching, event selection, his
 - The source root explicitly references its ambient worker/CSS declarations so editor-facing consumers can typecheck without inheriting Vite client types. These references are type-only; never emit runtime imports of declaration files or require consumer-side copies of the worker declarations.
 
 - Attribute-panel rules and field/event rendering stay local to `components/attribute-panel/`; `use-attribute-panel.ts` coordinates selection and panel state. `components/flow-editor/hooks/use-flow-canvas.ts` owns the LogicFlow lifecycle and shared-session commit bridge. Store consumers require explicit selectors; use `useShallow` for multi-field selections.
+
+- Optional host validateSchema runs synchronously before a candidate enters session history or publishes to the host. It adds target-specific constraints (such as layout outlet uniqueness) to existing structural checks, without giving Editor HTTP, persistence or Agent ownership. Environment changes do not mutate Schema; rejected candidates preserve the prior draft.

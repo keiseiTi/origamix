@@ -30,7 +30,7 @@ const ContextInput = object(exactReadPagination);
 interface LogicSnapshot {
   schema: OrigamixPageSchema;
   workingVersion: number;
-  revisionId: string;
+  revisionId: string | null;
   materials: MaterialManifestCatalog;
 }
 

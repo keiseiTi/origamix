@@ -109,6 +109,10 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 布局开关只存在项目 manifest；Working/Revision 只保存布局内容，恢复历史不会重新开启或关闭项目开关。布局与页面 Schema 在渲染时通过 Outlet 组合，不合并节点表。未发布阶段的旧多布局草稿不自动转换；不匹配的新契约会拒绝并保留原文件。
 
-`SessionTarget` / `AgentTarget` 定义后续 PageSession 与 Run 的 `page | layout` 目标，不改变当前仅支持页面的 Agent Run 接口。[ApplicationSnapshot](src/transport/application-snapshot.ts) 定义只读应用快照和诊断身份，包含从项目配置解析的 enabled；关闭时无需加载布局文档。已应用文件不依赖本地 Working，因此其 workingVersion 可为空。实际预览组装与传输由后续 App/Server 接入负责。
+`SessionTarget` / `AgentTarget` 定义 PageSession 与 Run 的 `page | layout` 目标。布局 Agent 使用明确的项目 target 和 layout_assistant，不携带 pageId；页面请求保留原页面身份。[ApplicationSnapshot](src/transport/application-snapshot.ts) 定义只读应用快照和诊断身份，包含从项目配置解析的 enabled；关闭时无需加载布局文档。已应用文件不依赖本地 Working，因此其 workingVersion 可为空。App 在可信宿主侧组装 Working 应用快照并校验后发送至隔离 iframe；预览本身不读取后端。组合渲染报告绑定 snapshotId、pageId、layoutHash 和 pageHash，不混入仅页面诊断。
 
 layout Apply 请求绑定 projectId、当前保存 Revision、Working 版本和请求身份；响应与状态契约见 `LayoutApplyRequestSchema` / `LayoutApplyResultSchema` / `LayoutApplyStateSchema`。固定目标投影不属于项目 manifest，项目开关也不属于布局 Revision。
+
+`LayoutUpdateRequestSchema` 定义视觉编辑器的内部完整候选回退，与普通节点操作共用版本与最终布局校验。`LayoutApplyState.pendingRequest` 仅携带请求身份和保存版本，供工作台在内存丢失后显式恢复；读取状态本身不会重新应用。
+
+Agent 范围校验由 `resolveAgentTarget` 统一核对项目与页面身份；传输 Schema 拒绝混合布局 target 与 pageId。布局与页面复用终态操作载荷及状态机，布局工具名为 `complete_layout_run`，写策略为 `layout_write`。

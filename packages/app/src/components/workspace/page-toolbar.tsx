@@ -28,6 +28,8 @@ export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 
 export interface PageToolbarProps {
   active: boolean;
+  targetKind?: 'page' | 'layout';
+  canPreview?: boolean;
   saveBusy?: boolean;
   projectName: string;
   pageName: string;
@@ -38,6 +40,7 @@ export interface PageToolbarProps {
   onModeChange: (mode: WorkspaceMode) => Promise<void>;
   onPreview: () => Promise<void>;
   onSaveVersion: () => Promise<void>;
+  onRefreshState?: () => Promise<void>;
   onApply: () => Promise<void>;
   onReloadFromProject: () => Promise<void>;
   onRestoreRevision: (revisionId: string) => Promise<void>;
@@ -51,6 +54,8 @@ export interface PageToolbarProps {
 
 export const PageToolbarShell = ({
   active,
+  targetKind = 'page',
+  canPreview = true,
   saveBusy,
   projectName,
   pageName,
@@ -61,6 +66,7 @@ export const PageToolbarShell = ({
   onModeChange,
   onPreview,
   onSaveVersion,
+  onRefreshState,
   onApply,
   onReloadFromProject,
   onRestoreRevision,
@@ -103,14 +109,19 @@ export const PageToolbarShell = ({
               <TableOfContents size={16} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align='start'>
-              <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
+              <DropdownMenuItem
+                disabled={applyStatus === 'disabled'}
+                onClick={() => setHistoryOpen(true)}
+              >
                 <History /> Schema 历史管理
               </DropdownMenuItem>
               {onOpenEditorTool && (
                 <>
-                  <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
-                    <ListTree /> 全局变量
-                  </DropdownMenuItem>
+                  {targetKind === 'page' && (
+                    <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
+                      <ListTree /> 全局变量
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
                     <Braces /> Schema 编辑器
                   </DropdownMenuItem>
@@ -140,6 +151,11 @@ export const PageToolbarShell = ({
             canReload={canReload}
             onErrorChange={setError}
           />
+          {applyStatus === 'error' && onRefreshState && (
+            <Button size='sm' variant='outline' onClick={() => void onRefreshState()}>
+              重新检查状态
+            </Button>
+          )}
           {error && (
             <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
               {error}
@@ -178,15 +194,15 @@ export const PageToolbarShell = ({
                   size='icon-sm'
                   variant='ghost'
                   className='text-zinc-500 dark:text-zinc-400'
-                  aria-label='预览'
-                  disabled={opening}
+                  aria-label={canPreview ? '预览' : '暂时无法预览'}
+                  disabled={opening || !canPreview}
                   onClick={() => void openWindow()}
                 />
               }
             >
               <Eye size={15} />
             </TooltipTrigger>
-            <TooltipContent side='bottom'>在应用标签中打开预览</TooltipContent>
+            <TooltipContent side='bottom'>预览完整应用（当前草稿）</TooltipContent>
           </Tooltip>
         </div>
       </EditorToolbar>
@@ -195,6 +211,7 @@ export const PageToolbarShell = ({
           isOpen
           projectId={projectId}
           pageId={pageId}
+          targetKind={targetKind}
           canRestore={canRestore}
           onClose={() => setHistoryOpen(false)}
           onRestore={onRestoreRevision}

@@ -4,9 +4,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import type { EditorMaterialRegistration } from '@origamix/editor';
 
-const mocks = vi.hoisted(() => ({ stack: vi.fn(), load: vi.fn() }));
+const mocks = vi.hoisted(() => ({ stack: vi.fn(), load: vi.fn(), runtime: vi.fn() }));
 vi.mock('../../src/services/projects', () => ({ projectsService: { stack: mocks.stack } }));
-vi.mock('../../src/materials/loaders', () => ({ loadEditorMaterials: mocks.load }));
+vi.mock('../../src/materials/loaders', () => ({
+  loadEditorMaterials: mocks.load,
+  loadRuntimeMaterials: mocks.runtime,
+}));
 import { useEditorMaterials } from '../../src/materials/use-editor-materials';
 
 afterEach(() => {
@@ -29,6 +32,8 @@ it('ignores late material loads from another project and retries a failed curren
   } as EditorMaterialRegistration;
   const currentRegistration = { ...oldRegistration };
   mocks.stack.mockResolvedValue(BUILTIN_PROJECT_STACK);
+  const Provider = () => null;
+  mocks.runtime.mockResolvedValue({ Provider });
   mocks.load
     .mockImplementationOnce(
       () =>
@@ -51,6 +56,7 @@ it('ignores late material loads from another project and retries a failed curren
   expect(hook.result.current.error).toBe('chunk unavailable');
   act(() => hook.result.current.retry());
   await waitFor(() => expect(hook.result.current.registration).toBe(currentRegistration));
+  expect(hook.result.current.Provider).toBe(Provider);
   expect(mocks.stack).toHaveBeenLastCalledWith('project_current');
   expect(mocks.load).toHaveBeenLastCalledWith(BUILTIN_PROJECT_STACK.materialSet);
   expect(hook.result.current.error).toBeUndefined();

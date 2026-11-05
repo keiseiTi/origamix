@@ -1,15 +1,15 @@
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PreviewRenderReport, PreviewSnapshot } from '@origamix/shared';
+import type { ApplicationRenderReport, ApplicationSnapshot } from '@origamix/shared';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
-import { projectsService } from '@/services/projects';
-import { schemaService } from '@/services/schema';
+import { loadApplicationSnapshot } from '@/preview/load-application-snapshot';
 import type { AppTheme } from '@/store/preferences';
 
 interface PagePreviewFrameProps {
   active: boolean;
+  targetKind?: 'page' | 'layout';
   projectId: string;
   pageId: string;
   pageName: string;
@@ -20,19 +20,22 @@ interface PagePreviewFrameProps {
 
 export const PagePreviewFrame = ({
   active,
+  targetKind = 'page',
   projectId,
   pageId,
   pageName,
   schemaRefreshKey,
   theme,
   onExit,
-}: PagePreviewFrameProps): React.JSX.Element => {
+}: PagePreviewFrameProps): React.JSX.Element | null => {
+  const [opened, setOpened] = useState(active);
+  if (active && !opened) setOpened(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<ApplicationSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-  const currentSnapshot = useRef<PreviewSnapshot | null>(null);
+  const currentSnapshot = useRef<ApplicationSnapshot | null>(null);
   const reportSequence = useRef(0);
   const observedAt = useRef(0);
   const ready = useRef(false);
@@ -66,7 +69,7 @@ export const PagePreviewFrame = ({
   }, []);
 
   const publishSnapshot = useCallback(
-    (next: PreviewSnapshot): void => {
+    (next: ApplicationSnapshot): void => {
       if (ready.current)
         postToPreview({ type: 'origamix.preview.snapshot', projectId, pageId, snapshot: next });
     },
@@ -78,17 +81,12 @@ export const PagePreviewFrame = ({
       const requestGeneration = ++generation.current;
       if (manual) setRefreshing(true);
       try {
-        const [result, stack] = await Promise.all([
-          schemaService.workingState(projectId, pageId),
-          projectsService.stack(projectId),
-        ]);
-        if (requestGeneration !== generation.current) return;
-        const next = {
-          ...result,
-          stack,
+        const next = await loadApplicationSnapshot(
+          projectId,
+          targetKind === 'layout' ? null : pageId,
           theme,
-          previewId: crypto.randomUUID(),
-        } satisfies PreviewSnapshot;
+        );
+        if (requestGeneration !== generation.current) return;
         currentSnapshot.current = next;
         reportSequence.current = 0;
         setSnapshot(next);
@@ -98,45 +96,47 @@ export const PagePreviewFrame = ({
         if (requestGeneration !== generation.current) return;
         const message = reason instanceof Error ? reason.message : '无法读取页面';
         setError(message);
-        if (ready.current)
-          postToPreview({ type: 'origamix.preview.error', projectId, pageId, message });
       } finally {
         if (requestGeneration === generation.current) setRefreshing(false);
       }
     },
-    [pageId, postToPreview, projectId, publishSnapshot, theme],
+    [pageId, projectId, publishSnapshot, theme, targetKind],
   );
 
   const reportRender = useCallback(
-    async (report: PreviewRenderReport): Promise<void> => {
+    async (report: ApplicationRenderReport): Promise<void> => {
       const current = currentSnapshot.current;
+      const page = current?.pageSchemas[report.pageId];
       if (
         !current ||
-        current.previewId !== report.previewId ||
-        current.revisionId !== report.revisionId ||
-        current.workingVersion !== report.workingVersion ||
-        current.workingHash !== report.workingHash ||
+        !page ||
+        current.snapshotId !== report.snapshotId ||
+        page.hash !== report.pageHash ||
+        (current.layout.enabled ? current.layout.hash : null) !== report.layoutHash ||
         report.reportSequence <= reportSequence.current
       )
         return;
       reportSequence.current = report.reportSequence;
+      // The existing diagnostic endpoint is page-only. Never record a composed
+      // layout outcome as a page success/failure; composition stays snapshot-scoped.
+      if (current.layout.enabled || !page.revisionId || page.workingVersion === null) return;
       observedAt.current = Math.max(Date.now(), observedAt.current + 1);
       const isCurrent = () =>
-        currentSnapshot.current?.previewId === report.previewId &&
+        currentSnapshot.current?.snapshotId === report.snapshotId &&
         reportSequence.current === report.reportSequence;
       try {
-        const result = await runtimeService.report(projectId, pageId, {
-          revisionId: report.revisionId,
-          workingVersion: report.workingVersion,
-          workingHash: report.workingHash,
-          previewId: report.previewId,
+        const result = await runtimeService.report(projectId, report.pageId, {
+          revisionId: page.revisionId,
+          workingVersion: page.workingVersion,
+          workingHash: page.hash,
+          previewId: report.snapshotId,
           reportSequence: report.reportSequence,
           outcome: report.outcome,
           observedAt: new Date(observedAt.current).toISOString(),
           diagnostics: report.diagnostics.map((diagnostic) => ({
             ...diagnostic,
-            pageId,
-            revisionId: report.revisionId,
+            pageId: report.pageId,
+            revisionId: page.revisionId!,
           })),
         });
         if (isCurrent() && result.disposition === 'accepted' && report.outcome === 'success')
@@ -146,7 +146,7 @@ export const PagePreviewFrame = ({
           setError(reason instanceof Error ? reason.message : '无法记录页面渲染状态');
       }
     },
-    [pageId, projectId],
+    [projectId],
   );
 
   useEffect(() => {
@@ -156,20 +156,23 @@ export const PagePreviewFrame = ({
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.ready') {
         ready.current = true;
-        if (snapshot) {
-          const next = { ...snapshot, previewId: crypto.randomUUID() };
+        // Read completion can precede React's commit. Read the same authority
+        // used by report validation so readiness never misses that snapshot.
+        const retained = currentSnapshot.current;
+        if (retained) {
+          const next = { ...retained, snapshotId: crypto.randomUUID() };
           currentSnapshot.current = next;
           reportSequence.current = 0;
           setSnapshot(next);
           publishSnapshot(next);
-        } else void refresh(true);
+        }
       } else {
-        void reportRender(event.data);
+        void reportRender(event.data.report);
       }
     };
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
-  }, [pageId, projectId, publishSnapshot, refresh, reportRender, snapshot]);
+  }, [pageId, projectId, publishSnapshot, reportRender]);
 
   useEffect(() => {
     if (!active) return;
@@ -184,6 +187,7 @@ export const PagePreviewFrame = ({
     publishSnapshot({ ...snapshot, theme });
   }, [publishSnapshot, snapshot, theme]);
 
+  if (!opened) return null;
   return (
     <div className='relative size-full bg-white dark:bg-zinc-950'>
       <iframe
@@ -202,13 +206,23 @@ export const PagePreviewFrame = ({
       >
         <EyeOff size={17} />
       </Button>
+      <Button
+        size='icon-sm'
+        variant='secondary'
+        className='absolute top-3 right-14 z-50 shadow-md'
+        aria-label='刷新应用预览'
+        disabled={refreshing}
+        onClick={() => void refresh(true)}
+      >
+        <RefreshCw size={17} className={refreshing ? 'animate-spin' : undefined} />
+      </Button>
       {error && (
         <div
           role='alert'
           className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-danger/10 p-4 text-sm text-danger backdrop-blur'
         >
           <span>
-            {error}。{snapshot ? '保留上次成功预览。' : '请重试。'}
+            {error}。{snapshot ? '保留上次应用快照。' : '请重试。'}
           </span>
           <Button
             size='icon-sm'

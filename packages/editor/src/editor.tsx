@@ -21,6 +21,7 @@ export const Editor = ({
   readOnly = false,
   readOnlyMessage,
   targetSelection,
+  validateSchema,
 }: EditorProps): React.JSX.Element => {
   const [mountedSession, setMountedSession] = useState({ sessionKey, registration, editor });
   const switching =
@@ -91,6 +92,7 @@ export const Editor = ({
           materialCatalog={registration.catalog.materials}
           rootMaterialTypes={rootMaterialTypes}
           targetSelection={targetSelection}
+          validateSchema={validateSchema}
           materials={materials}
           schema={schema}
           onChange={onEngineChange}

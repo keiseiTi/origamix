@@ -1,3 +1,4 @@
+import type { LayoutService } from '../layout/layout-service';
 import type { AgentRunRepository } from './run-repository';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ConversationService } from '../conversations/conversation-service';
@@ -21,18 +22,44 @@ export const recoverAgentRunsOnStartup = async (
   runs: AgentRunRepository,
   projects: ProjectRepository,
   conversations: ConversationService,
+  layouts?: LayoutService,
 ): Promise<void> => {
   const service = new AgentRunService(runs);
   const recovered = await service.recover(async (run) => {
     const project = projects.getProject(run.projectId);
-    const page = projects.getPage(run.projectId, run.pageId);
-    if (!project || !page) return { disposition: 'not_committed' } as const;
+    const page = run.pageId ? projects.getPage(run.projectId, run.pageId) : undefined;
+    if (!project || (run.pageId && !page)) return { disposition: 'not_committed' } as const;
     try {
+      if (!run.pageId) {
+        const result = await layouts?.getAgentReceipt(run.projectId, run.id);
+        if (!result?.receipt) return { disposition: 'not_committed' } as const;
+        const { receipt, working } = result;
+        if (
+          receipt.runId !== run.id ||
+          receipt.projectId !== run.projectId ||
+          receipt.baseWorkingVersion !== run.baseWorkingVersion ||
+          receipt.operationDigest !== run.operationDigest
+        )
+          return { disposition: 'conflict' } as const;
+        if (
+          working.workingVersion === receipt.resultWorkingVersion &&
+          working.workingHash === receipt.resultWorkingHash
+        )
+          return {
+            disposition: 'committed',
+            resultWorkingVersion: receipt.resultWorkingVersion,
+            resultWorkingHash: receipt.resultWorkingHash,
+          } as const;
+        return {
+          disposition:
+            working.workingVersion === receipt.baseWorkingVersion ? 'not_committed' : 'conflict',
+        } as const;
+      }
       const pageRef = {
         projectPath: project.path,
-        pageId: page.id,
-        slug: page.slug,
-        relativePath: page.relativePath,
+        pageId: page!.id,
+        slug: page!.slug,
+        relativePath: page!.relativePath,
       };
       const receipt = await getAgentWorkingCommitReceipt(pageRef, run.id);
       if (!receipt) return { disposition: 'not_committed' } as const;

@@ -70,7 +70,17 @@ export const useWorkspacePageController = ({ onPageSelected }: { onPageSelected:
       useWorkspaceStore.getState().setPageMode(pageId, mode);
     }, pageId);
 
-  const openPreview = (pageId: string): Promise<void> => changeMode(pageId, 'preview');
+  const openPreview = (pageId: string): Promise<void> =>
+    transition(async () => {
+      const state = useWorkspaceStore.getState();
+      const projectId = state.openPages.find((tab) => tab.id === pageId)?.projectId;
+      // A full-application preview must include retained drafts from every open
+      // page/layout in this project. A failed flush keeps the current view intact.
+      for (const tab of state.openPages) {
+        if (tab.projectId === projectId) await flushEditor(tab.id);
+      }
+      useWorkspaceStore.getState().setPageMode(pageId, 'preview');
+    }, pageId);
 
   return {
     editorRefForPage,

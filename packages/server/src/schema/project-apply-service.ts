@@ -101,6 +101,15 @@ export class ProjectApplyService {
         savedSchemaHash: working.savedSchemaHash,
         baselineHash,
         targetSchemaHash,
+        ...(pending
+          ? {
+              pendingRequest: {
+                clientRequestId: pending.clientRequestId,
+                revisionId: pending.revisionId,
+                workingVersion: pending.expectedWorkingVersion,
+              },
+            }
+          : {}),
         status: pending
           ? ('apply_pending' as const)
           : working.savedSchemaHash !== working.workingHash

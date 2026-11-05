@@ -1,3 +1,4 @@
+import { agentTarget, requireAgentTarget } from './agent-target';
 import {
   type ClarificationResult,
   type CreateAgentRunRequest,
@@ -61,7 +62,7 @@ export class AgentService {
       executor: RunExecutor;
       getCurrentState: (
         projectId: string,
-        pageId: string,
+        pageId: string | undefined,
       ) =>
         | { workingVersion: number; schema?: OrigamixPageSchema }
         | Promise<{ workingVersion: number; schema?: OrigamixPageSchema }>;
@@ -73,10 +74,13 @@ export class AgentService {
     },
   ) {}
 
-  start(request: CreateAgentRunRequest): Promise<StartedAgentRun> {
-    if (this.closing) return Promise.reject(conflict('服务正在关闭，不能启动新的 Agent Run'));
+  async start(request: CreateAgentRunRequest): Promise<StartedAgentRun> {
+    if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
+    const project = this.dependencies.projects.getProject(request.projectId);
+    if (!project) throw notFound('项目不存在');
+    const target = requireAgentTarget(request);
     const admit = () =>
-      this.starts.run(`${request.projectId}\0${request.pageId}`, async () => {
+      this.starts.run(`${request.projectId}\0${target.kind}\0${request.pageId ?? ''}`, async () => {
         this.assertOpen();
         const duplicate = this.dependencies.runs.findByClientRequest(
           request.projectId,
@@ -139,11 +143,11 @@ export class AgentService {
         const started = this.dependencies.conversations.startRun({
           ...request,
           modelRef,
-          runKind: 'page_assistant',
+          runKind: target.kind === 'layout' ? 'layout_assistant' : 'page_assistant',
           budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-          promptVersion: '3',
+          promptVersion: target.kind === 'layout' ? '4' : '3',
           policyVersion: '1',
-          toolsetVersion: '2',
+          toolsetVersion: target.kind === 'layout' ? '3' : '2',
           materialManifestVersion: 'official-antd@1.0.0',
         });
         if (started.created) {
@@ -151,6 +155,7 @@ export class AgentService {
             type: 'run.queued',
             runId: started.run.id,
             pageId: started.run.pageId,
+            target: agentTarget(started.run.projectId, started.run.pageId),
             requestId: started.run.clientRequestId,
             payload: { status: started.run.status },
           });
@@ -166,8 +171,6 @@ export class AgentService {
         }
         return this.startResult(started);
       });
-    const project = this.dependencies.projects.getProject(request.projectId);
-    if (!project) return Promise.reject(notFound('项目不存在'));
     const pending = withProjectActivity(project.path, admit);
     this.starting.add(pending);
     const remove = () => {
@@ -211,12 +214,13 @@ export class AgentService {
   cancel(runId: string, requestId: string): AgentRunRecord {
     const run = this.dependencies.runService.cancel(runId);
     this.dependencies.executor.cancel(runId);
-    const progress = progressPayload(run.status);
+    const progress = progressPayload(run.status, run.pageId ? 'page' : 'layout');
     if (progress)
       this.dependencies.events.publish({
         type: 'run.progress',
         runId,
         pageId: run.pageId,
+        target: agentTarget(run.projectId, run.pageId),
         requestId,
         payload: progress,
       });
@@ -263,6 +267,7 @@ export class AgentService {
         type: 'working.committed',
         runId: settled.id,
         pageId: settled.pageId,
+        target: agentTarget(settled.projectId, settled.pageId),
         requestId: settled.clientRequestId,
         payload: {
           baseWorkingVersion: settled.baseWorkingVersion,
@@ -276,6 +281,7 @@ export class AgentService {
         type: 'clarification.available',
         runId: settled.id,
         pageId: settled.pageId,
+        target: agentTarget(settled.projectId, settled.pageId),
         requestId: settled.clientRequestId,
         payload: {
           status: 'completed',
@@ -305,6 +311,7 @@ export class AgentService {
       type: `run.${settled.status}`,
       runId: result.runId,
       pageId: started.run.pageId,
+      target: agentTarget(started.run.projectId, started.run.pageId),
       requestId: started.run.clientRequestId,
       payload,
     });

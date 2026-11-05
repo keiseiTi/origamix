@@ -50,6 +50,11 @@
     "type": "file"
   },
   {
+    "name": "layout",
+    "label": "Layout：契约与接口",
+    "type": "file"
+  },
+  {
     "name": "development",
     "label": "开发与验证",
     "type": "file"

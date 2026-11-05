@@ -76,6 +76,7 @@ export interface EditorProps {
   theme: EditorTheme;
   onChange: (schema: OrigamixPageSchema, options?: { immediate: boolean }) => void;
   readOnly?: boolean;
+  validateSchema?: (schema: OrigamixPageSchema) => void;
   readOnlyMessage?: string;
   targetSelection?: EditorTargetSelection;
 }

@@ -3,6 +3,7 @@ import { RefreshCw, Save } from 'lucide-react';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
 
 export type ApplyStatus =
+  | 'disabled'
   | 'loading'
   | 'in_sync'
   | 'draft_unsaved'
@@ -104,17 +105,19 @@ export const RevisionActions = ({
               : 'text-zinc-500 dark:text-zinc-400'
           }
         >
-          {applyStatus === 'loading'
-            ? '检查状态…'
-            : applyStatus === 'in_sync'
-              ? '与项目一致'
-              : applyStatus === 'saved_pending_apply'
-                ? '版本已保存 · 待应用'
-                : applyStatus === 'external_change'
-                  ? '项目文件已变化'
-                  : applyStatus === 'result_pending'
-                    ? '应用结果待确认'
-                    : '状态不可用'}
+          {applyStatus === 'disabled'
+            ? '布局已关闭'
+            : applyStatus === 'loading'
+              ? '检查状态…'
+              : applyStatus === 'in_sync'
+                ? '与项目一致'
+                : applyStatus === 'saved_pending_apply'
+                  ? '版本已保存 · 待应用'
+                  : applyStatus === 'external_change'
+                    ? '项目文件已变化'
+                    : applyStatus === 'result_pending'
+                      ? '应用结果待确认'
+                      : '状态不可用'}
         </span>
       )}
       <Tooltip>
@@ -148,9 +151,9 @@ export const RevisionActions = ({
         >
           {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
         </TooltipTrigger>
-        <TooltipContent side='bottom'>把当前已保存页面写入真实项目</TooltipContent>
+        <TooltipContent side='bottom'>把当前已保存内容写入真实项目</TooltipContent>
       </Tooltip>
-      {applyStatus === 'external_change' && (
+      {applyStatus === 'external_change' && canReload && (
         <Tooltip>
           <TooltipTrigger
             render={

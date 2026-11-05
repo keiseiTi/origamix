@@ -102,7 +102,8 @@ app
     assert.ok(existsSync(join(result.path, 'origamix.project.json')));
     assert.ok(!existsSync(join(result.path, 'node_modules')));
     await main.webContents.executeJavaScript(`window.__backendStatuses = [];
-      window.api.backend.onStatusChanged(status => window.__backendStatuses.push(status));`);
+      window.api.backend.onStatusChanged(status => window.__backendStatuses.push(status));
+      void 0;`);
     const interruptedBackend = currentBackend;
     interruptedBackend!.kill();
     await waitFor(() => currentBackend !== interruptedBackend && currentBackend);
@@ -149,12 +150,25 @@ app
     await main.webContents.executeJavaScript(
       `document.querySelector('button[aria-label="预览"]')?.click()`,
     );
-    await waitFor(() =>
-      main.webContents.executeJavaScript(`(() => {
-        const frame = document.querySelector('iframe[title="Home 预览"]');
-        return Boolean(frame?.contentDocument?.body.innerText.includes('Desktop preview verified'));
-      })()`),
-    );
+    try {
+      await waitFor(() =>
+        main.webContents.executeJavaScript(`(() => {
+          const frame = document.querySelector('iframe[title="Home 预览"]');
+          return Boolean(frame?.contentDocument?.body.innerText.includes('Desktop preview verified'));
+        })()`),
+      );
+    } catch (error) {
+      console.error(
+        'Preview state:',
+        await main.webContents.executeJavaScript(`({
+        host: document.body.innerText.slice(0, 1500),
+        frames: [...document.querySelectorAll('iframe')].map(frame => ({
+          src: frame.src, text: frame.contentDocument?.body.innerText.slice(0, 1500)
+        }))
+      })`),
+      );
+      throw error;
+    }
     assert.equal(
       await main.webContents.executeJavaScript(`(() => {
         const frame = document.querySelector('iframe[title="Home 预览"]');

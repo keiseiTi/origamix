@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const projects = sqliteTable('projects', {
@@ -34,7 +35,7 @@ export const conversations = sqliteTable(
   {
     id: integer().primaryKey({ autoIncrement: true }),
     projectId: integer('project_id').notNull(),
-    pageId: integer('page_id').notNull(),
+    pageId: integer('page_id'),
     title: text().notNull(),
     status: integer().notNull().default(0),
     createdAt: text('created_at').notNull(),
@@ -74,7 +75,7 @@ export const agentRuns = sqliteTable(
     id: integer().primaryKey({ autoIncrement: true }),
     runId: text('run_id').notNull().unique(),
     projectId: integer('project_id').notNull(),
-    pageId: integer('page_id').notNull(),
+    pageId: integer('page_id'),
     conversationId: integer('conversation_id').notNull(),
     userMessageId: integer('user_message_id').notNull(),
     clientRequestId: text('client_request_id').notNull(),
@@ -114,6 +115,9 @@ export const agentRuns = sqliteTable(
       table.pageId,
       table.clientRequestId,
     ),
+    uniqueIndex('idx_agent_runs_layout_request')
+      .on(table.projectId, table.clientRequestId)
+      .where(sql`page_id IS NULL`),
     index('idx_agent_runs_conversation_created').on(table.conversationId, table.createdAt),
     index('idx_agent_runs_recovery').on(table.status, table.updatedAt),
   ],

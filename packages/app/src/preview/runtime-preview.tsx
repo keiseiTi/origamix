@@ -3,11 +3,16 @@ import { loadRuntimeMaterials } from '@/materials/loaders';
 import {
   type ProjectStack,
   type OrigamixPageSchema,
+  type ApplicationLayout,
   type PreviewRenderDiagnostic,
 } from '@origamix/shared';
 import { useEffect, useMemo, useState } from 'react';
 
-import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime';
+import {
+  OrigamixApplicationPage,
+  type RuntimeOutcome,
+  type OrigamixLayoutProps,
+} from '@origamix/runtime';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 
 type RenderOutcome =
@@ -23,12 +28,18 @@ const toPreviewOutcome = (outcome: RuntimeOutcome): RenderOutcome => {
 
 export const RuntimePreview = ({
   schema,
+  pageId,
+  layout,
+  navigation,
   stack,
   revisionId,
   theme,
   onOutcome,
 }: {
   schema: OrigamixPageSchema;
+  pageId: string;
+  layout: ApplicationLayout;
+  navigation: OrigamixLayoutProps['navigation'];
   stack: ProjectStack;
   revisionId: string;
   theme: 'light' | 'dark';
@@ -82,7 +93,10 @@ export const RuntimePreview = ({
   return (
     <Provider mode={theme}>
       <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
-        <OrigamixPage
+        <OrigamixApplicationPage
+          pageId={pageId}
+          layout={layout}
+          navigation={navigation}
           schema={schema as Schema}
           materials={current.materials.components}
           resetKey={revisionId}
@@ -92,7 +106,7 @@ export const RuntimePreview = ({
               role='alert'
               className='m-auto max-w-lg rounded-xl border border-danger/30 bg-danger/10 p-5 text-sm text-danger'
             >
-              <strong className='block'>页面渲染失败</strong>
+              <strong className='block'>应用渲染失败</strong>
               <span className='mt-1 block'>{error.message}</span>
               <Button className='mt-4' size='sm' variant='secondary' onClick={retry}>
                 重试渲染

@@ -1,6 +1,8 @@
+import { layoutService } from '@/services/layout';
 import { useProjectUpgrades } from '@/store/project-upgrades';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { schemaService } from '@/services/schema';
+import { useMemo } from 'react';
+import { sessionService, type SessionKind } from '@/services/session';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { ApiRequestError, subscribeBackendReady } from '@/services/request';
 import type { EditorHandle } from '@origamix/editor';
@@ -19,6 +21,7 @@ export const usePageApplicationState = ({
   pageId,
   schemaRefreshKey,
   active = true,
+  kind = 'page',
   editorRef,
   onSchemaCommitted,
 }: {
@@ -26,9 +29,11 @@ export const usePageApplicationState = ({
   pageId?: string;
   schemaRefreshKey: string;
   active?: boolean;
+  kind?: SessionKind;
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
+  const service = useMemo(() => sessionService(kind), [kind]);
   const projectUpgradeVersion = useProjectUpgrades(
     (state) => state.completed[projectId ?? ''] ?? 0,
   );
@@ -68,12 +73,12 @@ export const usePageApplicationState = ({
       setApplyStatus(value);
     };
     try {
-      const state = await schemaService.applyState(projectId, pageId);
+      const state = await service.applyState(projectId, pageId);
       publish(state.status);
     } catch {
       publish('error');
     }
-  }, [pageId, projectId, setApplyStatus]);
+  }, [pageId, projectId, setApplyStatus, service]);
 
   useEffect(() => {
     if (!active) return;
@@ -95,19 +100,24 @@ export const usePageApplicationState = ({
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
     await editorRef.current?.flush();
-    const current = await schemaService.workingState(projectId, pageId);
+    const current = await service.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     const operations = usePendingOperations.getState();
     const previousRequest = operations.applies[requestPageKey];
     if (previousRequest?.inFlight) throw new Error('应用请求仍在处理中，请稍后重试');
-    const request = previousRequest ?? {
-      revisionId: current.revisionId,
-      workingVersion: current.workingVersion,
-      clientRequestId: crypto.randomUUID(),
-    };
+    if (!previousRequest && !current.revisionId) throw new Error('请先保存版本，再应用到项目');
+    const recoveredRequest =
+      kind === 'layout' ? (await layoutService.applyState(projectId)).pendingRequest : undefined;
+    if (pageKeyRef.current !== requestPageKey) return;
+    const request = previousRequest ??
+      recoveredRequest ?? {
+        revisionId: current.revisionId!,
+        workingVersion: current.workingVersion,
+        clientRequestId: crypto.randomUUID(),
+      };
     operations.setApply(requestPageKey, { ...request, inFlight: true });
     try {
-      await schemaService.apply(
+      await service.apply(
         projectId,
         pageId,
         request.revisionId,
@@ -138,9 +148,9 @@ export const usePageApplicationState = ({
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
     await editorRef.current?.flush();
-    const current = await schemaService.workingState(projectId, pageId);
+    const current = await service.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
-    const saved = await schemaService.saveRevision(projectId, pageId, current.workingVersion);
+    const saved = await service.saveRevision(projectId, pageId, current.workingVersion);
     if (pageKeyRef.current !== requestPageKey) return;
     editorRef.current?.acknowledgeWorking?.({
       scope: { projectId, pageId },
@@ -154,7 +164,7 @@ export const usePageApplicationState = ({
   const reloadFromProject = async (): Promise<void> => {
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    const result = await schemaService.reloadFromProject(projectId, pageId);
+    const result = await service.reloadFromProject(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     onSchemaCommitted(pageId, result.revisionId);
     await refreshApplyState();
@@ -164,9 +174,9 @@ export const usePageApplicationState = ({
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
     await editorRef.current?.flush();
-    const current = await schemaService.workingState(projectId, pageId);
+    const current = await service.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
-    const restored = await schemaService.restoreRevision(
+    const restored = await service.restoreRevision(
       projectId,
       pageId,
       revisionId,

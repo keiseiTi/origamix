@@ -11,22 +11,22 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Repository map
 
-| Package guidance                          | Owns                                                          | Start reading                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                                   |
-| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                                    |
+| Package guidance                          | Owns                                                          | Start reading                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [Site](site/AGENTS.md)                    | Project website, Chinese onboarding and package documentation | `site/docs/index.md`, `site/docs/_nav.json`, `site/theme/`                                               |
+| [Desktop](apps/desktop/AGENTS.md)         | Main/Preload, windows, lifecycle, packaging                   | `apps/desktop/src/main/index.ts`, `apps/desktop/scripts/`                                                |
 | [Editor](packages/editor/AGENTS.md)       | Canvas, FlowEditor, reusable editing components and contracts | `packages/editor/src/`, `packages/editor/src/components/flow-editor/`, `packages/editor/src/interfaces/` |
-| [UI](packages/ui/AGENTS.md)               | Shared base controls, utilities and theme foundations         | `packages/ui/src/components/`, `packages/ui/src/styles/styles.css`                           |
-| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`          |
-| [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                   |
-| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/src/index.ts`                                                              |
-| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/src/server.ts`, `packages/server/src/projects/`                             |
-| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/index.ts`, `packages/shared/src/page/`                                  |
-| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                                   |
+| [UI](packages/ui/AGENTS.md)               | Shared base controls, utilities and theme foundations         | `packages/ui/src/components/`, `packages/ui/src/styles/styles.css`                                       |
+| [App](packages/app/AGENTS.md)             | React workbench, editor state, HTTP client                    | `packages/app/src/app.tsx`, `packages/app/src/services/`, `packages/app/src/store/`                      |
+| [Materials](packages/materials/AGENTS.md) | Origamix page materials and editor manifests                  | `packages/materials/README.md`, `packages/materials/antd/`                                               |
+| [Runtime](packages/runtime/AGENTS.md)     | Framework runtime adapters for independently rendered pages   | `packages/runtime/src/index.ts`                                                                          |
+| [Server](packages/server/AGENTS.md)       | Local HTTP backend, SQLite, project files, Schema commits     | `packages/server/src/server.ts`, `packages/server/src/projects/`                                         |
+| [Shared](packages/shared/AGENTS.md)       | Platform-neutral contracts and validators                     | `packages/shared/src/index.ts`, `packages/shared/src/page/`                                              |
+| [Template](packages/template/AGENTS.md)   | Portable generated-project scaffold                           | `packages/template/package.json`, `packages/template/src/`                                               |
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.
-- Preview is rendered by App in a sandboxed iframe with page snapshots sent by the trusted workbench via postMessage, without a Desktop bridge or backend credentials; Agent HTTP/SSE is implemented. Preview capability sessions remain future work.
+- Preview is rendered by App in a sandboxed iframe with read-only application snapshots sent by the trusted workbench via postMessage, without a Desktop bridge or backend credentials; Agent HTTP/SSE is implemented. Preview capability sessions remain future work.
 
 ## Architecture invariants
 

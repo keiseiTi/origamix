@@ -1,12 +1,13 @@
 import { useShallow } from 'zustand/react/shallow';
 import { getElementLabel, getMaterialDisplay } from '@origamix/shared';
-import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@origamix/ui';
+import { Button, Tooltip, TooltipContent, TooltipTrigger, useToastManager } from '@origamix/ui';
 import { Move, Trash2 } from 'lucide-react';
 import { Movable } from './canvas-drag-controls';
 import { useEditorCore } from '../../session/editor-context';
 import { SchemaUtils } from '../../schema/schema-utils';
 
 export const SelectionToolbar = (): React.JSX.Element | null => {
+  const notifications = useToastManager();
   const { activeElement, schema, setSchema, setActiveElement } = useEditorCore(
     useShallow((state) => ({
       activeElement: state.activeElement,
@@ -24,9 +25,16 @@ export const SelectionToolbar = (): React.JSX.Element | null => {
 
   const remove = (): void => {
     if (isRoot) return;
-    const nextSchema = SchemaUtils.removeElement(schema, id).schema;
-    setSchema(nextSchema, { source: 'canvas' });
-    setActiveElement(null);
+    try {
+      const nextSchema = SchemaUtils.removeElement(schema, id).schema;
+      setSchema(nextSchema, { source: 'canvas' });
+      setActiveElement(null);
+    } catch (reason) {
+      notifications.add({
+        type: 'error',
+        title: reason instanceof Error ? reason.message : '无法删除元素，原有草稿已保留',
+      });
+    }
   };
 
   return (

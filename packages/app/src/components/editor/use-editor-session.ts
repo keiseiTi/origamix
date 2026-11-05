@@ -1,15 +1,16 @@
 import { equalJson } from '@origamix/shared';
-import { subscribeBackendReady } from '@/services/request';
+import { ApiRequestError, subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorTransaction, EditorWorkingState } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { schemaService } from '@/services/schema';
+import { sessionService, type SessionKind } from '@/services/session';
 
-type WorkingState = Awaited<ReturnType<typeof schemaService.workingState>>;
+type WorkingState = Awaited<ReturnType<ReturnType<typeof sessionService>['workingState']>>;
 type Session = {
   scope: { projectId: string; pageId: string };
   active: boolean;
+  kind: SessionKind;
   ready: boolean;
   generation: number;
   draft: OrigamixPageSchema | null;
@@ -18,6 +19,7 @@ type Session = {
   pending: Promise<void> | null;
   timer: number | null;
   failed: boolean;
+  attempt: { schema: OrigamixPageSchema; requestId: string } | null;
 };
 
 export const useEditorSession = (
@@ -27,13 +29,16 @@ export const useEditorSession = (
   onWorkingCommitted?: () => void,
   readyToEdit = true,
   schemaRefreshKey = '',
+  kind: SessionKind = 'page',
 ) => {
+  const service = useMemo(() => sessionService(kind), [kind]);
   // A new ref cell per scope isolates queues even when an old request is pending.
   const sessionRef = useMemo<{ current: Session }>(
     () => ({
       current: {
         scope: { projectId, pageId },
         active: false,
+        kind,
         ready: false,
         generation: 0,
         draft: null,
@@ -42,9 +47,10 @@ export const useEditorSession = (
         pending: null,
         timer: null,
         failed: false,
+        attempt: null,
       },
     }),
-    [projectId, pageId],
+    [projectId, pageId, kind],
   );
   const [loaded, setLoaded] = useState<{
     sessionRef: { current: Session };
@@ -85,7 +91,7 @@ export const useEditorSession = (
         if (ownedSession.failed || !equalJson(ownedSession.draft, ownedSession.savedSchema))
           throw new Error('Working 已更新，本地草稿已保留；请先重试保存草稿，再重试加载');
         const baseVersion = ownedSession.workingVersion;
-        const result = await schemaService.workingState(projectId, pageId);
+        const result = await service.workingState(projectId, pageId);
         if (!active || request !== sequence) return;
         // Editing may have continued while the read was in flight.
         if (
@@ -119,7 +125,7 @@ export const useEditorSession = (
       unsubscribe();
       active = false;
     };
-  }, [projectId, pageId, sessionRef, schemaRefreshKey, retry]);
+  }, [projectId, pageId, sessionRef, schemaRefreshKey, retry, service]);
 
   useEffect(() => {
     if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
@@ -148,27 +154,34 @@ export const useEditorSession = (
         const draft = sessionRef.current.draft;
         if (!draft || equalJson(draft, sessionRef.current.savedSchema)) return;
         if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
+        const attempt = (kind === 'layout' ? sessionRef.current.attempt : null) ?? {
+          schema: structuredClone(draft),
+          requestId: crypto.randomUUID(),
+        };
+        sessionRef.current.attempt = attempt;
         const transaction: EditorTransaction = createEditorTransaction(
           {
             scope: sessionRef.current.scope,
             workingVersion: sessionRef.current.workingVersion,
             schema: sessionRef.current.savedSchema!,
           },
-          draft,
+          attempt.schema,
         );
         const request =
           transaction.kind === 'operations'
-            ? schemaService.applyWorkingOperations(
+            ? service.applyWorkingOperations(
                 transaction.scope.projectId,
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.operations,
+                ...(kind === 'layout' ? ([attempt.requestId] as const) : []),
               )
-            : schemaService.updateWorking(
+            : service.updateWorking(
                 transaction.scope.projectId,
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.schema,
+                ...(kind === 'layout' ? ([attempt.requestId] as const) : []),
               );
         const operation = request
           .then((result) => {
@@ -176,6 +189,7 @@ export const useEditorSession = (
             sessionRef.current.workingVersion = result.workingVersion;
             sessionRef.current.savedSchema = result.schema;
             sessionRef.current.failed = false;
+            sessionRef.current.attempt = null;
             setFailure(null);
             onWorkingCommittedRef.current?.();
           })
@@ -187,6 +201,8 @@ export const useEditorSession = (
       }
       throw new Error('编辑会话已关闭');
     } catch (reason) {
+      if (reason instanceof ApiRequestError && reason.status < 500 && reason.status !== 408)
+        sessionRef.current.attempt = null;
       if (sessionRef.current.active) {
         sessionRef.current.failed = true;
         setFailure({
@@ -196,7 +212,7 @@ export const useEditorSession = (
       }
       throw reason;
     }
-  }, [readOnly, sessionRef]);
+  }, [readOnly, sessionRef, kind, service]);
 
   const generation = sessionRef.current.generation;
   const onChange = (schema: OrigamixPageSchema, options?: { immediate: boolean }): void => {

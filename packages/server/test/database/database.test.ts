@@ -70,7 +70,7 @@ describe('ApplicationDatabase', () => {
 
 it('backs up a versioned database and rolls back a failed upgrade', async () => {
   const { readdir } = await import('node:fs/promises');
-  const { migrateDatabase } = await import('../../src/database/migrations');
+  const { migrateDatabase, DATABASE_VERSION } = await import('../../src/database/migrations');
   const directory = await mkdtemp(join(tmpdir(), 'origamix-db-upgrade-'));
   directories.push(directory);
   const path = join(directory, 'origamix.db');
@@ -81,18 +81,22 @@ it('backs up a versioned database and rolls back a failed upgrade', async () => 
       "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-23', '2026-10-23')",
     );
     migrateDatabase(connection);
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: DATABASE_VERSION,
+    });
     const failed = [
       {
-        from: 1,
-        to: 2,
+        from: DATABASE_VERSION,
+        to: DATABASE_VERSION + 1,
         release: '1.0.1',
         sql: 'ALTER TABLE projects ADD COLUMN migration_probe TEXT; INSERT INTO missing_table VALUES (1);',
       },
     ];
-    expect(() => migrateDatabase(connection, failed, 2)).toThrow();
+    expect(() => migrateDatabase(connection, failed, DATABASE_VERSION + 1)).toThrow();
     expect((await readdir(directory)).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: DATABASE_VERSION,
+    });
     expect(connection.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
     expect(
       connection
@@ -105,26 +109,28 @@ it('backs up a versioned database and rolls back a failed upgrade', async () => 
       connection,
       [
         {
-          from: 1,
-          to: 2,
+          from: DATABASE_VERSION,
+          to: DATABASE_VERSION + 1,
           release: '1.0.1',
           sql: 'ALTER TABLE projects ADD COLUMN migration_probe TEXT;',
         },
         {
-          from: 2,
-          to: 3,
+          from: DATABASE_VERSION + 1,
+          to: DATABASE_VERSION + 2,
           release: '1.0.2',
           sql: "UPDATE projects SET migration_probe = 'converted';",
         },
       ],
-      3,
+      DATABASE_VERSION + 2,
       (current) => {
         expect(current.prepare('SELECT migration_probe FROM projects').get()).toEqual({
           migration_probe: 'converted',
         });
       },
     );
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 });
+    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: DATABASE_VERSION + 2,
+    });
     expect(() => migrateDatabase(connection)).toThrow('较新');
     expect(connection.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
   } finally {

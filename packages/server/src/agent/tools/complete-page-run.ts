@@ -1,3 +1,4 @@
+import type { LayoutService } from '../../layout/layout-service';
 import type { ProjectMaterialReader } from './material-reader';
 import { randomUUID } from 'node:crypto';
 import { hashOperations as operationDigest } from './operation-digest';
@@ -23,7 +24,7 @@ export interface CompletePageRunToolScope {
   runId: string;
   messageId: string;
   projectId: string;
-  pageId: string;
+  pageId?: string;
   baseWorkingVersion: number;
   maxSchemaBytes: number;
   maxOperationBytes?: number;
@@ -31,6 +32,7 @@ export interface CompletePageRunToolScope {
 }
 
 export interface CompletePageRunToolDependencies {
+  layouts?: Pick<LayoutService, 'getWorking' | 'applyAgentOperations'>;
   loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   runs: Pick<AgentRunRepository, 'get'>;
@@ -70,10 +72,14 @@ export const createCompletePageRunTool = (
   scope: CompletePageRunToolScope,
 ): AgentEngineTool => {
   let rejectedWrite = false;
+  const terminalToolName = scope.pageId ? 'complete_page_run' : 'complete_layout_run';
   return {
-    name: 'complete_page_run',
+    name: terminalToolName,
     description:
-      '结束当前页面请求。每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；多个已有元素匹配但用户没有指定目标或明确批量范围时，必须提交 needs_clarification、question 和真实元素 candidates，不得先修改。只回答、无需修改或拒绝时提交对应 outcome。',
+      (scope.pageId
+        ? '结束当前页面请求。'
+        : '结束当前项目布局请求。布局必须保留唯一可达的 PageOutlet 叶节点；禁止页面业务流程、绑定和变量。') +
+      '每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；多个已有元素匹配但用户没有指定目标或明确批量范围时，必须提交 needs_clarification、question 和真实元素 candidates，不得先修改。只回答、无需修改或拒绝时提交对应 outcome。',
     parameters: CompletePageRunToolParametersSchema,
     execute: async (raw, signal) => {
       if (!Value.Check(CompletePageRunInputSchema, raw)) {
@@ -99,7 +105,7 @@ export const createCompletePageRunTool = (
             path: error.path || '/',
             message: error.message,
           })),
-          instruction: `complete_page_run 参数无效${detail ? `：${detail}` : ''}；保留其他操作，针对原始 baseWorkingVersion 重新提交完整 operations。`,
+          instruction: `${terminalToolName} 参数无效${detail ? `：${detail}` : ''}；保留其他操作，针对原始 baseWorkingVersion 重新提交完整 operations。`,
         });
       }
       assertNotCancelled(signal);
@@ -141,17 +147,27 @@ export const createCompletePageRunTool = (
         throw new AgentEngineError('BUDGET_EXCEEDED', 'Operation List 大小已超过本次运行预算');
       }
       const project = dependencies.projects.getProject(scope.projectId);
-      const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
-      if (!project || !page) throw notFound('页面不存在或不属于当前项目');
+      const page = scope.pageId
+        ? dependencies.projects.getPage(scope.projectId, scope.pageId)
+        : undefined;
+      if (!project || (scope.pageId && !page)) throw notFound('目标不存在或不属于当前项目');
+      const layoutWorking = !scope.pageId
+        ? await dependencies.layouts?.getWorking(scope.projectId)
+        : undefined;
+      if (!scope.pageId && !layoutWorking) throw notFound('布局服务不可用');
+      if (layoutWorking && layoutWorking.workingVersion !== scope.baseWorkingVersion)
+        throw conflict('布局草稿版本已变化');
       const materials = await dependencies.loadMaterials(project.path);
       let candidates: ClarificationCandidate[] | undefined;
       if (input.outcome === 'needs_clarification' && input.candidates?.length) {
-        const working = await getWorkingSchemaState({
-          projectPath: project.path,
-          pageId: page.id,
-          slug: page.slug,
-          relativePath: page.relativePath,
-        });
+        const working = layoutWorking
+          ? { ...layoutWorking, schema: layoutWorking.document.schema }
+          : await getWorkingSchemaState({
+              projectPath: project.path,
+              pageId: page!.id,
+              slug: page!.slug,
+              relativePath: page!.relativePath,
+            });
         if (working.workingVersion !== scope.baseWorkingVersion) {
           throw conflict('页面版本已变化，无法发布当前澄清选项');
         }
@@ -193,30 +209,48 @@ export const createCompletePageRunTool = (
       }
 
       dependencies.runService.transition(scope.runId, 'validating');
-      let result: Awaited<ReturnType<typeof applyWorkingSchemaOperations>>;
+      let result: { workingVersion: number; workingHash: string };
       try {
         assertNotCancelled(signal);
-        result = await applyWorkingSchemaOperations(
-          {
-            projectPath: project.path,
-            pageId: page.id,
-            slug: page.slug,
-            relativePath: page.relativePath,
-          },
-          { baseWorkingVersion: scope.baseWorkingVersion, operations },
-          {
-            validateCandidate: (candidate) => {
-              if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') > scope.maxSchemaBytes)
-                throw new AgentEngineError('BUDGET_EXCEEDED', '最终 Schema 大小超过本次运行预算');
-            },
-            beforeWrite: () => assertNotCancelled(signal),
-            agentCommit: {
-              runId: scope.runId,
-              projectId: scope.projectId,
-              operationDigest: digest!,
-            },
-          },
-        );
+        result = !scope.pageId
+          ? await dependencies.layouts!.applyAgentOperations(
+              {
+                projectId: scope.projectId,
+                baseWorkingVersion: scope.baseWorkingVersion,
+                operations,
+                clientRequestId: scope.runId,
+              },
+              {
+                runId: scope.runId,
+                operationDigest: digest!,
+                beforeWrite: () => assertNotCancelled(signal),
+                maxSchemaBytes: scope.maxSchemaBytes,
+              },
+            )
+          : await applyWorkingSchemaOperations(
+              {
+                projectPath: project.path,
+                pageId: page!.id,
+                slug: page!.slug,
+                relativePath: page!.relativePath,
+              },
+              { baseWorkingVersion: scope.baseWorkingVersion, operations },
+              {
+                validateCandidate: (candidate) => {
+                  if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') > scope.maxSchemaBytes)
+                    throw new AgentEngineError(
+                      'BUDGET_EXCEEDED',
+                      '最终 Schema 大小超过本次运行预算',
+                    );
+                },
+                beforeWrite: () => assertNotCancelled(signal),
+                agentCommit: {
+                  runId: scope.runId,
+                  projectId: scope.projectId,
+                  operationDigest: digest!,
+                },
+              },
+            );
       } catch (error) {
         if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') throw error;
         rejectedWrite = true;

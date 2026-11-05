@@ -10,7 +10,7 @@ import {
 import type { ProjectRepository } from '../../projects/project-repository';
 import { conflict, invalid, notFound } from '../../errors';
 import { getWorkingSchemaState } from '../../schema/schema-service';
-import { type SchemaPageRef, type WorkingSchemaReadResult } from '../../schema/schema-contracts';
+import { type SchemaPageRef } from '../../schema/schema-contracts';
 import type { AgentEngineTool } from '../agent-engine';
 import { createLogicReadTools, exactReadPagination, exactReadResult } from './logic-tools';
 
@@ -40,16 +40,16 @@ type MaterialManifestInput = Static<typeof MaterialManifestInputSchema>;
 export interface ReadOnlyToolScope {
   runId: string;
   projectId: string;
-  pageId: string;
+  pageId?: string;
   workingVersion: number;
 }
 
+type ReadState = { schema: OrigamixPageSchema; revisionId: string | null; workingVersion: number };
 export interface ReadOnlyToolDependencies {
+  readLayout?: (projectId: string) => Promise<ReadState>;
   loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
-  readSchema?: (
-    page: SchemaPageRef,
-  ) => Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>>;
+  readSchema?: (page: SchemaPageRef) => Promise<ReadState>;
 }
 
 type JsonObject = Record<string, unknown>;
@@ -126,31 +126,31 @@ export const createReadOnlyAgentTools = (
   const cache = new Map<string, Promise<unknown>>();
   let materialManifest: MaterialManifestCatalog;
   let agentCatalog: Awaited<ReturnType<ProjectMaterialReader>>['agentCatalog'];
-  let schemaPromise:
-    Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> | undefined;
+  let schemaPromise: Promise<ReadState> | undefined;
 
   const assertNotAborted = (signal: AbortSignal): void => {
     if (signal.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError');
   };
 
-  const load = async (
-    _input: PageScopeInput,
-    signal: AbortSignal,
-  ): Promise<Pick<WorkingSchemaReadResult, 'schema' | 'revisionId' | 'workingVersion'>> => {
+  const load = async (_input: PageScopeInput, signal: AbortSignal): Promise<ReadState> => {
     assertNotAborted(signal);
     const project = dependencies.projects.getProject(scope.projectId);
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-    const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
-    if (!page || page.status !== 0) throw notFound('页面不存在或不属于该项目');
+    const page = scope.pageId
+      ? dependencies.projects.getPage(scope.projectId, scope.pageId)
+      : undefined;
+    if (scope.pageId && (!page || page.status !== 0)) throw notFound('页面不存在或不属于该项目');
     const materials = await dependencies.loadMaterials(project.path);
     materialManifest = materials.manifest;
     agentCatalog = materials.agentCatalog;
-    schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)({
-      projectPath: project.path,
-      pageId: page.id,
-      slug: page.slug,
-      relativePath: page.relativePath,
-    });
+    schemaPromise ??= !scope.pageId
+      ? dependencies.readLayout!(scope.projectId)
+      : (dependencies.readSchema ?? getWorkingSchemaState)({
+          projectPath: project.path,
+          pageId: page!.id,
+          slug: page!.slug,
+          relativePath: page!.relativePath,
+        });
     const current = await schemaPromise;
     assertNotAborted(signal);
     if (current.workingVersion !== scope.workingVersion) throw conflict('页面草稿已变化');
@@ -170,13 +170,15 @@ export const createReadOnlyAgentTools = (
     }
   };
 
-  return [
-    ...createLogicReadTools(async (signal) => {
-      const current = await load({}, signal);
-      return { ...current, materials: materialManifest };
-    }),
+  const tools: AgentEngineTool[] = [
+    ...(scope.pageId
+      ? createLogicReadTools(async (signal) => {
+          const current = await load({}, signal);
+          return { ...current, materials: materialManifest };
+        })
+      : []),
     {
-      name: 'get_page_context',
+      name: scope.pageId ? 'get_page_context' : 'get_layout_context',
       description: '读取当前页面的精简上下文、Revision 和物料使用统计。',
       parameters: PageScopeInputSchema,
       execute: async (raw, signal) => {
@@ -184,11 +186,14 @@ export const createReadOnlyAgentTools = (
         const input = assertInput<PageScopeInput>(PageScopeInputSchema, raw);
         return cached('page-context', async () => {
           const { schema, revisionId } = await load(input, signal);
-          const page = dependencies.projects.getPage(scope.projectId, scope.pageId)!;
+          const page = scope.pageId
+            ? dependencies.projects.getPage(scope.projectId, scope.pageId)!
+            : undefined;
           const materialTypes = Object.values(schema.elements).map(({ type }) => type);
           return boundedResult({
             projectId: scope.projectId,
-            page: { id: page.id, name: page.name, slug: page.slug },
+            target: scope.pageId ? { kind: 'page', pageId: scope.pageId } : { kind: 'layout' },
+            page: page ? { id: page.id, name: page.name, slug: page.slug } : undefined,
             revisionId,
             schemaVersion: schema.extensions.origamix.schemaVersion,
             rootElementId: schema.layout.root,
@@ -326,4 +331,7 @@ export const createReadOnlyAgentTools = (
       },
     },
   ];
+  return scope.pageId
+    ? tools
+    : tools.map((tool) => ({ ...tool, description: tool.description.replaceAll('页面', '布局') }));
 };

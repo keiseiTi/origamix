@@ -1,3 +1,5 @@
+import { withAgentTarget } from './agent-target.ts';
+import { AgentTargetSchema } from '../layout/layout-schema.ts';
 import {
   strictObject,
   AgentProtocolVersionSchema,
@@ -11,18 +13,21 @@ import type { Static } from '@sinclair/typebox';
 import { AgentRunStatusSchema } from './agent-run.ts';
 import { PageAgentOutcomeSchema, ClarificationResultSchema } from './agent-outcome.ts';
 
-export const AgentEventSchema = strictObject({
-  version: AgentProtocolVersionSchema,
-  eventId: Type.Integer({ minimum: 0 }),
-  sequence: Type.Integer({ minimum: 0 }),
-  type: Type.String({ minLength: 1, maxLength: 128 }),
-  runId: AgentRunIdSchema,
-  pageId: PageIdSchema,
-  requestId: RequestIdSchema,
-  occurredAt: IsoDateTimeSchema,
-  revisionId: Type.Optional(Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' })),
-  payload: Type.Unknown(),
-});
+export const AgentEventSchema = withAgentTarget(
+  strictObject({
+    version: AgentProtocolVersionSchema,
+    eventId: Type.Integer({ minimum: 0 }),
+    sequence: Type.Integer({ minimum: 0 }),
+    type: Type.String({ minLength: 1, maxLength: 128 }),
+    runId: AgentRunIdSchema,
+    pageId: Type.Optional(PageIdSchema),
+    target: Type.Optional(AgentTargetSchema),
+    requestId: RequestIdSchema,
+    occurredAt: IsoDateTimeSchema,
+    revisionId: Type.Optional(Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' })),
+    payload: Type.Unknown(),
+  }),
+);
 
 export const AgentProgressEventPayloadSchema = strictObject({
   status: AgentRunStatusSchema,
