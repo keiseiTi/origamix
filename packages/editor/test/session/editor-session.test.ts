@@ -340,15 +340,38 @@ describe('public editor operations', () => {
     { type: 'button', title: 'Button', Component: () => null, defaultProps: { text: 'default' } },
   ];
   it('uses the shared draft/history path and reports actual positions without shifted-sibling moves', () => {
-    const editor = createEditorInstance();
-    const store = createEditorSession(document(), materials);
-    const detach = bindEditorSession(editor, store, false);
     const changes: EditorEvents['change'][] = [];
     const inserts: EditorEvents['elementInsert'][] = [];
     const removes: EditorEvents['elementRemove'][] = [];
-    editor.on('change', (event) => changes.push(event));
-    editor.on('elementInsert', (event) => inserts.push(event));
-    editor.on('elementRemove', (event) => removes.push(event));
+    const moves: EditorEvents['elementMove'][] = [];
+    const props: EditorEvents['elementPropsChange'][] = [];
+    const editor = createEditorInstance({
+      plugins: [
+        defineEditorPlugin({
+          id: 'schema.events',
+          schema: {
+            change: (event) => {
+              changes.push(event);
+            },
+            elementInsert: (event, { editor }) => {
+              expect(editor.getElement(event.element.id)).toBeTruthy();
+              inserts.push(event);
+            },
+            elementRemove: (event) => {
+              removes.push(event);
+            },
+            elementMove: (event) => {
+              moves.push(event);
+            },
+            elementPropsChange: (event) => {
+              props.push(event);
+            },
+          },
+        }),
+      ],
+    });
+    const store = createEditorSession(document(), materials);
+    const detach = bindEditorSession(editor, store, false);
     const id = editor.insertElement({ materialType: 'button', position: { beforeId: 'button' } });
     expect(inserts[0]).toMatchObject({
       source: 'plugin',
@@ -365,6 +388,7 @@ describe('public editor operations', () => {
     expect(editor.getElement(id)!.props.nested).toEqual({ value: 1 });
     editor.removeElementProps(id, ['nested']);
     expect(editor.getElement(id)!.props).toEqual({ text: 'default' });
+    expect(props).toHaveLength(2);
     editor.moveElement({ elementId: id, position: { afterId: 'button' } });
     expect(changes.at(-1)!.changes).toEqual([
       {
@@ -374,6 +398,7 @@ describe('public editor operations', () => {
         position: { parentId: 'root', index: 1 },
       },
     ]);
+    expect(moves).toHaveLength(1);
     const accepted = changes.length;
     const beforeInvalid = store.getState().schema;
     expect(() =>
@@ -420,6 +445,91 @@ describe('public editor operations', () => {
     detach();
   });
 
+  it('converts one candidate atomically before validation and preserves draft/history on rejection', () => {
+    const calls: string[] = [];
+    const accepted: EditorEvents['change'][] = [];
+    let reject = false;
+    let reentrant: unknown;
+    let scoped!: EditorInstance;
+    const editor = createEditorInstance({
+      plugins: [
+        defineEditorPlugin({
+          id: 'outer',
+          schema: {
+            beforeChange: ({ candidate }) => {
+              calls.push('outer');
+              expect(candidate.elements.root!.props.prepared).toBe(true);
+              if (reject)
+                return {
+                  ...structuredClone(candidate),
+                  layout: { root: 'missing', structure: {} },
+                };
+            },
+            change: (event) => {
+              accepted.push(event);
+            },
+          },
+        }),
+        defineEditorPlugin({
+          id: 'inner',
+          setup: ({ editor }) => {
+            scoped = editor;
+          },
+          schema: {
+            beforeChange: ({ before, candidate }) => {
+              calls.push('inner');
+              expect(Object.isFrozen(candidate.elements.root!.props)).toBe(true);
+              expect(before.elements.root!.props.prepared).toBeUndefined();
+              try {
+                scoped.removeElement('button');
+              } catch (error) {
+                reentrant = error;
+              }
+              return {
+                ...structuredClone(candidate),
+                elements: {
+                  ...structuredClone(candidate.elements),
+                  root: {
+                    ...structuredClone(candidate.elements.root!),
+                    props: { ...candidate.elements.root!.props, prepared: true },
+                  },
+                },
+              };
+            },
+          },
+        }),
+      ],
+    });
+    const store = createEditorSession(document(), materials);
+    const detach = bindEditorSession(editor, store, false);
+    editor.updateElementProps('button', { text: 'changed' });
+    expect(calls).toEqual(['inner', 'outer']);
+    expect(reentrant).toBeInstanceOf(Error);
+    expect(accepted).toHaveLength(1);
+    expect(
+      accepted[0]!.changes.filter((event) => event.type === 'elementPropsChange'),
+    ).toHaveLength(2);
+    const draft = store.getState().schema;
+    editor.undo();
+    expect(editor.getSchema()).toEqual(document());
+    editor.redo();
+    expect(editor.getSchema()).toEqual(draft);
+    expect(calls).toHaveLength(2);
+    // Undo leaves a redo entry that failed conversion must not erase.
+    editor.undo();
+    reject = true;
+    const count = accepted.length;
+    expect(() => editor.updateElementProps('button', { text: 'rejected' })).toThrow('编辑结果无效');
+    expect(editor.getSchema()).toEqual(document());
+    expect(accepted).toHaveLength(count);
+    expect(store.getState().canUndo).toBe(false);
+    expect(store.getState().canRedo).toBe(true);
+    detach();
+    const unboundCalls = calls.length;
+    store.getState().setSchema(draft);
+    expect(calls).toHaveLength(unboundCalls);
+  });
+
   it('isolates failed/reentrant observers and unsubscribes them at the session boundary', () => {
     const observerError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
@@ -431,9 +541,8 @@ describe('public editor operations', () => {
         plugins: [
           {
             id: 'observer',
-            setup: ({ editor: instance }) => {
-              scoped = instance;
-              instance.on('elementInsert', (event) => {
+            schema: {
+              elementInsert: (event, { editor: instance }) => {
                 try {
                   instance.removeElement('button');
                 } catch (error) {
@@ -445,7 +554,10 @@ describe('public editor operations', () => {
                   immutableError = error;
                 }
                 throw new Error('observer failure');
-              });
+              },
+            },
+            setup: ({ editor: instance }) => {
+              scoped = instance;
               instance.on('elementInsert', (event) => observed.push(event.element.id));
             },
           },

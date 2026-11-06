@@ -121,13 +121,27 @@ App 的 saveVersion 已包含 flush → 读取 Working version → 显式保存 
 ```tsx
 const observerPlugin = defineEditorPlugin({
   id: 'example.observe',
-  setup: ({ editor }) =>
-    editor.on('elementInsert', (event) => {
-      // event.materialType、event.element、event.position.parentId/index
-      // event.source、event.transactionId；这里只观察，不同步修改文档。
-    }),
+  schema: {
+    elementInsert: (event, { editor, signal }) => {
+      // 已接受的新增节点；可查询 editor，异步工作自行检查 signal。
+    },
+    elementRemove: (event) => {
+      // event.element、event.subtree、event.previousPosition
+    },
+    elementMove: (event) => {
+      // event.previousPosition、event.position
+    },
+    elementPropsChange: (event) => {
+      // event.previousProps、event.props、event.fields
+    },
+    change: (event) => {
+      // event.before、event.after、event.changes、event.transactionId
+    },
+  },
 });
 ```
+
+声明式 `schema` 通知由插件宿主按从右到左顺序自动订阅，在各插件 setup 之前注册，解绑或初始化失败时清理。动态订阅仍可使用 `editor.on`，两种方式复用同一份通知，不产生额外编辑或历史记录。通知回调的第二个参数为会话作用域的 `{ editor, signal }`。
 
 | 通知               | 数据                                                |
 | ------------------ | --------------------------------------------------- |
@@ -141,6 +155,26 @@ const observerPlugin = defineEditorPlugin({
 同次文档事务共享 transactionId/source：先发节点通知，再发自动选择变化，最后发一次 change。独立选择有自己的事务 ID。来源为 drag/canvas/panel/plugin/history/external。拒绝或无变化操作不发文档通知；兄弟节点因插入/删除而改变索引不算移动。完整导入、历史恢复的移动摘要根据快照推导；类型、流程、全局变量等完整变化从 change 快照读取。
 
 订阅按注册顺序执行，setup 中的插件监听因此遵循从右到左顺序。返回取消订阅函数可提前释放；解绑和初始化失败也自动清理。监听器故障只输出固定提示，不记录页面内容、不回滚已接受草稿、不阻断其他监听。同步通知期间禁止嵌套文档修改或选择修改。
+
+## 提交前 Schema 转换
+
+`schema.beforeChange({ before, candidate, source })` 在普通编辑进入历史与宿主回调之前执行。输入是冻结快照；返回完整新候选，返回 undefined 则保留本轮候选，抛错则拒绝整次修改。插件按从右到左顺序单轮转换，后续插件读取前一个插件的候选，before 始终是修改前快照。所有转换完成后统一执行结构、宿主及物料类型校验。
+
+```tsx
+const plugin = defineEditorPlugin({
+  id: 'example.structure',
+  schema: {
+    beforeChange: ({ candidate }) => {
+      // 使用不可变对象组合计算区域结构；此例保持候选不变。
+      return candidate;
+    },
+  },
+});
+```
+
+转换必须同步，不能返回 Promise，不能在其中调用 Editor 文档修改、选择、撤销或重做命令。一次转换后的结果只形成一次完整编辑和通知；最终无变化则不生成历史或通知。失败不改变草稿、选择或撤销/重做栈。普通历史合并规则继续适用。
+
+加载初始 Schema、环境更新不执行转换。undo/redo 直接恢复已接受的完整快照，不再次调用 beforeChange；后置通知仍以 history 来源发布。解绑后转换失效。beforeChange 不负责确认弹窗、HTTP、Revision 或 Apply，也不会在 Server/Agent 中执行；领域规则若需要覆盖 Agent，必须在相应平台中复用纯数据逻辑并独立校验。
 
 ## 物料属性插件
 

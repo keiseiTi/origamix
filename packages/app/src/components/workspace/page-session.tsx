@@ -1,5 +1,5 @@
+import { LayoutPresetTools } from '@/components/layout/layout-preset-tools';
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
-import { LayoutConfiguration } from '@/components/layout/layout-configuration';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
@@ -142,7 +142,18 @@ const PageSessionContent = ({
 
   const editor = useCreateEditor({
     plugins: [
-      workspaceToolbarPlugin.withProps({ ...toolbarProps, active: active && mode === 'edit' }),
+      workspaceToolbarPlugin.withProps({
+        ...toolbarProps,
+        active: active && mode === 'edit',
+        layoutPresets:
+          kind === 'layout' ? (
+            <LayoutPresetTools
+              editorRef={editorRef}
+              projectName={projectName}
+              canEdit={available && capabilities.canEdit && !layout.busy}
+            />
+          ) : undefined,
+      }),
     ],
     beforeModeChange: async () => {
       await editorRef.current?.flush();
@@ -151,16 +162,6 @@ const PageSessionContent = ({
 
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
-      {kind === 'layout' && mode !== 'preview' && (
-        <LayoutConfiguration
-          config={layout}
-          editor={editor}
-          editorRef={editorRef}
-          projectName={projectName}
-          editing={mode === 'edit' && available}
-          canEdit={capabilities.canEdit}
-        />
-      )}
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
         <ChatWorkspace

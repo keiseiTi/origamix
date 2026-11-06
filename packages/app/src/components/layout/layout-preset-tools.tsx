@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -8,26 +12,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@origamix/ui';
-import type { EditorHandle, EditorInstance } from '@origamix/editor';
-import type { RefObject } from 'react';
+import { useEditorContext, useEditorSelector, type EditorHandle } from '@origamix/editor';
+import { PanelsTopLeft, ChevronDown } from 'lucide-react';
 import { layoutPresets, createLayoutPreset, type LayoutPreset } from './presets';
-import type { useLayoutConfig } from './use-layout-config';
 
-export const LayoutConfiguration = ({
-  config,
-  editor,
+export const LayoutPresetTools = ({
   editorRef,
   projectName,
-  editing,
   canEdit,
 }: {
-  config: ReturnType<typeof useLayoutConfig>;
-  editor: EditorInstance;
   editorRef: RefObject<EditorHandle | null>;
   projectName: string;
-  editing: boolean;
   canEdit: boolean;
 }) => {
+  const editor = useEditorContext();
+  const readOnly = useEditorSelector((state) => state.readOnly);
   const [selectedPreset, setSelectedPreset] = useState<LayoutPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
@@ -38,34 +37,40 @@ export const LayoutConfiguration = ({
       await editorRef.current?.flush();
       editor.setSchema(createLayoutPreset(preset, editor.getSchema(), projectName));
       await editorRef.current?.flush();
+      setSelectedPreset(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '使用预设失败，草稿已保留');
     } finally {
       setChanging(false);
     }
   };
-  if (!editing && !config.error && !error) return null;
   return (
-    <div className='shrink-0 border-b border-border bg-background px-4 py-3 text-sm'>
-      {editing && config.config?.enabled && (
-        <div className='mt-3 flex flex-wrap items-center gap-2' aria-label='布局预设'>
-          <span className='mr-1 text-xs text-muted-foreground'>从预设开始</span>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={<Button size='sm' variant='ghost' disabled={!canEdit || readOnly || changing} />}
+        >
+          <PanelsTopLeft size={15} />
+          从预设开始
+          <ChevronDown size={13} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent aria-label='布局预设'>
           {layoutPresets.map((preset) => (
-            <Button
+            <DropdownMenuItem
               key={preset.id}
-              size='sm'
-              variant='outline'
-              disabled={changing || config.busy || !canEdit}
-              onClick={() => setSelectedPreset(preset.id)}
+              onClick={() => {
+                setError(null);
+                setSelectedPreset(preset.id);
+              }}
             >
               {preset.name}
-            </Button>
+            </DropdownMenuItem>
           ))}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Dialog
         open={selectedPreset !== null}
-        onOpenChange={(open) => !open && setSelectedPreset(null)}
+        onOpenChange={(open) => !open && !changing && setSelectedPreset(null)}
       >
         <DialogContent>
           <DialogHeader>
@@ -74,34 +79,27 @@ export const LayoutConfiguration = ({
               替换当前布局结构，可通过撤销恢复。不会保存版本或应用到项目。
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p role='alert' className='text-sm text-destructive'>
+              {error}
+            </p>
+          )}
           <DialogFooter>
-            <Button variant='outline' onClick={() => setSelectedPreset(null)}>
+            <Button variant='outline' disabled={changing} onClick={() => setSelectedPreset(null)}>
               取消
             </Button>
             <Button
+              disabled={changing || !canEdit || readOnly}
               onClick={() => {
                 const preset = selectedPreset;
-                setSelectedPreset(null);
                 if (preset) void applyPreset(preset);
               }}
             >
-              使用预设
+              {changing ? '正在使用…' : '使用预设'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {(config.error || error) && (
-        <div role='alert' className='mt-2 flex items-center gap-2 text-xs text-destructive'>
-          {config.error || error}
-          <Button
-            size='sm'
-            variant='ghost'
-            onClick={() => void config.refresh().catch(() => undefined)}
-          >
-            重试读取
-          </Button>
-        </div>
-      )}
-    </div>
+    </>
   );
 };

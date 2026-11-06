@@ -5,6 +5,7 @@ import { isPageSchema, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorEvents } from './editor-events';
 import type {
   EditorChangeOptions,
+  EditorReadonly,
   EditorOperations,
 } from '../interfaces/editor-operation-interfaces';
 import { SchemaUtils } from '../schema/schema-utils';
@@ -36,6 +37,11 @@ export interface EditorEnvironment {
 }
 export interface EditorCore extends EditorEnvironment {
   schema: OrigamixPageSchema;
+  transformSchema?: (
+    before: OrigamixPageSchema,
+    candidate: EditorReadonly<OrigamixPageSchema>,
+    source: NonNullable<EditorChangeOptions['source']>,
+  ) => EditorReadonly<OrigamixPageSchema>;
   canvasRoot: HTMLElement | null;
   setCanvasRoot: (root: HTMLElement | null) => void;
   materials: Material[];
@@ -65,6 +71,7 @@ export const createEditorSession = (
   const events = createEditorEvents();
   const undos: OrigamixPageSchema[] = [],
     redos: OrigamixPageSchema[] = [];
+  let transforming = false;
   let lastGroup: string | undefined,
     lastEdit = 0;
   return createStore<EditorCore>((set, get) => {
@@ -76,6 +83,7 @@ export const createEditorSession = (
       );
     const assertCanMutate = (): void => {
       events.guard();
+      if (transforming) throw new Error('不能在 Schema 转换中嵌套修改');
       if (get().readOnly) throw new Error('当前不可编辑，草稿已保留');
     };
     const project = (next: OrigamixPageSchema, options: EditorChangeOptions) => {
@@ -123,8 +131,16 @@ export const createEditorSession = (
       canRedo: false,
       setSchema: (candidate, options = {}) => {
         assertCanMutate();
-        const next = structuredClone(candidate);
+        let next: EditorReadonly<OrigamixPageSchema> = structuredClone(candidate);
         const current = get().schema;
+        if (equalJson(current, next)) return;
+        transforming = true;
+        try {
+          const transform = get().transformSchema;
+          if (transform) next = transform(current, next, options.source ?? 'panel');
+        } finally {
+          transforming = false;
+        }
         if (equalJson(current, next)) return;
         if (!isPageSchema(next)) throw new Error('编辑结果无效，原有草稿已保留');
         get().validateSchema?.(next);
@@ -143,10 +159,11 @@ export const createEditorSession = (
         lastGroup = group;
         lastEdit = now;
         redos.length = 0;
-        project(next, options);
+        project(structuredClone(next), options);
       },
       setActiveElement: (activeElement, source = 'canvas') => {
         events.guard();
+        if (transforming) throw new Error('不能在 Schema 转换中嵌套修改');
         const previousElementId = get().activeElement?.id ?? null;
         if (activeElement && !get().schema.elements[activeElement.id])
           throw new Error('元素不存在');

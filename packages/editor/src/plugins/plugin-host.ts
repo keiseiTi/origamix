@@ -1,5 +1,6 @@
 import { getPluginPropsBinding } from './plugin-props';
 import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import { subscribeSchemaPlugin } from './schema-plugins';
 import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
 
 /** Capture one session's definitions; later renders cannot replace its plugin set. */
@@ -16,6 +17,7 @@ export const snapshotEditorPlugins = (
       ids.add(plugin.id);
       return Object.freeze({
         ...plugin,
+        schema: plugin.schema && Object.freeze({ ...plugin.schema }),
         material: plugin.material && Object.freeze({ ...plugin.material }),
         editor: plugin.editor && Object.freeze({ ...plugin.editor }),
       });
@@ -45,6 +47,7 @@ export const startEditorPlugins = (
   };
   for (const plugin of [...plugins].reverse()) {
     try {
+      cleanups.push(subscribeSchemaPlugin(plugin, { editor, signal: controller.signal }));
       const cleanup = plugin.setup?.({ editor, signal: controller.signal });
       if (cleanup) cleanups.push(cleanup);
     } catch (error) {

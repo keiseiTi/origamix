@@ -1,3 +1,4 @@
+import { createSchemaTransform } from '../plugins/schema-plugins';
 import { getPluginPropsBinding, type PluginPropsRuntime } from '../plugins/plugin-props';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { EditorCore } from './editor-store';
@@ -183,13 +184,18 @@ export const bindEditorSession = (
       await editor.setMode(mode);
     },
   };
+  const plugins = core.getState().plugins ?? state.plugins;
+  const transformSchema = createSchemaTransform(plugins);
   let dispose: () => void;
   try {
-    dispose = startEditorPlugins(core.getState().plugins ?? state.plugins, scoped, () => {
+    dispose = startEditorPlugins(plugins, scoped, () => {
+      if (core.getState().transformSchema === transformSchema)
+        core.setState({ transformSchema: undefined });
       active = false;
       binding.ready = false;
       for (const off of [...binding.subscriptions]) off();
     });
+    core.setState({ transformSchema });
     binding.ready = true;
   } catch (error) {
     active = false;

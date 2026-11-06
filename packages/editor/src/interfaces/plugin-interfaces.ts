@@ -1,3 +1,8 @@
+import type {
+  EditorEvents,
+  EditorReadonly,
+  EditorChangeSource,
+} from './editor-operation-interfaces';
 import type { ReactNode } from 'react';
 import type { MaterialManifest, OrigamixPageSchema } from '@origamix/shared';
 import type { Material, PanelConfig } from './material-interfaces';
@@ -42,12 +47,34 @@ export type EditorPluginMaterialApi = Readonly<{
     context: EditorPluginMaterialNodeContext & Readonly<{ children: ReactNode }>,
   ) => ReactNode;
 }>;
+/** Post-commit observers share the existing immutable event stream. */
+export type EditorSchemaEventName = Exclude<keyof EditorEvents, 'selectionChange'>;
+export type EditorPluginSchemaContext = Readonly<{
+  editor: EditorInstance;
+  signal: AbortSignal;
+}>;
+export type EditorPluginSchemaChange = Readonly<{
+  before: EditorReadonly<OrigamixPageSchema>;
+  candidate: EditorReadonly<OrigamixPageSchema>;
+  source: EditorChangeSource;
+}>;
+export type EditorPluginSchemaApi = Readonly<{
+  /** Synchronous candidate conversion; throwing rejects the entire local edit. */
+  beforeChange?: (context: EditorPluginSchemaChange) => EditorReadonly<OrigamixPageSchema> | void;
+}> &
+  Readonly<{
+    [K in EditorSchemaEventName]?: (
+      event: EditorEvents[K],
+      context: EditorPluginSchemaContext,
+    ) => void;
+  }>;
 export type EditorPlugin<Props = undefined> = Readonly<{
   id: string;
   setup?: (
     context: Readonly<{ editor: EditorInstance; signal: AbortSignal }>,
   ) => void | (() => void);
   material?: EditorPluginMaterialApi;
+  schema?: EditorPluginSchemaApi;
   editor?: Readonly<{
     renderToolbar?: (
       context: EditorPluginRenderContext<Props> & Readonly<{ area: EditorToolbarArea }>,
