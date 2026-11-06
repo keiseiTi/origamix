@@ -1,9 +1,6 @@
 import {
   type PageRoleState,
   type UpdatePageRoles,
-  type ProjectUpgradeState,
-  type ProjectUpgradeRequest,
-  type ProjectUpgradeResult,
   type OpenProjectResult,
   type PageRecord,
   type ProjectRecord,
@@ -19,16 +16,11 @@ export const projectsService = {
     request('/projects/page-roles/get', { projectId }),
   updatePageRoles: (input: UpdatePageRoles): Promise<PageRoleState> =>
     request('/projects/page-roles/update', input),
-  upgradeState: (projectId: string): Promise<ProjectUpgradeState> =>
-    request('/projects/upgrade-state/get', { projectId }),
-  upgrade: (projectId: string, input: ProjectUpgradeRequest): Promise<ProjectUpgradeResult> =>
-    request('/projects/upgrade', { projectId, ...input }),
-  cancelUpgrade: (projectId: string, clientRequestId: string): Promise<{ cancelled: true }> =>
-    request('/projects/upgrade/cancel', { projectId, clientRequestId }),
   stack: async (projectId: string): Promise<ProjectStack> =>
     validateResolvedProjectStack(await request<unknown>('/projects/stack/get', { projectId })),
   list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),
   create: (input: {
+    layoutEnabled: boolean;
     name: string;
     code: string;
     pageDirectory: string;

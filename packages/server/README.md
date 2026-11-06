@@ -272,17 +272,11 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 页面打开通过 `schema/schema-compatibility.ts` 检查独立的 Schema SemVer，受支持后才初始化或恢复 Working；不执行自动迁移。已有 Working 优先，较新、较旧、无效版本都会被保留并拒绝编辑。历史快照可按原文查看，恢复前须兼容，不重写历史。
 
-`origamix.project.json` 不再保存项目 version 或 uiLibrary，只保存框架和 `materialSet: { id, version }`。包统一发布，物料与 Schema 契约独立维护。项目菜单“兼容性检查”只读检查契约和各页面；没有具体转换器时只说明原因，不提供页面升级或依赖切换操作。已知旧版 1.0.0 清单可在此显式转换配置格式：检查原文件 hash 后原子写入，只删除旧字段并转换物料引用，不动页面、草稿、Revision 或依赖。未知旧清单不推断物料版本。数据库不存配置快照；清单丢失阻止写入，已登记或含 .origamix 的目录不会被重新初始化。
-
-旧版 `project-upgrade.json` 待处理记录继续阻止写入，不自动恢复；只能使用原应用恢复，或在目标与配置未变化时显式安全撤销。
+项目清单只接受当前框架及 `materialSet: { id, version }` 契约；不提供兼容性检查、旧清单转换或项目升级接口。数据库不存配置快照；清单丢失阻止写入，已登记或含 `.origamix` 的目录不会重新初始化。历史未完成写入记录仍阻止修改，需使用原应用恢复。
 
 `database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库直接初始化当前结构并写入存储版本 1；已有数据但缺少版本记录的数据库会被拒绝，不做结构猜测或补登记。当前数据库迁移清单为空。后续真实结构变化才逐级执行已登记 SQL，并将版本记录与结构变更一起提交；失败回滚。升级备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
 
 发布时执行 `pnpm release:version --set <版本>`，仅同步包发布版本，不改变 Schema 或物料契约。`pnpm release:version --check` 检查包版本对齐、契约 SemVer 和模板物料声明。只有真实契约变化才调整独立版本；首次不兼容变化时再实现具体转换器。数据库结构变化另外增加存储迁移。
-
-`POST /api/v1/projects/upgrade-state/get` 返回兼容性检查结果。保留的 `POST /api/v1/projects/upgrade` 仅用于已知旧清单格式转换，提交 `expectedVersion: "1.0.0"`、`expectedManifestHash` 和稳定的 `clientRequestId`；它不转换页面或更新依赖。
-
-旧版 `.origamix/project-upgrade.json` 记录继续保护中断现场：pending 状态阻止写入，不再由新入口继续升级。配置和目标均未改变时可安全撤销；已经部分写入时应使用原应用恢复，不能删除记录绕过保护。
 
 ## 独立开发环境配置
 

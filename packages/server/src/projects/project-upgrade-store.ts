@@ -1,7 +1,5 @@
-import { readFile, lstat, realpath, mkdir, rm } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { metadataPath } from '../schema/metadata-path';
-import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { conflict, invalid } from '../errors';
 
 export interface ProjectUpgradeJournal {
@@ -61,39 +59,7 @@ export const readProjectUpgrade = async (
   }
 };
 
-export const writeProjectUpgrade = async (
-  projectPath: string,
-  journal: ProjectUpgradeJournal,
-): Promise<void> => {
-  const path = await metadataPath(projectPath, 'project-upgrade.json');
-  await mkdir(dirname(path), { recursive: true });
-  await writeJsonAtomically(path, journal);
-};
-
 export const assertProjectNotUpgrading = async (projectPath: string): Promise<void> => {
   if ((await readProjectUpgrade(projectPath))?.state === 'pending')
-    throw conflict('项目旧版升级尚未完成，请使用原应用恢复或检查是否可安全撤销；草稿已保留');
-};
-
-/** Only fixed project configuration files are used by the upgrade service. */
-export const upgradeFilePath = async (
-  projectPath: string,
-  ...segments: string[]
-): Promise<string> => {
-  let path = await realpath(projectPath);
-  for (const segment of segments) {
-    if (!segment || segment === '.' || segment === '..' || /[/\\\0]/.test(segment))
-      throw invalid('升级文件路径无效');
-    path = join(path, segment);
-    try {
-      if ((await lstat(path)).isSymbolicLink()) throw invalid('升级文件不能是符号链接');
-    } catch (error) {
-      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
-    }
-  }
-  return path;
-};
-
-export const removeProjectUpgrade = async (projectPath: string): Promise<void> => {
-  await rm(await metadataPath(projectPath, 'project-upgrade.json'));
+    throw conflict('项目旧版升级尚未完成，请使用原应用恢复；草稿已保留');
 };

@@ -1,8 +1,6 @@
 import type { Static } from '@sinclair/typebox';
 import {
   UpdatePageRolesSchema,
-  ProjectUpgradeRequestSchema,
-  CancelProjectUpgradeRequestSchema,
   CreatePageSchema,
   CreateProjectSchema,
   DeleteDesktopRecordSchema,
@@ -19,8 +17,6 @@ import {
 } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
-const CancelUpgradeBodySchema = withProjectScope(CancelProjectUpgradeRequestSchema);
-const UpgradeProjectBodySchema = withProjectScope(ProjectUpgradeRequestSchema);
 const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
 const DeleteProjectBodySchema = withProjectScope(DeleteDesktopRecordSchema);
 const CreatePageBodySchema = withProjectScope(CreatePageSchema);
@@ -41,30 +37,6 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
     { schema: { body: UpdatePageRolesSchema } },
     route<Static<typeof UpdatePageRolesSchema>>((request) =>
       input.projectService.updatePageRoles(request.body),
-    ),
-  );
-  server.post(
-    '/api/v1/projects/upgrade/cancel',
-    { schema: { body: CancelUpgradeBodySchema } },
-    route<Static<typeof CancelUpgradeBodySchema>>((request) =>
-      input.projectService.cancelProjectUpgrade(
-        request.body.projectId,
-        request.body.clientRequestId,
-      ),
-    ),
-  );
-  server.post(
-    '/api/v1/projects/upgrade',
-    { schema: { body: UpgradeProjectBodySchema } },
-    route<Static<typeof UpgradeProjectBodySchema>>((request) =>
-      input.projectService.upgradeProject(request.body.projectId, request.body),
-    ),
-  );
-  server.post(
-    '/api/v1/projects/upgrade-state/get',
-    { schema: { body: ProjectScopeSchema } },
-    route<Static<typeof ProjectScopeSchema>>((request) =>
-      input.projectService.getUpgradeState(request.body.projectId),
     ),
   );
   server.post(

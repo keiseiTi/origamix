@@ -256,10 +256,6 @@ try {
   const readme = await readFile(join(project, 'README.md'), 'utf8');
   assert.ok(readme.startsWith('# Template smoke'));
   assert.ok(readme.includes('## 职责与入口'));
-  assert.equal(
-    (await request('/projects/upgrade-state/get', { projectId: created.id })).status,
-    'compatible',
-  );
   await backend.close();
   backend = undefined;
   // Test unpublished release artifacts through npm-compatible package overrides.

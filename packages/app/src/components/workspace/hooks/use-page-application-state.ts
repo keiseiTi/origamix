@@ -1,5 +1,4 @@
 import { layoutService } from '@/services/layout';
-import { useProjectUpgrades } from '@/store/project-upgrades';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useMemo } from 'react';
 import { sessionService, type SessionKind } from '@/services/session';
@@ -34,9 +33,6 @@ export const usePageApplicationState = ({
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
 }) => {
   const service = useMemo(() => sessionService(kind), [kind]);
-  const projectUpgradeVersion = useProjectUpgrades(
-    (state) => state.completed[projectId ?? ''] ?? 0,
-  );
   const pageKey = pageOperationKey(projectId ?? '', pageId ?? '');
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
   const [applyState, setApplyState] = useState<{ pageKey: string; value: PageApplyStatus }>({
@@ -89,7 +85,7 @@ export const usePageApplicationState = ({
       requestState.accepted = ++requestState.issued;
       window.clearTimeout(initial);
     };
-  }, [active, refreshApplyState, schemaRefreshKey, projectUpgradeVersion]);
+  }, [active, refreshApplyState, schemaRefreshKey]);
 
   useEffect(() => {
     if (!active) return;

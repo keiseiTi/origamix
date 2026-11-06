@@ -288,16 +288,6 @@ export {
 } from './project/project-stack.ts';
 export type { ProjectStack } from './project/project-stack.ts';
 
-export {
-  ProjectUpgradeRequestSchema,
-  CancelProjectUpgradeRequestSchema,
-} from './project/project-upgrade.ts';
-export type {
-  ProjectUpgradeRequest,
-  ProjectUpgradeState,
-  ProjectUpgradeResult,
-} from './project/project-upgrade.ts';
-
 export { ApiResultSchema, isApiResultEnvelope } from './transport/api-result.ts';
 export type { ApiResult } from './transport/api-result.ts';
 

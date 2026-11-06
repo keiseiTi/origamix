@@ -29,7 +29,7 @@ pnpm --filter @origamix/template build
 
 Template 没有独立 test 脚本；生成项目集成由 根 `pnpm test:template` 验证。
 
-Runtime／Materials 源码变化会更新开发宿主准备的模板版本配置，不会改写已生成项目的依赖。已有项目使用[显式升级](/guide/projects#升级项目)，完成后重新安装依赖并验证。
+Runtime／Materials 源码变化会更新开发宿主准备的模板版本配置，不会改写已生成项目的依赖。已有项目保留创建时的依赖版本，工作台不提供依赖升级入口。
 
 源码目录：`packages/template`。详细接口、维护规则与集成命令见[包 README](https://github.com/keiseiTi/origamix/tree/main/packages/template)。
 

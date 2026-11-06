@@ -6,20 +6,20 @@ import {
   DropdownMenuTrigger,
 } from '@origamix/ui';
 
-import { Ellipsis, Pencil, Trash2, ArrowUpCircle } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2, PanelsTopLeft } from 'lucide-react';
 
 interface SidebarActionMenuProps {
   label: string;
   onRename: () => void;
   onDelete: () => void;
-  onUpgrade?: () => void;
+  layout?: { enabled: boolean; disabled: boolean; onToggle: () => void };
 }
 
 export const SidebarActionMenu = ({
   label,
   onRename,
   onDelete,
-  onUpgrade,
+  layout,
 }: SidebarActionMenuProps): React.JSX.Element => {
   return (
     <DropdownMenu>
@@ -40,10 +40,10 @@ export const SidebarActionMenu = ({
           <Pencil />
           编辑
         </DropdownMenuItem>
-        {onUpgrade && (
-          <DropdownMenuItem onClick={onUpgrade}>
-            <ArrowUpCircle />
-            兼容性检查
+        {layout && (
+          <DropdownMenuItem disabled={layout.disabled} onClick={layout.onToggle}>
+            <PanelsTopLeft />
+            {layout.enabled ? '关闭布局配置' : '启用布局配置'}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem variant='destructive' onClick={onDelete}>

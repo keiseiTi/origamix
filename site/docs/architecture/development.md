@@ -33,7 +33,7 @@ pnpm dev
 
 完整重启会重新创建窗口，可能中断活动 Agent、未提交编辑和聊天输入；已持久化的 Working 由原有机制恢复。仅后端更新时保留网页和本地草稿，通过受限状态通知刷新 Token／服务实例并恢复安全读取和 SSE，不自动重放写操作或继续旧模型调用。Server 的模板复制实现变化仍重新准备资源并完整重启。调试 Agent 或长时间编辑时可先暂停自动重启。此流程只在开发启动器中协调，没有新增 App 业务会话协议或公共桌面重启桥接。
 
-Materials 更新时会构建新的编辑／运行入口和 Manifest，再构建使用 Manifest 的 Server，并准备模板 npm 版本。开发中的物料更新保留 Electron 窗口，独立重启 Server 并通过状态通知更新凭证，再重启 Vite、刷新 App 加载新物料，无需先打包 App；正式产物使用根 `pnpm build` 重新构建 App。已有用户项目的依赖不会随源码变化自动升级，见[项目与页面](/guide/projects#升级项目)。
+Materials 更新时会构建新的编辑／运行入口和 Manifest，再构建使用 Manifest 的 Server，并准备模板 npm 版本。开发中的物料更新保留 Electron 窗口，独立重启 Server 并通过状态通知更新凭证，再重启 Vite、刷新 App 加载新物料，无需先打包 App；正式产物使用根 `pnpm build` 重新构建 App。已有用户项目的依赖不会随源码变化自动升级，见[项目与页面](/guide/projects#项目依赖)。
 
 ### 环境文件
 

@@ -6,14 +6,11 @@ import { expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
-import { ProjectUpgradeService } from '../../src/projects/project-upgrade-service';
 import { getWorkingSchemaState, updateWorkingSchema } from '../../src/schema/schema-service';
-import { writeProjectUpgrade } from '../../src/projects/project-upgrade-store';
 import { hashSchema } from '../../src/schema/schema-hash';
 
-// Configuration conversion must never migrate pages, change dependencies, lose drafts,
-// overwrite a changed manifest, or silently continue an old dependency upgrade.
-it('checks compatibility without writes and explicitly converts only known legacy configuration', async () => {
+// Unsupported contracts and interrupted writes must preserve existing drafts and targets.
+it('rejects unsupported project data and interrupted writes without replacing retained drafts', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-project-compatibility-'));
   const database = new ApplicationDatabase(join(directory, 'application.db'));
   try {
@@ -60,40 +57,19 @@ it('checks compatibility without writes and explicitly converts only known legac
     const workingBytes = await readFile(workingPath, 'utf8');
     const targetBytes = await readFile(targetPath, 'utf8');
     const packageBytes = await readFile(join(project.path, 'package.json'), 'utf8');
-    const compatibility = new ProjectUpgradeService(projects);
-    const state = await compatibility.inspect(project.id);
-    expect(state.status).toBe('configuration_conversion_required');
+    await expect(getWorkingSchemaState(ref)).rejects.toThrow('字段无效');
     expect(await readFile(manifestPath, 'utf8')).toBe(legacy);
-    await expect(getWorkingSchemaState(ref)).rejects.toThrow('显式转换');
-    const input = {
-      expectedVersion: '1.0.0' as const,
-      expectedManifestHash: state.manifestHash,
-      clientRequestId: 'convert_once',
-    };
-    await writeFile(manifestPath, `${legacy} `);
-    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('配置已变化');
-    await writeFile(manifestPath, legacy);
-    await expect(service.upgradeProject(project.id, input)).resolves.toMatchObject({
-      status: 'completed',
-      installRequired: false,
-    });
-    await expect(service.upgradeProject(project.id, input)).resolves.toMatchObject({
-      status: 'completed',
-    });
-    expect(JSON.parse(await readFile(manifestPath, 'utf8'))).toEqual(current);
+    await writeFile(manifestPath, JSON.stringify(current));
     expect(await readFile(workingPath, 'utf8')).toBe(workingBytes);
     expect(await readFile(targetPath, 'utf8')).toBe(targetBytes);
     expect(await readFile(join(project.path, 'package.json'), 'utf8')).toBe(packageBytes);
     expect((await getWorkingSchemaState(ref)).workingVersion).toBe(draft.workingVersion);
     expect(await readdir(join(project.path, '.origamix/revisions', page.id))).toHaveLength(1);
-    expect((await compatibility.inspect(project.id)).status).toBe('compatible');
 
     await writeFile(
       manifestPath,
       JSON.stringify({ ...current, materialSet: { ...current.materialSet, version: '2.0.0' } }),
     );
-    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
-    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('未提供转换能力');
     await expect(
       updateWorkingSchema(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
     ).rejects.toThrow('不受当前应用支持');
@@ -106,36 +82,38 @@ it('checks compatibility without writes and explicitly converts only known legac
     incompatibleWorking.workingHash = hashSchema(incompatibleWorking.schema);
     const incompatibleBytes = JSON.stringify(incompatibleWorking);
     await writeFile(workingPath, incompatibleBytes);
-    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
     await expect(getWorkingSchemaState(ref)).rejects.toThrow('不受当前应用支持');
     expect(await readFile(workingPath, 'utf8')).toBe(incompatibleBytes);
     await writeFile(workingPath, workingBytes);
 
     const modernBytes = await readFile(manifestPath, 'utf8');
-    await writeProjectUpgrade(project.path, {
-      version: 1,
-      requestId: 'old_request',
-      projectId: project.id,
-      from: '1.0.0',
-      to: '1.0.0',
-      state: 'pending',
-      manifestSource: modernBytes,
-      packageSource: packageBytes,
-      pages: [
-        {
-          pageId: page.id,
-          revisionId: initial.revisionId,
-          workingVersion: draft.workingVersion,
-          schemaHash: draft.workingHash,
-          targetHash: hashSchema(JSON.parse(targetBytes)),
-        },
-      ],
-    });
-    expect((await compatibility.inspect(project.id)).status).toBe('blocked');
-    await expect(service.upgradeProject(project.id, input)).rejects.toThrow('升级尚未完成');
-    await expect(service.cancelProjectUpgrade(project.id, 'old_request')).resolves.toEqual({
-      cancelled: true,
-    });
+    await writeFile(
+      join(project.path, '.origamix/project-upgrade.json'),
+      JSON.stringify({
+        version: 1,
+        requestId: 'old_request',
+        projectId: project.id,
+        from: '1.0.0',
+        to: '1.0.0',
+        state: 'pending',
+        manifestSource: modernBytes,
+        packageSource: packageBytes,
+        pages: [
+          {
+            pageId: page.id,
+            revisionId: initial.revisionId,
+            workingVersion: draft.workingVersion,
+            schemaHash: draft.workingHash,
+            targetHash: hashSchema(JSON.parse(targetBytes)),
+          },
+        ],
+      }),
+    );
+    await expect(
+      updateWorkingSchema(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
+    ).rejects.toThrow('升级尚未完成');
+    expect(await readFile(workingPath, 'utf8')).toBe(workingBytes);
+    expect(await readFile(targetPath, 'utf8')).toBe(targetBytes);
     await rm(manifestPath);
     service.registerGrant('reopen', project.path);
     await expect(

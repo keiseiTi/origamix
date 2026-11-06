@@ -11,7 +11,7 @@ import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
 | 内部目录                     | 用途                                                              |
 | ---------------------------- | ----------------------------------------------------------------- |
 | [page/](src/page/)           | 页面 Schema、编辑操作、Working / Revision / Apply HTTP 契约与校验 |
-| [project/](src/project/)     | 项目清单、技术栈、项目 HTTP 契约与版本升级                        |
+| [project/](src/project/)     | 项目清单、技术栈、项目 HTTP 契约                                  |
 | [flow/](src/flow/)           | 流程图、节点 Manifest、HyperValue 与图安全校验                    |
 | [agent/](src/agent/)         | Run、消息、事件、请求、终态结果、诊断与评估                       |
 | [material/](src/material/)   | 物料 Manifest 通用契约                                            |

@@ -9,6 +9,7 @@ import {
   Field,
   FieldLabel,
   Input,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -29,6 +30,7 @@ export const CreateProjectModal = ({
   onClose,
 }: CreateProjectModalProps): React.JSX.Element => {
   const setProjects = useWorkspaceStore((state) => state.setProjects);
+  const [layoutEnabled, setLayoutEnabled] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [directory, setDirectory] = useState('');
@@ -39,6 +41,7 @@ export const CreateProjectModal = ({
 
   const close = (): void => {
     setName('');
+    setLayoutEnabled(false);
     setDirectory('');
     setPageDirectory('pages');
     setDirectoryGrantId('');
@@ -66,6 +69,7 @@ export const CreateProjectModal = ({
         code: code.trim(),
         pageDirectory: pageDirectory.trim(),
         directoryGrantId,
+        layoutEnabled,
       });
       setProjects((current) => [
         ...current,
@@ -178,6 +182,18 @@ export const CreateProjectModal = ({
               required
             />
           </Field>
+          <label
+            className='flex items-center justify-between gap-3 text-sm'
+            htmlFor='create-layout-enabled'
+          >
+            启用布局配置
+            <Switch
+              id='create-layout-enabled'
+              checked={layoutEnabled}
+              onCheckedChange={setLayoutEnabled}
+              disabled={isSubmitting}
+            />
+          </label>
           {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>
             <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>

@@ -8,14 +8,12 @@ import {
 } from './page-directory';
 import { readPageDeletion, writePageDeletion } from './page-deletion-store';
 import { createInitialPageSchema } from './initial-page-schema';
-import { ProjectUpgradeService } from './project-upgrade-service';
 import { assertProjectNotUpgrading } from './project-upgrade-store';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { access, mkdir, rename, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { nanoid } from 'nanoid';
 import {
-  type ProjectUpgradeRequest,
   type OpenProjectResult,
   type PageRecord,
   type ProjectRecord,
@@ -64,6 +62,7 @@ export class ProjectService {
   }
 
   async createProject(input: {
+    layoutEnabled?: boolean;
     name: string;
     code: string;
     pageDirectory?: string;
@@ -90,6 +89,7 @@ export class ProjectService {
       await this.source.prepareNewProject(temporaryPath, { name, code });
       await this.manifest.initializeManifest(temporaryPath, {
         projectId: id,
+        layout: { enabled: input.layoutEnabled ?? false },
         name,
         code,
         pageDirectory,
@@ -423,22 +423,6 @@ export class ProjectService {
       if (!project) throw notFound('项目不存在');
       return withExclusiveProjectActivity(project.path, action);
     });
-  }
-
-  upgradeProject(projectId: string, input: ProjectUpgradeRequest) {
-    return this.withDestructiveProject(projectId, () =>
-      new ProjectUpgradeService(this.projects).upgrade(projectId, input),
-    );
-  }
-
-  cancelProjectUpgrade(projectId: string, clientRequestId: string) {
-    return this.withDestructiveProject(projectId, () =>
-      new ProjectUpgradeService(this.projects).cancel(projectId, clientRequestId),
-    );
-  }
-
-  async getUpgradeState(projectId: string) {
-    return new ProjectUpgradeService(this.projects).inspect(projectId);
   }
 
   reconcile = async (path: string): Promise<ProjectRecord> =>

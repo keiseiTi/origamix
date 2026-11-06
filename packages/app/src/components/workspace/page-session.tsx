@@ -1,4 +1,3 @@
-import { Button } from '@origamix/ui';
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
 import { LayoutConfiguration } from '@/components/layout/layout-configuration';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
@@ -154,7 +153,6 @@ const PageSessionContent = ({
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       {kind === 'layout' && mode !== 'preview' && (
         <LayoutConfiguration
-          projectId={projectId}
           config={layout}
           editor={editor}
           editorRef={editorRef}
@@ -169,9 +167,7 @@ const PageSessionContent = ({
           pageName={page.name}
           targetKind={kind}
           unavailableReason={
-            kind === 'layout' && !available
-              ? '请先开启项目布局，再通过对话修改布局配置。'
-              : undefined
+            kind === 'layout' && !available ? '请在左侧项目的“…”菜单中启用布局配置。' : undefined
           }
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
@@ -193,16 +189,9 @@ const PageSessionContent = ({
           <div className='grid min-h-0 flex-1 place-content-center justify-items-center gap-3 p-6 text-sm text-muted-foreground'>
             <p>
               {layout.config
-                ? '开启项目布局后，可编辑布局内容。'
+                ? '请在左侧项目的“…”菜单中启用布局配置。'
                 : (layout.error ?? '正在读取项目布局设置…')}
             </p>
-            <Button
-              variant='outline'
-              disabled={!layout.config || layout.busy}
-              onClick={() => void layout.toggle(true)}
-            >
-              开启项目布局
-            </Button>
           </div>
         ) : (
           <PageEditor

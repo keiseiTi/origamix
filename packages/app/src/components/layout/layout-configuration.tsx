@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Button,
-  Switch,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -19,7 +18,6 @@ export const LayoutConfiguration = ({
   editor,
   editorRef,
   projectName,
-  projectId,
   editing,
   canEdit,
 }: {
@@ -27,7 +25,6 @@ export const LayoutConfiguration = ({
   editor: EditorInstance;
   editorRef: RefObject<EditorHandle | null>;
   projectName: string;
-  projectId: string;
   editing: boolean;
   canEdit: boolean;
 }) => {
@@ -47,33 +44,9 @@ export const LayoutConfiguration = ({
       setChanging(false);
     }
   };
+  if (!editing && !config.error && !error) return null;
   return (
     <div className='shrink-0 border-b border-border bg-background px-4 py-3 text-sm'>
-      <div className='flex flex-wrap items-center gap-3'>
-        <label
-          htmlFor={`project-layout-enabled-${projectId}`}
-          className='flex items-center gap-2 font-medium'
-        >
-          <Switch
-            id={`project-layout-enabled-${projectId}`}
-            checked={config.config?.enabled ?? false}
-            disabled={
-              !config.config || config.busy || changing || (config.config.enabled && !canEdit)
-            }
-            onCheckedChange={(enabled) => void config.toggle(enabled)}
-          />
-          项目布局
-        </label>
-        <span className='text-xs text-muted-foreground'>
-          {config.busy
-            ? '正在更新…'
-            : !config.config
-              ? '读取项目设置中…'
-              : config.config.enabled
-                ? '已开启 · 作用于项目所有页面'
-                : '已关闭 · 保留已有草稿和历史'}
-        </span>
-      </div>
       {editing && config.config?.enabled && (
         <div className='mt-3 flex flex-wrap items-center gap-2' aria-label='布局预设'>
           <span className='mr-1 text-xs text-muted-foreground'>从预设开始</span>

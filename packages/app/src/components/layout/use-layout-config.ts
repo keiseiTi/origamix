@@ -4,10 +4,15 @@ import type { EditorHandle } from '@origamix/editor';
 import { layoutService } from '@/services/layout';
 import { subscribeBackendReady } from '@/services/request';
 
+const sessions = new Map<
+  string,
+  Set<{ refresh: () => Promise<void>; flush: () => Promise<void> }>
+>();
+
 export const useLayoutConfig = (
   projectId: string,
   active: boolean,
-  editorRef: RefObject<EditorHandle | null>,
+  editorRef?: RefObject<EditorHandle | null>,
 ) => {
   const [value, setValue] = useState<{ projectId: string; config: LayoutConfigState } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +45,33 @@ export const useLayoutConfig = (
       unsubscribe();
     };
   }, [projectId, active]);
+  useEffect(() => {
+    const session = {
+      refresh,
+      flush: async () => {
+        await editorRef?.current?.flush();
+      },
+    };
+    const projectSessions = sessions.get(projectId) ?? new Set();
+    projectSessions.add(session);
+    sessions.set(projectId, projectSessions);
+    return () => {
+      projectSessions.delete(session);
+      if (!projectSessions.size) sessions.delete(projectId);
+    };
+  }, [projectId, refresh, editorRef]);
   const toggle = async (enabled: boolean): Promise<void> => {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await editorRef.current?.flush();
+      for (const session of sessions.get(projectId) ?? []) await session.flush();
       const config = await layoutService.setEnabled(projectId, enabled);
       setValue({ projectId, config });
+      await Promise.all([...(sessions.get(projectId) ?? [])].map((session) => session.refresh()));
     } catch (reason) {
       try {
-        await refresh();
+        await Promise.all([...(sessions.get(projectId) ?? [])].map((session) => session.refresh()));
       } catch {
         /* Re-read authority; never replay an uncertain toggle. */
       }

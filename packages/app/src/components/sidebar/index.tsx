@@ -1,4 +1,3 @@
-import { ProjectUpgradeModal } from './mod/project-upgrade-modal';
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, Settings, User } from 'lucide-react';
 import { useState } from 'react';
@@ -36,7 +35,6 @@ export const Sidebar = ({
   const userProfile = usePreferencesStore((state) => state.userProfile);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageProjectId, setPageProjectId] = useState<string | null>(null);
-  const [upgradeProject, setUpgradeProject] = useState<{ id: string; name: string } | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const projectActions = useProjectActions({
@@ -127,10 +125,6 @@ export const Sidebar = ({
           onCreatePage={openPageModal}
           onSelectPage={onSelectPage}
           onLifecycle={setLifecycleTarget}
-          onUpgrade={(project) => {
-            keepSidebarOpen();
-            setUpgradeProject(project);
-          }}
         />
         <Button
           variant='ghost'
@@ -157,14 +151,6 @@ export const Sidebar = ({
         />
       )}
 
-      {upgradeProject && (
-        <ProjectUpgradeModal
-          key={upgradeProject.id}
-          project={upgradeProject}
-          flushEditor={flushEditor}
-          onClose={() => setUpgradeProject(null)}
-        />
-      )}
       <CreateProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}

@@ -19,6 +19,7 @@ export const ProjectWithPagesSchema = Type.Intersect([
 export type ProjectWithPages = Static<typeof ProjectWithPagesSchema>;
 
 export const CreateProjectSchema = Type.Object({
+  layoutEnabled: Type.Optional(Type.Boolean()),
   name: Type.String({ minLength: 1, maxLength: 80 }),
   code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
