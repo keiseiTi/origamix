@@ -15,11 +15,7 @@ import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
-import {
-  getSchema,
-  getWorkingSchemaState,
-  saveWorkingRevision,
-} from '../../src/schema/schema-service';
+import { getSchema, getWorkingSchemaState } from '../../src/schema/schema-service';
 import { AgentRunRepository } from '../../src/agent/run-repository';
 import { AgentRunService } from '../../src/agent/run-service';
 import { AgentService } from '../../src/agent/agent-service';
@@ -310,7 +306,36 @@ it('commits an Agent edit through HTTP once, rejects stale/foreign writes, and a
       },
     });
     expect(unsavedApply.statusCode).toBe(409);
-    const saved = await saveWorkingRevision(pageRef, working.workingVersion);
+    const checkpoint = await server.inject({
+      method: 'POST',
+      url: '/api/v1/pages/revisions/save',
+      headers,
+      payload: {
+        projectId: project.id,
+        pageId: page.id,
+        expectedWorkingVersion: working.workingVersion,
+      },
+    });
+    expect(checkpoint.statusCode).toBe(200);
+    const saved = checkpoint.json().data as { revisionId: string; workingVersion: number };
+    expect(saved.workingVersion).toBeGreaterThan(working.workingVersion);
+    expect(saved.revisionId).not.toBe(before.revisionId);
+    const history = await server.inject({
+      method: 'POST',
+      url: '/api/v1/pages/revisions/list',
+      headers,
+      payload: { projectId: project.id, pageId: page.id },
+    });
+    expect(history.statusCode).toBe(200);
+    expect(history.json()).toMatchObject({
+      success: true,
+      data: {
+        revisions: [
+          { revisionId: saved.revisionId, isCurrent: true, isApplied: false },
+          { revisionId: before.revisionId, isCurrent: false, isApplied: true },
+        ],
+      },
+    });
     const foreign = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/apply',

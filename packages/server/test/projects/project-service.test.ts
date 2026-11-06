@@ -405,3 +405,50 @@ it('reconciles the project without opening pages and imports only the page reque
     database.close();
   }
 });
+
+it('initializes a project manifest when opening an uninitialized directory', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-imported-project-'));
+  directories.push(directory);
+  const database = new ApplicationDatabase(join(directory, 'origamix.db'));
+  const projects = new ProjectRepository(database);
+  const service = new ProjectService(projects, templatePath);
+  service.registerGrant('grant_existing', directory);
+
+  const pending = await service.openProject({
+    directoryGrantId: 'grant_existing',
+    name: '导入项目',
+    code: 'imported-project',
+  });
+  expect(pending.status).toBe('initialization_required');
+  if (pending.status !== 'initialization_required') throw new Error('expected inspection');
+  await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
+  const opened = await service.openProject({
+    directoryGrantId: 'grant_existing',
+    name: '导入项目',
+    code: 'imported-project',
+    initializeIfNeeded: true,
+  });
+  if (opened.status !== 'opened') throw new Error('expected opened project');
+  const project = opened.project;
+  const manifest = JSON.parse(await readFile(join(directory, 'origamix.project.json'), 'utf8')) as {
+    name: string;
+    code: string;
+  };
+
+  expect(manifest).toMatchObject({
+    name: '导入项目',
+    code: 'imported-project',
+    pageDirectory: 'pages',
+  });
+  expect(project.name).toBe('导入项目');
+  expect(manifest).toMatchObject({
+    framework: 'react',
+    materialSet: { id: 'official-antd', version: '1.0.0' },
+    pages: [],
+  });
+  await access(join(directory, 'src', 'router.ts'));
+  await access(join(directory, 'vite.config.ts'));
+  database.close();
+});

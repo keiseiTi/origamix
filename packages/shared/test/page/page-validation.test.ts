@@ -19,14 +19,11 @@ const emptyPage = {
 describe('page protocol validation', () => {
   it('accepts the canonical empty page', () => {
     expect(isPageSchema(emptyPage)).toBe(true);
-    expect(isPageSchema({ ...emptyPage, layout: { ...emptyPage.layout, root: 'missing' } })).toBe(
-      false,
-    );
     expect(isPageSchema({ ...emptyPage, elements: null })).toBe(false);
     expect(validatePage(emptyPage)).toEqual({ valid: true, errors: [], semanticErrors: [] });
   });
 
-  it('accepts material-prefixed element IDs', () => {
+  it('accepts material-prefixed element IDs and rejects unsafe IDs', () => {
     const result = validatePage({
       ...emptyPage,
       elements: {
@@ -39,14 +36,11 @@ describe('page protocol validation', () => {
       },
     });
     expect(result.valid).toBe(true);
-  });
-
-  it('rejects an unsafe element ID', () => {
-    const result = validatePage({
+    const unsafe = validatePage({
       ...emptyPage,
       layout: { ...emptyPage.layout, root: '../button' },
     });
-    expect(result.valid).toBe(false);
+    expect(unsafe.valid).toBe(false);
   });
 
   it('rejects a missing root element', () => {
@@ -56,6 +50,9 @@ describe('page protocol validation', () => {
     });
     expect(result.valid).toBe(false);
     expect(result.semanticErrors[0]?.code).toBe('ROOT_NOT_FOUND');
+    expect(
+      isPageSchema({ ...emptyPage, layout: { ...emptyPage.layout, root: 'element_missing' } }),
+    ).toBe(false);
   });
 
   it('rejects dangling layout references', () => {

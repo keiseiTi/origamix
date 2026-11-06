@@ -141,8 +141,8 @@ describe('Schema Service', () => {
           baseWorkingVersion: previous.workingVersion,
           operations: result.operations,
         }),
-      ).rejects.toThrow();
-      expect((await getWorkingSchemaState(page)).workingHash).toBe(state.workingHash);
+      ).rejects.toThrow('页面草稿已更新');
+      expect(await getWorkingSchemaState(page)).toEqual(state);
     }
     const invalid = instantiateBlock({
       block: antdBlocks[0]!,
@@ -793,35 +793,6 @@ describe('Schema Service', () => {
     expect(
       await readdir(join(page.projectPath, '.origamix', 'revisions', page.pageId)),
     ).toHaveLength(2);
-  });
-
-  it('rejects a stale Working version without changing the draft', async () => {
-    const page = await createPageFixture();
-    await initializePageSchema(page, schema);
-    const initial = await getWorkingSchemaState(page);
-    const first = await applyWorkingSchemaOperations(page, {
-      baseWorkingVersion: initial.workingVersion,
-      operations: [
-        {
-          operation: 'updateElementProps',
-          elementId: 'element_root',
-          set: { padding: 12 },
-        },
-      ],
-    });
-    await expect(
-      applyWorkingSchemaOperations(page, {
-        baseWorkingVersion: initial.workingVersion,
-        operations: [
-          {
-            operation: 'updateElementProps',
-            elementId: 'element_root',
-            set: { padding: 13 },
-          },
-        ],
-      }),
-    ).rejects.toThrow('页面草稿已更新');
-    expect((await getWorkingSchemaState(page)).workingHash).toBe(first.workingHash);
   });
 
   it('rejects invalid Working file metadata without rewriting it', async () => {

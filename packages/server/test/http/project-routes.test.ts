@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
-import { ProjectApplyService } from '../../src/schema/project-apply-service';
 import { createHttpServer } from '../../src/http/server';
 
 const directories: string[] = [];
@@ -29,7 +28,6 @@ describe('Project and Schema HTTP flows', () => {
       serviceInstanceId: 'service-instance',
       projects,
       projectService: service,
-      projectApplyService: new ProjectApplyService(projects),
     });
     const headers = {
       authorization: 'Bearer desktop-token',
@@ -83,13 +81,12 @@ describe('Project and Schema HTTP flows', () => {
       pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
     });
 
-    const projectHeaders = headers;
     const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
     const targetBeforeEdit = await readFile(targetPath, 'utf8');
     const workingBeforeResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-state/get',
-      headers: projectHeaders,
+      headers,
       payload: { projectId: project.id, pageId: page.id },
     });
     const workingBefore = workingBeforeResponse.json() as {
@@ -105,7 +102,7 @@ describe('Project and Schema HTTP flows', () => {
     const draftResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-operations/apply',
-      headers: projectHeaders,
+      headers,
       payload: {
         projectId: project.id,
         pageId: page.id,
@@ -138,7 +135,7 @@ describe('Project and Schema HTTP flows', () => {
     const workingStateResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-state/get',
-      headers: projectHeaders,
+      headers,
       payload: { projectId: project.id, pageId: page.id },
     });
     expect(workingStateResponse.statusCode).toBe(200);
@@ -153,104 +150,17 @@ describe('Project and Schema HTTP flows', () => {
     };
     expect(workingState.data).toMatchObject({
       revisionId: workingBefore.data.revisionId,
+      workingVersion: workingBefore.data.workingVersion + 1,
+      schema: {
+        elements: {
+          element_root: { props: { padding: 28 } },
+          form_http: { type: 'form', props: { layout: 'horizontal' } },
+        },
+      },
     });
     expect(workingState.data.workingHash).not.toBe(workingState.data.savedSchemaHash);
-    const checkpointResponse = await server.inject({
-      method: 'POST',
-      url: '/api/v1/pages/revisions/save',
-      headers: projectHeaders,
-      payload: {
-        projectId: project.id,
-        pageId: page.id,
-        expectedWorkingVersion: workingState.data.workingVersion,
-      },
-    });
-    expect(checkpointResponse.statusCode).toBe(200);
-    const saved = checkpointResponse.json() as {
-      success: true;
-      data: { revisionId: string; workingVersion: number };
-    };
-    expect(saved.data.workingVersion).toBeGreaterThan(workingState.data.workingVersion);
-    expect(saved.data.revisionId).not.toBe(workingBefore.data.revisionId);
-    const historyResponse = await server.inject({
-      method: 'POST',
-      url: '/api/v1/pages/revisions/list',
-      headers: projectHeaders,
-      payload: { projectId: project.id, pageId: page.id },
-    });
-    expect(historyResponse.statusCode).toBe(200);
-    expect(historyResponse.json()).toMatchObject({
-      success: true,
-      data: {
-        revisions: [
-          { revisionId: saved.data.revisionId, isCurrent: true, isApplied: false },
-          { revisionId: workingBefore.data.revisionId, isCurrent: false, isApplied: true },
-        ],
-      },
-    });
-    const applyResponse = await server.inject({
-      method: 'POST',
-      url: '/api/v1/pages/apply',
-      headers: projectHeaders,
-      payload: {
-        projectId: project.id,
-        pageId: page.id,
-        expectedRevisionId: saved.data.revisionId,
-        expectedWorkingVersion: saved.data.workingVersion,
-        clientRequestId: 'deterministic_product_flow',
-      },
-    });
-    expect(applyResponse.statusCode).toBe(200);
-    expect(JSON.parse(await readFile(targetPath, 'utf8'))).toMatchObject({
-      elements: { element_root: { props: { padding: 28 } } },
-    });
+    // Save/history/Apply transport is exercised once in agent-schema-flow.test.ts.
     await server.close();
-    database.close();
-  });
-
-  it('initializes a project manifest when opening an uninitialized directory', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'origamix-imported-project-'));
-    directories.push(directory);
-    const database = new ApplicationDatabase(join(directory, 'origamix.db'));
-    const projects = new ProjectRepository(database);
-    const service = new ProjectService(projects, templatePath);
-    service.registerGrant('grant_existing', directory);
-
-    const pending = await service.openProject({
-      directoryGrantId: 'grant_existing',
-      name: '导入项目',
-      code: 'imported-project',
-    });
-    expect(pending.status).toBe('initialization_required');
-    if (pending.status !== 'initialization_required') throw new Error('expected inspection');
-    await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
-    const opened = await service.openProject({
-      directoryGrantId: 'grant_existing',
-      name: '导入项目',
-      code: 'imported-project',
-      initializeIfNeeded: true,
-    });
-    if (opened.status !== 'opened') throw new Error('expected opened project');
-    const project = opened.project;
-    const manifest = JSON.parse(
-      await readFile(join(directory, 'origamix.project.json'), 'utf8'),
-    ) as { name: string; code: string };
-
-    expect(manifest).toMatchObject({
-      name: '导入项目',
-      code: 'imported-project',
-      pageDirectory: 'pages',
-    });
-    expect(project.name).toBe('导入项目');
-    expect(manifest).toMatchObject({
-      framework: 'react',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
-      pages: [],
-    });
-    await access(join(directory, 'src', 'router.ts'));
-    await access(join(directory, 'vite.config.ts'));
     database.close();
   });
 
