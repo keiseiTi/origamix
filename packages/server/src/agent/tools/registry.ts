@@ -64,6 +64,8 @@ export interface RegisteredAgentTool {
 
 const READ_TOOL_NAMES = new Set([
   'get_layout_context',
+  'prepare_block',
+  'get_project_page_roles',
   'validate_layout_schema',
   'get_page_context',
   'get_schema_outline',

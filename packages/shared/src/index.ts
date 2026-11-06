@@ -438,3 +438,33 @@ export {
 
 export { LayoutUpdateRequestSchema } from './layout/layout-api.ts';
 export type { LayoutUpdateRequest } from './layout/layout-api.ts';
+
+export { BlockDefinitionSchema, instantiateBlock } from './block/block.ts';
+export type { BlockDefinition } from './block/block.ts';
+
+export {
+  SYSTEM_PAGE_ROLES,
+  PageRoleIdSchema,
+  ProjectPageRolesSchema,
+  emptyPageRoles,
+  arePageRolesValid,
+  PageRoleStateSchema,
+  UpdatePageRolesSchema,
+} from './project/page-role.ts';
+export type { ProjectPageRoles, PageRoleState, UpdatePageRoles } from './project/page-role.ts';
+
+export {
+  ProjectRoleOperationSchema,
+  ProjectProposalSchema,
+  applyProjectRoleOperations,
+  ProjectTaskScopeSchema,
+  ProjectTaskDecisionSchema,
+  ProjectTaskStateSchema,
+} from './agent/project-proposal.ts';
+export type {
+  ProjectRoleOperation,
+  ProjectProposal,
+  ProjectTaskScope,
+  ProjectTaskDecision,
+  ProjectTaskState,
+} from './agent/project-proposal.ts';

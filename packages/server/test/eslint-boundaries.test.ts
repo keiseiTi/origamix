@@ -86,6 +86,10 @@ for (const [file, code] of [
   ['schema/schema-service.ts', "import { WorkingSchemaStore } from './working-schema-store';"],
   ['layout/layout-service.ts', "import { LayoutStore } from './layout-store';"],
   [
+    'projects/page-role-store.ts',
+    "import { writeJsonAtomically } from '../infrastructure/atomic-file';",
+  ],
+  [
     'layout/layout-store.ts',
     "import { writeJsonAtomically } from '../infrastructure/atomic-file';",
   ],

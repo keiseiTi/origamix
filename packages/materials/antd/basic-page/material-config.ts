@@ -19,7 +19,7 @@ const BasicPageMaterial = defineMaterial({
       {
         title: '属性',
         configs: [
-          ...containerLayoutConfigs,
+          ...containerLayoutConfigs.filter((config) => config.field !== 'layoutMode'),
           { field: 'margin', hidden: true, schema: { type: 'number' }, uiType: 'input' },
         ],
       },

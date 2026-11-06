@@ -4,9 +4,15 @@ import { Table as AntdTable, theme, type TableProps, type TablePaginationConfig 
 import type { RuntimeMaterialProps } from '@';
 import { useRuntimeValue } from '../runtime-state';
 export type IProps = MaterialEventProps<TableProps<Record<string, unknown>>, 'onChange'> &
-  RuntimeMaterialProps & { scrollX?: number; scrollY?: number; emptyText?: string };
+  RuntimeMaterialProps & {
+    scrollX?: number;
+    scrollY?: number;
+    emptyText?: string;
+    paginationMode?: 'local' | 'remote';
+  };
 export const Table = (props: IProps) => {
   const {
+    paginationMode = 'local',
     columns,
     loading = false,
     pagination,
@@ -31,7 +37,7 @@ export const Table = (props: IProps) => {
     om_setRuntimeState?.({ loading: Boolean(loading) });
   }, [loading, om_setRuntimeState]);
   useLayoutEffect(() => {
-    if (!page) return;
+    if (!page || paginationMode === 'remote') return;
     const pageSize = Math.max(1, Math.trunc(page.pageSize ?? 10));
     const current = Math.max(
       1,
@@ -39,7 +45,7 @@ export const Table = (props: IProps) => {
     );
     if (page.total !== dataSource.length || page.current !== current || page.pageSize !== pageSize)
       setPage({ ...page, current, pageSize, total: dataSource.length });
-  }, [dataSource.length, page, setPage]);
+  }, [dataSource.length, page, setPage, paginationMode]);
   return (
     <AntdTable
       {...rest}
@@ -71,7 +77,7 @@ export const Table = (props: IProps) => {
               placement: page?.position?.map((position) =>
                 position.replace('Left', 'Start').replace('Right', 'End'),
               ) as TablePaginationConfig['placement'],
-              total: dataSource.length,
+              total: paginationMode === 'remote' ? (page && page.total) || 0 : dataSource.length,
             }
       }
       onChange={(next, _filters, _sorter, extra) => {
@@ -79,7 +85,7 @@ export const Table = (props: IProps) => {
           ...(page || {}),
           pageSize: next.pageSize,
           current: next.pageSize !== (page && page.pageSize) ? 1 : next.current,
-          total: dataSource.length,
+          total: paginationMode === 'remote' ? (page && page.total) || 0 : dataSource.length,
         };
         setPage(normalized);
         onChange?.({ pagination: normalized, action: extra.action });

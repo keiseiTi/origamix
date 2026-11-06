@@ -1,3 +1,5 @@
+import { instantiateBlock, type BlockDefinition } from '@origamix/shared';
+import { randomUUID } from 'node:crypto';
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import type { ProjectMaterialReader } from './material-reader';
@@ -46,6 +48,7 @@ export interface ReadOnlyToolScope {
 
 type ReadState = { schema: OrigamixPageSchema; revisionId: string | null; workingVersion: number };
 export interface ReadOnlyToolDependencies {
+  getProjectRoles?: (projectId: string) => Promise<import('@origamix/shared').PageRoleState>;
   readLayout?: (projectId: string) => Promise<ReadState>;
   loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
@@ -124,6 +127,7 @@ export const createReadOnlyAgentTools = (
   dependencies: ReadOnlyToolDependencies,
 ): AgentEngineTool[] => {
   const cache = new Map<string, Promise<unknown>>();
+  let blocks: readonly BlockDefinition[] = [];
   let materialManifest: MaterialManifestCatalog;
   let agentCatalog: Awaited<ReturnType<ProjectMaterialReader>>['agentCatalog'];
   let schemaPromise: Promise<ReadState> | undefined;
@@ -142,6 +146,7 @@ export const createReadOnlyAgentTools = (
     if (scope.pageId && (!page || page.status !== 0)) throw notFound('页面不存在或不属于该项目');
     const materials = await dependencies.loadMaterials(project.path);
     materialManifest = materials.manifest;
+    blocks = materials.blocks ?? [];
     agentCatalog = materials.agentCatalog;
     schemaPromise ??= !scope.pageId
       ? dependencies.readLayout!(scope.projectId)
@@ -171,6 +176,74 @@ export const createReadOnlyAgentTools = (
   };
 
   const tools: AgentEngineTool[] = [
+    ...(scope.pageId && dependencies.getProjectRoles
+      ? [
+          {
+            name: 'get_project_page_roles',
+            description:
+              '读取项目页面目录及系统/自定义角色关联。只读；项目变更必须通过 propose_project 等待用户确认。',
+            parameters: PageScopeInputSchema,
+            execute: async (raw: unknown, signal: AbortSignal) => {
+              assertInput<PageScopeInput>(PageScopeInputSchema, raw);
+              await load({}, signal);
+              return dependencies.getProjectRoles!(scope.projectId);
+            },
+          },
+        ]
+      : []),
+    ...(scope.pageId
+      ? [
+          {
+            name: 'prepare_block',
+            description:
+              '列出组合模块，或展开登录表单/搜索表格为普通 operations。只准备、不写入。将返回的 operations 合并到 complete_page_run；同一模块可重复插入。',
+            parameters: strictObject({
+              blockId: Type.Optional(Type.String()),
+              parentId: Type.Optional(Type.String()),
+              parameters: Type.Optional(Type.Record(Type.String(), Type.String())),
+            }),
+            execute: async (raw: unknown, signal: AbortSignal) => {
+              const input = assertInput<{
+                blockId?: string;
+                parentId?: string;
+                parameters?: Record<string, string>;
+              }>(
+                strictObject({
+                  blockId: Type.Optional(Type.String()),
+                  parentId: Type.Optional(Type.String()),
+                  parameters: Type.Optional(Type.Record(Type.String(), Type.String())),
+                }),
+                raw,
+              );
+              const current = await load({}, signal);
+              if (!input.blockId)
+                return blocks.map((block) => ({
+                  id: block.id,
+                  title: block.title,
+                  description: block.description,
+                  parameters: block.parameters.map((parameter) => ({
+                    name: parameter.name,
+                    label: parameter.label,
+                  })),
+                }));
+              const block = blocks.find((item) => item.id === input.blockId);
+              if (!block || !input.parentId) throw invalid('模块或目标容器无效');
+              const result = instantiateBlock({
+                block,
+                schema: current.schema,
+                parentId: input.parentId,
+                parameters: input.parameters ?? {},
+                createId: () => `element-${randomUUID()}`,
+              });
+              return {
+                rootId: result.rootId,
+                operations: result.operations,
+                workingVersion: current.workingVersion,
+              };
+            },
+          },
+        ]
+      : []),
     ...(scope.pageId
       ? createLogicReadTools(async (signal) => {
           const current = await load({}, signal);

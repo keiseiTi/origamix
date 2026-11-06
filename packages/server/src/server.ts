@@ -1,3 +1,4 @@
+import { ProjectTaskService } from './agent/project-task-service';
 import { agentTarget } from './agent/agent-target';
 import { LayoutService } from './layout/layout-service';
 import { assertProjectNotUpgrading } from './projects/project-upgrade-store';
@@ -101,6 +102,7 @@ export const startServer = async (input: {
       productDocs,
       {},
       readLayout,
+      projectService.getPageRoles,
     );
     const pi = createPiModels();
     const executor = new RunExecutor({
@@ -130,6 +132,7 @@ export const startServer = async (input: {
               projects,
               loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
               readLayout,
+              getProjectRoles: projectService.getPageRoles,
             },
           ),
           ...createDomainAgentTools(
@@ -147,6 +150,7 @@ export const startServer = async (input: {
               runs,
               runService,
               layouts: layoutService,
+              prepareProject: (...args) => projectTasks.prepare(...args),
               loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
             },
             scope,
@@ -171,6 +175,7 @@ export const startServer = async (input: {
       },
     });
     const agentService = new AgentService({
+      authorizeStart: (request) => projectTasks.assertContinuation(request),
       conversations: conversationService,
       projects,
       runs,
@@ -192,12 +197,21 @@ export const startServer = async (input: {
         });
       },
     });
+    const projectTasks: ProjectTaskService = new ProjectTaskService({
+      projects,
+      projectService,
+      runs,
+      getWorkingVersion: async (projectId, pageId) =>
+        (await getCurrentRevision(projectId, pageId)).workingVersion,
+      startPage: (request) => agentService.start(request),
+    });
     const server = createHttpServer({
       ...input,
       projects,
       projectService,
       projectApplyService,
       layoutService,
+      projectTasks,
       runtimeDiagnostics,
       agent: {
         conversations: conversationService,

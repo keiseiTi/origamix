@@ -1,6 +1,7 @@
 import { validateAntdMaterialSemantics } from '@origamix/materials/antd/validation';
 import {
   antdMaterialManifest,
+  antdBlocks,
   antdAgentMaterialCatalog,
   antdValidationMaterialRegistry,
 } from '@origamix/materials/antd/manifest';
@@ -27,6 +28,7 @@ export const getProjectMaterials = (stack: ProjectStack) => {
     throw invalid('已安装物料清单与项目要求的版本不一致');
   return {
     manifest: antdMaterialManifest,
+    blocks: antdBlocks,
     agentCatalog: antdAgentMaterialCatalog,
     validation: {
       materialSet: stack.materialSet,

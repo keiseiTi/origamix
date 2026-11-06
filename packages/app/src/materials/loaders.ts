@@ -30,6 +30,7 @@ export const loadEditorMaterials = async (
         groups: module.materialGroups,
         propertyEditors: module.propertyEditors,
         plugins: module.editorPlugins,
+        blocks: module.antdBlocks,
       };
     });
     editorLoads.set(key, pending);

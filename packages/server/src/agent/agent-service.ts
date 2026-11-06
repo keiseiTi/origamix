@@ -55,6 +55,7 @@ export class AgentService {
 
   constructor(
     private readonly dependencies: {
+      authorizeStart?: (request: CreateAgentRunRequest) => Promise<void>;
       conversations: ConversationService;
       runs: AgentRunRepository;
       runService: AgentRunService;
@@ -82,6 +83,7 @@ export class AgentService {
     const admit = () =>
       this.starts.run(`${request.projectId}\0${target.kind}\0${request.pageId ?? ''}`, async () => {
         this.assertOpen();
+        await this.dependencies.authorizeStart?.(request);
         const duplicate = this.dependencies.runs.findByClientRequest(
           request.projectId,
           request.pageId,
@@ -145,9 +147,9 @@ export class AgentService {
           modelRef,
           runKind: target.kind === 'layout' ? 'layout_assistant' : 'page_assistant',
           budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-          promptVersion: target.kind === 'layout' ? '4' : '3',
+          promptVersion: target.kind === 'layout' ? '4' : '5',
           policyVersion: '1',
-          toolsetVersion: target.kind === 'layout' ? '3' : '2',
+          toolsetVersion: target.kind === 'layout' ? '3' : '4',
           materialManifestVersion: 'official-antd@1.0.0',
         });
         if (started.created) {

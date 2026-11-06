@@ -1,4 +1,6 @@
 import {
+  type PageRoleState,
+  type UpdatePageRoles,
   type ProjectUpgradeState,
   type ProjectUpgradeRequest,
   type ProjectUpgradeResult,
@@ -13,6 +15,10 @@ import {
 import { request } from './request';
 
 export const projectsService = {
+  pageRoles: (projectId: string): Promise<PageRoleState> =>
+    request('/projects/page-roles/get', { projectId }),
+  updatePageRoles: (input: UpdatePageRoles): Promise<PageRoleState> =>
+    request('/projects/page-roles/update', input),
   upgradeState: (projectId: string): Promise<ProjectUpgradeState> =>
     request('/projects/upgrade-state/get', { projectId }),
   upgrade: (projectId: string, input: ProjectUpgradeRequest): Promise<ProjectUpgradeResult> =>

@@ -27,6 +27,7 @@ export interface EditorEnvironment {
   plugins: readonly EditorPlugin[] | undefined;
   theme: EditorTheme;
   materialCatalog: readonly MaterialManifest[];
+  blocks: readonly import('@origamix/shared').BlockDefinition[];
   rootMaterialTypes: readonly string[];
   targetSelection: EditorTargetSelection | undefined;
   readOnly: boolean;
@@ -99,6 +100,7 @@ export const createEditorSession = (
       plugins: undefined,
       theme: 'light',
       materialCatalog: [],
+      blocks: [],
       rootMaterialTypes: [],
       targetSelection: undefined,
       readOnly: false,

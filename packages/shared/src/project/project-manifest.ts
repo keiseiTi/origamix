@@ -1,3 +1,4 @@
+import { ProjectPageRolesSchema, arePageRolesValid } from './page-role.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import { VersionedStackReferenceSchema } from './project-stack.ts';
@@ -22,6 +23,7 @@ export const ProjectManifestSchema = Type.Object({
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
   layout: Type.Optional(ProjectLayoutConfigSchema),
+  pageRoles: Type.Optional(ProjectPageRolesSchema),
 });
 
 export type ProjectPageManifest = Static<typeof ProjectPageManifestSchema>;
@@ -29,7 +31,8 @@ export type ProjectPageManifest = Static<typeof ProjectPageManifestSchema>;
 export type ProjectManifest = Static<typeof ProjectManifestSchema>;
 
 export const isProjectManifest = (value: unknown): value is ProjectManifest =>
-  Value.Check(ProjectManifestSchema, value);
+  Value.Check(ProjectManifestSchema, value) &&
+  (!value.pageRoles || arePageRolesValid(value.pageRoles, value.pages));
 
 /** Older manifests without layout configuration stay disabled without an on-read rewrite. */
 export const isProjectLayoutEnabled = (manifest: ProjectManifest): boolean =>

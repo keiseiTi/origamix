@@ -1,3 +1,4 @@
+import { PageRoleSettings } from '@/components/page-role/page-role-settings';
 import { Folder, MessageSquareText, Plus, PanelsTopLeft } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@origamix/ui';
@@ -70,6 +71,7 @@ const ProjectNavigationRow = ({
           <MessageSquareText size={13} />
           <span className='truncate'>{page.name}</span>
         </Button>
+        <PageRoleSettings projectId={project.id} pageId={page.id} pageName={page.name} />
         <SidebarActionMenu
           label={`${page.name} 页面操作`}
           onRename={() =>

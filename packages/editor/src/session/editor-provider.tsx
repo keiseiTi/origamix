@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type CollisionDetection,
 } from '@dnd-kit/core';
-import type { OrigamixPageSchema } from '@origamix/shared';
+import { instantiateBlock, type OrigamixPageSchema } from '@origamix/shared';
 import type { Material } from '../interfaces/material-interfaces';
 import { createEditorSession, type DragElement, type EditorEnvironment } from './editor-store';
 import { EditorSessionContext } from './editor-context';
@@ -25,6 +25,7 @@ import {
 } from '../interfaces/editor-instance-interfaces';
 import { SchemaUtils } from '../schema/schema-utils';
 
+const EMPTY_BLOCKS: NonNullable<EditorProviderProps['blocks']> = [];
 const EMPTY_ROOT_TYPES: readonly string[] = [];
 const EMPTY_SAVE: EditorSaveOptions = {};
 const EMPTY_CATALOG: EditorEnvironment['materialCatalog'] = [];
@@ -51,6 +52,7 @@ export interface EditorProviderProps {
   theme?: EditorEnvironment['theme'];
   materialCatalog?: EditorEnvironment['materialCatalog'];
   rootMaterialTypes?: readonly string[];
+  blocks?: EditorEnvironment['blocks'];
   targetSelection?: EditorEnvironment['targetSelection'];
   schema: OrigamixPageSchema;
   materials: Material[];
@@ -69,6 +71,7 @@ export const EditorProvider = ({
   theme = 'light',
   materialCatalog = EMPTY_CATALOG,
   rootMaterialTypes = EMPTY_ROOT_TYPES,
+  blocks = EMPTY_BLOCKS,
   targetSelection,
   children,
   onChange,
@@ -81,6 +84,7 @@ export const EditorProvider = ({
       theme,
       materialCatalog,
       rootMaterialTypes,
+      blocks,
       targetSelection,
       validateSchema,
     }),
@@ -92,6 +96,7 @@ export const EditorProvider = ({
       theme,
       materialCatalog,
       rootMaterialTypes,
+      blocks,
       targetSelection,
       validateSchema,
     });
@@ -102,6 +107,7 @@ export const EditorProvider = ({
     theme,
     materialCatalog,
     rootMaterialTypes,
+    blocks,
     targetSelection,
     validateSchema,
   ]);
@@ -228,6 +234,33 @@ export const EditorProvider = ({
                 drag = state.dragElement;
               if (!hit || !drag) return;
               const moving = 'material' in drag;
+              if (moving) {
+                const parentId = SchemaUtils.getParents(state.schema, drag.id)[0];
+                const parent = parentId && state.schema.elements[parentId];
+                const current = state.schema.elements[drag.id];
+                if (
+                  parent &&
+                  parent.props.layoutMode === 'absolute' &&
+                  current?.props.layoutPosition === 'absolute'
+                ) {
+                  const frame = state.canvasRoot?.querySelector<HTMLElement>(
+                    `[data-element-id="${drag.id}"][data-origamix-layout]`,
+                  );
+                  const scale =
+                    frame && frame.offsetWidth
+                      ? frame.getBoundingClientRect().width / frame.offsetWidth
+                      : 1;
+                  state.setSchema(
+                    SchemaUtils.setElementProps(state.schema, drag.id, {
+                      ...current.props,
+                      layoutX: Number(current.props.layoutX ?? 0) + event.delta.x / scale,
+                      layoutY: Number(current.props.layoutY ?? 0) + event.delta.y / scale,
+                    }).schema,
+                    { source: 'drag' },
+                  );
+                  return;
+                }
+              }
               const material = moving ? drag.material : drag;
               const parentId = hit.position
                 ? SchemaUtils.getParents(state.schema, hit.target.id)[0]
@@ -240,6 +273,36 @@ export const EditorProvider = ({
                 (material.dropTypes && !material.dropTypes.includes(parent.type))
               )
                 throw new Error('该物料不允许放入目标容器');
+              if (!moving && material.block) {
+                const siblings = state.schema.layout.structure[parentId!] ?? [];
+                const index = hit.position
+                  ? siblings.indexOf(hit.target.id) +
+                    (hit.position === 'after' || hit.position === 'down' ? 1 : 0)
+                  : siblings.length;
+                const result = instantiateBlock({
+                  block: material.block.definition,
+                  parameters: material.block.parameters,
+                  schema: state.schema,
+                  parentId: parentId!,
+                  index,
+                  createId: () => `element-${crypto.randomUUID()}`,
+                });
+                if (parent.props.layoutMode === 'absolute') {
+                  const id = result.rootId;
+                  result.schema.elements[id]!.props = {
+                    ...result.schema.elements[id]!.props,
+                    layoutPosition: 'absolute',
+                    layoutX: 16,
+                    layoutY: 16,
+                  };
+                }
+                state.setSchema(result.schema, { source: 'drag' });
+                state.setActiveElement(
+                  { id: result.rootId, ...result.schema.elements[result.rootId]!, material },
+                  'drag',
+                );
+                return;
+              }
               const result = moving
                 ? SchemaUtils.moveElement(state.schema, drag.id, hit.target.id, {
                     mode: hit.position ? 'same-level' : 'cross-level',
@@ -260,6 +323,15 @@ export const EditorProvider = ({
                         )
                       : SchemaUtils.insertElement(state.schema, hit.target.id, element);
                   })();
+              if (parent.props.layoutMode === 'absolute') {
+                const id = result.operation.elementId;
+                result.schema.elements[id]!.props = {
+                  ...result.schema.elements[id]!.props,
+                  layoutPosition: 'absolute',
+                  layoutX: 16,
+                  layoutY: 16,
+                };
+              }
               state.setSchema(result.schema, {
                 source: 'drag',
                 ...(moving ? { movedElementId: drag.id } : {}),

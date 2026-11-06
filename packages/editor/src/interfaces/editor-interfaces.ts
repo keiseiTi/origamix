@@ -50,6 +50,7 @@ export type EditorHandle = Readonly<{
 /** Supplied by App after resolving the project's material set. No loader or concrete family here. */
 export type EditorMaterialRegistration = Readonly<{
   catalog: MaterialManifestCatalog;
+  blocks?: readonly import('@origamix/shared').BlockDefinition[];
   plugins?: readonly EditorPlugin[];
   groups: readonly Readonly<{ title: string; children: readonly Material[] }>[];
   propertyEditors: readonly PropertyEditorRegistration[];

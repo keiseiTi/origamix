@@ -1,3 +1,4 @@
+import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
 import { access, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -36,6 +37,57 @@ afterEach(async () => {
 });
 
 describe('Project page persistence and recovery', () => {
+  it('keeps project roles unique, preserves layout, and recovers a manifest write without replaying it', async () => {
+    const { database, project, page, service, projects } = await deletionFixture();
+    try {
+      await service.setLayoutEnabled(project.id, true);
+      const before = await service.getPageRoles(project.id);
+      const input = {
+        projectId: project.id,
+        clientRequestId: 'roles_recovery',
+        expectedManifestHash: before.manifestHash,
+        roles: {
+          definitions: [{ id: 'settings', name: '设置页', kind: 'custom' as const }],
+          assignments: { login: page.id },
+        },
+      };
+      const write = ProjectManifestStore.prototype.writeManifest;
+      const injected = vi
+        .spyOn(ProjectManifestStore.prototype, 'writeManifest')
+        .mockImplementationOnce(async function (this: ProjectManifestStore, path, manifest) {
+          await write.call(this, path, manifest);
+          throw new Error('interrupted after manifest write');
+        });
+      await expect(service.updatePageRoles(input)).rejects.toThrow('interrupted');
+      injected.mockRestore();
+      const reopened = new ProjectService(projects, templatePath);
+      expect((await reopened.updatePageRoles(input)).roles).toEqual(input.roles);
+      expect((await reopened.getLayoutConfig(project.id)).enabled).toBe(true);
+      const current = await reopened.getPageRoles(project.id);
+      await expect(
+        reopened.updatePageRoles({ ...input, clientRequestId: 'roles_stale' }),
+      ).rejects.toThrow('已变化');
+      await expect(
+        reopened.updatePageRoles({
+          ...input,
+          clientRequestId: 'roles_invalid',
+          expectedManifestHash: current.manifestHash,
+          roles: { ...input.roles, assignments: { login: page.id, settings: page.id } },
+        }),
+      ).rejects.toThrow('一一对应');
+      await expect(
+        reopened.updatePageRoles({ ...input, projectId: 'project_other' }),
+      ).rejects.toThrow();
+      await reopened.renameProject(project.id, 'Renamed');
+      await reopened.updatePageRoles(input);
+      expect(projects.getProject(project.id)?.name).toBe('Renamed');
+      await reopened.deletePage(project.id, page.id);
+      expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({});
+    } finally {
+      database.close();
+    }
+  });
+
   it('waits for an admitted Working write before deletion and rejects new page activity during cleanup', async () => {
     const { database, project, page, service } = await deletionFixture();
     const release = deferred(),

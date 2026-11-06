@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '../../../src/store/pending-operations';
 
 const mocks = vi.hoisted(() => ({
+  getProjectTask: vi.fn(),
+  decideProjectTask: vi.fn(),
   listConversations: vi.fn(),
   listAllMessages: vi.fn(),
   getAgentRun: vi.fn(),
@@ -31,6 +33,70 @@ const deferred = <T,>() => {
 };
 
 describe('Agent recovery', () => {
+  it('does not replay a project confirmation on recovery or install its late response on another page', async () => {
+    const proposal = { pageIntent: '添加表单' };
+    mocks.listConversations
+      .mockResolvedValueOnce({ conversations: [{ conversationId: 'conversation_task' }] })
+      .mockResolvedValue({ conversations: [] });
+    mocks.listAllMessages.mockResolvedValue({
+      messages: [
+        {
+          runId: 'run_task',
+          role: 'assistant',
+          messageId: 'message_task',
+          sequence: 1,
+          content: { version: '1', blocks: [{ type: 'text', text: '提案' }] },
+        },
+      ],
+    });
+    mocks.getAgentRun.mockResolvedValue({
+      run: {
+        runId: 'run_task',
+        projectId: 'project_1',
+        pageId: 'page_a',
+        status: 'completed',
+        projectProposal: proposal,
+      },
+    });
+    mocks.getProjectTask.mockResolvedValue({
+      projectId: 'project_1',
+      pageId: 'page_a',
+      runId: 'run_task',
+      phase: 'awaiting_confirmation',
+      proposal,
+    });
+    const result = deferred<unknown>();
+    mocks.decideProjectTask.mockReturnValue(result.promise);
+    const hook = renderHook(({ pageId }) => useAgentChat('project_1', pageId), {
+      initialProps: { pageId: 'page_a' },
+    });
+    await waitFor(() =>
+      expect(hook.result.current.projectTask?.phase).toBe('awaiting_confirmation'),
+    );
+    expect(mocks.decideProjectTask).not.toHaveBeenCalled();
+    await expect(hook.result.current.send('继续')).rejects.toThrow('确认');
+    let decision!: Promise<void>;
+    act(() => {
+      decision = hook.result.current.decideProject!('confirm');
+    });
+    hook.rerender({ pageId: 'page_b' });
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+    await act(async () => {
+      result.resolve({
+        projectId: 'project_1',
+        pageId: 'page_a',
+        runId: 'run_task',
+        phase: 'completed',
+        proposal,
+      });
+      await decision;
+    });
+    expect(hook.result.current.projectTask).toBeNull();
+    expect(hook.result.current.projectTaskBusy).toBe(false);
+    expect(mocks.decideProjectTask).toHaveBeenCalledTimes(1);
+    expect(mocks.createAgentRun).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
     usePendingOperations.setState({ applies: {}, agents: {}, agentPreparations: {} });

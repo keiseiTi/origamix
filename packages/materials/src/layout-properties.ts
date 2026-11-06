@@ -1,5 +1,9 @@
 /** Validated platform layout props, consumed by Runtime rather than page components. */
 export const layoutProperties = {
+  layoutPosition: { type: 'string', enum: ['flow', 'absolute'] },
+  layoutX: { type: 'number' },
+  layoutY: { type: 'number' },
+  layoutZIndex: { type: 'integer' },
   layoutWidth: {
     type: 'string',
     enum: ['auto', 'fill', 'fixed'],

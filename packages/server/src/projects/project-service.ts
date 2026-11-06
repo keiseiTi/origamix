@@ -1,3 +1,5 @@
+import { PageRoleStore } from './page-role-store';
+import type { UpdatePageRoles } from '@origamix/shared';
 import { withExclusiveProjectActivity, withProjectActivity } from './project-activity';
 import {
   normalizePageDirectory,
@@ -155,6 +157,24 @@ export class ProjectService {
     if (manifest.projectId !== projectId) throw invalid('项目清单身份已变化，请重新打开项目');
     return resolveProjectStack(await this.manifest.requireEditable(project.path));
   }
+
+  getPageRoles = (projectId: string) =>
+    withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withProjectActivity(project.path, () =>
+        new PageRoleStore().read(project.path, projectId),
+      );
+    });
+
+  updatePageRoles = (input: UpdatePageRoles) =>
+    withProjectQueue(input.projectId, async () => {
+      const project = this.projects.getProject(input.projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withExclusiveProjectActivity(project.path, () =>
+        new PageRoleStore().update(project.path, input),
+      );
+    });
 
   getLayoutConfig = (projectId: string): Promise<LayoutConfigState> =>
     withProjectQueue(projectId, async () => {

@@ -102,3 +102,5 @@ export const getAntdMaterialManifests = (types: readonly string[]) => {
 };
 
 export default antdMaterialManifest;
+
+export { antdBlocks } from './blocks';

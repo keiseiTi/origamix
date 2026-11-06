@@ -35,6 +35,8 @@ const owners = new Map([
       'projects/project-scaffold',
       'projects/project-upgrade-store',
       'projects/page-deletion-store',
+      'projects/page-role-store',
+      'projects/project-task-store',
       'projects/project-upgrade-service',
       'schema/working-schema-store',
       'schema/target-schema-store',

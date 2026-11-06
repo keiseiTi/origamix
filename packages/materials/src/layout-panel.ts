@@ -3,6 +3,23 @@ import type { PanelConfig } from './material';
 export const layoutPanel: PanelConfig = {
   title: '布局',
   configs: [
+    {
+      field: 'layoutPosition',
+      label: '定位方式',
+      uiType: 'select',
+      props: {
+        options: [
+          { label: '流式', value: 'flow' },
+          { label: '容器内绝对定位', value: 'absolute' },
+        ],
+      },
+    },
+    ...(['layoutX', 'layoutY', 'layoutZIndex'] as const).map((field, index) => ({
+      field,
+      label: ['横坐标（px）', '纵坐标（px）', '层级'][index],
+      uiType: 'number' as const,
+      linkageShow: [{ field: 'layoutPosition', value: 'absolute' }],
+    })),
     ...(['Width', 'Height'] as const).flatMap((dimension) => [
       {
         field: `layout${dimension}`,

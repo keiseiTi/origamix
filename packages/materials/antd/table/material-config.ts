@@ -51,6 +51,17 @@ const material = defineMaterial({
         title: '属性',
         configs: [
           {
+            field: 'paginationMode',
+            label: '分页方式',
+            uiType: 'select',
+            props: {
+              options: [
+                { label: '本地分页', value: 'local' },
+                { label: '接口分页', value: 'remote' },
+              ],
+            },
+          },
+          {
             schema: { type: 'string', minLength: 1 },
             required: true,
             field: 'rowKey',

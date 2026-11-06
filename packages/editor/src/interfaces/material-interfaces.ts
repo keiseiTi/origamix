@@ -23,6 +23,11 @@ export interface EditorConfig {
 }
 /** Minimal structural contract; concrete control configuration belongs to Materials. */
 export interface Material {
+  /** Palette-only expansion payload; never persisted as a material. */
+  block?: {
+    definition: import('@origamix/shared').BlockDefinition;
+    parameters: Record<string, string>;
+  };
   formField?: boolean;
   Component: ComponentType | LazyExoticComponent<ComponentType>;
   title: string;

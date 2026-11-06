@@ -161,7 +161,25 @@ export const validateAntdMaterialSemantics = (
   schema: OrigamixPageSchema,
 ): MaterialPropertyIssue[] => {
   const errors: MaterialPropertyIssue[] = [];
-  for (const [id, element] of Object.entries(schema.elements)) validateElement(id, element, errors);
+  for (const [id, element] of Object.entries(schema.elements)) {
+    validateElement(id, element, errors);
+    if (element.props.layoutPosition === 'absolute') {
+      const parentId = Object.keys(schema.layout.structure).find((parent) =>
+        schema.layout.structure[parent]?.includes(id),
+      );
+      const parent = parentId ? schema.elements[parentId] : undefined;
+      if (!parent || parent.props.layoutMode !== 'absolute')
+        errors.push(
+          error(
+            'INVALID_MATERIAL_PROPS',
+            `/elements/${id}/props/layoutPosition`,
+            '绝对定位元素必须位于自由定位容器内',
+            id,
+            element.type,
+          ),
+        );
+    }
+  }
   for (const [parentId, childIds] of Object.entries(schema.layout.structure)) {
     const parent = schema.elements[parentId];
     if (!parent) continue;

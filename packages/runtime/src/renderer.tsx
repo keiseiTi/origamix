@@ -33,6 +33,10 @@ const MaterialContent = ({
   if (!Material && !failed) throw new UnknownMaterialError(`未知物料：${type}`);
 
   const {
+    layoutPosition,
+    layoutX,
+    layoutY,
+    layoutZIndex,
     layoutWidth,
     layoutHeight,
     layoutFixedWidth,
@@ -46,6 +50,10 @@ const MaterialContent = ({
   const finiteSize = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
   const style: CSSProperties = {
+    position: layoutPosition === 'absolute' && !root ? 'absolute' : undefined,
+    left: layoutPosition === 'absolute' ? Number(layoutX ?? 0) : undefined,
+    top: layoutPosition === 'absolute' ? Number(layoutY ?? 0) : undefined,
+    zIndex: typeof layoutZIndex === 'number' ? layoutZIndex : undefined,
     display: block ? 'block' : 'inline-block',
     verticalAlign: 'top',
     minWidth: 0,

@@ -1,3 +1,4 @@
+import { ProjectTaskCard } from './project-task-card';
 import { Button, Spinner, Textarea } from '@origamix/ui';
 
 import {
@@ -100,6 +101,12 @@ export const ChatWorkspace = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
   const active = isRunActive(state.stage);
+  const projectPending = Boolean(
+    session.projectTask &&
+    ['awaiting_confirmation', 'applying_project', 'project_applied'].includes(
+      session.projectTask.phase,
+    ),
+  );
   const modelConfigurationRequired = !unavailableReason && hasModelApiKey === false;
   useEffect(() => {
     mountedRef.current = true;
@@ -119,7 +126,13 @@ export const ChatWorkspace = ({
   );
 
   const submit = async (): Promise<void> => {
-    if (unavailableReason || !draft.trim() || activity !== 'idle' || modelConfigurationRequired)
+    if (
+      unavailableReason ||
+      !draft.trim() ||
+      activity !== 'idle' ||
+      projectPending ||
+      modelConfigurationRequired
+    )
       return;
     try {
       await send(draft);
@@ -143,7 +156,7 @@ export const ChatWorkspace = ({
                 {unavailableReason ??
                   (targetKind === 'layout'
                     ? '修改项目唯一的布局配置。布局变更会先校验并保留为草稿，由你决定何时保存版本和应用。'
-                    : '只处理当前页面的搭建与使用问题。页面变更会先通过校验并保留为草稿，由你决定何时保存版本。')}
+                    : '以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。')}
               </p>
             </div>
           </div>
@@ -160,30 +173,34 @@ export const ChatWorkspace = ({
             </p>
           ) : (
             <ol className='space-y-4' aria-label='对话记录'>
-              {state.messages.map((message) => (
-                <Fragment key={message.messageId}>
-                  <li
-                    className={message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
-                  >
-                    <div
+              {state.messages
+                .filter((message) => message.role !== 'system')
+                .map((message) => (
+                  <Fragment key={message.messageId}>
+                    <li
                       className={
-                        message.role === 'user'
-                          ? 'max-w-[82%] rounded-2xl bg-zinc-100 px-4 py-2.5 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                          : 'max-w-[88%] min-w-0 text-zinc-700 dark:text-zinc-200'
+                        message.role === 'user' ? 'flex justify-end' : 'flex justify-start'
                       }
                     >
-                      {message.role === 'assistant' ? (
-                        <MessageMarkdown content={messageText(message)} />
-                      ) : (
-                        messageText(message)
-                      )}
-                    </div>
-                  </li>
-                  {message.messageId === currentUserMessageId && progress && (
-                    <li className='pt-2'>{progress}</li>
-                  )}
-                </Fragment>
-              ))}
+                      <div
+                        className={
+                          message.role === 'user'
+                            ? 'max-w-[82%] rounded-2xl bg-zinc-100 px-4 py-2.5 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                            : 'max-w-[88%] min-w-0 text-zinc-700 dark:text-zinc-200'
+                        }
+                      >
+                        {message.role === 'assistant' ? (
+                          <MessageMarkdown content={messageText(message)} />
+                        ) : (
+                          messageText(message)
+                        )}
+                      </div>
+                    </li>
+                    {message.messageId === currentUserMessageId && progress && (
+                      <li className='pt-2'>{progress}</li>
+                    )}
+                  </Fragment>
+                ))}
             </ol>
           )}
           {!currentUserMessageId && progress && <div className='mt-4'>{progress}</div>}
@@ -194,6 +211,14 @@ export const ChatWorkspace = ({
             >
               <MessageMarkdown content={state.streamedText} />
             </div>
+          )}
+          {session.projectTask && session.decideProject && (
+            <ProjectTaskCard
+              key={session.projectTask.runId}
+              task={session.projectTask}
+              busy={session.projectTaskBusy ?? false}
+              decide={session.decideProject}
+            />
           )}
           {state.stage && (
             <p className='mt-3 text-xs text-zinc-500 dark:text-zinc-400' role='status'>
@@ -290,7 +315,10 @@ export const ChatWorkspace = ({
                 }
               }}
               disabled={
-                Boolean(unavailableReason) || activity !== 'idle' || modelConfigurationRequired
+                Boolean(unavailableReason) ||
+                activity !== 'idle' ||
+                projectPending ||
+                modelConfigurationRequired
               }
               className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
               aria-label='发送消息'
@@ -335,6 +363,7 @@ export const ChatWorkspace = ({
                     Boolean(unavailableReason) ||
                     !draft.trim() ||
                     activity !== 'idle' ||
+                    projectPending ||
                     modelConfigurationRequired
                   }
                   onClick={() => void submit()}

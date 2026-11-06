@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared';
 import {
+  getProjectTask,
+  decideProjectTask,
   cancelAgentRun,
   createAgentRun,
   getAgentRun,
@@ -18,6 +20,9 @@ import { uniqueId } from '@/utils';
 const requestId = (): string => uniqueId();
 
 export type AgentChatSession = {
+  projectTask?: import('@origamix/shared').ProjectTaskState | null;
+  projectTaskBusy?: boolean;
+  decideProject?: (decision: 'confirm' | 'cancel') => Promise<void>;
   state: ReturnType<typeof agentChatReducer>;
   activity: 'unknown' | 'idle' | 'running';
   pendingSubmission: boolean;
@@ -36,6 +41,13 @@ export const useAgentChat = (
   kind: SessionKind = 'page',
 ): AgentChatSession => {
   const schema = useMemo(() => sessionService(kind), [kind]);
+  const [projectTask, setProjectTask] = useState<
+    import('@origamix/shared').ProjectTaskState | null
+  >(null);
+  const [projectTaskBusy, setProjectTaskBusy] = useState<{ pageKey: string; busy: boolean } | null>(
+    null,
+  );
+  const decidingProject = useRef<string | null>(null);
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
   const generation = useRef(0);
@@ -68,6 +80,7 @@ export const useAgentChat = (
       const conversation = listed.conversations[0];
       conversationId.current = conversation?.conversationId ?? null;
       if (!conversation) {
+        setProjectTask(null);
         setVerifiedPageKey(pageKey);
         dispatch({ type: 'history.loaded', messages: [] });
         return;
@@ -76,7 +89,17 @@ export const useAgentChat = (
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId, kind)).run;
+      let task: import('@origamix/shared').ProjectTaskState | null = null;
+      let sourceRun = run;
+      if (run?.retryOfRunId && run.requestId.startsWith('project_run_'))
+        sourceRun = (await getAgentRun(projectId, run.retryOfRunId, kind)).run;
+      if (kind === 'page' && sourceRun?.projectProposal) {
+        task = await getProjectTask({ projectId, pageId, runId: sourceRun.runId });
+        if (task.childRunId && task.childRunId !== run?.runId)
+          run = (await getAgentRun(projectId, task.childRunId, kind)).run;
+      }
       if (current()) {
+        setProjectTask(task);
         setVerifiedPageKey(pageKey);
         dispatch({ type: 'history.loaded', messages: history.messages, run });
       }
@@ -95,7 +118,10 @@ export const useAgentChat = (
     conversationId.current = null;
     dispatch({ type: 'reset' });
     // Cancel the initial load when StrictMode immediately disposes the mount.
-    const initial = window.setTimeout(() => void loadAuthority(), 0);
+    const initial = window.setTimeout(() => {
+      setProjectTask(null);
+      void loadAuthority();
+    }, 0);
     return () => {
       window.clearTimeout(initial);
       mounted.current = false;
@@ -223,6 +249,12 @@ export const useAgentChat = (
       },
       retryInput?: CreateAgentRunRequest,
     ): Promise<void> => {
+      if (
+        projectTask?.projectId === projectId &&
+        projectTask.pageId === pageId &&
+        ['awaiting_confirmation', 'applying_project', 'project_applied'].includes(projectTask.phase)
+      )
+        throw new Error('请先确认、取消或恢复项目任务');
       if (!enabled) throw new Error('请先开启项目布局配置');
       const content = submission.text.trim();
       const operations = usePendingOperations.getState();
@@ -339,6 +371,7 @@ export const useAgentChat = (
       enabled,
       kind,
       schema,
+      projectTask,
     ],
   );
 
@@ -389,6 +422,45 @@ export const useAgentChat = (
     else await loadAuthority();
   }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
 
+  const decideProject = useCallback(
+    async (decision: 'confirm' | 'cancel') => {
+      const token = `${pageKey}:${generation.current}`;
+      if (!projectTask || decidingProject.current === token) return;
+      const currentGeneration = generation.current;
+      decidingProject.current = token;
+      setProjectTaskBusy({ pageKey, busy: true });
+      setVerifiedPageKey(null);
+      try {
+        const next = await decideProjectTask({
+          projectId,
+          pageId,
+          runId: projectTask.runId,
+          decision,
+        });
+        if (mounted.current && generation.current === currentGeneration) {
+          setProjectTask(next);
+          await loadAuthority();
+        }
+      } catch (error) {
+        if (mounted.current && generation.current === currentGeneration) {
+          await loadAuthority();
+          if (!mounted.current || generation.current !== currentGeneration) return;
+          dispatch({
+            type: 'history.failed',
+            message:
+              error instanceof Error ? error.message : '项目任务结果未确认，请重新读取后重试',
+          });
+        }
+        throw error;
+      } finally {
+        if (decidingProject.current === token) decidingProject.current = null;
+        if (mounted.current && generation.current === currentGeneration)
+          setProjectTaskBusy({ pageKey, busy: false });
+      }
+    },
+    [projectTask, projectId, pageId, pageKey, loadAuthority],
+  );
+
   const activity = !enabled
     ? 'idle'
     : verifiedPageKey !== pageKey || pending || preparing
@@ -397,6 +469,10 @@ export const useAgentChat = (
         ? 'running'
         : 'idle';
   return {
+    projectTask:
+      projectTask?.projectId === projectId && projectTask.pageId === pageId ? projectTask : null,
+    projectTaskBusy: projectTaskBusy?.pageKey === pageKey && projectTaskBusy.busy,
+    decideProject,
     state,
     activity,
     pendingSubmission: Boolean(pending && !pending.inFlight),

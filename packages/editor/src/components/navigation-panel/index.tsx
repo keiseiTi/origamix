@@ -5,6 +5,7 @@ import { SchemaUtils } from '../../schema/schema-utils';
 import { useEditorCore } from '../../session/editor-context';
 import { type ActiveElement } from '../../session/editor-store';
 import { useMemo, useState } from 'react';
+import { BlockPanel } from './block-panel';
 import { MaterialPanel } from './material-panel';
 import type { MaterialGroup } from '../../interfaces/material-interfaces';
 import type { EventFocusProps } from '../editor-layout/event-focus-target';
@@ -118,7 +119,7 @@ export const NavigationPanel = ({
       setActiveElement: state.setActiveElement,
     })),
   );
-  const [activeTab, setActiveTab] = useState<'materials' | 'outline'>(
+  const [activeTab, setActiveTab] = useState<'materials' | 'blocks' | 'outline'>(
     focusTarget ? 'outline' : 'materials',
   );
 
@@ -177,6 +178,7 @@ export const NavigationPanel = ({
           {(
             [
               ['materials', '物料'],
+              ['blocks', '组合模块'],
               ['outline', '大纲树'],
             ] as const
           ).map(([key, label]) => (
@@ -196,6 +198,8 @@ export const NavigationPanel = ({
       <div className='min-h-0 flex-1'>
         {activeTab === 'materials' ? (
           <MaterialPanel groups={groups} />
+        ) : activeTab === 'blocks' ? (
+          <BlockPanel />
         ) : outline.length ? (
           <ul className='p-2'>
             {outline.map((node) => (

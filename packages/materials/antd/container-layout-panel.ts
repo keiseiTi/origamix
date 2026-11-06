@@ -2,6 +2,17 @@ import type { AttributeConfig } from '../src/material';
 
 export const containerLayoutConfigs: AttributeConfig[] = [
   {
+    field: 'layoutMode',
+    label: '容器定位模式',
+    uiType: 'select',
+    props: {
+      options: [
+        { label: '普通布局', value: 'normal' },
+        { label: '自由定位', value: 'absolute' },
+      ],
+    },
+  },
+  {
     field: 'display',
     label: '布局方式',
     uiType: 'select',

@@ -1,3 +1,5 @@
+import { instantiateBlock } from '@origamix/shared';
+import { antdBlocks } from '@origamix/materials/antd/manifest';
 import { hashSchema } from '../../src/schema/schema-hash';
 import { SCHEMA_VERSION } from '@origamix/shared';
 import {
@@ -109,6 +111,65 @@ afterEach(async () => {
 });
 
 describe('Schema Service', () => {
+  it('atomically retains repeated block UI/logic expansions and rejects stale or invalid batches', async () => {
+    const page = await createPageFixture();
+    await initializePageSchema(page, schema);
+    let state = await getWorkingSchemaState(page);
+    const revisions = await listRevisionHistory(page);
+    const target = await readFile(
+      join(page.projectPath, 'src/pages/test-page/schema.json'),
+      'utf8',
+    );
+    let sequence = 0;
+    for (const block of [...antdBlocks, antdBlocks[0]!]) {
+      const result = instantiateBlock({
+        block,
+        schema: state.schema,
+        parentId: 'element_root',
+        parameters: { endpoint: 'https://example.test/api' },
+        createId: () => `element_${++sequence}`,
+      });
+      const previous = state;
+      await applyWorkingSchemaOperations(page, {
+        baseWorkingVersion: state.workingVersion,
+        operations: result.operations,
+      });
+      state = await getWorkingSchemaState(page);
+      expect(state.schema).toEqual(result.schema);
+      await expect(
+        applyWorkingSchemaOperations(page, {
+          baseWorkingVersion: previous.workingVersion,
+          operations: result.operations,
+        }),
+      ).rejects.toThrow();
+      expect((await getWorkingSchemaState(page)).workingHash).toBe(state.workingHash);
+    }
+    const invalid = instantiateBlock({
+      block: antdBlocks[0]!,
+      schema: state.schema,
+      parentId: 'element_root',
+      parameters: { endpoint: 'https://example.test/api' },
+      createId: () => `element_${++sequence}`,
+    });
+    invalid.operations.push({
+      operation: 'addElement',
+      elementId: 'unknown',
+      parentId: 'element_root',
+      element: { type: 'unknown', props: {} },
+    });
+    await expect(
+      applyWorkingSchemaOperations(page, {
+        baseWorkingVersion: state.workingVersion,
+        operations: invalid.operations,
+      }),
+    ).rejects.toThrow();
+    expect((await getWorkingSchemaState(page)).workingHash).toBe(state.workingHash);
+    expect(await listRevisionHistory(page)).toEqual(revisions);
+    expect(await readFile(join(page.projectPath, 'src/pages/test-page/schema.json'), 'utf8')).toBe(
+      target,
+    );
+  });
+
   it('rejects metadata symlinks without changing the retained draft or external files', async () => {
     const page = await createPageFixture();
     await initializePageSchema(page, schema);

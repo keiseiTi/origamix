@@ -149,6 +149,20 @@ export class ProjectManifestStore {
     const manifest = await this.readManifest(projectPath);
     const pages = manifest.pages.filter((item) => item.pageId !== pageId);
     if (pages.length === manifest.pages.length) throw notFound('页面注册信息不存在');
-    await this.writeManifest(projectPath, { ...manifest, pages });
+    const pageRoles = manifest.pageRoles
+      ? {
+          ...manifest.pageRoles,
+          assignments: Object.fromEntries(
+            Object.entries(manifest.pageRoles.assignments).filter(
+              ([, assigned]) => assigned !== pageId,
+            ),
+          ),
+        }
+      : undefined;
+    await this.writeManifest(projectPath, {
+      ...manifest,
+      pages,
+      ...(pageRoles ? { pageRoles } : {}),
+    });
   }
 }

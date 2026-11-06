@@ -66,3 +66,4 @@ export const rootManifests = [basicPageManifest] as const;
 export { createAntdFormPlugin } from './plugins/form-plugin';
 import { createAntdFormPlugin } from './plugins/form-plugin';
 export const editorPlugins: readonly EditorPlugin[] = [createAntdFormPlugin()];
+export { antdBlocks } from './blocks';

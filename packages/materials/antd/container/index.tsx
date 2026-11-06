@@ -25,6 +25,7 @@ export const Container = (props: IProps) => {
     om_setRuntimeState,
     om_mode,
     om_readonly,
+    layoutMode,
     display,
     flexDirection,
     gap,
@@ -35,7 +36,15 @@ export const Container = (props: IProps) => {
   } = props;
 
   const style: React.CSSProperties = {
-    ...getContainerStyle({ display, flexDirection, gap, flexWrap, alignItems, justifyContent }),
+    ...getContainerStyle({
+      layoutMode,
+      display,
+      flexDirection,
+      gap,
+      flexWrap,
+      alignItems,
+      justifyContent,
+    }),
     margin,
     padding,
     overflow: 'auto',

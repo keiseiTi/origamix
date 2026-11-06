@@ -91,6 +91,7 @@ export const Editor = ({
           theme={theme}
           materialCatalog={registration.catalog.materials}
           rootMaterialTypes={rootMaterialTypes}
+          blocks={registration.blocks}
           targetSelection={targetSelection}
           validateSchema={validateSchema}
           materials={materials}

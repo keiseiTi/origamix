@@ -27,3 +27,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - `src/layout.tsx` owns declarative layout/page composition and PageOutlet. Never merge their node tables or create a layout business engine. OrigamixApplicationPage follows the manifest-derived project enabled flag (no per-page overrides) and shares the existing error boundary; DesignLayoutRenderer remains execution-free. Navigation is an explicitly injected page-ID allowlist/callback, not a router or host capability. Template/app preview orchestration stays outside Runtime.
 
 - Layout system PageNavigation renders only injected allowed page IDs and slug paths, with native links/current-page semantics; routing stays in Template. resolveApplicationLayout validates the manifest-derived enabled state and layout ownership without reading files. Template supplies theme and includes Runtime dist in Tailwind scanning.
+
+- Common layoutPosition/layoutX/layoutY/layoutZIndex are consumed on the same MaterialView frame in design/run modes. Container owns its relative positioning context. Page roles are project metadata and do not alter public layout composition or navigation automatically.

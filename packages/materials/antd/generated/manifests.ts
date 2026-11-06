@@ -424,6 +424,10 @@ export const containerManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
+      layoutMode: {
+        type: 'string',
+        enum: ['normal', 'absolute'],
+      },
       display: {
         type: 'string',
         enum: ['flow', 'flex'],
@@ -1818,6 +1822,10 @@ export const tableManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
+      paginationMode: {
+        type: 'string',
+        enum: ['local', 'remote'],
+      },
       rowKey: {
         type: 'string',
         minLength: 1,

@@ -45,6 +45,7 @@ export const withLayoutMaterials = (
   registration: EditorMaterialRegistration,
 ): EditorMaterialRegistration => ({
   ...registration,
+  blocks: registration.blocks?.filter((block) => !Object.keys(block.schema.flows).length),
   groups: [
     { title: '项目布局', children: systems },
     ...registration.groups.map((group) => ({

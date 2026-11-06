@@ -340,3 +340,9 @@ Template smoke 通过编译后的 HTTP 创建两页项目，分别保存并应�
 上下文读取当前 Layout Working 和包含 PageOutlet/PageNavigation 的物料目录；不注入页面 Schema 或开放业务流程工具。`complete_layout_run` 复用终态决策、预算与修复机制，在 LayoutService 校验后原子提交 Working。保存 Revision 和应用仍由用户显式触发。提交凭据位于受检的 `.origamix/layout/agent-receipts/`，用于启动恢复而非自动重放。
 
 SQLite 存储版本 2 允许会话/Run 的页面键为空，以表达唯一的项目布局，并通过部分唯一索引保护布局请求身份。数据库升级保留页面会话、消息及序列号；项目 Schema/manifest 不随之转换。
+
+### Project roles and Agent proposals
+
+`/projects/page-roles/get` reads role configuration plus the current manifest hash. `/projects/page-roles/update` accepts the complete role configuration, expected manifest hash and stable client request ID. The project queue preserves unrelated layout/manifest settings; durable receipts distinguish prepared and committed writes.
+
+Page Agent terminal `propose_project` records a structured role-operation proposal without writing Working or the manifest. `/agent/project-task/get` reads durable task state; `/agent/project-task/decide` explicitly confirms or cancels it. Confirmed roles use the same project service, followed by a deterministic page Run for the optional page intent. Unknown outcomes require explicit same-task recovery; startup never resumes a model call. Page-stage failure preserves committed project configuration.

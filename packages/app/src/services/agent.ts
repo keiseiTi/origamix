@@ -261,3 +261,12 @@ export const agentService = {
   cancelAgentRun,
   subscribeAgentEvents,
 };
+
+export const getProjectTask = (
+  scope: import('@origamix/shared').ProjectTaskScope,
+): Promise<import('@origamix/shared').ProjectTaskState> =>
+  request('/agent/project-task/get', scope);
+export const decideProjectTask = (
+  input: import('@origamix/shared').ProjectTaskDecision,
+): Promise<import('@origamix/shared').ProjectTaskState> =>
+  request('/agent/project-task/decide', input);
