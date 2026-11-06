@@ -270,7 +270,7 @@ export class ContextAssembler {
         .join('\n')
         .replaceAll('页面', '布局')
         .replaceAll('complete_page_run', 'complete_layout_run') +
-      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。必须且只能有一个可达无子节点的 PageOutlet；清空/重排仍须保留它。PageNavigation 只使用项目页面目录，不生成任意 URL。flows、bindElements、globalVariables 必须为空；不提供逻辑流程工具。根 ID 不可删除或移动；初始根可能就是 PageOutlet，此时先 replaceElement 将同一根 ID 改为 container，再 addElement 在根下添加新的唯一 PageOutlet，整批最终状态必须合法。不支持 setLayout 操作。';
+      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。根物料必须是 Layout。通过 updateElementProps 修改根属性 variant、headerEnabled、siderEnabled、footerEnabled、brand、headerMenu、siderMenu、siderWidth、contentPadding 等，Server 会在同一原子提交中派生内部区域。不要 replaceElement 更换根，不手动新增、删除、移动或修改 LayoutRegion，不删除或更换唯一 PageOutlet。关闭区域只隐藏并保留内容；区域内可添加 container、text、button。所有目标节点 ID 从当前 Schema 读取，勿猜测。flows、bindElements、globalVariables 必须为空，不提供逻辑流程工具。不支持 setLayout 操作。';
     const roleState =
       input.target?.kind === 'page'
         ? await this.readProjectRoles?.(input.target.projectId)

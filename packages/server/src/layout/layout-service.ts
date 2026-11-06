@@ -1,3 +1,8 @@
+import {
+  createAntdLayoutSchema,
+  assertAntdLayoutSchema,
+  reconcileAntdLayoutSchema,
+} from '@origamix/materials/antd/layout/manifest';
 import { SchemaValidationError } from '../schema/validation/schema-validation';
 import { LayoutApplyReceiptSchema, type LayoutApplyReceipt } from './layout-apply-contracts';
 import { nanoid } from 'nanoid';
@@ -160,7 +165,12 @@ export class LayoutService {
     }
     // Never recreate Working over retained history or an interrupted/missing draft.
     if (await this.store.hasMetadata(path)) throw invalid('布局 Working 缺失，请恢复原数据');
-    const document = createEmptyLayoutDocument(projectId);
+    const document = {
+      ...createEmptyLayoutDocument(projectId),
+      schema: createAntdLayoutSchema({
+        brand: (await new ProjectManifestStore().readManifest(path)).name,
+      }),
+    };
     const working: LayoutWorkingFile = {
       version: 1,
       document,
@@ -179,6 +189,15 @@ export class LayoutService {
     document: ProjectLayoutDocument,
   ): Promise<void> => {
     this.assertDocument(document, projectId);
+    try {
+      assertAntdLayoutSchema(document.schema);
+    } catch (error) {
+      throw new SchemaValidationError({
+        code: 'INVALID_LAYOUT_REGIONS',
+        path: '/layout',
+        message: error instanceof Error ? error.message : '布局区域无效',
+      });
+    }
     if (Buffer.byteLength(JSON.stringify(document), 'utf8') > 2 * 1024 * 1024)
       throw invalid('布局文档超过 2 MiB 限制');
     const materials = await loadLayoutMaterials(path);
@@ -327,6 +346,19 @@ export class LayoutService {
       let document: ProjectLayoutDocument;
       try {
         document = create(current.document);
+        this.assertDocument(document, input.projectId);
+        try {
+          document = {
+            ...document,
+            schema: reconcileAntdLayoutSchema(document.schema, current.document.schema),
+          };
+        } catch (error) {
+          throw new SchemaValidationError({
+            code: 'INVALID_LAYOUT_REGIONS',
+            path: '/layout',
+            message: error instanceof Error ? error.message : '布局区域无效',
+          });
+        }
       } catch (error) {
         if (error instanceof SchemaOperationError) {
           if (agent)
@@ -382,9 +414,20 @@ export class LayoutService {
   validateSchema = (projectId: string, schema: ProjectLayoutDocument['schema']) =>
     this.scoped(projectId, async (path) => {
       try {
+        const current = await this.current(path, projectId);
+        let candidate;
+        try {
+          candidate = reconcileAntdLayoutSchema(schema, current.document.schema);
+        } catch (error) {
+          throw new SchemaValidationError({
+            code: 'INVALID_LAYOUT_REGIONS',
+            path: '/layout',
+            message: error instanceof Error ? error.message : '布局区域无效',
+          });
+        }
         await this.validateCandidate(path, projectId, {
           ...createEmptyLayoutDocument(projectId),
-          schema,
+          schema: candidate,
         });
         return { valid: true, errors: [] };
       } catch (error) {

@@ -147,7 +147,7 @@ export class AgentService {
           modelRef,
           runKind: target.kind === 'layout' ? 'layout_assistant' : 'page_assistant',
           budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-          promptVersion: target.kind === 'layout' ? '4' : '5',
+          promptVersion: '5',
           policyVersion: '1',
           toolsetVersion: target.kind === 'layout' ? '3' : '4',
           materialManifestVersion: 'official-antd@1.0.0',

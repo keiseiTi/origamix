@@ -11,26 +11,21 @@ description: 项目唯一布局的 Schema 复用、Working/Revision/Apply 所有
 
 布局文档在现有 PageSchema 外增加布局版本和项目归属，内部节点定义、父子结构和编辑操作沿用页面协议：
 
-```json
-{
-  "schemaVersion": "1.0.0",
-  "projectId": "project_example",
-  "schema": {
-    "elements": {
-      "layout_root": { "type": "container", "props": {} },
-      "content": { "type": "PageOutlet", "props": {} }
-    },
-    "layout": {
-      "root": "layout_root",
-      "structure": { "layout_root": ["content"], "content": [] }
-    },
-    "flows": {},
-    "bindElements": [],
-    "context": { "globalVariables": [] },
-    "extensions": { "origamix": { "schemaVersion": "1.0.0" } }
-  }
-}
+```ts
+import { createAntdLayoutSchema } from '@origamix/materials/antd/layout/manifest';
+
+const document = {
+  schemaVersion: '1.0.0',
+  projectId: 'project_example',
+  schema: createAntdLayoutSchema({ brand: '我的应用', variant: 'top-side' }),
+};
 ```
+
+Antd 布局入口和页面入口分开。布局根是唯一 `Layout`；内部 Header、Sider、Content、Footer 及主体使用受管理 `LayoutRegion` 节点，内容区包含唯一 `PageOutlet`。普通区域内容仍是可编辑的 container、text、button。区域 ID 由根 ID 稳定派生，关闭时保留节点和内容。
+
+`reconcileAntdLayoutSchema` 是 Materials 所有的纯数据转换器：Editor 的 `antd.layout` 插件通过 `schema.beforeChange` 调用，LayoutService 在原有版本校验与原子写入链路内调用同一函数。Server 仍独立验证最终节点、物料属性和内容区约束，不执行 Editor 插件。完整文档初始化在 Server；普通读取不转换旧草稿。
+
+Agent 读取当前 Layout 根 ID，仅通过根属性管理区域，不更换根或 PageOutlet、不直接新增/修改/删除/移动 LayoutRegion。布局 prompt 版本为 5，工具协议仍为 3。派生后的完整文档参与 Working hash、预算检查和受检恢复回执；请求身份和操作摘要仍绑定原始输入，重试不会重复写入。
 
 `elements` 保存节点，`layout.root/structure` 保存根与父子关系。布局额外要求唯一、可达且无子节点的 `PageOutlet`；首期 `flows`、`bindElements` 和全局变量为空。页面和布局在运行时通过 Outlet 组合，不合并节点表，布局不创建业务执行引擎。
 

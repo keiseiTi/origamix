@@ -20,3 +20,7 @@ const Page = () => <OrigamixPage schema={schema} materials={materials} />;
 Tailwind v4 项目需要扫描安装包的 `dist/public` 目录；Origamix 生成项目已经提供对应配置。按宿主需求使用 RuntimeProvider 传入主题。
 
 编辑注册、属性编辑控件和物料编写辅助只用于 Origamix 内部工作区，不属于此 npm 包的公开接口。UI 保持私有。
+
+## 应用布局
+
+`@origamix/materials/antd/layout/runtime` 提供 Layout、内部区域及区域内容注册表；与页面 runtime 注册表合并后交给 `OrigamixLayout`。安装时需要兼容的 `@origamix/runtime` peer，以共享导航上下文；导航图标使用 `lucide-react` peer。`@origamix/materials/antd/layout/manifest` 提供纯数据清单、createAntdLayoutSchema 和区域转换／校验函数。Editor 入口不在公开 npm 归档中。

@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { PAGE_OUTLET_TYPE, type LayoutOperationsRequest } from '@origamix/shared';
+import { type LayoutOperationsRequest } from '@origamix/shared';
 import { LayoutService } from '../../src/layout/layout-service';
 import { withExclusiveProjectActivity } from '../../src/projects/project-activity';
 
@@ -56,16 +56,12 @@ const create = (): LayoutOperationsRequest => ({
   baseWorkingVersion: 1,
   clientRequestId: 'request_create',
   operations: [
-    {
-      operation: 'replaceElement',
-      elementId: 'outlet',
-      element: { type: 'container', props: { padding: 8 } },
-    },
+    { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 8 } },
     {
       operation: 'addElement',
       elementId: 'content',
-      parentId: 'outlet',
-      element: { type: PAGE_OUTLET_TYPE, props: {} },
+      parentId: 'layout__header',
+      element: { type: 'text', props: { text: 'Custom header' } },
     },
   ],
 });
@@ -78,6 +74,7 @@ it('retains one project layout draft, saves only explicitly, restores without a 
   expect((await service.listRevisions('project_test')).revisions).toEqual([]);
   const draft = await service.applyOperations(create());
   expect(draft.workingVersion).toBe(2);
+  expect(draft.document.schema.elements.layout!.type).toBe('Layout');
   expect(await restart().getWorking('project_test')).toEqual(draft);
   expect(await service.applyOperations(create())).toEqual(draft);
   expect((await service.listRevisions('project_test')).revisions).toHaveLength(0);
@@ -88,9 +85,36 @@ it('retains one project layout draft, saves only explicitly, restores without a 
     projectId: 'project_test',
     baseWorkingVersion: saved.workingVersion,
     clientRequestId: 'edit',
-    operations: [{ operation: 'updateElementProps', elementId: 'outlet', set: { padding: 24 } }],
+    operations: [
+      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 24 } },
+    ],
   });
-  const savedAgain = await service.saveRevision('project_test', edited.workingVersion);
+  const changedRegions = await service.applyOperations({
+    projectId: 'project_test',
+    baseWorkingVersion: edited.workingVersion,
+    clientRequestId: 'regions',
+    operations: [
+      {
+        operation: 'updateElementProps',
+        elementId: 'layout',
+        set: { variant: 'side-top', headerEnabled: false, footerEnabled: true },
+      },
+    ],
+  });
+  expect(changedRegions.workingVersion).toBe(edited.workingVersion + 1);
+  expect(changedRegions.document.schema.layout.structure.layout).toEqual([
+    'layout__sider',
+    'layout__body',
+  ]);
+  expect(changedRegions.document.schema.elements.layout__header!.props.enabled).toBe(false);
+  expect(changedRegions.document.schema.elements.content).toEqual(
+    edited.document.schema.elements.content,
+  );
+  expect(changedRegions.document.schema.elements.outlet).toEqual(
+    edited.document.schema.elements.outlet,
+  );
+  expect((await service.listRevisions('project_test')).revisions).toHaveLength(1);
+  const savedAgain = await service.saveRevision('project_test', changedRegions.workingVersion);
   const restored = await service.restoreRevision(
     'project_test',
     saved.revisionId!,
@@ -120,17 +144,21 @@ it('rejects stale, invalid and foreign edits atomically and serializes concurren
   await expect(
     service.applyOperations({
       ...create(),
-      operations: [{ operation: 'updateElementProps', elementId: 'outlet', set: { padding: 16 } }],
+      operations: [
+        { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 16 } },
+      ],
     }),
   ).rejects.toThrow('请求身份');
   await expect(
     mutate([
-      { operation: 'updateElementProps', elementId: 'outlet', set: { padding: 32 } },
-      { operation: 'removeElement', elementId: 'content' },
+      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 32 } },
+      { operation: 'removeElement', elementId: 'outlet' },
     ]),
   ).rejects.toThrow('INVALID_PAGE_OUTLET');
   await expect(
-    mutate([{ operation: 'updateElementProps', elementId: 'outlet', set: { padding: 'invalid' } }]),
+    mutate([
+      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 'invalid' } },
+    ]),
   ).rejects.toThrow('INVALID_MATERIAL_PROPS');
   await expect(
     mutate([
@@ -138,22 +166,38 @@ it('rejects stale, invalid and foreign edits atomically and serializes concurren
         operation: 'addElement',
         elementId: 'unknown',
         element: { type: 'Unknown', props: {} },
-        parentId: 'outlet',
+        parentId: 'layout__header',
       },
     ]),
   ).rejects.toThrow('UNKNOWN_MATERIAL');
+  await expect(
+    mutate(
+      [{ operation: 'removeElement', elementId: 'layout__header', removeDescendants: true }],
+      'remove-region',
+    ),
+  ).rejects.toThrow('不能删除内部区域');
+  await expect(
+    mutate(
+      [{ operation: 'moveElement', elementId: 'layout__sider', parentId: 'layout__header' }],
+      'move-region',
+    ),
+  ).rejects.toThrow('不能移动内部区域');
   expect(await service.getWorking('project_test')).toEqual(draft);
   const competing = await Promise.allSettled([
-    mutate([{ operation: 'updateElementProps', elementId: 'outlet', set: { padding: 10 } }], 'a'),
-    mutate([{ operation: 'updateElementProps', elementId: 'outlet', set: { padding: 20 } }], 'b'),
+    mutate(
+      [{ operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 10 } }],
+      'a',
+    ),
+    mutate(
+      [{ operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 20 } }],
+      'b',
+    ),
   ]);
   expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
   expect(competing.filter((result) => result.status === 'rejected')).toHaveLength(1);
   const beforeFallback = await service.getWorking('project_test');
   const candidate = structuredClone(beforeFallback.document.schema);
-  candidate.elements.layout_root = { type: 'container', props: {} };
-  candidate.layout.structure.layout_root = [candidate.layout.root];
-  candidate.layout.root = 'layout_root';
+  candidate.elements.content = { type: 'text', props: { text: 'Full candidate update' } };
   const updated = await service.updateWorking({
     projectId: 'project_test',
     baseWorkingVersion: beforeFallback.workingVersion,

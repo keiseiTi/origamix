@@ -42,6 +42,7 @@ const MaterialContent = ({
     layoutFixedWidth,
     layoutFixedHeight,
     layoutGrow,
+    layoutShrink,
     layoutAlignSelf,
     ...materialProps
   } = props;
@@ -80,7 +81,7 @@ const MaterialContent = ({
           ? '100%'
           : undefined,
     flexGrow: finiteSize(layoutGrow),
-    flexShrink: layoutWidth === 'fixed' || !block ? 0 : 1,
+    flexShrink: finiteSize(layoutShrink) ?? (layoutWidth === 'fixed' || !block ? 0 : 1),
     alignSelf: (['auto', 'flex-start', 'center', 'flex-end', 'stretch'].includes(
       String(layoutAlignSelf),
     )

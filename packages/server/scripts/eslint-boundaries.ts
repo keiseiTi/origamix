@@ -85,7 +85,8 @@ export const serverBoundaries: Rule.RuleModule = {
       }
       if (
         specifier.startsWith('@origamix/materials') &&
-        !/^@origamix\/materials\/[^/]+\/(?:manifest|validation)$/.test(specifier)
+        !/^@origamix\/materials\/[^/]+\/(?:manifest|validation)$/.test(specifier) &&
+        specifier !== '@origamix/materials/antd/layout/manifest'
       ) {
         report(node, 'Server may import Materials pure manifest/validation entries only.');
       }

@@ -13,6 +13,7 @@ export const layoutProperties = {
   layoutFixedWidth: { type: 'number', minimum: 0 },
   layoutFixedHeight: { type: 'number', minimum: 0 },
   layoutGrow: { type: 'number', minimum: 0 },
+  layoutShrink: { type: 'number', minimum: 0 },
   layoutAlignSelf: {
     type: 'string',
     enum: ['auto', 'flex-start', 'center', 'flex-end', 'stretch'],

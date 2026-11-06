@@ -117,4 +117,4 @@ pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库�
 
 项目导航中的固定“布局配置”入口复用页面编辑器和 Agent 对话。项目开关控制全部页面，布局草稿、版本与应用独立于页面；完整应用预览使用当前草稿，独立生成项目读取已应用文件。
 
-操作步骤见 [布局配置指南](site/docs/guide/layout.md)，契约与接口见 [Layout 说明](site/docs/architecture/layout.md)，本轮验证范围及限制见 [布局集成验收](docs/layout-acceptance.md)。
+操作步骤见 [布局配置指南](site/docs/guide/layout.md)，契约与接口见 [Layout 说明](site/docs/architecture/layout.md)，物料入口见 [Materials 说明](packages/materials/README.md#项目布局物料)。

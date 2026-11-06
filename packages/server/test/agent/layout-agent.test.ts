@@ -68,18 +68,16 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
       return { ...state, schema: state.document.schema };
     };
     const operations: SchemaOperation[] = [
-      { operation: 'replaceElement', elementId: root, element: { type: 'container', props: {} } },
       {
-        operation: 'addElement',
-        elementId: 'layout_title',
-        parentId: root,
-        element: { type: 'text', props: { text: 'Draft layout' } },
+        operation: 'updateElementProps',
+        elementId: root,
+        set: { brand: 'Draft layout', variant: 'side-top' },
       },
       {
         operation: 'addElement',
-        elementId: 'layout_outlet',
-        parentId: root,
-        element: { type: 'PageOutlet', props: {} },
+        elementId: 'layout_title',
+        parentId: `${root}__header`,
+        element: { type: 'text', props: { text: 'Draft layout' } },
       },
     ];
     let calls = 0;
@@ -95,7 +93,10 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
       const tool = (request.tools ?? []).find((tool) => tool.name === 'complete_layout_run')!;
       const input = {
         outcome: 'apply_changes',
-        operations: calls === 1 ? operations.slice(0, 2) : operations,
+        operations:
+          calls === 1
+            ? [...operations, { operation: 'removeElement', elementId: 'outlet' }]
+            : operations,
         response: '布局草稿已修改',
       };
       await request.onEvent?.({
@@ -279,7 +280,7 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
       modelRef: 'deepseek/deepseek-flash',
       runKind: 'layout_assistant',
       budget: started.run.budget,
-      promptVersion: '4',
+      promptVersion: '5',
       toolsetVersion: '3',
       policyVersion: '1',
       materialManifestVersion: started.run.materialManifestVersion,

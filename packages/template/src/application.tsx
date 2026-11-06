@@ -2,6 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { OrigamixLayout, resolveApplicationLayout } from '@origamix/runtime';
+import layoutMaterials from '@origamix/materials/antd/layout/runtime';
 import materials, { RuntimeProvider } from '@origamix/materials/antd/runtime';
 import manifest from '../origamix.project.json';
 
@@ -41,7 +42,7 @@ const Application = (): React.JSX.Element => {
         {layout.enabled ? (
           <OrigamixLayout
             schema={layout.document.schema}
-            materials={materials}
+            materials={{ ...materials, ...layoutMaterials }}
             navigation={{
               currentPageId,
               pageIds: pages.map((page) => page.pageId),

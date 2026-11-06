@@ -1,10 +1,10 @@
 import { validateLayoutSchema } from '@origamix/shared';
-import { withLayoutMaterials } from '@/materials/layout-materials';
+import { assertAntdLayoutSchema } from '@origamix/materials/antd/layout/manifest';
 import { Editor as EditorView } from '@origamix/editor';
 import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
 import { Spinner, Button, useToastManager } from '@origamix/ui';
 
-import { useImperativeHandle, useMemo, useState, type Ref } from 'react';
+import { useImperativeHandle, useState, type Ref } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
@@ -57,15 +57,8 @@ export const PageEditor = ({
     </Button>
   );
   const theme = usePreferencesStore((state) => state.theme);
-  const materials = useEditorMaterials(projectId, visible);
-  const registration = useMemo(
-    () =>
-      materials.registration &&
-      (targetKind === 'layout'
-        ? withLayoutMaterials(materials.registration)
-        : materials.registration),
-    [materials.registration, targetKind],
-  );
+  const materials = useEditorMaterials(projectId, visible, targetKind);
+  const registration = materials.registration;
   const MaterialProvider = materials.Provider;
   const session = useEditorSession(
     projectId,
@@ -160,6 +153,7 @@ export const PageEditor = ({
 };
 
 const validateLayoutCandidate = (schema: Parameters<typeof validateLayoutSchema>[0]): void => {
+  assertAntdLayoutSchema(schema);
   const issue = validateLayoutSchema(schema)[0];
   if (issue) throw new Error(issue.message);
 };

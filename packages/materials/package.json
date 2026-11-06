@@ -25,6 +25,18 @@
     "./antd/validation": {
       "types": "./dist/public/antd/validation.d.ts",
       "import": "./dist/public/antd/validation.js"
+    },
+    "./antd/layout/editor": {
+      "types": "./dist/internal/antd/layout/editor.d.ts",
+      "import": "./dist/internal/antd/layout/editor.js"
+    },
+    "./antd/layout/runtime": {
+      "types": "./dist/public/antd/layout/runtime.d.ts",
+      "import": "./dist/public/antd/layout/runtime.js"
+    },
+    "./antd/layout/manifest": {
+      "types": "./dist/public/antd/layout/manifest.d.ts",
+      "import": "./dist/public/antd/layout/manifest.js"
     }
   },
   "publishConfig": {
@@ -41,6 +53,14 @@
       "./antd/validation": {
         "types": "./dist/public/antd/validation.d.ts",
         "import": "./dist/public/antd/validation.js"
+      },
+      "./antd/layout/runtime": {
+        "types": "./dist/public/antd/layout/runtime.d.ts",
+        "import": "./dist/public/antd/layout/runtime.js"
+      },
+      "./antd/layout/manifest": {
+        "types": "./dist/public/antd/layout/manifest.d.ts",
+        "import": "./dist/public/antd/layout/manifest.js"
       }
     }
   },
@@ -77,7 +97,9 @@
   "peerDependencies": {
     "antd": "^6",
     "react": "^19",
-    "@origamix/ui": "workspace:*"
+    "@origamix/ui": "workspace:*",
+    "@origamix/runtime": "^1.0.0",
+    "lucide-react": "^1.34.0"
   },
   "peerDependenciesMeta": {
     "@origamix/ui": {

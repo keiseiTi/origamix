@@ -1,5 +1,4 @@
 import { LayoutService } from '../../src/layout/layout-service';
-import { PAGE_OUTLET_TYPE, PAGE_NAVIGATION_TYPE } from '@origamix/shared';
 import { hashSchema } from '../../src/schema/schema-hash';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -401,23 +400,7 @@ describe('Project layout Apply', () => {
       baseWorkingVersion: initial.workingVersion,
       clientRequestId: 'layout-edit',
       operations: [
-        {
-          operation: 'replaceElement',
-          elementId: 'outlet',
-          element: { type: 'container', props: { padding: 12, heightConfig: 'auto' } },
-        },
-        {
-          operation: 'addElement',
-          elementId: 'navigation',
-          parentId: 'outlet',
-          element: { type: PAGE_NAVIGATION_TYPE, props: { direction: 'horizontal' } },
-        },
-        {
-          operation: 'addElement',
-          elementId: 'content',
-          parentId: 'outlet',
-          element: { type: PAGE_OUTLET_TYPE, props: {} },
-        },
+        { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 12 } },
       ],
     });
     return {
@@ -474,7 +457,7 @@ describe('Project layout Apply', () => {
           ...saved.document.schema,
           elements: {
             ...saved.document.schema.elements,
-            outlet: { type: 'container', props: { padding: 99 } },
+            outlet: { type: 'PageOutlet', props: { layoutGrow: 1 } },
           },
         },
       };
@@ -513,7 +496,7 @@ describe('Project layout Apply', () => {
             baseWorkingVersion: saved.workingVersion,
             clientRequestId: 'blocked',
             operations: [
-              { operation: 'updateElementProps', elementId: 'outlet', set: { padding: 24 } },
+              { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 24 } },
             ],
           }),
         ).rejects.toThrow('尚未确认');

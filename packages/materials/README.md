@@ -37,7 +37,7 @@ pnpm --filter @origamix/materials... build
 
 `build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 TypeScript 提交检查在 Materials 构建前检查，避免构建自动生成掩盖遗漏提交。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
 
-tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
+tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design、Runtime、Lucide 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 
@@ -114,3 +114,9 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 支持表单绑定的控件在 `defineMaterial` 中声明 `formField: true`，按需声明 `valueProp`（默认 `value`）。构建时组合公共字段协议，antd.form 插件在 Editor 中提供独立“表单项”面板；仅在最近的表单祖先内展示，允许中间包含布局容器，不修改共享 panels。字段名、标签、提示、必填与校验规则分别存于 `fieldName`、`fieldLabel`、`fieldTooltip`、`fieldRequired`、`fieldRules`。设计态展示 Form.Item 外观，运行态在最近的 Form 上下文中绑定值并校验；表单外的配置保留但不启用。规则支持长度、数值范围、邮箱、网址和正则，使用声明式数据，不保存回调。字段名在同一表单的全部后代中唯一，嵌套表单独立计数。
 
 `/antd/editor` 导出 `createAntdFormPlugin` 与 `editorPlugins`。App 通过 EditorMaterialRegistration.plugins 安装到统一插件宿主。defineMaterial 保留 formField 标记并生成协议，不再隐式注入 Form 面板；插件采用同一 EditorPlugin 契约，元数据工厂仅使用其类型，避免 Node Manifest/注册检查加载 Monaco。面板字段由已安装 Manifest 验证，布局和原子物料配置保持原样。运行时及纯 Manifest 发布入口不引用 Editor。
+
+## 项目布局物料
+
+布局与页面共享 official-antd 版本，使用独立的 `@origamix/materials/antd/layout/editor`、`/antd/layout/runtime`、`/antd/layout/manifest` 入口。编辑入口只暴露一个 Layout 根物料，LayoutRegion 与 PageOutlet 是内部注册；容器、文字、按钮可作为区域内容复用。运行入口使用 Runtime 的只读导航上下文，所以 Runtime 为显式 peer 依赖，不能内联另一份 Runtime 上下文。
+
+`antd/layout/schema.ts` 拥有纯数据区域派生和校验，供 Editor schema.beforeChange 和 Server 共用。布局结构、开关及尺寸由根属性管理，区域 ID 与自定义内容保留；关闭不删除。新增和修改物料协议仍由 material-config.ts 生成 Manifest；布局 Manifest/运行入口均不导入 Editor。Server 只能导入布局的纯 manifest 入口。

@@ -1,4 +1,4 @@
-import { BUILTIN_PROJECT_STACK, PAGE_OUTLET_TYPE, PAGE_NAVIGATION_TYPE } from '@origamix/shared';
+import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -197,36 +197,14 @@ try {
     clientRequestId: 'layout-edit',
     operations: [
       {
-        operation: 'replaceElement',
-        elementId: 'outlet',
-        element: {
-          type: 'container',
-          props: {
-            padding: 24,
-            heightConfig: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-          },
+        operation: 'updateElementProps',
+        elementId: 'layout',
+        set: {
+          brand: 'Origamix application layout',
+          variant: 'top-side',
+          footerEnabled: true,
+          footerText: '应用页脚',
         },
-      },
-      {
-        operation: 'addElement',
-        elementId: 'brand',
-        parentId: 'outlet',
-        element: { type: 'text', props: { type: 'h2', text: 'Origamix application layout' } },
-      },
-      {
-        operation: 'addElement',
-        elementId: 'navigation',
-        parentId: 'outlet',
-        element: { type: PAGE_NAVIGATION_TYPE, props: { direction: 'horizontal' } },
-      },
-      {
-        operation: 'addElement',
-        elementId: 'content',
-        parentId: 'outlet',
-        element: { type: PAGE_OUTLET_TYPE, props: {} },
       },
     ],
   });

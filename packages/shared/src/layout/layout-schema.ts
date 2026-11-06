@@ -24,6 +24,7 @@ export const PageOutletPropsSchema = Type.Object(
     layoutFixedWidth: Type.Optional(Type.Number({ minimum: 0 })),
     layoutFixedHeight: Type.Optional(Type.Number({ minimum: 0 })),
     layoutGrow: Type.Optional(Type.Number({ minimum: 0 })),
+    layoutShrink: Type.Optional(Type.Number({ minimum: 0 })),
     layoutAlignSelf: Type.Optional(
       Type.Union([
         Type.Literal('auto'),

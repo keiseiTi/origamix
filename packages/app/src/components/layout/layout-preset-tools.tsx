@@ -46,6 +46,13 @@ export const LayoutPresetTools = ({
   };
   return (
     <>
+      <Button
+        size='sm'
+        variant='ghost'
+        onClick={() => editor.selectElement(editor.getSchema().layout.root)}
+      >
+        布局属性
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={<Button size='sm' variant='ghost' disabled={!canEdit || readOnly || changing} />}
@@ -76,7 +83,7 @@ export const LayoutPresetTools = ({
           <DialogHeader>
             <DialogTitle>使用布局预设</DialogTitle>
             <DialogDescription>
-              替换当前布局结构，可通过撤销恢复。不会保存版本或应用到项目。
+              调整布局结构并保留区域内容，可通过撤销恢复。不会保存版本或应用到项目。
             </DialogDescription>
           </DialogHeader>
           {error && (

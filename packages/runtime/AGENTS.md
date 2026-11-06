@@ -29,3 +29,7 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - Layout system PageNavigation renders only injected allowed page IDs and slug paths, with native links/current-page semantics; routing stays in Template. resolveApplicationLayout validates the manifest-derived enabled state and layout ownership without reading files. Template supplies theme and includes Runtime dist in Tailwind scanning.
 
 - Common layoutPosition/layoutX/layoutY/layoutZIndex are consumed on the same MaterialView frame in design/run modes. Container owns its relative positioning context. Page roles are project metadata and do not alter public layout composition or navigation automatically.
+
+- Antd layout materials consume the exported useLayoutNavigation context through their Runtime peer; do not bundle a second context or add Material-family imports to Runtime. PageOutlet remains Runtime-owned injection and diagnostic scope. Template/App merge the separate Materials page/layout runtime registries.
+
+- MaterialView consumes validated layoutShrink alongside layoutGrow on the shared frame. Managed sidebars set shrink to zero so their frame tracks the native sidebar width during collapse without overlapping sibling content. Do not patch material DOM ancestors to force sizing.

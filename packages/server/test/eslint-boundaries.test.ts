@@ -48,6 +48,7 @@ for (const [file, code] of [
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd';"],
   ['agent/new-service.ts', "import { manifest } from '@origamix/materials/manifest';"],
   ['agent/new-service.ts', "import materials from '@origamix/materials/antd/runtime';"],
+  ['agent/new-service.ts', "import materials from '@origamix/materials/antd/layout/runtime';"],
   ['agent/new-service.ts', "import { defineMaterial } from '@origamix/materials';"],
   ['agent/new-service.ts', "import type { Component } from 'react';"],
   ['agent/new-service.ts', "import { host } from '@origamix/desktop/main';"],
@@ -85,6 +86,10 @@ for (const [file, code] of [
   ['schema/schema-service.ts', "import { RevisionCommit } from './revision-commit';"],
   ['schema/schema-service.ts', "import { WorkingSchemaStore } from './working-schema-store';"],
   ['layout/layout-service.ts', "import { LayoutStore } from './layout-store';"],
+  [
+    'layout/layout-service.ts',
+    "import { reconcileAntdLayoutSchema } from '@origamix/materials/antd/layout/manifest';",
+  ],
   [
     'projects/page-role-store.ts',
     "import { writeJsonAtomically } from '../infrastructure/atomic-file';",

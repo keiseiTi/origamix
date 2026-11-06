@@ -3,9 +3,13 @@ import type { EditorMaterialRegistration } from '@origamix/editor';
 import { projectsService } from '@/services/projects';
 import { loadEditorMaterials, loadRuntimeMaterials } from './loaders';
 
-export const useEditorMaterials = (projectId: string, enabled: boolean) => {
+export const useEditorMaterials = (
+  projectId: string,
+  enabled: boolean,
+  kind: 'page' | 'layout' = 'page',
+) => {
   const [attempt, setAttempt] = useState(0);
-  const scope = useMemo(() => ({ projectId, attempt }), [projectId, attempt]);
+  const scope = useMemo(() => ({ projectId, attempt, kind }), [projectId, attempt, kind]);
   const [result, setResult] = useState<{
     scope: typeof scope;
     registration?: EditorMaterialRegistration;
@@ -19,7 +23,9 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
       .stack(scope.projectId)
       .then((stack) =>
         Promise.all([
-          loadEditorMaterials(stack.materialSet),
+          scope.kind === 'layout'
+            ? loadEditorMaterials(stack.materialSet, scope.kind)
+            : loadEditorMaterials(stack.materialSet),
           loadRuntimeMaterials(stack.materialSet),
         ]),
       )
