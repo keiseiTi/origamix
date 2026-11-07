@@ -69,7 +69,19 @@ export class PageRoleStore {
       throw conflict('项目配置已变化，请刷新并重新确认');
     if (!arePageRolesValid(input.roles, manifest.pages))
       throw invalid('角色或页面关联无效：角色与页面必须一一对应');
-    const candidate = { ...manifest, pageRoles: input.roles };
+    if (
+      input.page &&
+      (!input.page.name.trim() ||
+        !manifest.pages.some((page) => page.pageId === input.page!.pageId))
+    )
+      throw invalid('页面名称或归属无效');
+    const candidate = {
+      ...manifest,
+      pageRoles: input.roles,
+      pages: manifest.pages.map((page) =>
+        page.pageId === input.page?.pageId ? { ...page, name: input.page.name.trim() } : page,
+      ),
+    };
     const afterHash = manifestHash(`${JSON.stringify(candidate, null, 2)}\n`);
     if (receipt && receipt.afterHash !== afterHash) throw conflict('角色提交内容已变化');
     receipt ??= { request: input, digest, beforeHash: currentHash, afterHash, state: 'prepared' };

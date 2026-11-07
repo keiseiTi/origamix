@@ -1,6 +1,7 @@
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
-import { PageRoleSettings } from '@/components/page-role/page-role-settings';
-import { Folder, MessageSquareText, Plus, PanelsTopLeft } from 'lucide-react';
+import { usePageRoles } from '@/components/page-role/use-page-roles';
+import { SYSTEM_PAGE_ROLES } from '@origamix/shared';
+import { Folder, File, LogIn, House, FileQuestionMark, Plus, PanelsTopLeft } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@origamix/ui';
 import { useWorkspaceStore, layoutTabId, type ProjectItem } from '@/store/workspace';
@@ -24,6 +25,7 @@ const ProjectNavigationRow = ({
   activePageId: string | null;
 }): React.JSX.Element => {
   const layout = useLayoutConfig(project.id, true);
+  const roles = usePageRoles(project.id);
   return (
     <section className='mb-1'>
       <div className='group flex h-8.5 items-center gap-2 rounded-lg px-2 text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-900'>
@@ -65,6 +67,14 @@ const ProjectNavigationRow = ({
           </Button>
         </div>
       )}
+      {roles.error && (
+        <div role='alert' className='px-3 py-1 text-xs text-destructive'>
+          {roles.error}
+          <Button size='sm' variant='ghost' onClick={roles.refresh}>
+            重试读取角色
+          </Button>
+        </div>
+      )}
       {layout.config?.enabled && (
         <Button
           variant='ghost'
@@ -77,45 +87,59 @@ const ProjectNavigationRow = ({
           布局配置
         </Button>
       )}
-      {project.pages.map((page) => (
-        <div
-          key={page.id}
-          className={`group ml-2.5 flex h-8.5 items-center rounded-lg pr-1 transition-colors ${
-            activePageId === page.id
-              ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-              : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
-          }`}
-        >
-          <Button
-            variant='ghost'
-            onClick={() => onSelectPage(page.id)}
-            className='h-full min-w-0 flex-1 justify-start gap-2 bg-transparent px-4 text-left text-inherit hover:bg-transparent'
+      {project.pages.map((page) => {
+        const role = SYSTEM_PAGE_ROLES.find(
+          (role) => roles.state?.roles.assignments[role.id] === page.id,
+        );
+        const Icon =
+          role?.id === 'login'
+            ? LogIn
+            : role?.id === 'home'
+              ? House
+              : role?.id === 'not-found'
+                ? FileQuestionMark
+                : File;
+        return (
+          <div
+            key={page.id}
+            className={`group ml-2.5 flex h-8.5 items-center rounded-lg pr-1 transition-colors ${
+              activePageId === page.id
+                ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
+                : 'text-zinc-500 hover:bg-white hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+            }`}
           >
-            <MessageSquareText size={13} />
-            <span className='truncate'>{page.name}</span>
-          </Button>
-          <PageRoleSettings projectId={project.id} pageId={page.id} pageName={page.name} />
-          <SidebarActionMenu
-            label={`${page.name} 页面操作`}
-            onRename={() =>
-              onLifecycle({
-                kind: 'rename-page',
-                projectId: project.id,
-                id: page.id,
-                name: page.name,
-              })
-            }
-            onDelete={() =>
-              onLifecycle({
-                kind: 'delete-page',
-                projectId: project.id,
-                id: page.id,
-                name: page.name,
-              })
-            }
-          />
-        </div>
-      ))}
+            <Button
+              variant='ghost'
+              onClick={() => onSelectPage(page.id)}
+              className='h-full min-w-0 flex-1 justify-start gap-2 bg-transparent px-4 text-left text-inherit hover:bg-transparent'
+            >
+              <span title={role?.name ?? '普通页面'}>
+                <Icon size={13} aria-label={role?.name ?? '普通页面'} />
+              </span>
+              <span className='truncate'>{page.name}</span>
+            </Button>
+            <SidebarActionMenu
+              label={`${page.name} 页面操作`}
+              onRename={() =>
+                onLifecycle({
+                  kind: 'rename-page',
+                  projectId: project.id,
+                  id: page.id,
+                  name: page.name,
+                })
+              }
+              onDelete={() =>
+                onLifecycle({
+                  kind: 'delete-page',
+                  projectId: project.id,
+                  id: page.id,
+                  name: page.name,
+                })
+              }
+            />
+          </div>
+        );
+      })}
     </section>
   );
 };

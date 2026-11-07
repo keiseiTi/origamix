@@ -19,18 +19,6 @@ export const ProjectRoleOperationSchema = Type.Union([
     { type: Type.Literal('pageRole.unassign'), roleId: PageRoleIdSchema },
     { additionalProperties: false },
   ),
-  Type.Object(
-    {
-      type: Type.Literal('pageRole.create'),
-      roleId: PageRoleIdSchema,
-      name: Type.String({ minLength: 1, maxLength: 80 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { type: Type.Literal('pageRole.remove'), roleId: PageRoleIdSchema },
-    { additionalProperties: false },
-  ),
 ]);
 export type ProjectRoleOperation = Static<typeof ProjectRoleOperationSchema>;
 export const ProjectProposalSchema = Type.Object(
@@ -59,14 +47,6 @@ export const applyProjectRoleOperations = (
       );
       next.assignments[operation.roleId] = operation.pageId;
     } else if (operation.type === 'pageRole.unassign') delete next.assignments[operation.roleId];
-    else if (operation.type === 'pageRole.create') {
-      next.definitions.push({ id: operation.roleId, name: operation.name, kind: 'custom' });
-    } else {
-      if (!next.definitions.some((role) => role.id === operation.roleId))
-        throw new Error('只能删除自定义角色');
-      next.definitions = next.definitions.filter((role) => role.id !== operation.roleId);
-      delete next.assignments[operation.roleId];
-    }
   }
   if (!arePageRolesValid(next, pages)) throw new Error('项目角色操作无效');
   return next;

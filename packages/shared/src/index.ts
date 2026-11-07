@@ -433,6 +433,7 @@ export { BlockDefinitionSchema, instantiateBlock } from './block/block.ts';
 export type { BlockDefinition } from './block/block.ts';
 
 export {
+  type PageRoleId,
   SYSTEM_PAGE_ROLES,
   PageRoleIdSchema,
   ProjectPageRolesSchema,

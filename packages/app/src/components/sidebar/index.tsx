@@ -1,7 +1,7 @@
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, Settings, User } from 'lucide-react';
 import { useState } from 'react';
-import { CreatePageModal } from './mod/create-page-modal';
+import { PageFormModal } from './mod/page-form-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
 import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
@@ -34,7 +34,7 @@ export const Sidebar = ({
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const userProfile = usePreferencesStore((state) => state.userProfile);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [pageProjectId, setPageProjectId] = useState<string | null>(null);
+  const [pageForm, setPageForm] = useState<{ projectId: string; page?: PageItem } | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const projectActions = useProjectActions({
@@ -54,7 +54,7 @@ export const Sidebar = ({
 
   const openPageModal = (projectId: string): void => {
     keepSidebarOpen();
-    setPageProjectId(projectId);
+    setPageForm({ projectId });
   };
 
   const openSettingsModal = (): void => {
@@ -124,7 +124,15 @@ export const Sidebar = ({
         <ProjectNavigation
           onCreatePage={openPageModal}
           onSelectPage={onSelectPage}
-          onLifecycle={setLifecycleTarget}
+          onLifecycle={(target) => {
+            if (target.kind === 'rename-page') {
+              keepSidebarOpen();
+              setPageForm({
+                projectId: target.projectId,
+                page: { id: target.id, name: target.name, fileName: '' },
+              });
+            } else setLifecycleTarget(target);
+          }}
         />
         <Button
           variant='ghost'
@@ -155,11 +163,15 @@ export const Sidebar = ({
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
       />
-      <CreatePageModal
-        projectId={pageProjectId}
-        onClose={() => setPageProjectId(null)}
-        onCreated={onPageCreated}
-      />
+      {pageForm && (
+        <PageFormModal
+          key={`${pageForm.projectId}:${pageForm.page?.id ?? 'new'}`}
+          projectId={pageForm.projectId}
+          page={pageForm.page}
+          onClose={() => setPageForm(null)}
+          onCreated={onPageCreated}
+        />
+      )}
       <LifecycleModal
         key={lifecycleTarget ? `${lifecycleTarget.kind}:${lifecycleTarget.id}` : 'closed'}
         target={lifecycleTarget}
