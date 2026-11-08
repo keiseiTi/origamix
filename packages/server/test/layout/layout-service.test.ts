@@ -56,7 +56,12 @@ const create = (): LayoutOperationsRequest => ({
   baseWorkingVersion: 1,
   clientRequestId: 'request_create',
   operations: [
-    { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 8 } },
+    { operation: 'updateElementProps', elementId: 'layout__content', set: { contentPadding: 8 } },
+    {
+      operation: 'updateElementProps',
+      elementId: 'layout__header',
+      set: { headerHeight: 80, fixedHeader: true },
+    },
     {
       operation: 'addElement',
       elementId: 'content',
@@ -86,7 +91,11 @@ it('retains one project layout draft, saves only explicitly, restores without a 
     baseWorkingVersion: saved.workingVersion,
     clientRequestId: 'edit',
     operations: [
-      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 24 } },
+      {
+        operation: 'updateElementProps',
+        elementId: 'layout__content',
+        set: { contentPadding: 24 },
+      },
     ],
   });
   const changedRegions = await service.applyOperations({
@@ -97,16 +106,23 @@ it('retains one project layout draft, saves only explicitly, restores without a 
       {
         operation: 'updateElementProps',
         elementId: 'layout',
-        set: { variant: 'side-top', headerEnabled: false, footerEnabled: true },
+        set: { variant: 'side', contentWidth: 'Fixed', contentMaxWidth: 1000 },
       },
     ],
+  });
+  expect(changedRegions.document.schema.elements.layout__content!.props.contentPadding).toBe(24);
+  expect(changedRegions.document.schema.elements.layout!.props.contentWidth).toBe('Fixed');
+  expect(changedRegions.document.schema.elements.layout__header!.props.headerHeight).toBe(80);
+  expect(changedRegions.document.schema.elements.layout__sider!.props.config).toMatchObject({
+    headerHeight: 80,
+    fixedHeader: true,
   });
   expect(changedRegions.workingVersion).toBe(edited.workingVersion + 1);
   expect(changedRegions.document.schema.layout.structure.layout).toEqual([
     'layout__sider',
     'layout__body',
   ]);
-  expect(changedRegions.document.schema.elements.layout__header!.props.enabled).toBe(false);
+  expect(changedRegions.document.schema.elements.layout__header!.props.enabled).toBe(true);
   expect(changedRegions.document.schema.elements.content).toEqual(
     edited.document.schema.elements.content,
   );
@@ -145,19 +161,31 @@ it('rejects stale, invalid and foreign edits atomically and serializes concurren
     service.applyOperations({
       ...create(),
       operations: [
-        { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 16 } },
+        {
+          operation: 'updateElementProps',
+          elementId: 'layout__content',
+          set: { contentPadding: 16 },
+        },
       ],
     }),
   ).rejects.toThrow('请求身份');
   await expect(
     mutate([
-      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 32 } },
+      {
+        operation: 'updateElementProps',
+        elementId: 'layout__content',
+        set: { contentPadding: 32 },
+      },
       { operation: 'removeElement', elementId: 'outlet' },
     ]),
   ).rejects.toThrow('INVALID_PAGE_OUTLET');
   await expect(
     mutate([
-      { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 'invalid' } },
+      {
+        operation: 'updateElementProps',
+        elementId: 'layout__content',
+        set: { contentPadding: 'invalid' },
+      },
     ]),
   ).rejects.toThrow('INVALID_MATERIAL_PROPS');
   await expect(
@@ -182,14 +210,44 @@ it('rejects stale, invalid and foreign edits atomically and serializes concurren
       'move-region',
     ),
   ).rejects.toThrow('不能移动内部区域');
+  await expect(
+    mutate(
+      [
+        {
+          operation: 'updateElementProps',
+          elementId: 'layout__header',
+          set: { config: { headerHeight: 100 } },
+        },
+      ],
+      'tamper-derived',
+    ),
+  ).rejects.toThrow('内部区域结构属性');
+  await expect(
+    mutate(
+      [{ operation: 'updateElementProps', elementId: 'layout__header', set: { headerHeight: 2 } }],
+      'invalid-height',
+    ),
+  ).rejects.toThrow('INVALID_MATERIAL_PROPS');
   expect(await service.getWorking('project_test')).toEqual(draft);
   const competing = await Promise.allSettled([
     mutate(
-      [{ operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 10 } }],
+      [
+        {
+          operation: 'updateElementProps',
+          elementId: 'layout__content',
+          set: { contentPadding: 10 },
+        },
+      ],
       'a',
     ),
     mutate(
-      [{ operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 20 } }],
+      [
+        {
+          operation: 'updateElementProps',
+          elementId: 'layout__content',
+          set: { contentPadding: 20 },
+        },
+      ],
       'b',
     ),
   ]);

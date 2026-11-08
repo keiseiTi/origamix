@@ -200,11 +200,14 @@ try {
         operation: 'updateElementProps',
         elementId: 'layout',
         set: {
-          brand: 'Origamix application layout',
-          variant: 'top-side',
-          footerEnabled: true,
-          footerText: '应用页脚',
+          title: 'Origamix application layout',
+          variant: 'mix',
         },
+      },
+      {
+        operation: 'updateElementProps',
+        elementId: 'layout__footer',
+        set: { footerText: '应用页脚' },
       },
     ],
   });

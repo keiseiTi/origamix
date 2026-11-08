@@ -1066,7 +1066,7 @@ export const LayoutManifest = withMaterialManifestDefaults({
   layout: {
     display: 'block',
   },
-  description: '项目唯一布局根节点，通过属性统一管理顶部、侧栏、内容区和页脚。',
+  description: '应用布局：选择左侧、顶部或混合菜单，配置站点标识与内容宽度。',
   keywords: ['Layout', '布局', '导航'],
   context: {
     variables: [],
@@ -1075,25 +1075,14 @@ export const LayoutManifest = withMaterialManifestDefaults({
     events: [],
   },
   usage:
-    '只作为布局根节点。更新属性后自动调整内部区域，不手动新增、删除或移动内部区域。区域内容会保留，关闭区域仅隐藏。',
-  constraints: ['必须有唯一 PageOutlet。内部 LayoutRegion 由布局配置管理。'],
+    '根节点管理布局模式、站点标识和内容宽度。点击顶部、侧栏、页面主体、页脚配置各区域。切换模式保留区域内容。',
+  constraints: ['必须保留唯一 PageOutlet，不能删除或移动受管理区域。'],
   defaultProps: {
-    variant: 'top-side',
-    headerEnabled: true,
-    siderEnabled: true,
-    footerEnabled: false,
-    brand: '我的应用',
-    headerHeight: 64,
-    headerMenu: true,
-    siderMenu: true,
-    siderWidth: 240,
-    collapsedWidth: 80,
-    collapsible: true,
-    defaultCollapsed: false,
-    breakpoint: 'lg',
-    contentPadding: 24,
-    footerText: '',
-    minHeight: 640,
+    variant: 'mix',
+    title: '我的应用',
+    logo: '',
+    contentWidth: 'Fluid',
+    contentMaxWidth: 1200,
   },
   propsSchema: {
     type: 'object',
@@ -1101,65 +1090,28 @@ export const LayoutManifest = withMaterialManifestDefaults({
     properties: {
       variant: {
         type: 'string',
-        enum: ['top', 'side', 'top-side', 'side-top'],
+        enum: ['side', 'top', 'mix'],
       },
-      brand: {
+      title: {
         type: 'string',
         maxLength: 120,
       },
-      headerEnabled: {
-        type: 'boolean',
-      },
-      headerHeight: {
-        type: 'number',
-        minimum: 40,
-        maximum: 200,
-      },
-      headerMenu: {
-        type: 'boolean',
-      },
-      siderEnabled: {
-        type: 'boolean',
-      },
-      siderWidth: {
-        type: 'number',
-        minimum: 120,
-        maximum: 600,
-      },
-      siderMenu: {
-        type: 'boolean',
-      },
-      collapsible: {
-        type: 'boolean',
-      },
-      defaultCollapsed: {
-        type: 'boolean',
-      },
-      collapsedWidth: {
-        type: 'number',
-        minimum: 0,
-        maximum: 120,
-      },
-      breakpoint: {
+      logo: {
         type: 'string',
-        enum: ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl'],
+        maxLength: 2048,
       },
-      contentPadding: {
-        type: 'number',
-        minimum: 0,
-        maximum: 160,
+      regionConfig: {
+        type: 'object',
+        additionalProperties: true,
       },
-      minHeight: {
-        type: 'number',
-        minimum: 200,
-        maximum: 3000,
-      },
-      footerEnabled: {
-        type: 'boolean',
-      },
-      footerText: {
+      contentWidth: {
         type: 'string',
-        maxLength: 500,
+        enum: ['Fluid', 'Fixed'],
+      },
+      contentMaxWidth: {
+        type: 'number',
+        minimum: 320,
+        maximum: 2560,
       },
     },
     required: [],
@@ -1181,8 +1133,8 @@ export const LayoutRegionManifest = withMaterialManifestDefaults({
     actions: [],
     events: [],
   },
-  usage: '不要直接编辑内部区域属性或移动区域，使用 Layout 根节点的布局设置。可在区域内添加内容。',
-  constraints: ['内部区域类型、显示与尺寸由 Layout 根属性派生。'],
+  usage: '可编辑区域公开属性；不能修改区域身份、派生配置或移动区域。',
+  constraints: ['区域身份与位置由 Layout 管理，公开属性由区域管理。'],
   defaultProps: {
     region: 'content',
     enabled: true,
@@ -1191,9 +1143,49 @@ export const LayoutRegionManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
+      headerHeight: {
+        type: 'number',
+        minimum: 40,
+        maximum: 200,
+      },
+      headerBackground: {
+        type: 'string',
+        maxLength: 100,
+      },
+      fixedHeader: {
+        type: 'boolean',
+      },
+      siderWidth: {
+        type: 'number',
+        minimum: 120,
+        maximum: 600,
+      },
+      fixSiderbar: {
+        type: 'boolean',
+      },
+      collapsible: {
+        type: 'boolean',
+      },
+      contentMargin: {
+        type: 'number',
+        minimum: 0,
+        maximum: 160,
+      },
+      contentPadding: {
+        type: 'number',
+        minimum: 0,
+        maximum: 160,
+      },
+      breadcrumb: {
+        type: 'boolean',
+      },
+      footerText: {
+        type: 'string',
+        maxLength: 500,
+      },
       region: {
         type: 'string',
-        enum: ['header', 'sider', 'content', 'footer', 'body'],
+        enum: ['header', 'sider', 'content', 'footer', 'body', 'main'],
       },
       enabled: {
         type: 'boolean',

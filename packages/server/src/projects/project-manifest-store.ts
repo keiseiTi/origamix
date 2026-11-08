@@ -6,12 +6,13 @@ import {
   isProjectManifest,
   type ProjectManifest,
   type ProjectPageManifest,
+  type PageRoleId,
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
   validateResolvedProjectStack,
 } from '@origamix/shared';
 
-import { invalid, notFound } from '../errors';
+import { conflict, invalid, notFound } from '../errors';
 
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
@@ -106,9 +107,25 @@ export class ProjectManifestStore {
     return (await this.readManifest(projectPath)).pages;
   }
 
-  async addPage(projectPath: string, page: ProjectPageManifest): Promise<void> {
-    const manifest = await this.readManifest(projectPath);
-    await this.writeManifest(projectPath, { ...manifest, pages: [...manifest.pages, page] });
+  async addPage(
+    projectPath: string,
+    page: ProjectPageManifest,
+    role?: PageRoleId,
+    expectedSource?: string,
+  ): Promise<void> {
+    const source = await this.readSource(projectPath);
+    if (expectedSource !== undefined && source !== expectedSource)
+      throw conflict('项目配置已变化，请重新读取后确认');
+    const manifest = this.parseManifest(source);
+    await this.writeManifest(projectPath, {
+      ...manifest,
+      pages: [...manifest.pages, page],
+      ...(role
+        ? {
+            pageRoles: { assignments: { ...manifest.pageRoles?.assignments, [role]: page.pageId } },
+          }
+        : {}),
+    });
   }
 
   async renameProject(projectPath: string, name: string): Promise<void> {

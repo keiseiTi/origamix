@@ -1,4 +1,6 @@
-import { PageRoleStore } from './page-role-store';
+import { Check } from '@sinclair/typebox/value';
+import { PageRoleIdSchema, type PageRoleId } from '@origamix/shared';
+import { PageRoleStore, manifestHash } from './page-role-store';
 import type { UpdatePageRoles } from '@origamix/shared';
 import { withExclusiveProjectActivity, withProjectActivity } from './project-activity';
 import {
@@ -171,9 +173,11 @@ export class ProjectService {
     withProjectQueue(input.projectId, async () => {
       const project = this.projects.getProject(input.projectId);
       if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-      return withExclusiveProjectActivity(project.path, () =>
-        new PageRoleStore().update(project.path, input),
-      );
+      return withExclusiveProjectActivity(project.path, async () => {
+        const result = await new PageRoleStore().update(project.path, input);
+        if (input.page) await this.reconcile(project.path);
+        return result;
+      });
     });
 
   getLayoutConfig = (projectId: string): Promise<LayoutConfigState> =>
@@ -204,13 +208,16 @@ export class ProjectService {
       });
     });
 
-  async createPage(projectId: string, input: { name: string; slug: string }): Promise<PageRecord> {
+  async createPage(
+    projectId: string,
+    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
+  ): Promise<PageRecord> {
     return this.createPageWithSchema(projectId, input, createInitialPageSchema());
   }
 
   private async createPageWithSchema(
     projectId: string,
-    input: { name: string; slug: string },
+    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     return withProjectQueue(projectId, () =>
@@ -220,15 +227,21 @@ export class ProjectService {
 
   private async createPageWithSchemaUnlocked(
     projectId: string,
-    input: { name: string; slug: string },
+    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const name = input.name.trim();
     if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)) throw invalid('页面信息无效');
-    const manifest = await this.manifest.readManifest(project.path);
+    const manifestSource = await this.manifest.readSource(project.path);
+    const manifest = this.manifest.parseManifest(manifestSource);
+    if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
     await this.manifest.requireEditable(project.path);
+    if (input.role !== undefined && !Check(PageRoleIdSchema, input.role))
+      throw invalid('页面角色无效');
+    if (input.expectedManifestHash && manifestHash(manifestSource) !== input.expectedManifestHash)
+      throw conflict('项目配置已变化，请重新读取后确认');
     const pages = manifest.pages;
     if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
     const relativePath = join('src', manifest.pageDirectory, input.slug);
@@ -256,7 +269,7 @@ export class ProjectService {
       );
       await initializePageSchema(pageRef, schema);
       const nextPage = { pageId: id, name, slug: input.slug };
-      await this.manifest.addPage(project.path, nextPage);
+      await this.manifest.addPage(project.path, nextPage, input.role, manifestSource);
       manifestCommitted = true;
       await this.reconcile(project.path);
     } catch (error) {

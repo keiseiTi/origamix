@@ -1,6 +1,5 @@
 import { lazy } from 'react';
 import { defineMaterial } from '@';
-
 import { layoutDefaults } from './schema';
 const LayoutMaterial = defineMaterial({
   type: 'Layout',
@@ -9,90 +8,71 @@ const LayoutMaterial = defineMaterial({
   acceptsChildren: true,
   layout: { display: 'block' },
   defaultProps: layoutDefaults,
-  description: '项目唯一布局根节点，通过属性统一管理顶部、侧栏、内容区和页脚。',
+  description: '应用布局：选择左侧、顶部或混合菜单，配置站点标识与内容宽度。',
   keywords: ['Layout', '布局', '导航'],
   context: { variables: [], writable: [], actions: [], events: [] },
   usage:
-    '只作为布局根节点。更新属性后自动调整内部区域，不手动新增、删除或移动内部区域。区域内容会保留，关闭区域仅隐藏。',
-  constraints: ['必须有唯一 PageOutlet。内部 LayoutRegion 由布局配置管理。'],
+    '根节点管理布局模式、站点标识和内容宽度。点击顶部、侧栏、页面主体、页脚配置各区域。切换模式保留区域内容。',
+  constraints: ['必须保留唯一 PageOutlet，不能删除或移动受管理区域。'],
   Component: lazy(() => import('./index').then((module) => ({ default: module.Layout }))),
   editorConfig: {
     panels: [
       {
-        title: '属性',
+        title: '布局模式',
         configs: [
           {
             field: 'variant',
-            label: '布局结构',
+            label: '导航布局',
+            uiType: 'custom',
+            render: lazy(() => import('./mode-picker')),
+            schema: { type: 'string', enum: ['side', 'top', 'mix'] },
+          },
+        ],
+      },
+      {
+        title: '站点标识',
+        configs: [
+          {
+            field: 'title',
+            label: '站点标题',
+            uiType: 'input',
+            schema: { type: 'string', maxLength: 120 },
+          },
+          {
+            field: 'logo',
+            label: 'Logo 地址',
+            uiType: 'input',
+            schema: { type: 'string', maxLength: 2048 },
+          },
+        ],
+      },
+      {
+        title: '内容宽度',
+        configs: [
+          {
+            field: 'regionConfig',
+            uiType: 'json',
+            hidden: true,
+            validateValue: () => undefined,
+            schema: { type: 'object', additionalProperties: true },
+          },
+          {
+            field: 'contentWidth',
+            label: '宽度模式',
             uiType: 'select',
             props: {
               options: [
-                { label: '上中下', value: 'top' },
-                { label: '侧边布局', value: 'side' },
-                { label: '顶部与侧边', value: 'top-side' },
-                { label: '侧边与内容顶部', value: 'side-top' },
+                { label: '自适应', value: 'Fluid' },
+                { label: '定宽居中', value: 'Fixed' },
               ],
             },
           },
           {
-            field: 'brand',
-            label: '应用标题',
-            uiType: 'input',
-            schema: { type: 'string', maxLength: 120 },
-          },
-          { field: 'headerEnabled', label: '显示顶部', uiType: 'switch' },
-          {
-            field: 'headerHeight',
-            label: '顶部高度',
+            field: 'contentMaxWidth',
+            label: '最大宽度（px）',
             uiType: 'number',
-            props: { min: 40, max: 200 },
-          },
-          { field: 'headerMenu', label: '顶部导航', uiType: 'switch' },
-          { field: 'siderEnabled', label: '显示侧栏', uiType: 'switch' },
-          {
-            field: 'siderWidth',
-            label: '侧栏宽度',
-            uiType: 'number',
-            props: { min: 120, max: 600 },
-          },
-          { field: 'siderMenu', label: '侧栏导航', uiType: 'switch' },
-          { field: 'collapsible', label: '允许折叠', uiType: 'switch' },
-          { field: 'defaultCollapsed', label: '默认折叠', uiType: 'switch' },
-          {
-            field: 'collapsedWidth',
-            label: '折叠宽度',
-            uiType: 'number',
-            props: { min: 0, max: 120 },
-          },
-          {
-            field: 'breakpoint',
-            label: '响应式断点',
-            uiType: 'select',
-            props: {
-              options: ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl'].map((value) => ({
-                label: value === 'none' ? '不自动折叠' : value,
-                value,
-              })),
-            },
-          },
-          {
-            field: 'contentPadding',
-            label: '内容内边距',
-            uiType: 'number',
-            props: { min: 0, max: 160 },
-          },
-          {
-            field: 'minHeight',
-            label: '最小高度',
-            uiType: 'number',
-            props: { min: 200, max: 3000 },
-          },
-          { field: 'footerEnabled', label: '显示页脚', uiType: 'switch' },
-          {
-            field: 'footerText',
-            label: '页脚文本',
-            uiType: 'input',
-            schema: { type: 'string', maxLength: 500 },
+            props: { min: 320, max: 2560 },
+            linkageShow: [{ field: 'contentWidth', value: 'Fixed' }],
           },
         ],
       },

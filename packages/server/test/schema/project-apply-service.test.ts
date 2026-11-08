@@ -400,7 +400,11 @@ describe('Project layout Apply', () => {
       baseWorkingVersion: initial.workingVersion,
       clientRequestId: 'layout-edit',
       operations: [
-        { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 12 } },
+        {
+          operation: 'updateElementProps',
+          elementId: 'layout__content',
+          set: { contentPadding: 12 },
+        },
       ],
     });
     return {
@@ -496,7 +500,11 @@ describe('Project layout Apply', () => {
             baseWorkingVersion: saved.workingVersion,
             clientRequestId: 'blocked',
             operations: [
-              { operation: 'updateElementProps', elementId: 'layout', set: { contentPadding: 24 } },
+              {
+                operation: 'updateElementProps',
+                elementId: 'layout__content',
+                set: { contentPadding: 24 },
+              },
             ],
           }),
         ).rejects.toThrow('尚未确认');

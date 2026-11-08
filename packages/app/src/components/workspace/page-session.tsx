@@ -1,4 +1,3 @@
-import { LayoutPresetTools } from '@/components/layout/layout-preset-tools';
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -145,14 +144,6 @@ const PageSessionContent = ({
       workspaceToolbarPlugin.withProps({
         ...toolbarProps,
         active: active && mode === 'edit',
-        layoutPresets:
-          kind === 'layout' ? (
-            <LayoutPresetTools
-              editorRef={editorRef}
-              projectName={projectName}
-              canEdit={available && capabilities.canEdit && !layout.busy}
-            />
-          ) : undefined,
       }),
     ],
     beforeModeChange: async () => {

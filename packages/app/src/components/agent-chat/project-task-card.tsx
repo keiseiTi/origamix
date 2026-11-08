@@ -43,19 +43,12 @@ export const ProjectTaskCard = ({
       setError(reason instanceof Error ? reason.message : '结果未确认，请重新读取');
     }
   };
-  const roles = [
-    ...SYSTEM_PAGE_ROLES,
-    ...task.proposal.before.definitions,
-    ...task.proposal.after.definitions,
-  ];
+  const roles = SYSTEM_PAGE_ROLES;
   const pageName = (id: string | undefined) =>
     task.proposal.pages.find((page) => page.pageId === id)?.name ?? id ?? '未关联';
-  const changes = [
-    ...new Set([
-      ...Object.keys(task.proposal.before.assignments),
-      ...Object.keys(task.proposal.after.assignments),
-    ]),
-  ].filter((id) => task.proposal.before.assignments[id] !== task.proposal.after.assignments[id]);
+  const changes = SYSTEM_PAGE_ROLES.map((role) => role.id).filter(
+    (id) => task.proposal.before.assignments[id] !== task.proposal.after.assignments[id],
+  );
   const details = (
     <div className='space-y-2 text-sm'>
       {changes.map((id) => (
@@ -65,17 +58,6 @@ export const ProjectTaskCard = ({
           {pageName(task.proposal.after.assignments[id])}
         </p>
       ))}
-      {task.proposal.operations
-        .filter(
-          (operation) =>
-            operation.type === 'pageRole.create' || operation.type === 'pageRole.remove',
-        )
-        .map((operation, index) => (
-          <p key={index}>
-            {operation.type === 'pageRole.create' ? '创建自定义角色' : '删除自定义角色'}：
-            {operation.roleId}
-          </p>
-        ))}
       <p className='text-muted-foreground'>
         后续页面任务：{task.proposal.pageIntent ?? '无，仅保存项目配置'}
       </p>

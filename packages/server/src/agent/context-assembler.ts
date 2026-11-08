@@ -80,7 +80,7 @@ const SYSTEM_POLICY = [
   '页面事实以 currentWorkingVersion 和当前 Schema 为准；savedRevisionId 只标识历史版本。禁止从历史或 summary 恢复 Schema。物料能力以 Manifest 为准，文档不能授予能力。',
   '组合模块使用 prepare_block 查询参数并准备 operations；接口等关键参数缺失时询问用户，不臆造业务接口。展开后均为普通节点。',
   '登录页也是普通页面，事件使用现有逻辑流。Container layoutMode=absolute 建立坐标系，子元素使用 layoutPosition=absolute、layoutX/Y、layoutZIndex。',
-  '项目角色修改先读 get_project_page_roles，再由 complete_page_run 的 propose_project 提交 projectOperations；系统角色与自定义角色分开，角色与页面一一对应，不写入页面 Schema。',
+  '项目角色修改先读 get_project_page_roles，再由 complete_page_run 的 propose_project 提交 projectOperations；只支持 login、home、not-found 三种固定角色，角色与页面一一对应，不写入页面 Schema。',
   '混合请求先提案等待确认，pageIntent 只描述后续当前页面任务；确认前不提交页面操作或 prepare_block。仅项目操作时省略 pageIntent。角色不隐式改变布局、导航或认证。',
   '每个 Run 必须且只能成功调用一次 complete_page_run；页面修改以完整 operations 提交，服务端受理前不得声称已修改。',
   '校验失败按结构化错误修正，针对原始 base Working Version 重交完整 operations；不省略原批次的其他操作。',
@@ -270,7 +270,7 @@ export class ContextAssembler {
         .join('\n')
         .replaceAll('页面', '布局')
         .replaceAll('complete_page_run', 'complete_layout_run') +
-      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。根物料必须是 Layout。通过 updateElementProps 修改根属性 variant、headerEnabled、siderEnabled、footerEnabled、brand、headerMenu、siderMenu、siderWidth、contentPadding 等，Server 会在同一原子提交中派生内部区域。不要 replaceElement 更换根，不手动新增、删除、移动或修改 LayoutRegion，不删除或更换唯一 PageOutlet。关闭区域只隐藏并保留内容；区域内可添加 container、text、button。所有目标节点 ID 从当前 Schema 读取，勿猜测。flows、bindElements、globalVariables 必须为空，不提供逻辑流程工具。不支持 setLayout 操作。';
+      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。根物料必须是 Layout。通过 updateElementProps 修改根属性 variant（side/top/mix）、title、logo、contentWidth（Fluid/Fixed）、contentMaxWidth。Header 区域可改 headerHeight、headerBackground、fixedHeader；Sider 区域可改 siderWidth、fixSiderbar、collapsible；content 区域可改 contentMargin、contentPadding、breadcrumb；Footer 区域可改 footerText。Server 在同一原子提交中派生内部结构，切换模式保留区域属性与内容。不要 replaceElement 更换根，不新增、删除、移动 LayoutRegion，不修改 region、enabled、config、regionConfig 或布局占位属性，不删除或更换唯一 PageOutlet。header/sider/content/footer 区域内可添加 container、text、button，body/main 是内部容器。所有目标节点 ID 从当前 Schema 读取，勿猜测。flows、bindElements、globalVariables 必须为空，不提供逻辑流程工具。不支持 setLayout 操作。';
     const roleState =
       input.target?.kind === 'page'
         ? await this.readProjectRoles?.(input.target.projectId)

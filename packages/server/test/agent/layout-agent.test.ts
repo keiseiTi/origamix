@@ -71,7 +71,7 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
       {
         operation: 'updateElementProps',
         elementId: root,
-        set: { brand: 'Draft layout', variant: 'side-top' },
+        set: { title: 'Draft layout', variant: 'side' },
       },
       {
         operation: 'addElement',

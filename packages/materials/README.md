@@ -119,4 +119,4 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 
 布局与页面共享 official-antd 版本，使用独立的 `@origamix/materials/antd/layout/editor`、`/antd/layout/runtime`、`/antd/layout/manifest` 入口。编辑入口只暴露一个 Layout 根物料，LayoutRegion 与 PageOutlet 是内部注册；容器、文字、按钮可作为区域内容复用。运行入口使用 Runtime 的只读导航上下文，所以 Runtime 为显式 peer 依赖，不能内联另一份 Runtime 上下文。
 
-`antd/layout/schema.ts` 拥有纯数据区域派生和校验，供 Editor schema.beforeChange 和 Server 共用。布局结构、开关及尺寸由根属性管理，区域 ID 与自定义内容保留；关闭不删除。新增和修改物料协议仍由 material-config.ts 生成 Manifest；布局 Manifest/运行入口均不导入 Editor。Server 只能导入布局的纯 manifest 入口。
+`antd/layout/schema.ts` 拥有纯数据区域派生和校验，供 Editor schema.beforeChange 和 Server 共用。根属性管理 side/top/mix 布局、站点标题/Logo 和 Fluid/Fixed 内容宽度；Header、Sider、Body（content）、Footer 各自管理公开属性。body/main 只是受管理的内部容器。区域身份、派生 config 和位置不可直接修改，切换模式保留区域 ID、属性与自定义内容。新增和修改物料协议仍由 material-config.ts 生成 Manifest；布局 Manifest/运行入口均不导入 Editor。Server 只能导入布局的纯 manifest 入口。

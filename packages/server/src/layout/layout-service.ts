@@ -168,7 +168,7 @@ export class LayoutService {
     const document = {
       ...createEmptyLayoutDocument(projectId),
       schema: createAntdLayoutSchema({
-        brand: (await new ProjectManifestStore().readManifest(path)).name,
+        title: (await new ProjectManifestStore().readManifest(path)).name,
       }),
     };
     const working: LayoutWorkingFile = {

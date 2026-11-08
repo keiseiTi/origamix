@@ -181,7 +181,7 @@ export const createReadOnlyAgentTools = (
           {
             name: 'get_project_page_roles',
             description:
-              '读取项目页面目录及系统/自定义角色关联。只读；项目变更必须通过 propose_project 等待用户确认。',
+              '读取项目页面目录及登录页、首页、404 页面角色关联。只读；项目变更必须通过 propose_project 等待用户确认。',
             parameters: PageScopeInputSchema,
             execute: async (raw: unknown, signal: AbortSignal) => {
               assertInput<PageScopeInput>(PageScopeInputSchema, raw);

@@ -46,8 +46,8 @@ describe('Project page persistence and recovery', () => {
         projectId: project.id,
         clientRequestId: 'roles_recovery',
         expectedManifestHash: before.manifestHash,
+        page: { pageId: page.id, name: 'Login' },
         roles: {
-          definitions: [{ id: 'settings', name: '设置页', kind: 'custom' as const }],
           assignments: { login: page.id },
         },
       };
@@ -62,6 +62,7 @@ describe('Project page persistence and recovery', () => {
       injected.mockRestore();
       const reopened = new ProjectService(projects, templatePath);
       expect((await reopened.updatePageRoles(input)).roles).toEqual(input.roles);
+      expect(projects.getPage(project.id, page.id)?.name).toBe('Login');
       expect((await reopened.getLayoutConfig(project.id)).enabled).toBe(true);
       const current = await reopened.getPageRoles(project.id);
       await expect(
@@ -72,9 +73,16 @@ describe('Project page persistence and recovery', () => {
           ...input,
           clientRequestId: 'roles_invalid',
           expectedManifestHash: current.manifestHash,
-          roles: { ...input.roles, assignments: { login: page.id, settings: page.id } },
+          roles: { ...input.roles, assignments: { login: page.id, home: page.id } },
         }),
       ).rejects.toThrow('一一对应');
+      const customRole = {
+        ...input,
+        clientRequestId: 'roles_custom',
+        expectedManifestHash: current.manifestHash,
+        roles: { assignments: { login: page.id, settings: page.id } },
+      };
+      await expect(reopened.updatePageRoles(customRole)).rejects.toThrow('配置无效');
       await expect(
         reopened.updatePageRoles({ ...input, projectId: 'project_other' }),
       ).rejects.toThrow();
@@ -83,6 +91,45 @@ describe('Project page persistence and recovery', () => {
       expect(projects.getProject(project.id)?.name).toBe('Renamed');
       await reopened.deletePage(project.id, page.id);
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({});
+      const empty = await reopened.getPageRoles(project.id);
+      const home = await reopened.createPage(project.id, {
+        name: 'Home',
+        slug: 'new-home',
+        role: 'home',
+        expectedManifestHash: empty.manifestHash,
+      });
+      expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
+        home: home.id,
+      });
+      await expect(
+        reopened.createPage(project.id, {
+          name: 'Stale',
+          slug: 'stale',
+          role: 'home',
+          expectedManifestHash: empty.manifestHash,
+        }),
+      ).rejects.toThrow('已变化');
+      const latest = await reopened.getPageRoles(project.id);
+      const createEntry = ProjectSourceService.prototype.createPageEntry;
+      vi.spyOn(ProjectSourceService.prototype, 'createPageEntry').mockImplementationOnce(
+        async function (this: ProjectSourceService, ...args) {
+          await createEntry.apply(this, args);
+          await new ProjectManifestStore().renameProject(project.path, 'External change');
+        },
+      );
+      await expect(
+        reopened.createPage(project.id, {
+          name: 'Conflict',
+          slug: 'conflict',
+          role: 'home',
+          expectedManifestHash: latest.manifestHash,
+        }),
+      ).rejects.toThrow('已变化');
+      expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
+        home: home.id,
+      });
+      await expect(access(join(project.path, 'src/pages/conflict'))).rejects.toThrow();
+      expect(projects.listPages(project.id)).toHaveLength(1);
     } finally {
       database.close();
     }

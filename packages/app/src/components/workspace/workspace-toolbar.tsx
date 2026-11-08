@@ -11,7 +11,6 @@ export const WorkspaceToolbar = (props: WorkspaceToolbarProps) => {
       <PageToolbarShell {...props} navigation='chat' onOpenEditorTool={setTool}>
         <div className='flex min-w-0 flex-1 items-center justify-center gap-2'>
           {props.targetKind !== 'layout' && <ModeTools />}
-          {props.targetKind === 'layout' && props.layoutPresets}
           <ViewportTools />
           <HistoryTools />
         </div>
