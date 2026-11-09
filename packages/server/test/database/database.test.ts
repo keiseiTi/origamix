@@ -47,7 +47,7 @@ describe('ApplicationDatabase', () => {
     database.close();
   });
 
-  it('rejects a database with missing version metadata without modifying its records', async () => {
+  it('rejects a database with an unsupported version without modifying its records', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-invalid-version-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
@@ -55,85 +55,15 @@ describe('ApplicationDatabase', () => {
     current.connection.exec(
       "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
     );
-    current.connection.exec('PRAGMA user_version = 0');
+    current.connection.exec('PRAGMA user_version = 1');
     current.close();
-    expect(() => new ApplicationDatabase(path)).toThrow('版本信息');
+    expect(() => new ApplicationDatabase(path)).toThrow('版本不受');
     const preserved = new DatabaseSync(path);
     try {
       expect(preserved.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
-      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 0 });
+      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
     } finally {
       preserved.close();
     }
   });
-});
-
-it('backs up a versioned database and rolls back a failed upgrade', async () => {
-  const { readdir } = await import('node:fs/promises');
-  const { migrateDatabase, DATABASE_VERSION } = await import('../../src/database/migrations');
-  const directory = await mkdtemp(join(tmpdir(), 'origamix-db-upgrade-'));
-  directories.push(directory);
-  const path = join(directory, 'origamix.db');
-  const database = new ApplicationDatabase(path);
-  const connection = database.connection;
-  try {
-    connection.exec(
-      "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-23', '2026-10-23')",
-    );
-    migrateDatabase(connection);
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: DATABASE_VERSION,
-    });
-    const failed = [
-      {
-        from: DATABASE_VERSION,
-        to: DATABASE_VERSION + 1,
-        release: '1.0.1',
-        sql: 'ALTER TABLE projects ADD COLUMN migration_probe TEXT; INSERT INTO missing_table VALUES (1);',
-      },
-    ];
-    expect(() => migrateDatabase(connection, failed, DATABASE_VERSION + 1)).toThrow();
-    expect((await readdir(directory)).filter((name) => name.endsWith('.bak'))).toHaveLength(1);
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: DATABASE_VERSION,
-    });
-    expect(connection.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
-    expect(
-      connection
-        .prepare('PRAGMA table_info(projects)')
-        .all()
-        .some((column) => column.name === 'migration_probe'),
-    ).toBe(false);
-    migrateDatabase(connection);
-    migrateDatabase(
-      connection,
-      [
-        {
-          from: DATABASE_VERSION,
-          to: DATABASE_VERSION + 1,
-          release: '1.0.1',
-          sql: 'ALTER TABLE projects ADD COLUMN migration_probe TEXT;',
-        },
-        {
-          from: DATABASE_VERSION + 1,
-          to: DATABASE_VERSION + 2,
-          release: '1.0.2',
-          sql: "UPDATE projects SET migration_probe = 'converted';",
-        },
-      ],
-      DATABASE_VERSION + 2,
-      (current) => {
-        expect(current.prepare('SELECT migration_probe FROM projects').get()).toEqual({
-          migration_probe: 'converted',
-        });
-      },
-    );
-    expect(connection.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: DATABASE_VERSION + 2,
-    });
-    expect(() => migrateDatabase(connection)).toThrow('较新');
-    expect(connection.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
-  } finally {
-    connection.close();
-  }
 });

@@ -74,6 +74,11 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
         set: { title: 'Draft layout', variant: 'side' },
       },
       {
+        operation: 'updateElementProps',
+        elementId: `${root}__header`,
+        set: { headerBackground: '#1677ff' },
+      },
+      {
         operation: 'addElement',
         elementId: 'layout_title',
         parentId: `${root}__header`,
@@ -85,6 +90,7 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
       calls += 1;
       expect(request.systemPrompt).toContain('"kind":"layout"');
       expect(request.systemPrompt).toContain('complete_layout_run');
+      expect(request.systemPrompt).toContain('系统名称/应用名称/站点标题');
       expect((request.tools ?? []).map((tool) => tool.name)).not.toContain('complete_page_run');
       expect((request.tools ?? []).map((tool) => tool.name)).not.toContain(
         'get_page_logic_context',
@@ -220,6 +226,9 @@ it('repairs and commits only the bound layout, isolates HTTP history, and recove
     const working = await layouts.getWorking(project.id);
     expect(working).toMatchObject({ workingVersion: 2, revisionId: null });
     expect(working.document.schema.elements.layout_title?.props.text).toBe('Draft layout');
+    expect(working.document.schema.elements[`${root}__header`]!.props.headerBackground).toBe(
+      '#1677ff',
+    );
     expect(await getWorkingSchemaState(pageRef)).toEqual(pageBefore);
     expect(await readFile(join(project.path, 'src/pages/home/schema.json'), 'utf8')).toBe(
       pageTarget,

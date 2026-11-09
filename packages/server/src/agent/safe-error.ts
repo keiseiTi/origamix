@@ -1,4 +1,4 @@
-/** Defense in depth for controlled Agent errors and legacy persisted failure messages. */
+/** Defense in depth for Agent errors and persisted failure messages. */
 export const redactAgentMessage = (message: string): string =>
   message
     .replace(/\bBearer\s+[^\s,;'"<>]+/gi, 'Bearer [REDACTED]')

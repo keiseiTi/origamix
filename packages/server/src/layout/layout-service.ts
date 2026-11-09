@@ -171,7 +171,7 @@ export class LayoutService {
       ...createEmptyLayoutDocument(projectId),
       schema: createAntdLayoutSchema({
         title: manifest.name,
-        variant: manifest.layout?.initialVariant ?? 'side',
+        variant: manifest.layout.initialVariant,
       }),
     };
     const working: LayoutWorkingFile = {

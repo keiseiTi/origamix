@@ -86,34 +86,6 @@ it('rejects unsupported project data and interrupted writes without replacing re
     expect(await readFile(workingPath, 'utf8')).toBe(incompatibleBytes);
     await writeFile(workingPath, workingBytes);
 
-    const modernBytes = await readFile(manifestPath, 'utf8');
-    await writeFile(
-      join(project.path, '.origamix/project-upgrade.json'),
-      JSON.stringify({
-        version: 1,
-        requestId: 'old_request',
-        projectId: project.id,
-        from: '1.0.0',
-        to: '1.0.0',
-        state: 'pending',
-        manifestSource: modernBytes,
-        packageSource: packageBytes,
-        pages: [
-          {
-            pageId: page.id,
-            revisionId: initial.revisionId,
-            workingVersion: draft.workingVersion,
-            schemaHash: draft.workingHash,
-            targetHash: hashSchema(JSON.parse(targetBytes)),
-          },
-        ],
-      }),
-    );
-    await expect(
-      updateWorkingSchema(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
-    ).rejects.toThrow('升级尚未完成');
-    expect(await readFile(workingPath, 'utf8')).toBe(workingBytes);
-    expect(await readFile(targetPath, 'utf8')).toBe(targetBytes);
     await rm(manifestPath);
     service.registerGrant('reopen', project.path);
     await expect(

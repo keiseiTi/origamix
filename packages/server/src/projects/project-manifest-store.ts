@@ -1,4 +1,3 @@
-import { assertProjectNotUpgrading } from './project-upgrade-store';
 import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,7 +15,6 @@ import { conflict, invalid, notFound } from '../errors';
 
 export class ProjectManifestStore {
   async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
-    await assertProjectNotUpgrading(projectPath);
     try {
       const source = await readFile(join(projectPath, 'origamix.project.json'), 'utf8');
       this.parseManifest(source);
@@ -42,7 +40,8 @@ export class ProjectManifestStore {
       framework: BUILTIN_PROJECT_STACK.framework,
       materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],
-      layout: input.layout ?? { enabled: false },
+      layout: input.layout ?? { enabled: false, initialVariant: 'side' },
+      routing: input.routing ?? { mode: 'browser', basePath: '/' },
     });
   }
 
@@ -88,7 +87,6 @@ export class ProjectManifestStore {
     } catch (reason) {
       throw invalid(reason instanceof Error ? reason.message : '项目契约不兼容');
     }
-    await assertProjectNotUpgrading(projectPath);
     return manifest;
   }
 

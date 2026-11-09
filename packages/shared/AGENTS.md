@@ -55,4 +55,4 @@ pnpm --filter @origamix/shared build
 
 - `block/block.ts` defines serializable composition templates and a pure ID/reference expansion into ordinary Schema operations. IDs come from the caller; code is never evaluated or rewritten. Internal references use structured HyperValue bindings/function parameters. Project `page-role.ts` owns the fixed login/home/not-found roles and one-to-one assignments; roles have no implicit runtime/layout behavior. Agent `project-proposal.ts` owns confirmed project-role proposals and recoverable task transport.
 
-- project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, separate from Layout Schema; absent values have read-only defaults.
+- project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, separate from Layout Schema; layout (including initialVariant) and routing are required in every project manifest; missing fields are rejected, not defaulted on reads.

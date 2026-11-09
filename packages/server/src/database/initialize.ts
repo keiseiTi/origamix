@@ -152,3 +152,29 @@ export const assertCurrentSchema = (connection: DatabaseSync): void => {
       throw new Error(`数据库表 ${table} 包含禁止的外键`);
   }
 };
+
+export const DATABASE_VERSION = 2;
+/** Create a fresh current database or validate exactly the current storage contract. No migration. */
+export const initializeDatabase = (connection: DatabaseSync): void => {
+  const version = (connection.prepare('PRAGMA user_version').get() as { user_version: number })
+    .user_version;
+  const empty = currentUserTables(connection).length === 0;
+  if (!empty) {
+    if (version === 0) throw new Error('数据库缺少版本信息');
+    if (version !== DATABASE_VERSION) throw new Error('数据库版本不受当前应用支持');
+    assertCurrentSchema(connection);
+    return;
+  }
+  if (version !== 0) throw new Error('数据库版本记录与结构不一致');
+  assertSchemaSafety(schemaSql);
+  connection.exec('BEGIN IMMEDIATE');
+  try {
+    connection.exec(schemaSql);
+    connection.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    assertCurrentSchema(connection);
+    connection.exec('COMMIT');
+  } catch (error) {
+    connection.exec('ROLLBACK');
+    throw error;
+  }
+};

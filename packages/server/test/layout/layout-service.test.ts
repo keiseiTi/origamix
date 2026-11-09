@@ -25,6 +25,7 @@ const fixture = async () => {
   const path = await mkdtemp(join(tmpdir(), 'origamix-layout-'));
   directories.push(path);
   const manifest = {
+    routing: { mode: 'browser' as const, basePath: '/' },
     projectId: 'project_test',
     name: '测试项目',
     framework: 'react',
@@ -355,7 +356,7 @@ it('enforces manifest enablement without resetting the retained draft or rewriti
   const draft = await service.applyOperations(create());
   const workingPath = join(path, '.origamix', 'layout', 'working.json');
   const original = await readFile(workingPath, 'utf8');
-  for (const layout of [undefined, { enabled: false }]) {
+  for (const layout of [{ initialVariant: 'mix', enabled: false }]) {
     const source = JSON.stringify({ ...manifest, layout });
     await writeFile(join(path, 'origamix.project.json'), source);
     await expect(service.getWorking('project_test')).rejects.toMatchObject({ statusCode: 409 });
@@ -369,6 +370,12 @@ it('enforces manifest enablement without resetting the retained draft or rewriti
     expect(await readFile(workingPath, 'utf8')).toBe(original);
     expect(await readFile(join(path, 'origamix.project.json'), 'utf8')).toBe(source);
   }
+  await writeFile(
+    join(path, 'origamix.project.json'),
+    JSON.stringify({ ...manifest, routing: undefined }),
+  );
+  await expect(service.getWorking('project_test')).rejects.toMatchObject({ statusCode: 422 });
+  expect(await readFile(workingPath, 'utf8')).toBe(original);
   await writeFile(join(path, 'origamix.project.json'), JSON.stringify(manifest));
   expect(await service.getWorking('project_test')).toEqual(draft);
 });

@@ -74,11 +74,27 @@ export const createMaterialManifest = (definition: MaterialDefinition): Material
   const properties: Record<string, JsonSchema> = {};
   const defaults = { ...defaultProps };
   const required: string[] = [];
+  const conditions: JsonSchema[] = [];
   for (const panel of editorConfig?.panels ?? []) {
     for (const config of panel.configs ?? []) {
       if (Object.hasOwn(properties, config.field))
         throw new Error(`${metadata.type}: 重复属性 ${config.field}`);
-      properties[config.field] = scopeSchema(inferSchema(config), config.field);
+      properties[config.field] = scopeSchema(
+        {
+          ...inferSchema(config),
+          ...(typeof config.label === 'string' ? { title: config.label } : {}),
+          ...(config.description ? { description: config.description } : {}),
+          ...(Object.hasOwn(defaults, config.field) ? { default: defaults[config.field] } : {}),
+        },
+        config.field,
+      );
+      if (config.applicableWhen) {
+        const { field, value } = config.applicableWhen;
+        conditions.push({
+          if: { properties: { [field]: { not: { const: value } } }, required: [field] },
+          then: { not: { properties: { [config.field]: {} }, required: [config.field] } },
+        });
+      }
       if (config.required) required.push(config.field);
       if (config.defaultValue !== undefined) {
         if (
@@ -104,6 +120,12 @@ export const createMaterialManifest = (definition: MaterialDefinition): Material
     ...metadata,
     version: materialSet.version,
     defaultProps: defaults,
-    propsSchema: { type: 'object', additionalProperties: false, properties, required },
+    propsSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties,
+      required,
+      ...(conditions.length ? { allOf: conditions } : {}),
+    },
   });
 };

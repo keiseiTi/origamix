@@ -7,6 +7,8 @@ export const createProjectStackFixture = async () => {
   await writeFile(
     join(path, 'origamix.project.json'),
     JSON.stringify({
+      layout: { enabled: false, initialVariant: 'side' as const },
+      routing: { mode: 'browser' as const, basePath: '/' },
       projectId: 'project_test',
       name: 'Test',
       framework: 'react',

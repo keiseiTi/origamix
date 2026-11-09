@@ -1,7 +1,6 @@
 import { ProjectTaskService } from './agent/project-task-service';
 import { agentTarget } from './agent/agent-target';
 import { LayoutService } from './layout/layout-service';
-import { assertProjectNotUpgrading } from './projects/project-upgrade-store';
 import { loadProjectMaterials, loadLayoutMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
@@ -188,7 +187,6 @@ export const startServer = async (input: {
         const project = projects.getProject(projectId);
         const page = projects.getPage(projectId, pageId);
         if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-        await assertProjectNotUpgrading(project.path);
         return getWorkingSchemaState({
           projectPath: project.path,
           pageId: page.id,

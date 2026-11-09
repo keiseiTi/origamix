@@ -28,6 +28,8 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
     await writeFile(
       join(path, 'origamix.project.json'),
       JSON.stringify({
+        layout: { enabled: false, initialVariant: 'side' as const },
+        routing: { mode: 'browser' as const, basePath: '/' },
         projectId: 'project_test',
         name: '测试',
         framework: 'react',
@@ -80,7 +82,10 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
         payload: { projectId: 'project_test', enabled },
       });
     expect((await toggle(true)).json().data).toEqual({ name: '布局配置', enabled: true });
-    expect(JSON.parse(await readFile(manifestPath, 'utf8')).layout).toEqual({ enabled: true });
+    expect(JSON.parse(await readFile(manifestPath, 'utf8')).layout).toEqual({
+      enabled: true,
+      initialVariant: 'side',
+    });
     expect(
       (
         await server.inject({
@@ -115,7 +120,10 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
     expect(history.json().data.revisions).toHaveLength(1);
     const savedState = saved.json().data;
     expect((await toggle(false)).statusCode).toBe(200);
-    expect(JSON.parse(await readFile(manifestPath, 'utf8')).layout).toEqual({ enabled: false });
+    expect(JSON.parse(await readFile(manifestPath, 'utf8')).layout).toEqual({
+      enabled: false,
+      initialVariant: 'side',
+    });
     expect((await server.inject({ ...request, headers })).statusCode).toBe(409);
     expect((await toggle(true)).statusCode).toBe(200);
     expect((await server.inject({ ...request, headers })).json().data).toEqual(savedState);

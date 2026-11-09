@@ -5,6 +5,9 @@ type BasicAttributeConfig = {
   /** Defaults to true for draft editors; live controls opt out to preserve input focus. */
   resetOnValueChange?: boolean;
   schema?: JsonSchema;
+  /** Plain-language meaning delivered to Agent through the generated property schema. */
+  description?: string;
+  applicableWhen?: { field: string; value: string };
   hidden?: boolean;
   label?: React.ReactNode;
   field: string;

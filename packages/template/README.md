@@ -72,9 +72,7 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 - npm 提示找不到指定版本：确认该版本已发布到所用 registry，并检查 registry 和网络配置；不要改成工作区路径。
 - 部署后刷新子路由返回 404：为静态服务器配置 SPA 回退到 `index.html`。例如 Nginx 根路径部署可使用 `try_files $uri $uri/ /index.html;`。
 
-项目清单可配置 `routing: { "mode": "browser", "basePath": "/" }`。`mode` 支持 `browser`、`hash`，`basePath` 是以 `/` 开头并结尾的应用访问前缀，例如 `/admin/`；缺省保持 Browser 与根路径，不在启动时改写文件。Vite 资源基路径与运行路由读取同一份配置。Browser 下角色页形如 `/admin/role-manage`，服务器须回退到 `/admin/index.html`；Hash 下形如 `/admin/#/role-manage`，只需托管 `/admin/` 应用目录。修改配置后重启开发服务器或重新构建部署。路由模式与前缀不依赖是否开启布局。
-
-已有项目不会自动覆盖路由或业务源码。更新到这一版模板时，先提交或备份项目，然后对照新版模板合并 `src/router.ts`、`src/application.tsx`、`src/routing-config.ts`、`src/project-pages.ts` 和 `vite.config.ts`（以及 Node tsconfig 的 JSON 模块设置）；保留自定义路由和业务代码，再在清单中显式设置 routing 并执行 typecheck/build。普通 Schema Apply 不执行这类源码升级。
+项目清单必须配置 `routing: { "mode": "browser", "basePath": "/" }`。`mode` 支持 `browser`、`hash`，`basePath` 是以 `/` 开头并结尾的应用访问前缀，例如 `/admin/`；缺少路由或布局配置时直接拒绝，不提供旧格式兜底。Vite 资源基路径与运行路由读取同一份配置。Browser 下角色页形如 `/admin/role-manage`，服务器须回退到 `/admin/index.html`；Hash 下形如 `/admin/#/role-manage`，只需托管 `/admin/` 应用目录。修改配置后重启开发服务器或重新构建部署。路由模式与前缀不依赖是否开启布局。
 
 `.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
 

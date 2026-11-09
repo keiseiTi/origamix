@@ -29,30 +29,39 @@ export const basicPageManifest = withMaterialManifestDefaults({
       display: {
         type: 'string',
         enum: ['flow', 'flex'],
+        title: '布局方式',
+        default: 'flow',
       },
       flexDirection: {
         type: 'string',
         enum: ['column', 'row'],
+        title: '排列方向',
+        default: 'column',
       },
       flexWrap: {
         type: 'string',
         enum: ['nowrap', 'wrap'],
+        title: '换行',
       },
       alignItems: {
         type: 'string',
         enum: ['stretch', 'flex-start', 'center', 'flex-end'],
+        title: '交叉轴对齐',
       },
       justifyContent: {
         type: 'string',
         enum: ['flex-start', 'center', 'flex-end', 'space-between', 'space-around'],
+        title: '主轴对齐',
       },
       gap: {
         type: 'number',
         minimum: 0,
+        title: '间距（px）',
       },
       padding: {
         type: 'number',
         minimum: 0,
+        title: '内边距（px）',
       },
       margin: {
         type: 'number',
@@ -122,30 +131,41 @@ export const buttonManifest = withMaterialManifestDefaults({
     properties: {
       text: {
         type: 'string',
+        title: '按钮文本',
+        default: '按钮',
       },
       type: {
         type: 'string',
         enum: ['default', 'primary', 'dashed', 'link', 'text'],
+        title: '按钮类型',
+        default: 'default',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
+        default: 'medium',
       },
       danger: {
         type: 'boolean',
+        title: '危险样式',
       },
       block: {
         type: 'boolean',
+        title: '撑满宽度',
       },
       ghost: {
         type: 'boolean',
+        title: '透明背景',
       },
       href: {
         type: 'string',
+        title: '跳转地址',
       },
       target: {
         type: 'string',
         enum: ['_self', '_blank'],
+        title: '打开方式',
       },
     },
     required: [],
@@ -218,44 +238,58 @@ export const cascaderManifest = withMaterialManifestDefaults({
     properties: {
       placeholder: {
         type: 'string',
+        title: '占位符',
       },
       multiple: {
         type: 'boolean',
+        title: '多选',
+        default: false,
       },
       showSearch: {
         type: 'boolean',
+        title: '支持搜索',
       },
       changeOnSelect: {
         type: 'boolean',
+        title: '选择任意层级',
       },
       expandTrigger: {
         type: 'string',
         enum: ['click', 'hover'],
+        title: '展开方式',
       },
       showCheckedStrategy: {
         type: 'string',
         enum: ['SHOW_PARENT', 'SHOW_CHILD'],
+        title: '显示选中策略',
       },
       maxTagCount: {
         type: 'number',
         minimum: 0,
+        title: '最多展示标签数',
       },
       loading: {
         type: 'boolean',
+        title: '加载中',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
+        default: true,
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       options: {
         type: 'array',
@@ -296,6 +330,13 @@ export const cascaderManifest = withMaterialManifestDefaults({
             required: ['value', 'label'],
           },
         },
+        title: '级联选项',
+        default: [
+          {
+            label: '示例1',
+            value: '示例1',
+          },
+        ],
       },
       fieldName: {
         type: 'string',
@@ -387,9 +428,21 @@ export const checkboxManifest = withMaterialManifestDefaults({
           },
           required: ['label', 'value'],
         },
+        title: '选项配置',
+        default: [
+          {
+            label: '选项1',
+            value: '选项1',
+          },
+          {
+            label: '选项2',
+            value: '选项2',
+          },
+        ],
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       fieldName: {
         type: 'string',
@@ -427,41 +480,53 @@ export const containerManifest = withMaterialManifestDefaults({
       layoutMode: {
         type: 'string',
         enum: ['normal', 'absolute'],
+        title: '容器定位模式',
       },
       display: {
         type: 'string',
         enum: ['flow', 'flex'],
+        title: '布局方式',
       },
       flexDirection: {
         type: 'string',
         enum: ['column', 'row'],
+        title: '排列方向',
       },
       flexWrap: {
         type: 'string',
         enum: ['nowrap', 'wrap'],
+        title: '换行',
       },
       alignItems: {
         type: 'string',
         enum: ['stretch', 'flex-start', 'center', 'flex-end'],
+        title: '交叉轴对齐',
       },
       justifyContent: {
         type: 'string',
         enum: ['flex-start', 'center', 'flex-end', 'space-between', 'space-around'],
+        title: '主轴对齐',
       },
       gap: {
         type: 'number',
         minimum: 0,
+        title: '间距（px）',
       },
       padding: {
         type: 'number',
+        title: '内边距（px）',
       },
       heightConfig: {
         type: 'string',
         enum: ['fixed', 'auto'],
+        title: '高度配置',
+        default: 'fixed',
       },
       height: {
         type: 'number',
         minimum: 0,
+        title: '高度（px）',
+        default: 200,
       },
       margin: {
         type: 'number',
@@ -540,47 +605,63 @@ export const datePickerManifest = withMaterialManifestDefaults({
       picker: {
         type: 'string',
         enum: ['date', 'week', 'month', 'quarter', 'year'],
+        title: '选择类型',
+        default: 'date',
       },
       format: {
         type: 'string',
+        title: '显示格式',
       },
       placeholder: {
         type: 'string',
+        title: '占位符',
       },
       defaultValue: {
         type: 'string',
+        title: '初始日期（YYYY-MM-DD）',
       },
       showTime: {
         type: 'boolean',
+        title: '选择时间',
       },
       showNow: {
         type: 'boolean',
+        title: '显示今天',
       },
       inputReadOnly: {
         type: 'boolean',
+        title: '输入只读',
       },
       needConfirm: {
         type: 'boolean',
+        title: '需要确认',
       },
       minDate: {
         type: 'string',
+        title: '最早日期（YYYY-MM-DD）',
       },
       maxDate: {
         type: 'string',
+        title: '最晚日期（YYYY-MM-DD）',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
+        default: true,
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       fieldName: {
         type: 'string',
@@ -661,59 +742,79 @@ export const datePickerRangeManifest = withMaterialManifestDefaults({
       picker: {
         type: 'string',
         enum: ['date', 'week', 'month', 'quarter', 'year'],
+        title: '选择类型',
+        default: 'date',
       },
       format: {
         type: 'string',
+        title: '显示格式',
       },
       startPlaceholder: {
         type: 'string',
+        title: '开始占位符',
       },
       endPlaceholder: {
         type: 'string',
+        title: '结束占位符',
       },
       defaultStart: {
         type: 'string',
+        title: '初始开始日期（YYYY-MM-DD）',
       },
       defaultEnd: {
         type: 'string',
+        title: '初始结束日期（YYYY-MM-DD）',
       },
       showTime: {
         type: 'boolean',
+        title: '选择时间',
       },
       allowEmptyStart: {
         type: 'boolean',
+        title: '允许开始为空',
       },
       allowEmptyEnd: {
         type: 'boolean',
+        title: '允许结束为空',
       },
       inputReadOnly: {
         type: 'boolean',
+        title: '输入只读',
       },
       needConfirm: {
         type: 'boolean',
+        title: '需要确认',
       },
       order: {
         type: 'boolean',
+        title: '自动排序',
       },
       minDate: {
         type: 'string',
+        title: '最早日期（YYYY-MM-DD）',
       },
       maxDate: {
         type: 'string',
+        title: '最晚日期（YYYY-MM-DD）',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
+        default: true,
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       placeholder: {
         type: 'array',
@@ -803,10 +904,14 @@ export const drawerManifest = withMaterialManifestDefaults({
     properties: {
       title: {
         type: 'string',
+        title: '标题',
+        default: '抽屉',
       },
       placement: {
         type: 'string',
         enum: ['left', 'right', 'top', 'bottom'],
+        title: '位置',
+        default: 'right',
       },
       size: {
         anyOf: [
@@ -819,28 +924,39 @@ export const drawerManifest = withMaterialManifestDefaults({
             minimum: 1,
           },
         ],
+        title: '预设尺寸',
       },
       closable: {
         type: 'boolean',
+        title: '显示关闭按钮',
+        default: true,
       },
       mask: {
         type: 'boolean',
+        title: '显示遮罩',
+        default: true,
       },
       maskClosable: {
         type: 'boolean',
+        title: '点击遮罩关闭',
+        default: true,
       },
       push: {
         type: 'boolean',
+        title: '嵌套抽屉推开父层',
       },
       forceRender: {
         type: 'boolean',
+        title: '预先渲染内容',
       },
       destroyOnHidden: {
         type: 'boolean',
+        title: '关闭后销毁内容',
       },
       zIndex: {
         type: 'integer',
         minimum: 0,
+        title: '浮层层级',
       },
     },
     required: [],
@@ -926,40 +1042,54 @@ export const formManifest = withMaterialManifestDefaults({
       layout: {
         type: 'string',
         enum: ['horizontal', 'vertical', 'inline'],
+        title: '布局',
+        default: 'horizontal',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '控件尺寸',
       },
       labelAlign: {
         type: 'string',
         enum: ['left', 'right'],
+        title: '标签对齐',
+        default: 'right',
       },
       labelColVal: {
         type: 'integer',
         minimum: 0,
         maximum: 24,
+        title: '标签栅格跨度',
       },
       wrapperColVal: {
         type: 'integer',
         minimum: 0,
         maximum: 24,
+        title: '控件栅格跨度',
       },
       labelWrap: {
         type: 'boolean',
+        title: '标签换行',
       },
       colon: {
         type: 'boolean',
+        title: '显示冒号',
+        default: true,
       },
       preserve: {
         type: 'boolean',
+        title: '保留移除字段的值',
+        default: true,
       },
       scrollToFirstError: {
         type: 'boolean',
+        title: '滚动到首个错误',
       },
       validateTrigger: {
         type: 'string',
         enum: ['onChange', 'onBlur'],
+        title: '校验时机',
       },
     },
     required: [],
@@ -1022,34 +1152,44 @@ export const inputManifest = withMaterialManifestDefaults({
     properties: {
       placeholder: {
         type: 'string',
+        title: '占位符',
+        default: '请输入内容',
       },
       defaultValue: {
         type: 'string',
+        title: '初始内容',
       },
       type: {
         type: 'string',
         enum: ['text', 'password', 'email', 'tel', 'url'],
+        title: '输入类型',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       readOnly: {
         type: 'boolean',
+        title: '只读',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
       },
       maxLength: {
         type: 'number',
         minimum: 0,
         maximum: 1000,
+        title: '最大长度',
       },
       showCount: {
         type: 'boolean',
+        title: '显示字数',
       },
       fieldName: {
         type: 'string',
@@ -1075,7 +1215,7 @@ export const LayoutManifest = withMaterialManifestDefaults({
     events: [],
   },
   usage:
-    '根节点管理布局模式、站点标识和内容宽度。点击顶部、侧栏、页面主体、页脚配置各区域。切换模式保留区域内容。',
+    '用于项目唯一布局根节点。系统名称、应用名称、站点标题均修改 title；Logo 修改 logo。左侧菜单=side，顶部菜单=top，顶部贯穿全宽且下方有侧栏的混合菜单=mix。自适应=Fluid，定宽居中=Fixed（contentMaxWidth 单位 px）。只用 updateElementProps 修改；切换模式保留其他属性及区域内容。',
   constraints: ['必须保留唯一 PageOutlet，不能删除或移动受管理区域。'],
   defaultProps: {
     variant: 'mix',
@@ -1091,27 +1231,48 @@ export const LayoutManifest = withMaterialManifestDefaults({
       variant: {
         type: 'string',
         enum: ['side', 'top', 'mix'],
+        title: '导航布局',
+        description:
+          '布局模式：side 左侧菜单贯穿全高；top 仅顶部菜单；mix 顶部贯穿全宽，侧栏位于顶部下方。只调整结构，不重建节点。',
+        default: 'mix',
       },
       title: {
         type: 'string',
         maxLength: 120,
+        title: '站点标题',
+        description:
+          '站点标题，也称系统名称、应用名称。侧边布局显示在侧栏顶部，其他模式显示在顶栏左侧。不是页面标题或 Header 内新增文本。',
+        default: '我的应用',
       },
       logo: {
         type: 'string',
         maxLength: 2048,
+        title: 'Logo 地址',
+        description:
+          '站点 Logo 图片地址。使用用户提供的有效图片 URL；空字符串表示不显示 Logo，不能编造地址。',
+        default: '',
       },
       regionConfig: {
         type: 'object',
         additionalProperties: true,
+        description: '系统派生的区域几何配置，只读。Agent 禁止设置、删除或复制该字段。',
       },
       contentWidth: {
         type: 'string',
         enum: ['Fluid', 'Fixed'],
+        title: '宽度模式',
+        description:
+          '页面主体宽度：Fluid 填满可用区域，Fixed 按 contentMaxWidth 定宽居中。顶部和侧栏不受此宽度影响。',
+        default: 'Fluid',
       },
       contentMaxWidth: {
         type: 'number',
         minimum: 320,
         maximum: 2560,
+        title: '最大宽度（px）',
+        description:
+          '页面主体在 Fixed 模式下的最大宽度，单位 px；Fluid 模式下保留配置但不影响渲染。',
+        default: 1200,
       },
     },
     required: [],
@@ -1133,7 +1294,8 @@ export const LayoutRegionManifest = withMaterialManifestDefaults({
     actions: [],
     events: [],
   },
-  usage: '可编辑区域公开属性；不能修改区域身份、派生配置或移动区域。',
+  usage:
+    '读取当前节点 props.region 确定区域：header 顶部/顶栏，sider 左侧菜单/侧栏，content 页面主体，footer 页脚；body/main 为内部容器。只修改该区域公开属性，不新增、替换或移动受管理区域。',
   constraints: ['区域身份与位置由 Layout 管理，公开属性由区域管理。'],
   defaultProps: {
     region: 'content',
@@ -1147,55 +1309,285 @@ export const LayoutRegionManifest = withMaterialManifestDefaults({
         type: 'number',
         minimum: 40,
         maximum: 200,
+        title: '顶部高度（px）',
+        description: '顶部或顶栏高度，单位 px，默认 64。只修改 header 区域。',
       },
       headerBackground: {
         type: 'string',
         maxLength: 100,
+        title: '背景色（留空跟随主题）',
+        description:
+          '顶部或顶栏背景色，支持 CSS 颜色，例如 #1677ff、blue；空字符串恢复跟随主题。只修改 header 区域。',
       },
       fixedHeader: {
         type: 'boolean',
+        title: '固定顶部',
+        description: '是否固定顶部：true 表示页面滚动时顶栏仍可见，false 随页面滚动。',
       },
       siderWidth: {
         type: 'number',
         minimum: 120,
         maximum: 600,
+        title: '侧栏宽度（px）',
+        description: '侧栏展开时的宽度，单位 px，默认 240。不改变菜单文字或内容宽度。',
       },
       fixSiderbar: {
         type: 'boolean',
+        title: '固定侧边栏',
+        description: '是否固定侧栏：true 表示页面滚动时侧栏保持可见。',
       },
       collapsible: {
         type: 'boolean',
+        title: '允许展开收起',
+        description: '是否允许用户通过按钮展开/收起侧栏；不是删除或隐藏侧栏。',
       },
       contentMargin: {
         type: 'number',
         minimum: 0,
         maximum: 160,
+        title: '页面外间距（px）',
+        description:
+          '页面外间距，单位 px，默认 24。控制内容面板到外围布局的留白，四边相同。用户说页面周围留白时修改此项。',
       },
       contentPadding: {
         type: 'number',
         minimum: 0,
         maximum: 160,
+        title: '内容内边距（px）',
+        description:
+          '内容内边距，单位 px，默认 24。控制内容面板内部到实际页面内容的留白，四边相同。与页面外间距不同。',
       },
       breadcrumb: {
         type: 'boolean',
+        title: '显示面包屑',
+        description: '是否展示面包屑：false 隐藏当前位置导航；不修改页面路由或菜单。',
       },
       footerText: {
         type: 'string',
         maxLength: 500,
+        title: '页脚文案',
+        description: '页脚固定文案，如版权文字。空字符串表示不显示文字；不自动计算年份或执行代码。',
       },
       region: {
         type: 'string',
         enum: ['header', 'sider', 'content', 'footer', 'body', 'main'],
+        description: '系统管理的区域身份，只读，禁止修改。',
+        default: 'content',
       },
       enabled: {
         type: 'boolean',
+        description: '系统按布局模式派生的显示状态，只读，禁止修改。',
+        default: true,
       },
       config: {
         type: 'object',
         additionalProperties: true,
+        description: '系统派生的渲染配置，只读。修改公开属性即可，不直接修改此对象。',
       },
     },
-    required: [],
+    required: ['region'],
+    allOf: [
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'header',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              headerHeight: {},
+            },
+            required: ['headerHeight'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'header',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              headerBackground: {},
+            },
+            required: ['headerBackground'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'header',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              fixedHeader: {},
+            },
+            required: ['fixedHeader'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'sider',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              siderWidth: {},
+            },
+            required: ['siderWidth'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'sider',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              fixSiderbar: {},
+            },
+            required: ['fixSiderbar'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'sider',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              collapsible: {},
+            },
+            required: ['collapsible'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'content',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              contentMargin: {},
+            },
+            required: ['contentMargin'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'content',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              contentPadding: {},
+            },
+            required: ['contentPadding'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'content',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              breadcrumb: {},
+            },
+            required: ['breadcrumb'],
+          },
+        },
+      },
+      {
+        if: {
+          properties: {
+            region: {
+              not: {
+                const: 'footer',
+              },
+            },
+          },
+          required: ['region'],
+        },
+        then: {
+          not: {
+            properties: {
+              footerText: {},
+            },
+            required: ['footerText'],
+          },
+        },
+      },
+    ],
   },
 });
 export const modalManifest = withMaterialManifestDefaults({
@@ -1285,6 +1677,8 @@ export const modalManifest = withMaterialManifestDefaults({
     properties: {
       title: {
         type: 'string',
+        title: '标题',
+        default: '弹窗',
       },
       width: {
         anyOf: [
@@ -1296,38 +1690,54 @@ export const modalManifest = withMaterialManifestDefaults({
             type: 'string',
           },
         ],
+        title: '宽度',
+        default: 520,
       },
       centered: {
         type: 'boolean',
+        title: '居中显示',
       },
       closable: {
         type: 'boolean',
+        title: '显示关闭按钮',
+        default: true,
       },
       mask: {
         type: 'boolean',
+        title: '显示遮罩',
+        default: true,
       },
       maskClosable: {
         type: 'boolean',
+        title: '点击遮罩关闭',
+        default: true,
       },
       showFooter: {
         type: 'boolean',
+        title: '显示底部按钮',
+        default: true,
       },
       okType: {
         type: 'string',
         enum: ['primary', 'default', 'dashed', 'text', 'link'],
+        title: '确定按钮类型',
       },
       confirmLoading: {
         type: 'boolean',
+        title: '确定按钮加载中',
       },
       forceRender: {
         type: 'boolean',
+        title: '预先渲染内容',
       },
       destroyOnHidden: {
         type: 'boolean',
+        title: '关闭后销毁内容',
       },
       zIndex: {
         type: 'integer',
         minimum: 0,
+        title: '浮层层级',
       },
     },
     required: [],
@@ -1392,40 +1802,53 @@ export const numberManifest = withMaterialManifestDefaults({
     properties: {
       defaultValue: {
         type: ['number', 'null'],
+        title: '初始值',
       },
       min: {
         type: 'number',
+        title: '最小值',
       },
       max: {
         type: 'number',
+        title: '最大值',
       },
       step: {
         type: 'number',
         exclusiveMinimum: 0,
+        title: '步长',
       },
       precision: {
         type: 'number',
         minimum: 0,
         maximum: 10,
+        title: '精度',
       },
       placeholder: {
         type: 'string',
+        title: '占位符',
+        default: '请输入',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
+        default: 'medium',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       readOnly: {
         type: 'boolean',
+        title: '只读',
       },
       controls: {
         type: 'boolean',
+        title: '显示增减按钮',
       },
       decimalSeparator: {
         type: 'string',
+        title: '小数分隔符',
       },
       fieldName: {
         type: 'string',
@@ -1543,28 +1966,45 @@ export const radioManifest = withMaterialManifestDefaults({
           },
           required: ['label', 'value'],
         },
+        title: '选项配置',
+        default: [
+          {
+            label: '选项一',
+            value: 'option1',
+          },
+          {
+            label: '选项二',
+            value: 'option2',
+          },
+        ],
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       optionType: {
         type: 'string',
         enum: ['default', 'button'],
+        title: '选项样式',
       },
       buttonStyle: {
         type: 'string',
         enum: ['outline', 'solid'],
+        title: '按钮风格',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '按钮尺寸',
       },
       block: {
         type: 'boolean',
+        title: '撑满宽度',
       },
       orientation: {
         type: 'string',
         enum: ['horizontal', 'vertical'],
+        title: '排列方向',
       },
       fieldName: {
         type: 'string',
@@ -1664,41 +2104,64 @@ export const selectManifest = withMaterialManifestDefaults({
           },
           required: ['label', 'value'],
         },
+        title: '选项配置',
+        default: [
+          {
+            label: '选项一',
+            value: 'option1',
+          },
+          {
+            label: '选项二',
+            value: 'option2',
+          },
+        ],
       },
       placeholder: {
         type: 'string',
+        title: '占位符',
+        default: '请选择',
       },
       mode: {
         type: 'string',
         enum: ['multiple', 'tags'],
+        title: '选择模式',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
       },
       showSearch: {
         type: 'boolean',
+        title: '支持搜索',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
+        default: 'medium',
       },
       maxTagCount: {
         type: 'number',
         minimum: 0,
+        title: '最多展示标签数',
       },
       listHeight: {
         type: 'number',
         minimum: 1,
+        title: '弹层高度',
       },
       virtual: {
         type: 'boolean',
+        title: '虚拟滚动',
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       fieldName: {
         type: 'string',
@@ -1774,16 +2237,24 @@ export const sliderManifest = withMaterialManifestDefaults({
     properties: {
       min: {
         type: 'number',
+        title: '最小值',
+        default: 0,
       },
       max: {
         type: 'number',
+        title: '最大值',
+        default: 100,
       },
       step: {
         type: 'number',
         exclusiveMinimum: 0,
+        title: '步长',
+        default: 1,
       },
       range: {
         type: 'boolean',
+        title: '范围模式',
+        default: false,
       },
       defaultValue: {
         anyOf: [
@@ -1799,41 +2270,55 @@ export const sliderManifest = withMaterialManifestDefaults({
             maxItems: 2,
           },
         ],
+        title: '初始值',
       },
       defaultStart: {
         type: 'number',
+        title: '初始下限',
       },
       defaultEnd: {
         type: 'number',
+        title: '初始上限',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       keyboard: {
         type: 'boolean',
+        title: '键盘调整',
+        default: true,
       },
       reverse: {
         type: 'boolean',
+        title: '反向',
       },
       vertical: {
         type: 'boolean',
+        title: '垂直',
       },
       dots: {
         type: 'boolean',
+        title: '显示刻度点',
       },
       included: {
         type: 'boolean',
+        title: '显示选中区间',
+        default: true,
       },
       draggableTrack: {
         type: 'boolean',
+        title: '范围可拖动',
       },
       tooltipMode: {
         type: 'string',
         enum: ['auto', 'always', 'hidden'],
+        title: '提示显示',
       },
       tooltipPlacement: {
         type: 'string',
         enum: ['top', 'bottom', 'left', 'right'],
+        title: '提示位置',
       },
       fieldName: {
         type: 'string',
@@ -1889,13 +2374,16 @@ export const switchManifest = withMaterialManifestDefaults({
     properties: {
       defaultChecked: {
         type: 'boolean',
+        title: '初始开启',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       size: {
         type: 'string',
         enum: ['medium', 'small'],
+        title: '尺寸',
       },
       fieldName: {
         type: 'string',
@@ -1991,10 +2479,13 @@ export const tableManifest = withMaterialManifestDefaults({
       paginationMode: {
         type: 'string',
         enum: ['local', 'remote'],
+        title: '分页方式',
       },
       rowKey: {
         type: 'string',
         minLength: 1,
+        title: '行唯一标识字段',
+        default: 'id',
       },
       columns: {
         type: 'array',
@@ -2042,34 +2533,55 @@ export const tableManifest = withMaterialManifestDefaults({
           },
           required: ['title', 'dataIndex'],
         },
+        title: '列配置',
+        default: [
+          {
+            title: '列1',
+            dataIndex: 'col1',
+          },
+          {
+            title: '列2',
+            dataIndex: 'col2',
+          },
+        ],
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
+        default: 'medium',
       },
       bordered: {
         type: 'boolean',
+        title: '显示边框',
       },
       showHeader: {
         type: 'boolean',
+        title: '显示表头',
+        default: true,
       },
       tableLayout: {
         type: 'string',
         enum: ['auto', 'fixed'],
+        title: '表格布局',
       },
       scrollX: {
         type: 'number',
         minimum: 1,
+        title: '横向滚动宽度',
       },
       scrollY: {
         type: 'number',
         minimum: 1,
+        title: '纵向滚动高度',
       },
       sticky: {
         type: 'boolean',
+        title: '固定表头与滚动条',
       },
       emptyText: {
         type: 'string',
+        title: '空数据提示',
       },
       pagination: {
         anyOf: [
@@ -2123,6 +2635,8 @@ export const tableManifest = withMaterialManifestDefaults({
             },
           },
         ],
+        title: '分页',
+        default: false,
       },
     },
     required: ['rowKey', 'columns'],
@@ -2241,37 +2755,61 @@ export const tabsManifest = withMaterialManifestDefaults({
           },
           required: ['key', 'label'],
         },
+        title: '页签项',
+        default: [
+          {
+            key: '1',
+            label: '标签一',
+            children: '标签一内容',
+          },
+          {
+            key: '2',
+            label: '标签二',
+            children: '标签二内容',
+          },
+        ],
       },
       defaultActiveKey: {
         type: 'string',
+        title: '默认激活键',
       },
       type: {
         type: 'string',
         enum: ['line', 'card', 'editable-card'],
+        title: '类型',
+        default: 'line',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       tabPlacement: {
         type: 'string',
         enum: ['top', 'end', 'bottom', 'start'],
+        title: '位置',
       },
       tabBarGutter: {
         type: 'number',
         minimum: 0,
+        title: '页签间距',
       },
       centered: {
         type: 'boolean',
+        title: '居中',
       },
       animated: {
         type: 'boolean',
+        title: '切换动画',
       },
       destroyOnHidden: {
         type: 'boolean',
+        title: '销毁隐藏面板',
       },
       hideAdd: {
         type: 'boolean',
+        title: '隐藏新增按钮',
+        default: true,
       },
       activeKey: {
         type: 'string',
@@ -2331,41 +2869,54 @@ export const textManifest = withMaterialManifestDefaults({
     properties: {
       text: {
         type: 'string',
+        title: '内容',
+        default: '文本',
       },
       type: {
         type: 'string',
         enum: ['text', 'paragraph', 'h1', 'h2', 'h3', 'h4', 'h5'],
+        title: '类型',
       },
       textType: {
         type: 'string',
         enum: ['secondary', 'success', 'warning', 'danger'],
+        title: '文本颜色',
       },
       strong: {
         type: 'boolean',
+        title: '加粗',
       },
       italic: {
         type: 'boolean',
+        title: '斜体',
       },
       underline: {
         type: 'boolean',
+        title: '下划线',
       },
       delete: {
         type: 'boolean',
+        title: '删除线',
       },
       code: {
         type: 'boolean',
+        title: '代码样式',
       },
       mark: {
         type: 'boolean',
+        title: '标记样式',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用样式',
       },
       copyable: {
         type: 'boolean',
+        title: '可复制',
       },
       ellipsis: {
         type: 'boolean',
+        title: '超出省略',
       },
     },
     required: [],
@@ -2430,25 +2981,33 @@ export const textareaManifest = withMaterialManifestDefaults({
     properties: {
       placeholder: {
         type: 'string',
+        title: '占位符',
+        default: '请输入内容',
       },
       defaultValue: {
         type: 'string',
+        title: '初始内容',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       readOnly: {
         type: 'boolean',
+        title: '只读',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
       },
       maxLength: {
         type: 'number',
         minimum: 0,
+        title: '最大长度',
       },
       showCount: {
         type: 'boolean',
+        title: '显示字数',
       },
       autoSize: {
         anyOf: [
@@ -2470,22 +3029,28 @@ export const textareaManifest = withMaterialManifestDefaults({
             },
           },
         ],
+        title: '自动高度',
+        default: false,
       },
       rows: {
         type: 'number',
         minimum: 1,
+        title: '行数',
       },
       minRows: {
         type: 'integer',
         minimum: 1,
+        title: '最小行数',
       },
       maxRows: {
         type: 'integer',
         minimum: 1,
+        title: '最大行数',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        default: 'medium',
       },
       fieldName: {
         type: 'string',
@@ -2564,56 +3129,73 @@ export const timePickerManifest = withMaterialManifestDefaults({
       format: {
         type: 'string',
         enum: ['HH:mm:ss', 'HH:mm', 'hh:mm:ss A'],
+        title: '显示格式',
       },
       placeholder: {
         type: 'string',
+        title: '占位符',
       },
       defaultValue: {
         type: 'string',
+        title: '初始时间（HH:mm:ss）',
       },
       use12Hours: {
         type: 'boolean',
+        title: '12 小时制',
       },
       hourStep: {
         type: 'integer',
         minimum: 1,
         maximum: 23,
+        title: '小时间隔',
       },
       minuteStep: {
         type: 'integer',
         minimum: 1,
         maximum: 59,
+        title: '分钟间隔',
       },
       secondStep: {
         type: 'integer',
         minimum: 1,
         maximum: 59,
+        title: '秒间隔',
       },
       hideDisabledOptions: {
         type: 'boolean',
+        title: '隐藏禁用时间',
       },
       showNow: {
         type: 'boolean',
+        title: '显示此刻',
       },
       inputReadOnly: {
         type: 'boolean',
+        title: '输入只读',
       },
       needConfirm: {
         type: 'boolean',
+        title: '需要确认',
+        default: true,
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
+        default: true,
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       fieldName: {
         type: 'string',
@@ -2795,30 +3377,63 @@ export const treeManifest = withMaterialManifestDefaults({
             required: ['title', 'key'],
           },
         },
+        title: '树节点',
+        default: [
+          {
+            title: '节点1',
+            key: '0-0',
+            children: [
+              {
+                title: '子节点1',
+                key: '0-0-0',
+              },
+              {
+                title: '子节点2',
+                key: '0-0-1',
+              },
+            ],
+          },
+          {
+            title: '节点2',
+            key: '0-1',
+          },
+        ],
       },
       checkable: {
         type: 'boolean',
+        title: '显示复选框',
+        default: false,
       },
       checkStrictly: {
         type: 'boolean',
+        title: '父子勾选独立',
       },
       multiple: {
         type: 'boolean',
+        title: '允许多选',
       },
       selectable: {
         type: 'boolean',
+        title: '允许选中',
+        default: true,
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       defaultExpandAll: {
         type: 'boolean',
+        title: '默认展开全部',
+        default: false,
       },
       defaultExpandParent: {
         type: 'boolean',
+        title: '默认展开父节点',
+        default: true,
       },
       autoExpandParent: {
         type: 'boolean',
+        title: '自动展开父节点',
       },
       defaultExpandedKeys: {
         type: 'array',
@@ -2832,19 +3447,25 @@ export const treeManifest = withMaterialManifestDefaults({
             },
           ],
         },
+        title: '默认展开节点键',
       },
       showLine: {
         type: 'boolean',
+        title: '显示连接线',
       },
       blockNode: {
         type: 'boolean',
+        title: '节点占满一行',
       },
       virtual: {
         type: 'boolean',
+        title: '虚拟滚动',
+        default: true,
       },
       height: {
         type: 'number',
         minimum: 1,
+        title: '滚动区域高度',
       },
     },
     required: [],
@@ -2917,57 +3538,74 @@ export const treeSelectManifest = withMaterialManifestDefaults({
     properties: {
       placeholder: {
         type: 'string',
+        title: '占位符',
       },
       multiple: {
         type: 'boolean',
+        title: '多选',
       },
       treeCheckable: {
         type: 'boolean',
+        title: '显示复选框',
       },
       treeCheckStrictly: {
         type: 'boolean',
+        title: '父子独立勾选',
       },
       showSearch: {
         type: 'boolean',
+        title: '支持搜索',
       },
       treeNodeFilterProp: {
         type: 'string',
         enum: ['title', 'value'],
+        title: '搜索字段',
       },
       treeDefaultExpandAll: {
         type: 'boolean',
+        title: '默认展开全部',
       },
       treeLine: {
         type: 'boolean',
+        title: '显示连接线',
       },
       virtual: {
         type: 'boolean',
+        title: '虚拟滚动',
       },
       listHeight: {
         type: 'number',
         minimum: 1,
+        title: '弹层高度',
       },
       maxTagCount: {
         type: 'number',
         minimum: 0,
+        title: '最多展示标签数',
       },
       showCheckedStrategy: {
         type: 'string',
         enum: ['SHOW_ALL', 'SHOW_PARENT', 'SHOW_CHILD'],
+        title: '显示选中策略',
       },
       size: {
         type: 'string',
         enum: ['large', 'medium', 'small'],
+        title: '尺寸',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       allowClear: {
         type: 'boolean',
+        title: '允许清除',
+        default: true,
       },
       placement: {
         type: 'string',
         enum: ['bottomLeft', 'bottomRight', 'topLeft', 'topRight'],
+        title: '弹层位置',
       },
       treeData: {
         type: 'array',
@@ -3027,6 +3665,14 @@ export const treeSelectManifest = withMaterialManifestDefaults({
             required: ['value', 'title'],
           },
         },
+        title: '节点数据',
+        default: [
+          {
+            title: '示例1',
+            value: 'example1',
+            key: 'example1',
+          },
+        ],
       },
       fieldName: {
         type: 'string',
@@ -3094,48 +3740,65 @@ export const uploadManifest = withMaterialManifestDefaults({
     properties: {
       text: {
         type: 'string',
+        title: '上传文案',
+        default: '选择文件',
       },
       listType: {
         type: 'string',
         enum: ['text', 'picture', 'picture-card', 'picture-circle'],
+        title: '列表样式',
       },
       maxCount: {
         type: 'number',
         minimum: 1,
+        title: '最大数量',
       },
       multiple: {
         type: 'boolean',
+        title: '多选文件',
       },
       disabled: {
         type: 'boolean',
+        title: '禁用',
       },
       drag: {
         type: 'boolean',
+        title: '拖拽上传',
       },
       showUploadList: {
         type: 'boolean',
+        title: '展示文件列表',
+        default: true,
       },
       accept: {
         type: 'string',
+        title: '接受文件类型',
       },
       action: {
         type: 'string',
+        title: '上传地址',
       },
       method: {
         type: 'string',
         enum: ['post', 'put'],
+        title: '请求方式',
       },
       name: {
         type: 'string',
+        title: '文件字段名',
       },
       directory: {
         type: 'boolean',
+        title: '上传整个目录',
       },
       openFileDialogOnClick: {
         type: 'boolean',
+        title: '点击选择文件',
+        default: true,
       },
       pastable: {
         type: 'boolean',
+        title: '粘贴文件',
       },
       headers: {
         type: 'object',

@@ -272,11 +272,11 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 页面打开通过 `schema/schema-compatibility.ts` 检查独立的 Schema SemVer，受支持后才初始化或恢复 Working；不执行自动迁移。已有 Working 优先，较新、较旧、无效版本都会被保留并拒绝编辑。历史快照可按原文查看，恢复前须兼容，不重写历史。
 
-项目清单只接受当前框架及 `materialSet: { id, version }` 契约；不提供兼容性检查、旧清单转换或项目升级接口。数据库不存配置快照；清单丢失阻止写入，已登记或含 `.origamix` 的目录不会重新初始化。历史未完成写入记录仍阻止修改，需使用原应用恢复。
+项目清单只接受当前框架及 `materialSet: { id, version }` 契约；不提供兼容性检查、旧清单转换或项目升级接口。数据库不存配置快照；清单丢失阻止写入，已登记或含 `.origamix` 的目录不会重新初始化。Working、Revision 和 Apply 的未完成写入仍由各自服务按现有恢复协议处理。
 
-`database/migrations.ts` 在启动时检查 `PRAGMA user_version`。新数据库直接初始化当前结构并写入存储版本 1；已有数据但缺少版本记录的数据库会被拒绝，不做结构猜测或补登记。当前数据库迁移清单为空。后续真实结构变化才逐级执行已登记 SQL，并将版本记录与结构变更一起提交；失败回滚。升级备份位于数据库旁的 `*.before-v*.bak`，包含已提交 WAL 数据。未知结构和较新版本拒绝启动。
+`database/initialize.ts` 只创建当前结构（存储版本 2）或验证当前版本，不提供旧库迁移、备份转换或结构猜测。非空数据库缺少版本、版本不是当前值或结构不一致时直接拒绝，原记录不改写。
 
-发布时执行 `pnpm release:version --set <版本>`，仅同步包发布版本，不改变 Schema 或物料契约。`pnpm release:version --check` 检查包版本对齐、契约 SemVer 和模板物料声明。只有真实契约变化才调整独立版本；首次不兼容变化时再实现具体转换器。数据库结构变化另外增加存储迁移。
+发布时执行 `pnpm release:version --set <版本>`，仅同步包发布版本，不改变 Schema 或物料契约。`pnpm release:version --check` 检查包版本对齐、契约 SemVer 和模板物料声明。只有真实契约变化才调整独立版本；不登记旧格式转换链或数据库迁移步骤。
 
 ## 独立开发环境配置
 
@@ -286,7 +286,7 @@ ORIGAMIX_WEB_STATE_DIR 控制独立开发数据目录，ORIGAMIX_WEB_PROJECT_DIR
 
 ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。
 
-模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；依赖变更由项目自行维护。发布前本地归档验证不等同于 npm registry 已可安装。
 
 后端默认监听 `127.0.0.1:1029`，可通过宿主的 `ORIGAMIX_SERVER_PORT` 配置覆盖；`0` 表示系统分配端口，供隔离检查使用。网页开发入口默认使用 `9685`，`/api/v1` 继续由开发宿主代理并注入认证信息。固定端口被占用时启动失败，不自动连接或终止占用进程。
 
@@ -311,7 +311,7 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 | `/layout/revisions/get`      | projectId、revisionId                                                  | LayoutRevisionSnapshot |
 | `/layout/revisions/restore`  | projectId、revisionId、expectedWorkingVersion                          | LayoutWorkingState     |
 
-关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。layout Agent 尚未接入。新建项目包含应用外壳；此功能不处理旧项目迁移。开启开关不会自动生成布局投影或重写路由/页面壳。
+关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。layout Agent 使用独立布局目标与现有 Working 提交链路。新建项目包含应用外壳；此功能不处理旧项目迁移。开启开关不会自动生成布局投影或重写路由/页面壳。
 
 布局直接复用 PageSchema 的节点表与父子结构，操作批次也直接复用页面编辑器协议。第一次读取只初始化包含 PageOutlet 的 Working，不创建 Revision。每个有效批次递增 Working 版本，最终候选经过布局约束和物料校验后才原子写入。
 

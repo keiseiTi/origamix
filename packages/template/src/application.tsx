@@ -30,7 +30,7 @@ const Application = (): React.JSX.Element => {
     '';
   const layout = resolveApplicationLayout(
     manifest.projectId,
-    manifest.layout?.enabled === true,
+    manifest.layout.enabled,
     layoutModules['./origamix-layout/schema.json']?.default,
   );
   const content = <Outlet />;

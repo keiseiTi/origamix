@@ -31,7 +31,7 @@ export class ProjectScaffoldService {
             materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
             pageDirectory: input.pageDirectory,
             pages: [],
-            layout: { enabled: false },
+            layout: { enabled: false, initialVariant: 'side' },
             routing: { mode: 'browser', basePath: '/' },
           },
           null,

@@ -75,6 +75,8 @@ describe('Project and Schema HTTP flows', () => {
     expect(
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
+      layout: { enabled: false, initialVariant: 'side' as const },
+      routing: { mode: 'browser' as const, basePath: '/' },
       framework: 'react',
       materialSet: { id: 'official-antd', version: '1.0.0' },
       pageDirectory: 'screens',

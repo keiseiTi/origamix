@@ -169,38 +169,41 @@ describe('PiAgentEngine', () => {
     );
   });
 
-  it('ends after an accepted page decision without another provider request', async () => {
-    const { engine } = setup([
-      fauxAssistantMessage(fauxToolCall('complete_page_run', {}), { stopReason: 'toolUse' }),
-      fauxAssistantMessage('unexpected extra turn'),
-    ]);
-    let decisions = 0;
-    const events: AgentEngineEvent[] = [];
-    const result = await engine.run({
-      modelId: DEEPSEEK_FLASH_MODEL_ID,
-      systemPrompt: 'test',
-      prompt: 'complete the page request',
-      tools: [
-        {
-          name: 'complete_page_run',
-          description: 'complete page request',
-          parameters: Type.Object({}),
-          execute: async () => {
-            decisions += 1;
-            return { accepted: true };
+  it.each(['complete_page_run', 'complete_layout_run'])(
+    'ends after an accepted %s decision without another provider request',
+    async (terminalTool) => {
+      const { engine } = setup([
+        fauxAssistantMessage(fauxToolCall(terminalTool, {}), { stopReason: 'toolUse' }),
+        fauxAssistantMessage('unexpected extra turn'),
+      ]);
+      let decisions = 0;
+      const events: AgentEngineEvent[] = [];
+      const result = await engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: 'complete the page request',
+        tools: [
+          {
+            name: terminalTool,
+            description: 'complete page request',
+            parameters: Type.Object({}),
+            execute: async () => {
+              decisions += 1;
+              return { accepted: true };
+            },
           },
+        ],
+        onEvent: (event) => {
+          events.push(event);
         },
-      ],
-      onEvent: (event) => {
-        events.push(event);
-      },
-    });
+      });
 
-    expect(decisions).toBe(1);
-    expect(result.text).toBe('');
-    expect(events).toContainEqual(expect.objectContaining({ type: 'tool_end', isError: false }));
-    expect(events.at(-1)?.type).toBe('completed');
-  });
+      expect(decisions).toBe(1);
+      expect(result.text).toBe('');
+      expect(events).toContainEqual(expect.objectContaining({ type: 'tool_end', isError: false }));
+      expect(events.at(-1)?.type).toBe('completed');
+    },
+  );
 
   it('normalizes provider errors without exposing provider details', async () => {
     const { engine } = setup([

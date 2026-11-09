@@ -1,6 +1,6 @@
 import { FileText } from 'lucide-react';
 import { createContext, useContext, useState, type ReactNode, type CSSProperties } from 'react';
-import { Breadcrumb, Button, Layout as AntdLayout, Menu, theme } from 'antd';
+import { Breadcrumb, Button, ConfigProvider, Layout as AntdLayout, Menu, theme } from 'antd';
 import { useLayoutNavigation } from '@origamix/runtime';
 import type { RuntimeMaterialProps } from '../../src/index';
 import { layoutDefaults, layoutRegionDefaults } from './schema';
@@ -22,6 +22,7 @@ const LayoutContext = createContext({
 });
 const Navigation = ({ horizontal, config }: { horizontal: boolean; config: Config }) => {
   const navigation = useLayoutNavigation();
+  const { token } = theme.useToken();
   const state = useContext(LayoutContext);
   const mixed = config.variant === 'mix';
   const sections = [
@@ -62,24 +63,46 @@ const Navigation = ({ horizontal, config }: { horizontal: boolean; config: Confi
           { key: 'list', label: '列表页' },
         ];
   return (
-    <Menu
-      aria-label={horizontal ? '顶部菜单' : '左侧菜单'}
-      mode={horizontal ? 'horizontal' : 'inline'}
-      style={{ minWidth: 0, flex: 1, background: 'transparent', color: 'inherit' }}
-      selectedKeys={
-        horizontal && mixed ? [state.section] : navigation ? [navigation.currentPageId] : undefined
+    <ConfigProvider
+      theme={
+        horizontal && config.headerBackground
+          ? {
+              components: {
+                Menu: {
+                  horizontalItemSelectedColor: token.colorText,
+                  horizontalItemHoverColor: token.colorText,
+                },
+              },
+            }
+          : undefined
       }
-      defaultSelectedKeys={['overview']}
-      onClick={({ key }) => {
-        if (horizontal && mixed) state.setSection(key);
-      }}
-      items={
-        horizontal && mixed
-          ? sections
-          : (pages ??
-            mockItems.map((item) => ({ ...item, icon: <FileText size={16} aria-hidden='true' /> })))
-      }
-    />
+    >
+      <Menu
+        aria-label={horizontal ? '顶部菜单' : '左侧菜单'}
+        mode={horizontal ? 'horizontal' : 'inline'}
+        style={{ minWidth: 0, flex: 1, background: 'transparent', color: 'inherit' }}
+        selectedKeys={
+          horizontal && mixed
+            ? [state.section]
+            : navigation
+              ? [navigation.currentPageId]
+              : undefined
+        }
+        defaultSelectedKeys={['overview']}
+        onClick={({ key }) => {
+          if (horizontal && mixed) state.setSection(key);
+        }}
+        items={
+          horizontal && mixed
+            ? sections
+            : (pages ??
+              mockItems.map((item) => ({
+                ...item,
+                icon: <FileText size={16} aria-hidden='true' />,
+              })))
+        }
+      />
+    </ConfigProvider>
   );
 };
 const Brand = ({ config }: { config: Config }) => (

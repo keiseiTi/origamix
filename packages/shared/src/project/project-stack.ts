@@ -28,7 +28,7 @@ export const BUILTIN_PROJECT_STACK = {
   materialSet: { id: 'official-antd', version: MATERIAL_CONTRACT_VERSION },
 } as const satisfies ProjectStack;
 
-/** Describe a project without requiring compatibility, so its metadata can still be inspected. */
+/** Read the declared current-format stack; support validation is a separate rejection boundary. */
 export const resolveProjectStack = (descriptor: unknown): ProjectStack => {
   if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor))
     throw new Error('项目技术栈配置无效');

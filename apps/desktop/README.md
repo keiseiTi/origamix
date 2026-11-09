@@ -134,3 +134,5 @@ ORIGAMIX_DEBUG=1
 公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
 
 物料开发更新（包括 antd 组件实现、样式和 Manifest）会按顺序生成 Manifest、构建 Materials 与 Server、准备模板资源，再独立重启后端，通过现有状态通知更新 App 凭证，并重启 Vite、刷新 App。Electron 窗口保持不变；App 刷新会重置页面内存及组件临时状态。Shared、Runtime、Main、Preload 等混合变更仍整端重启。
+
+布局真实模型验收：`pnpm --filter @origamix/desktop evaluate:agent --layout --output /tmp/origamix-layout-quality`。使用已有加密模型设置，经真实 Main 凭据通道调用提供商，会产生模型费用；四个请求覆盖初次生成、连续调整、超范围拒绝和缺少内外间距信息的澄清。输出保留真实运行指标、Working 与显式保存/历史/应用证据，自动断言通过仍需人工查看生成结果。

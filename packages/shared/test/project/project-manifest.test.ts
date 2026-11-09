@@ -8,6 +8,8 @@ import {
 import { isProjectManifest, isProjectLayoutEnabled } from '../../src/project/project-manifest.ts';
 
 const manifest = () => ({
+  layout: { enabled: false, initialVariant: 'side' as const },
+  routing: { mode: 'browser' as const, basePath: '/' },
   projectId: 'project_one',
   name: '示例项目',
   framework: 'react',
@@ -20,18 +22,36 @@ describe('project manifest protocol', () => {
   it('accepts the supported project and page format', () => {
     expect(isProjectManifest(manifest())).toBe(true);
     expect(isProjectLayoutEnabled(manifest())).toBe(false);
-    expect(isProjectManifest({ ...manifest(), layout: { enabled: true } })).toBe(true);
-    expect(isProjectLayoutEnabled({ ...manifest(), layout: { enabled: true } })).toBe(true);
-    expect(isProjectManifest({ ...manifest(), layout: { enabled: 'true' } })).toBe(false);
     expect(
       isProjectManifest({
         ...manifest(),
-        layout: { enabled: true, initialVariant: 'side' },
+        layout: { initialVariant: 'side' as const, enabled: true },
+      }),
+    ).toBe(true);
+    expect(
+      isProjectLayoutEnabled({
+        ...manifest(),
+        layout: { initialVariant: 'side' as const, enabled: true },
+      }),
+    ).toBe(true);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        layout: { initialVariant: 'side' as const, enabled: 'true' },
+      }),
+    ).toBe(false);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        layout: { enabled: true, initialVariant: 'side' as const },
         routing: { mode: 'hash', basePath: '/admin/' },
       }),
     ).toBe(true);
     expect(
-      isProjectManifest({ ...manifest(), routing: { mode: 'browser', basePath: '//external/' } }),
+      isProjectManifest({
+        ...manifest(),
+        routing: { mode: 'browser' as const, basePath: '//external/' },
+      }),
     ).toBe(false);
     expect(isProjectManifest({ ...manifest(), layout: { enabled: true, name: 'custom' } })).toBe(
       false,

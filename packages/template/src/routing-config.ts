@@ -1,10 +1,10 @@
 export type RoutingConfig = { mode: 'browser' | 'hash'; basePath: string };
 /** Shared shape, local reader: standalone projects do not depend on the workbench. */
 export const readRoutingConfig = (manifest: {
-  routing?: { mode?: string; basePath?: string };
+  routing: { mode: string; basePath: string };
 }): RoutingConfig => {
-  const mode = manifest.routing?.mode ?? 'browser';
-  const basePath = manifest.routing?.basePath ?? '/';
+  const mode = manifest.routing.mode;
+  const basePath = manifest.routing.basePath;
   if (
     !['browser', 'hash'].includes(mode) ||
     !/^\/(?:[A-Za-z0-9_-]+\/)*(?![\s\S])/.test(basePath) ||

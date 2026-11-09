@@ -38,7 +38,7 @@ export const withProjectActivity = async <T>(
   }
 };
 
-/** Caller holds ProjectService's project queue. Nested upgrade Schema operations share ownership. */
+/** Caller holds ProjectService's project queue. Nested project operations share ownership. */
 export const withExclusiveProjectActivity = async <T>(
   path: string,
   action: () => Promise<T>,

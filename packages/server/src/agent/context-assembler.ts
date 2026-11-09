@@ -1,3 +1,4 @@
+import { LAYOUT_GENERATION_GUIDE } from './layout-guidance';
 import { AgentEngineError } from './agent-engine';
 import { loadProjectMaterials, loadLayoutMaterials } from '../projects/project-materials';
 import { flowNodeManifests, type OrigamixPageSchema, type AgentTarget } from '@origamix/shared';
@@ -270,7 +271,8 @@ export class ContextAssembler {
         .join('\n')
         .replaceAll('页面', '布局')
         .replaceAll('complete_page_run', 'complete_layout_run') +
-      '\n当前目标是项目唯一的布局配置，只编辑 Layout Schema，不编辑任何页面、路由、认证或项目开关。根物料必须是 Layout。通过 updateElementProps 修改根属性 variant（side/top/mix）、title、logo、contentWidth（Fluid/Fixed）、contentMaxWidth。Header 区域可改 headerHeight、headerBackground、fixedHeader；Sider 区域可改 siderWidth、fixSiderbar、collapsible；content 区域可改 contentMargin、contentPadding、breadcrumb；Footer 区域可改 footerText。Server 在同一原子提交中派生内部结构，切换模式保留区域属性与内容。不要 replaceElement 更换根，不新增、删除、移动 LayoutRegion，不修改 region、enabled、config、regionConfig 或布局占位属性，不删除或更换唯一 PageOutlet。header/sider/content/footer 区域内可添加 container、text、button，body/main 是内部容器。所有目标节点 ID 从当前 Schema 读取，勿猜测。flows、bindElements、globalVariables 必须为空，不提供逻辑流程工具。不支持 setLayout 操作。';
+      '\n' +
+      LAYOUT_GENERATION_GUIDE;
     const roleState =
       input.target?.kind === 'page'
         ? await this.readProjectRoles?.(input.target.projectId)

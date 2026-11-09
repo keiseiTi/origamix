@@ -7,7 +7,6 @@ import type {
 } from './schema-contracts';
 import { SchemaValidationError, validateWritableSchema } from './validation/schema-validation';
 import { workingResult } from './working-schema-result';
-import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
 import { assertPageNotDeleting } from '../projects/page-deletion-store';
 import { withProjectActivity } from '../projects/project-activity';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
@@ -91,7 +90,6 @@ export const initializePageSchema = async (
   return withSchemaPageQueue(page, async () => {
     await commits.recover(page);
     await validateWritableSchema(page, schema);
-    await assertProjectNotUpgrading(page.projectPath);
     return (
       await commits.commit(
         page,
@@ -110,7 +108,6 @@ const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile
     const original = await readTargetSchema(page);
     const candidate = requireCompatibleSchema(original);
     await validateWritableSchema(page, candidate);
-    await assertProjectNotUpgrading(page.projectPath);
     await commits.commit(
       page,
       createRevisionSnapshot(original, { kind: 'user', actorId: 'system' }, null),
@@ -201,7 +198,6 @@ export const reloadWorkingSchemaFromTarget = async (
     const candidate = requireCompatibleSchema(schema);
     await validateWritableSchema(page, candidate);
     const current = await getSchemaUnlocked(page);
-    await assertProjectNotUpgrading(page.projectPath);
     const updated = await commits.commit(
       page,
       createRevisionSnapshot(
@@ -241,7 +237,6 @@ const writeWorkingDraft = async (
   schema: OrigamixPageSchema,
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
-  await assertProjectNotUpgrading(page.projectPath);
   const durableSchema = structuredClone(schema);
   const workingHash = hashSchema(durableSchema);
   const updated: WorkingSchemaFile =
@@ -370,7 +365,6 @@ export const saveWorkingRevision = async (
       throw conflict('页面草稿已更新，请重新保存');
     if (current.workingHash === current.savedSchemaHash) return workingResult(current);
     await options.beforeWrite?.();
-    await assertProjectNotUpgrading(page.projectPath);
     await commits.commit(
       page,
       createRevisionSnapshot(current.schema, { kind: 'user' }, current.lastSavedRevisionId),

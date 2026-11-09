@@ -2,7 +2,6 @@ import { LayoutService } from '../layout/layout-service';
 import type { LayoutApplyReceipt } from '../layout/layout-apply-contracts';
 import { hashJson } from '../infrastructure/json-hash';
 import { withProjectActivity } from '../projects/project-activity';
-import { assertProjectNotUpgrading } from '../projects/project-upgrade-store';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
 import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { hashSchema } from './schema-hash';
@@ -294,7 +293,6 @@ export class ProjectApplyService {
             };
           }
           await new ProjectManifestStore().requireEditable(page.projectPath);
-          await assertProjectNotUpgrading(page.projectPath);
           const targetSchema = await this.readTarget(page);
           const targetHash = hashSchema(targetSchema);
           if (targetHash !== working.baselineHash && targetHash !== working.schemaHash)

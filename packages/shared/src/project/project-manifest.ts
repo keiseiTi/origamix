@@ -12,7 +12,7 @@ export const ProjectPageManifestSchema = Type.Object({
 });
 
 export const ProjectLayoutConfigSchema = Type.Object(
-  { enabled: Type.Boolean(), initialVariant: Type.Optional(InitialLayoutVariantSchema) },
+  { enabled: Type.Boolean(), initialVariant: InitialLayoutVariantSchema },
   { additionalProperties: false },
 );
 
@@ -23,8 +23,8 @@ export const ProjectManifestSchema = Type.Object({
   materialSet: VersionedStackReferenceSchema,
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
-  layout: Type.Optional(ProjectLayoutConfigSchema),
-  routing: Type.Optional(ProjectRoutingSchema),
+  layout: ProjectLayoutConfigSchema,
+  routing: ProjectRoutingSchema,
   pageRoles: Type.Optional(ProjectPageRolesSchema),
 });
 
@@ -36,6 +36,5 @@ export const isProjectManifest = (value: unknown): value is ProjectManifest =>
   Value.Check(ProjectManifestSchema, value) &&
   (!value.pageRoles || arePageRolesValid(value.pageRoles, value.pages));
 
-/** Older manifests without layout configuration stay disabled without an on-read rewrite. */
 export const isProjectLayoutEnabled = (manifest: ProjectManifest): boolean =>
-  manifest.layout?.enabled === true;
+  manifest.layout.enabled;

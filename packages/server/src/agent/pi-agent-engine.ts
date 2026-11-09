@@ -79,7 +79,7 @@ const adaptTool = (
         if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') onFatal(error);
         throw error;
       }
-      if (tool.name === 'complete_page_run') onTerminalDecision();
+      if (['complete_page_run', 'complete_layout_run'].includes(tool.name)) onTerminalDecision();
       return {
         content: [{ type: 'text', text: JSON.stringify(result) }],
         details: result,

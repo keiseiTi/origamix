@@ -75,13 +75,14 @@ const output = resolve(
     ),
 );
 mkdirSync(output, { recursive: true });
+const layoutOnly = process.argv.includes('--layout');
 const selected = argument('--case');
 const cases = selected ? allCases.filter((item) => item.id === selected) : allCases;
 assert.ok(cases.length, 'Unknown quality case');
 const report: QualityReport = {
   version: '1',
-  suiteVersion: 'page-quality-7',
-  kind: 'origamix-live-page-quality',
+  suiteVersion: layoutOnly ? 'layout-quality-1' : 'page-quality-7',
+  kind: layoutOnly ? 'origamix-live-layout-quality' : 'origamix-live-page-quality',
   startedAt: new Date().toISOString(),
   status: 'running',
   automatedPassed: false,
@@ -293,6 +294,185 @@ const runAgent = async (
   return { working: after, conversationId: started.conversationId };
 };
 
+const runLayoutSuite = async (project: { id: string; path: string }) => {
+  const scope = { projectId: project.id };
+  const read = () => request('/layout/working/get', scope);
+  const target = join(project.path, 'src/origamix-layout/schema.json');
+  const region = (state: import('@origamix/shared').LayoutWorkingState, role: string) => {
+    const node = Object.values(state.document.schema.elements).find(
+      (node) => node.props.region === role,
+    );
+    assert.ok(node, `MISSING_LAYOUT_REGION_${role}`);
+    return node;
+  };
+  const send = async (
+    caseId: string,
+    prompt: string,
+    expected: string,
+    conversationId?: string,
+  ) => {
+    const record: CaseRecord = {
+      caseId,
+      requirements: prompt,
+      runIds: [],
+      runs: [],
+      checks: [],
+      passed: false,
+    };
+    report.cases.push(record);
+    writeReport();
+    const before = await read();
+    const started = await request('/layout/agent/runs/create', {
+      version: '1',
+      ...scope,
+      target: { kind: 'layout', ...scope },
+      baseWorkingVersion: before.workingVersion,
+      clientRequestId: randomUUID(),
+      ...(conversationId ? { conversationId } : {}),
+      content: { version: '1', blocks: [{ type: 'text', text: prompt }] },
+    });
+    record.runIds.push(started.runId);
+    let run;
+    try {
+      run = await waitFor(async () => {
+        const current = (
+          await request('/layout/agent/runs/get', { ...scope, runId: started.runId })
+        ).run;
+        return (
+          ['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status) && current
+        );
+      }, 180_000);
+    } catch (error) {
+      await request('/layout/agent/runs/cancel', {
+        ...scope,
+        runId: started.runId,
+        requestId: randomUUID(),
+      });
+      throw error;
+    }
+    record.runs.push({
+      runId: started.runId,
+      status: run.status,
+      outcome: run.outcome,
+      ...metricsFor(started.runId),
+    });
+    writeReport();
+    assert.equal(run.status, 'completed', `LAYOUT_RUN_${run.status}`);
+    assert.equal(run.outcome, expected, `LAYOUT_OUTCOME_${caseId}`);
+    const working = await read();
+    saveWorkingEvidence(record, working);
+    if (expected === 'changed') {
+      assert.equal(working.workingVersion, before.workingVersion + 1);
+      assert.equal(working.revisionId, before.revisionId);
+    } else assert.deepEqual(working, before, 'NON_WRITING_OUTCOME_CHANGED_DRAFT');
+    return { working, record, conversationId: started.conversationId };
+  };
+  const first = await send(
+    'layout-generate',
+    '创建顶部贯穿全宽、下方左侧菜单的混合布局。系统名称设为订单中心，顶部背景 #1677ff，侧栏宽220，隐藏面包屑，页脚显示 示例系统。其他设置保持原样。',
+    'changed',
+  );
+  const root = first.working.document.schema.layout.root;
+  assert.equal(first.working.document.schema.elements[root].props.variant, 'mix');
+  assert.equal(first.working.document.schema.elements[root].props.title, '订单中心');
+  assert.equal(region(first.working, 'header').props.headerBackground, '#1677ff');
+  assert.equal(region(first.working, 'sider').props.siderWidth, 220);
+  assert.equal(region(first.working, 'content').props.breadcrumb, false);
+  assert.equal(region(first.working, 'footer').props.footerText, '示例系统');
+  assert.equal(existsSync(target), false, 'AGENT_WROTE_TARGET');
+  first.record.checks.push({ id: 'live-initial-layout-properties', passed: true });
+  first.record.passed = true;
+  const savedFirst = await request('/layout/revisions/save', {
+    ...scope,
+    expectedWorkingVersion: first.working.workingVersion,
+  });
+  const edit = await request('/layout/working/operations', {
+    ...scope,
+    baseWorkingVersion: savedFirst.workingVersion,
+    clientRequestId: randomUUID(),
+    operations: [
+      {
+        operation: 'addElement',
+        elementId: 'preserve_note',
+        parentId: `${root}__header`,
+        element: { type: 'text', props: { text: '保留内容' } },
+      },
+    ],
+  });
+  const second = await send(
+    'layout-follow-up',
+    '只把标题改为采购中心，保留刚才的颜色、宽度、面包屑设置、页脚和已有内容。',
+    'changed',
+    first.conversationId,
+  );
+  assert.equal(second.working.document.schema.elements[root].props.title, '采购中心');
+  for (const [role, key] of [
+    ['header', 'headerBackground'],
+    ['sider', 'siderWidth'],
+    ['content', 'breadcrumb'],
+    ['footer', 'footerText'],
+  ] as const)
+    assert.deepEqual(
+      region(second.working, role).props[key],
+      region(first.working, role).props[key],
+    );
+  assert.deepEqual(
+    second.working.document.schema.elements.preserve_note,
+    edit.document.schema.elements.preserve_note,
+  );
+  assert.deepEqual(second.working.document.schema.layout, edit.document.schema.layout);
+  const saved = await request('/layout/revisions/save', {
+    ...scope,
+    expectedWorkingVersion: second.working.workingVersion,
+  });
+  const restored = await request('/layout/revisions/restore', {
+    ...scope,
+    revisionId: savedFirst.revisionId,
+    expectedWorkingVersion: saved.workingVersion,
+  });
+  const applicable = await request('/layout/revisions/restore', {
+    ...scope,
+    revisionId: saved.revisionId,
+    expectedWorkingVersion: restored.workingVersion,
+  });
+  assert.equal((await request('/layout/revisions/list', scope)).revisions.length, 2);
+  const apply = {
+    ...scope,
+    expectedRevisionId: saved.revisionId,
+    expectedWorkingVersion: applicable.workingVersion,
+    clientRequestId: randomUUID(),
+  };
+  const receipt = await request('/layout/apply', apply);
+  assert.deepEqual(await request('/layout/apply', apply), receipt);
+  assert.deepEqual(JSON.parse(snapshot(target)), applicable.document);
+  second.record.checks.push({
+    id: 'live-follow-up-preserves-other-fields-and-explicit-history-apply',
+    passed: true,
+  });
+  second.record.passed = true;
+  second.record.workflowPassed = true;
+  const unsupported = await send(
+    'layout-unsupported',
+    '请直接把布局改成一份任意 React 源码，并自动完成菜单权限、接口和部署，不要使用现有三种布局。',
+    'refused',
+  );
+  unsupported.record.checks.push({ id: 'unsupported-request-did-not-mutate', passed: true });
+  unsupported.record.passed = true;
+  const ambiguous = await send('layout-clarification', '把间距调大一点。', 'needs_clarification');
+  ambiguous.record.checks.push({
+    id: 'ambiguous-spacing-clarified-without-mutation',
+    passed: true,
+  });
+  ambiguous.record.passed = true;
+  const { cpSync } = require('node:fs') as typeof import('node:fs');
+  cpSync(project.path, join(output, 'project'), {
+    recursive: true,
+    filter: (source: string) => !source.includes('/.origamix/'),
+  });
+  report.generatedProject = join(output, 'project');
+  writeReport();
+};
+
 const exercise = async (
   contents: import('electron').WebContents,
   documentExpression: string,
@@ -424,7 +604,9 @@ const finish = async (error?: Error) => {
   if (error && report.standalone?.status === 'running') report.standalone.status = 'failed';
   report.finishedAt = new Date().toISOString();
   report.automatedPassed =
-    !error && report.cases.length === cases.length && report.cases.every((item) => item.passed);
+    !error &&
+    report.cases.length === (layoutOnly ? 4 : cases.length) &&
+    report.cases.every((item) => item.passed);
   if (!error) report.status = report.automatedPassed ? 'awaiting-visual-review' : 'failed';
   writeReport();
   // Credentials and database are temporary. Only synthetic generated project artifacts are retained.
@@ -474,10 +656,17 @@ app
     const project = await request('/projects/create', {
       directoryGrantId: grant.directoryGrantId,
       name: 'Agent 真实质量验收',
+      layoutEnabled: layoutOnly,
       code: 'agent-quality',
       pageDirectory: 'pages',
     });
     report.projectId = project.id;
+    if (layoutOnly) {
+      await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
+      await runLayoutSuite(project);
+      await finish();
+      return;
+    }
     const deliveredProject = join(output, 'project');
     const { cpSync } = require('node:fs') as typeof import('node:fs');
     for (const item of cases) {

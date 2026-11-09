@@ -26,6 +26,15 @@ export interface ProductDocsSearchInput {
 
 export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
   {
+    id: 'builder-layout',
+    sectionId: 'layout-conversation',
+    version: '1.0.0',
+    title: '通过对话配置应用布局',
+    keywords: ['布局', '顶部', '侧栏', '标题', '颜色', '面包屑', '路由', 'Logo'],
+    markdown:
+      '# 应用布局\n开启布局后选择左侧、顶部或混合菜单，默认左侧。布局配置直接进入 AI 对话。可以说“系统名称改为订单中心”“顶部背景改为蓝色”“侧栏宽220，隐藏面包屑”“改为顶部菜单，保留其他内容”。先预览草稿，再明确保存版本和应用。\n\n页面外间距是内容面板到外围布局的留白，内边距是面板内到页面内容的留白，单位均为 px。路由模式和应用访问前缀在项目菜单运行设置中配置；布局 Agent 只修改布局 Schema。当前不提供自由菜单编辑、权限配置或任意代码布局，不能把 mock 菜单当作业务菜单已配置。',
+  },
+  {
     id: 'builder-page-basics',
     sectionId: 'describe-page',
     version: '1.0.0',

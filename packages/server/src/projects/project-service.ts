@@ -18,7 +18,6 @@ import {
 } from './page-directory';
 import { readPageDeletion, writePageDeletion } from './page-deletion-store';
 import { createInitialPageSchema } from './initial-page-schema';
-import { assertProjectNotUpgrading } from './project-upgrade-store';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { access, mkdir, rename, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -209,7 +208,7 @@ export class ProjectService {
         const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
         return {
-          routing: manifest.routing ?? { ...DEFAULT_PROJECT_ROUTING },
+          routing: manifest.routing,
           manifestHash: manifestHash(source),
         };
       });
@@ -225,8 +224,8 @@ export class ProjectService {
         const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== input.projectId) throw invalid('项目清单归属无效');
         const same =
-          (manifest.routing?.mode ?? 'browser') === input.routing.mode &&
-          (manifest.routing?.basePath ?? '/') === input.routing.basePath;
+          manifest.routing.mode === input.routing.mode &&
+          manifest.routing.basePath === input.routing.basePath;
         // Retrying an already completed deterministic update is safe; never overwrite newer settings.
         if (manifestHash(source) !== input.expectedManifestHash && !same)
           throw conflict('项目配置已变化，请重新打开运行设置');
@@ -234,7 +233,7 @@ export class ProjectService {
           await this.manifest.writeManifest(project.path, { ...manifest, routing: input.routing });
         const next = await this.manifest.readSource(project.path);
         return {
-          routing: this.manifest.parseManifest(next).routing ?? { ...DEFAULT_PROJECT_ROUTING },
+          routing: this.manifest.parseManifest(next).routing,
           manifestHash: manifestHash(next),
         };
       });
@@ -262,7 +261,7 @@ export class ProjectService {
         if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
         if (!enabled && this.projects.hasActiveRuns(projectId, null))
           throw conflict('布局 Agent 正在运行，请先取消或等待完成');
-        if (manifest.layout?.enabled !== enabled)
+        if (manifest.layout.enabled !== enabled)
           await this.manifest.writeManifest(project.path, {
             ...manifest,
             layout: { ...manifest.layout, enabled },
@@ -418,7 +417,6 @@ export class ProjectService {
       const page = this.projects.getPage(projectId, pageId);
       if (!project) throw notFound('页面不存在');
       return withExclusiveProjectActivity(project.path, async () => {
-        await assertProjectNotUpgrading(project.path);
         const manifest = await this.manifest.readManifest(project.path);
         if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
         let deletion = await readPageDeletion(project.path, pageId);
@@ -484,7 +482,6 @@ export class ProjectService {
       const project = this.projects.getProject(projectId);
       if (!project) throw notFound('项目不存在');
       return withExclusiveProjectActivity(project.path, async () => {
-        await assertProjectNotUpgrading(project.path);
         if (this.projects.hasActiveRuns(projectId))
           throw conflict('项目中有 Agent 正在运行，请先停止后再删除');
         if (!this.projects.deleteProjectRecord(projectId)) throw notFound('项目不存在');
