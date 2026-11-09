@@ -161,32 +161,34 @@ export const PageToolbarShell = ({
               {error}
             </span>
           )}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  size='icon-sm'
-                  aria-label={navigation === 'chat' ? '返回对话' : '编辑'}
-                  variant='ghost'
-                  className='text-zinc-500 dark:text-zinc-400'
-                  disabled={opening}
-                  onClick={() => {
-                    setError(null);
-                    void onModeChange(navigation).catch((reason: unknown) =>
-                      setError(
-                        reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
-                      ),
-                    );
-                  }}
-                />
-              }
-            >
-              {navigation === 'chat' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
-            </TooltipTrigger>
-            <TooltipContent side='bottom'>
-              {navigation === 'chat' ? '返回对话' : '编辑'}
-            </TooltipContent>
-          </Tooltip>
+          {(targetKind !== 'layout' || navigation === 'chat') && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size='icon-sm'
+                    aria-label={navigation === 'chat' ? '返回对话' : '编辑'}
+                    variant='ghost'
+                    className='text-zinc-500 dark:text-zinc-400'
+                    disabled={opening}
+                    onClick={() => {
+                      setError(null);
+                      void onModeChange(navigation).catch((reason: unknown) =>
+                        setError(
+                          reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
+                        ),
+                      );
+                    }}
+                  />
+                }
+              >
+                {navigation === 'chat' ? <MessageSquare size={15} /> : <SquarePen size={15} />}
+              </TooltipTrigger>
+              <TooltipContent side='bottom'>
+                {navigation === 'chat' ? '返回对话' : '编辑'}
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger
               render={

@@ -95,7 +95,12 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           projectId: tab.projectId,
           name: tab.name,
           fileName: tab.fileName,
-          mode: isMode(tab.mode) && tab.mode !== 'preview' ? tab.mode : 'chat',
+          mode:
+            tab.kind === 'layout'
+              ? 'chat'
+              : isMode(tab.mode) && tab.mode !== 'preview'
+                ? tab.mode
+                : 'chat',
           status: null,
           ...(tab.kind === 'layout' ? { kind: 'layout' as const, name: LAYOUT_NAME } : {}),
         });
@@ -204,7 +209,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             {
               ...location.page,
               projectId: location.project.id,
-              mode: location.page.kind === 'layout' ? ('edit' as const) : ('chat' as const),
+              mode: 'chat' as const,
               status: null,
             },
           ];
@@ -243,7 +248,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     }),
   setPageMode: (pageId, mode) =>
     set((state) => ({
-      openPages: state.openPages.map((tab) => (tab.id === pageId ? { ...tab, mode } : tab)),
+      openPages: state.openPages.map((tab) =>
+        tab.id === pageId
+          ? { ...tab, mode: tab.kind === 'layout' && mode === 'edit' ? 'chat' : mode }
+          : tab,
+      ),
     })),
   setPageStatus: (pageId, status) =>
     set((state) => {

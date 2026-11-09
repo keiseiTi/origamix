@@ -23,6 +23,16 @@ describe('project manifest protocol', () => {
     expect(isProjectManifest({ ...manifest(), layout: { enabled: true } })).toBe(true);
     expect(isProjectLayoutEnabled({ ...manifest(), layout: { enabled: true } })).toBe(true);
     expect(isProjectManifest({ ...manifest(), layout: { enabled: 'true' } })).toBe(false);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        layout: { enabled: true, initialVariant: 'side' },
+        routing: { mode: 'hash', basePath: '/admin/' },
+      }),
+    ).toBe(true);
+    expect(
+      isProjectManifest({ ...manifest(), routing: { mode: 'browser', basePath: '//external/' } }),
+    ).toBe(false);
     expect(isProjectManifest({ ...manifest(), layout: { enabled: true, name: 'custom' } })).toBe(
       false,
     );

@@ -109,6 +109,11 @@ it('isolates layout nodes from page execution and rejects unsupported layout log
       navigation={{
         currentPageId: 'page_home',
         pageIds: ['page_home', 'page_other'],
+        pages: [
+          { pageId: 'page_home', name: '首页', path: '/', href: '/admin/' },
+          { pageId: 'page_other', name: '其他', path: '/other', href: '#/other' },
+          { pageId: 'page_home', name: '非法链接', path: '/', href: '//external/' },
+        ],
         navigateToPage: (id) => {
           visited.push(id);
         },
@@ -120,6 +125,7 @@ it('isolates layout nodes from page execution and rejects unsupported layout log
   expect(seen[0]?.om_mode).toBe('render');
   expect(seen[0]?.om_setRuntimeState).toBeUndefined();
   expect(typeof seen[1]?.om_setRuntimeState).toBe('function');
+  expect(navigation[0]?.pages.map((page) => page.href)).toEqual(['/admin/', '#/other']);
   expect(navigation[0]?.navigateToPage('page_other')).toBe(true);
   expect(navigation[0]?.navigateToPage('page_foreign')).toBe(false);
   expect(visited).toEqual(['page_other']);

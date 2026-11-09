@@ -15,6 +15,7 @@ const schemaMocks = vi.hoisted(() => ({
 
 vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
 const layoutMocks = vi.hoisted(() => ({
+  saveRevision: vi.fn(),
   workingState: vi.fn(),
   applyState: vi.fn(),
   apply: vi.fn(),
@@ -194,5 +195,37 @@ describe('usePageApplicationState', () => {
       'durable-layout-request',
     );
     expect(schemaMocks.apply).not.toHaveBeenCalled();
+  });
+  // Layout conversations must save/apply without mounting an editor or its flush handle.
+  it('saves the current layout Working and applies its saved version without an editor', async () => {
+    const initial = { document: { schema: {} }, workingVersion: 3, revisionId: null };
+    const saved = { ...initial, revisionId: 'revision_layout' };
+    layoutMocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
+    layoutMocks.workingState.mockResolvedValue(initial);
+    layoutMocks.saveRevision.mockResolvedValue(saved);
+    layoutMocks.apply.mockResolvedValue({ status: 'applied' });
+    const hook = renderHook(() =>
+      usePageApplicationState({
+        projectId: 'project_1',
+        pageId: 'layout:project_1',
+        kind: 'layout',
+        schemaRefreshKey: '',
+        editorRef: { current: null },
+        onSchemaCommitted: vi.fn(),
+      }),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    await act(async () => hook.result.current.saveVersion());
+    expect(layoutMocks.saveRevision).toHaveBeenCalledWith('project_1', 3);
+    layoutMocks.workingState.mockResolvedValue(saved);
+    layoutMocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    await act(async () => hook.result.current.applyPage());
+    expect(layoutMocks.apply).toHaveBeenCalledWith(
+      'project_1',
+      'revision_layout',
+      3,
+      expect.any(String),
+    );
+    expect(schemaMocks.saveRevision).not.toHaveBeenCalled();
   });
 });

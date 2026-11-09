@@ -46,6 +46,8 @@ try {
   };
   const created = await request('/projects/create', {
     name: 'Template smoke',
+    layoutEnabled: true,
+    routing: { mode: 'hash', basePath: '/console/' },
     code: 'project',
     pageDirectory: 'pages',
     directoryGrantId: 'template-test-grant',
@@ -268,6 +270,25 @@ try {
     });
     if (child.error || child.status !== 0) throw child.error ?? new Error(`pnpm ${args[0]} failed`);
   }
+  assert.ok(
+    (await readFile(join(project, 'dist/index.html'), 'utf8')).includes('/console/assets/'),
+  );
+  // The same standalone project must build under both history modes; config and resources share a prefix.
+  const routeManifestPath = join(project, 'origamix.project.json');
+  const routeManifest = JSON.parse(await readFile(routeManifestPath, 'utf8'));
+  assert.deepEqual(routeManifest.routing, { mode: 'hash', basePath: '/console/' });
+  routeManifest.routing.mode = 'browser';
+  await writeFile(routeManifestPath, JSON.stringify(routeManifest, null, 2));
+  const browserBuild = spawnSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['build'], {
+    cwd: project,
+    stdio: 'inherit',
+    timeout: 120000,
+  });
+  if (browserBuild.error || browserBuild.status !== 0)
+    throw browserBuild.error ?? new Error('Browser routing build failed');
+  assert.ok(
+    (await readFile(join(project, 'dist/index.html'), 'utf8')).includes('/console/assets/'),
+  );
   const installed = JSON.parse(
     await readFile(join(project, 'node_modules/@origamix/materials/package.json'), 'utf8'),
   );
@@ -295,7 +316,7 @@ try {
     );
   }
   console.info(
-    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, project layout Apply/retry after restart, independent two-page application installation, typecheck and build.',
+    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, project layout Apply/retry after restart, independent two-page application installation, typecheck and Browser/Hash builds with a deployment prefix.',
   );
 } finally {
   await backend?.close();

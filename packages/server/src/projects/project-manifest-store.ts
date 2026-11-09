@@ -34,6 +34,7 @@ export class ProjectManifestStore {
     input: Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'> & {
       code: string;
       layout?: ProjectManifest['layout'];
+      routing?: ProjectManifest['routing'];
     },
   ): Promise<void> {
     await this.writeManifest(projectPath, {

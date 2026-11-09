@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { RoutingDialog } from '@/components/project-settings/routing-dialog';
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
 import { usePageRoles } from '@/components/page-role/use-page-roles';
 import { SYSTEM_PAGE_ROLES } from '@origamix/shared';
@@ -24,6 +26,7 @@ const ProjectNavigationRow = ({
   project: ProjectItem;
   activePageId: string | null;
 }): React.JSX.Element => {
+  const [routingOpen, setRoutingOpen] = useState(false);
   const layout = useLayoutConfig(project.id, true);
   const roles = usePageRoles(project.id);
   return (
@@ -32,6 +35,7 @@ const ProjectNavigationRow = ({
         <Folder size={14} />
         <span className='min-w-0 flex-1 truncate'>{project.name}</span>
         <SidebarActionMenu
+          onRouting={() => setRoutingOpen(true)}
           label={`${project.name} 项目操作`}
           layout={{
             enabled: layout.config?.enabled ?? false,
@@ -55,6 +59,13 @@ const ProjectNavigationRow = ({
           <Plus size={14} />
         </Button>
       </div>
+      {routingOpen && (
+        <RoutingDialog
+          key={project.id}
+          projectId={project.id}
+          onClose={() => setRoutingOpen(false)}
+        />
+      )}
       {layout.error && (
         <div role='alert' className='px-3 py-1 text-xs text-destructive'>
           {layout.error}

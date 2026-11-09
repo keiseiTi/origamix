@@ -164,7 +164,7 @@ const PageSessionContent = ({
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
           session={agent}
-          onViewChanges={() => onModeChange('edit')}
+          onViewChanges={() => (kind === 'layout' ? onPreview() : onModeChange('edit'))}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
         />
@@ -185,7 +185,7 @@ const PageSessionContent = ({
                 : (layout.error ?? '正在读取项目布局设置…')}
             </p>
           </div>
-        ) : (
+        ) : kind === 'page' ? (
           <PageEditor
             targetKind={kind}
             visible={active && mode === 'edit'}
@@ -196,15 +196,11 @@ const PageSessionContent = ({
             pageId={page.id}
             onReturnToChat={() => onModeChange('chat')}
             onWorkingCommitted={onWorkingCommitted}
-            readOnly={!capabilities.canEdit || (kind === 'layout' && layout.busy)}
+            readOnly={!capabilities.canEdit}
             readOnlyMessage={
-              kind === 'layout'
-                ? layout.busy
-                  ? '正在更新项目布局设置'
-                  : '正在确认布局状态；未确认的应用需通过原请求恢复'
-                : capabilities.agentChecking
-                  ? '正在确认页面运行状态，请稍候'
-                  : 'AI 正在修改，编辑暂时锁定'
+              capabilities.agentChecking
+                ? '正在确认页面运行状态，请稍候'
+                : 'AI 正在修改，编辑暂时锁定'
             }
             targetSelection={{
               candidates: agent.clarificationExpired
@@ -216,7 +212,7 @@ const PageSessionContent = ({
                 void agent.selectClarification(elementId).catch(() => undefined),
             }}
           />
-        )}
+        ) : null}
       </div>
       <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <PagePreviewFrame

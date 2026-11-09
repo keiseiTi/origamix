@@ -1,3 +1,11 @@
+import { LayoutService } from '../layout/layout-service';
+import {
+  ProjectRoutingSchema,
+  DEFAULT_PROJECT_ROUTING,
+  type ProjectRouting,
+  type InitialLayoutVariant,
+  type ProjectRoutingUpdate,
+} from '@origamix/shared';
 import { Check } from '@sinclair/typebox/value';
 import { PageRoleIdSchema, type PageRoleId } from '@origamix/shared';
 import { PageRoleStore, manifestHash } from './page-role-store';
@@ -65,11 +73,17 @@ export class ProjectService {
 
   async createProject(input: {
     layoutEnabled?: boolean;
+    layoutVariant?: InitialLayoutVariant;
+    routing?: ProjectRouting;
     name: string;
     code: string;
     pageDirectory?: string;
     directoryGrantId: string;
   }): Promise<ProjectRecord> {
+    if (input.routing !== undefined && !Check(ProjectRoutingSchema, input.routing))
+      throw invalid('路由配置无效');
+    if (input.layoutVariant !== undefined && !['side', 'top', 'mix'].includes(input.layoutVariant))
+      throw invalid('初始布局无效');
     const name = input.name.trim();
     if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
     const code = input.code.trim();
@@ -91,11 +105,17 @@ export class ProjectService {
       await this.source.prepareNewProject(temporaryPath, { name, code });
       await this.manifest.initializeManifest(temporaryPath, {
         projectId: id,
-        layout: { enabled: input.layoutEnabled ?? false },
+        layout: {
+          enabled: input.layoutEnabled ?? false,
+          initialVariant: input.layoutVariant ?? 'side',
+        },
+        routing: input.routing ?? { ...DEFAULT_PROJECT_ROUTING },
         name,
         code,
         pageDirectory,
       });
+      if (input.layoutEnabled)
+        await new LayoutService(this.projects).initializeProjectLayout(temporaryPath, id);
       await rename(temporaryPath, path);
     } catch (error) {
       await rm(temporaryPath, { recursive: true, force: true });
@@ -180,6 +200,46 @@ export class ProjectService {
       });
     });
 
+  getRouting = (projectId: string) =>
+    withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withProjectActivity(project.path, async () => {
+        const source = await this.manifest.readSource(project.path);
+        const manifest = this.manifest.parseManifest(source);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        return {
+          routing: manifest.routing ?? { ...DEFAULT_PROJECT_ROUTING },
+          manifestHash: manifestHash(source),
+        };
+      });
+    });
+
+  updateRouting = (input: ProjectRoutingUpdate) =>
+    withProjectQueue(input.projectId, async () => {
+      if (!Check(ProjectRoutingSchema, input.routing)) throw invalid('路由配置无效');
+      const project = this.projects.getProject(input.projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withExclusiveProjectActivity(project.path, async () => {
+        const source = await this.manifest.readSource(project.path);
+        const manifest = this.manifest.parseManifest(source);
+        if (manifest.projectId !== input.projectId) throw invalid('项目清单归属无效');
+        const same =
+          (manifest.routing?.mode ?? 'browser') === input.routing.mode &&
+          (manifest.routing?.basePath ?? '/') === input.routing.basePath;
+        // Retrying an already completed deterministic update is safe; never overwrite newer settings.
+        if (manifestHash(source) !== input.expectedManifestHash && !same)
+          throw conflict('项目配置已变化，请重新打开运行设置');
+        if (!same)
+          await this.manifest.writeManifest(project.path, { ...manifest, routing: input.routing });
+        const next = await this.manifest.readSource(project.path);
+        return {
+          routing: this.manifest.parseManifest(next).routing ?? { ...DEFAULT_PROJECT_ROUTING },
+          manifestHash: manifestHash(next),
+        };
+      });
+    });
+
   getLayoutConfig = (projectId: string): Promise<LayoutConfigState> =>
     withProjectQueue(projectId, async () => {
       const project = this.projects.getProject(projectId);
@@ -203,7 +263,10 @@ export class ProjectService {
         if (!enabled && this.projects.hasActiveRuns(projectId, null))
           throw conflict('布局 Agent 正在运行，请先取消或等待完成');
         if (manifest.layout?.enabled !== enabled)
-          await this.manifest.writeManifest(project.path, { ...manifest, layout: { enabled } });
+          await this.manifest.writeManifest(project.path, {
+            ...manifest,
+            layout: { ...manifest.layout, enabled },
+          });
         return { name: LAYOUT_NAME, enabled };
       });
     });

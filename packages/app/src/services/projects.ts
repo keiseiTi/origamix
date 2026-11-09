@@ -1,5 +1,9 @@
 import {
   type PageRoleState,
+  type ProjectRoutingState,
+  type ProjectRoutingUpdate,
+  type ProjectRouting,
+  type InitialLayoutVariant,
   type PageRoleId,
   type UpdatePageRoles,
   type OpenProjectResult,
@@ -14,6 +18,10 @@ import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
 export const projectsService = {
+  routing: (projectId: string): Promise<ProjectRoutingState> =>
+    request('/projects/routing/get', { projectId }),
+  updateRouting: (input: ProjectRoutingUpdate): Promise<ProjectRoutingState> =>
+    request('/projects/routing/update', input),
   pageRoles: (projectId: string): Promise<PageRoleState> =>
     request('/projects/page-roles/get', { projectId }),
   updatePageRoles: async (input: UpdatePageRoles): Promise<PageRoleState> => {
@@ -28,6 +36,8 @@ export const projectsService = {
   list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),
   create: (input: {
     layoutEnabled: boolean;
+    layoutVariant?: InitialLayoutVariant;
+    routing?: ProjectRouting;
     name: string;
     code: string;
     pageDirectory: string;

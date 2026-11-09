@@ -38,7 +38,9 @@ pnpm build
 ```text
 origamix.project.json        项目清单、pageDirectory 和页面注册
 src/main.tsx                React 入口
-src/router.ts               清单驱动的浏览器路由
+src/router.ts               清单驱动的 Browser／Hash 路由
+src/routing-config.ts       运行与构建共用的路由配置读取
+src/project-pages.ts        路由与菜单共用的页面路径
 src/application.tsx         项目应用外壳、公共布局与导航
 src/application-error.tsx   应用加载/渲染错误反馈
 src/origamix-layout/schema.json 显式应用后的项目布局投影
@@ -70,6 +72,10 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 - npm 提示找不到指定版本：确认该版本已发布到所用 registry，并检查 registry 和网络配置；不要改成工作区路径。
 - 部署后刷新子路由返回 404：为静态服务器配置 SPA 回退到 `index.html`。例如 Nginx 根路径部署可使用 `try_files $uri $uri/ /index.html;`。
 
-当前路由使用浏览器历史模式，子路径部署需要同时考虑 Vite 资源基路径和路由 basename，不能只修改资源地址。`.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
+项目清单可配置 `routing: { "mode": "browser", "basePath": "/" }`。`mode` 支持 `browser`、`hash`，`basePath` 是以 `/` 开头并结尾的应用访问前缀，例如 `/admin/`；缺省保持 Browser 与根路径，不在启动时改写文件。Vite 资源基路径与运行路由读取同一份配置。Browser 下角色页形如 `/admin/role-manage`，服务器须回退到 `/admin/index.html`；Hash 下形如 `/admin/#/role-manage`，只需托管 `/admin/` 应用目录。修改配置后重启开发服务器或重新构建部署。路由模式与前缀不依赖是否开启布局。
+
+已有项目不会自动覆盖路由或业务源码。更新到这一版模板时，先提交或备份项目，然后对照新版模板合并 `src/router.ts`、`src/application.tsx`、`src/routing-config.ts`、`src/project-pages.ts` 和 `vite.config.ts`（以及 Node tsconfig 的 JSON 模块设置）；保留自定义路由和业务代码，再在清单中显式设置 routing 并执行 typecheck/build。普通 Schema Apply 不执行这类源码升级。
+
+`.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目。发布前本地归档验证不等同于 npm registry 已可安装。

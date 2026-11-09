@@ -33,7 +33,7 @@ const Navigation = ({ horizontal, config }: { horizontal: boolean; config: Confi
     icon: <FileText size={16} aria-hidden='true' />,
     label: (
       <a
-        href={page.path}
+        href={page.href ?? page.path}
         aria-current={navigation.currentPageId === page.pageId ? 'page' : undefined}
         onClick={(event) => {
           if (

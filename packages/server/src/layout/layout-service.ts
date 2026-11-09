@@ -165,10 +165,13 @@ export class LayoutService {
     }
     // Never recreate Working over retained history or an interrupted/missing draft.
     if (await this.store.hasMetadata(path)) throw invalid('布局 Working 缺失，请恢复原数据');
+    const manifest = await new ProjectManifestStore().requireEditable(path);
+    if (manifest.projectId !== projectId) throw invalid('布局项目归属无效');
     const document = {
       ...createEmptyLayoutDocument(projectId),
       schema: createAntdLayoutSchema({
-        title: (await new ProjectManifestStore().readManifest(path)).name,
+        title: manifest.name,
+        variant: manifest.layout?.initialVariant ?? 'side',
       }),
     };
     const working: LayoutWorkingFile = {
@@ -183,6 +186,14 @@ export class LayoutService {
     await this.store.writeWorking(path, working);
     return working;
   };
+  /** Project creation calls this only for its authorized staging directory, before publication. */
+  initializeProjectLayout = (path: string, projectId: string): Promise<void> =>
+    queue.run(path, async () => {
+      const manifest = await new ProjectManifestStore().requireEditable(path);
+      if (manifest.projectId !== projectId || !isProjectLayoutEnabled(manifest))
+        throw invalid('布局初始化归属或开关无效');
+      await this.current(path, projectId);
+    });
   private validateCandidate = async (
     path: string,
     projectId: string,

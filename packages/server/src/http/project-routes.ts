@@ -1,6 +1,7 @@
 import type { Static } from '@sinclair/typebox';
 import {
   UpdatePageRolesSchema,
+  ProjectRoutingUpdateSchema,
   CreatePageSchema,
   CreateProjectSchema,
   DeleteDesktopRecordSchema,
@@ -25,6 +26,20 @@ const DuplicatePageBodySchema = withPageScope(DuplicatePageSchema);
 const DeletePageBodySchema = withPageScope(DeleteDesktopRecordSchema);
 
 export const registerProjectRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
+  server.post(
+    '/api/v1/projects/routing/get',
+    { schema: { body: ProjectScopeSchema } },
+    route<Static<typeof ProjectScopeSchema>>((request) =>
+      input.projectService.getRouting(request.body.projectId),
+    ),
+  );
+  server.post(
+    '/api/v1/projects/routing/update',
+    { schema: { body: ProjectRoutingUpdateSchema } },
+    route<Static<typeof ProjectRoutingUpdateSchema>>((request) =>
+      input.projectService.updateRouting(request.body),
+    ),
+  );
   server.post(
     '/api/v1/projects/page-roles/get',
     { schema: { body: ProjectScopeSchema } },

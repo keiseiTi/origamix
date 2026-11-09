@@ -21,7 +21,7 @@ export interface LayoutNavigation {
   currentPageId: string;
   /** Return false for a page outside the application's declared page set. */
   navigateToPage: (pageId: string) => boolean;
-  pages: readonly { pageId: string; name: string; path: string }[];
+  pages: readonly { pageId: string; name: string; path: string; href?: string }[];
 }
 const NavigationContext = createContext<LayoutNavigation | null>(null);
 /** Layout materials can navigate without receiving a router, engine, credentials or host APIs. */
@@ -46,7 +46,7 @@ const PageNavigation = (props: Record<string, unknown>): React.JSX.Element => {
         navigation.pages.map((page) => (
           <a
             key={page.pageId}
-            href={page.path}
+            href={page.href ?? page.path}
             aria-current={navigation.currentPageId === page.pageId ? 'page' : undefined}
             className='rounded px-3 py-2 text-inherit hover:underline focus-visible:outline-2 aria-[current=page]:font-semibold aria-[current=page]:underline'
             onClick={(event: MouseEvent<HTMLAnchorElement>) => {
@@ -91,7 +91,7 @@ export interface OrigamixLayoutProps extends RuntimeDiagnosticsProps {
   navigation?: {
     currentPageId: string;
     pageIds: readonly string[];
-    pages?: readonly { pageId: string; name: string; path: string }[];
+    pages?: readonly { pageId: string; name: string; path: string; href?: string }[];
     navigateToPage: (pageId: string) => void;
   };
 }
@@ -120,7 +120,9 @@ export const OrigamixLayout = ({
             pages: (navigation.pages ?? []).filter(
               (page) =>
                 navigation.pageIds.includes(page.pageId) &&
-                /^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.path),
+                /^\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$/.test(page.path) &&
+                (page.href === undefined ||
+                  /^(?:#\/|\/)(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]*$/.test(page.href)),
             ),
             navigateToPage: (pageId) => {
               if (!navigation.pageIds.includes(pageId)) return false;

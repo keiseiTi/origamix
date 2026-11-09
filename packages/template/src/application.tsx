@@ -1,10 +1,11 @@
 // Origamix application shell 1.0.0
 import { useSyncExternalStore } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import { Outlet, useLocation, useNavigate, useHref } from 'react-router';
 import { OrigamixLayout, resolveApplicationLayout } from '@origamix/runtime';
 import layoutMaterials from '@origamix/materials/antd/layout/runtime';
 import materials, { RuntimeProvider } from '@origamix/materials/antd/runtime';
 import manifest from '../origamix.project.json';
+import { projectPages } from './project-pages';
 
 const layoutModules = import.meta.glob<{ default: unknown }>('./origamix-layout/schema.json', {
   eager: true,
@@ -22,11 +23,8 @@ const Application = (): React.JSX.Element => {
   const location = useLocation();
   const navigate = useNavigate();
   const mode = useSyncExternalStore(subscribeTheme, readTheme, readServerTheme);
-  const pages = manifest.pages.map((page: { pageId: string; name: string; slug: string }) => ({
-    pageId: page.pageId,
-    name: page.name,
-    path: page.slug === 'home' ? '/' : `/${page.slug}`,
-  }));
+  const rootHref = useHref('/').replace(/\/?$/, '/');
+  const pages = projectPages.map((page) => ({ ...page, href: `${rootHref}${page.path.slice(1)}` }));
   const currentPageId =
     pages.find((page) => page.path === (location.pathname.replace(/\/+$/, '') || '/'))?.pageId ??
     '';

@@ -31,7 +31,7 @@ const fixture = async () => {
     materialSet: { id: 'official-antd', version: '1.0.0' },
     pageDirectory: 'pages',
     pages: [{ pageId: 'page_home', name: '首页', slug: 'home' }],
-    layout: { enabled: true },
+    layout: { enabled: true, initialVariant: 'mix' },
   };
   await writeFile(join(path, 'origamix.project.json'), JSON.stringify(manifest));
   await mkdir(join(path, 'src', 'pages', 'home'), { recursive: true });

@@ -1,3 +1,4 @@
+import { ProjectRoutingSchema, InitialLayoutVariantSchema } from './project-routing.ts';
 import { ProjectPageRolesSchema, arePageRolesValid } from './page-role.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
@@ -11,7 +12,7 @@ export const ProjectPageManifestSchema = Type.Object({
 });
 
 export const ProjectLayoutConfigSchema = Type.Object(
-  { enabled: Type.Boolean() },
+  { enabled: Type.Boolean(), initialVariant: Type.Optional(InitialLayoutVariantSchema) },
   { additionalProperties: false },
 );
 
@@ -23,6 +24,7 @@ export const ProjectManifestSchema = Type.Object({
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
   pages: Type.Array(ProjectPageManifestSchema),
   layout: Type.Optional(ProjectLayoutConfigSchema),
+  routing: Type.Optional(ProjectRoutingSchema),
   pageRoles: Type.Optional(ProjectPageRolesSchema),
 });
 

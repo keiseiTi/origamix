@@ -1,3 +1,4 @@
+import { LayoutService } from '../../src/layout/layout-service';
 import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
 import { access, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -498,4 +499,63 @@ it('initializes a project manifest when opening an uninitialized directory', asy
   await access(join(directory, 'src', 'router.ts'));
   await access(join(directory, 'vite.config.ts'));
   database.close();
+});
+
+// New project initialization and runtime-config concurrency cannot be proved by page edit tests.
+it('initializes the chosen layout before publication and preserves drafts through routing updates and layout disable/re-enable', async () => {
+  const { database, projects, service, project } = await deletionFixture();
+  try {
+    service.registerGrant('routing_create', join(project.path, '..'));
+    const created = await service.createProject({
+      name: 'Routed',
+      code: 'routed',
+      directoryGrantId: 'routing_create',
+      layoutEnabled: true,
+      layoutVariant: 'mix',
+      routing: { mode: 'hash', basePath: '/admin/' },
+    });
+    const retained = JSON.parse(
+      await readFile(join(created.path, '.origamix/layout/working.json'), 'utf8'),
+    );
+    expect(retained.revisionId).toBeNull();
+    expect(retained.document.schema.elements.layout.props.variant).toBe('mix');
+    await expect(access(join(created.path, 'src/origamix-layout/schema.json'))).rejects.toThrow();
+    const layouts = new LayoutService(projects);
+    const draft = await layouts.getWorking(created.id);
+    const before = await service.getRouting(created.id);
+    const update = {
+      projectId: created.id,
+      expectedManifestHash: before.manifestHash,
+      routing: { mode: 'browser' as const, basePath: '/console/' },
+    };
+    const original = ProjectManifestStore.prototype.writeManifest;
+    const injected = vi
+      .spyOn(ProjectManifestStore.prototype, 'writeManifest')
+      .mockImplementationOnce(async function (this: ProjectManifestStore, path, manifest) {
+        await original.call(this, path, manifest);
+        throw new Error('interrupted routing write');
+      });
+    await expect(service.updateRouting(update)).rejects.toThrow('interrupted');
+    injected.mockRestore();
+    const reopened = new ProjectService(projects, templatePath);
+    expect((await reopened.updateRouting(update)).routing).toEqual(update.routing);
+    await expect(
+      reopened.updateRouting({ ...update, routing: { mode: 'hash', basePath: '/' } }),
+    ).rejects.toThrow('已变化');
+    await expect(
+      reopened.updateRouting({ ...update, routing: { mode: 'hash', basePath: '/../' } }),
+    ).rejects.toThrow('无效');
+    await expect(reopened.getRouting('project_foreign')).rejects.toThrow();
+    await reopened.setLayoutEnabled(created.id, false);
+    await reopened.setLayoutEnabled(created.id, true);
+    expect(await layouts.getWorking(created.id)).toEqual(draft);
+    expect((await reopened.getRouting(created.id)).routing).toEqual(update.routing);
+    // Omitted initial mode has a stable default, and disabled projects have no layout draft.
+    await service.setLayoutEnabled(project.id, true);
+    expect(
+      (await layouts.getWorking(project.id)).document.schema.elements.layout!.props.variant,
+    ).toBe('side');
+  } finally {
+    database.close();
+  }
 });

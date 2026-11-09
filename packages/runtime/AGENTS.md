@@ -33,3 +33,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - Antd layout materials consume the exported useLayoutNavigation context through their Runtime peer; do not bundle a second context or add Material-family imports to Runtime. PageOutlet remains Runtime-owned injection and diagnostic scope. Template/App merge the separate Materials page/layout runtime registries.
 
 - MaterialView consumes validated layoutShrink alongside layoutGrow on the shared frame. Managed sidebars set shrink to zero so their frame tracks the native sidebar width during collapse without overlapping sibling content. Do not patch material DOM ancestors to force sizing.
+
+- Injected navigation may carry a validated local href for Browser basename or Hash links, separately from its slug path and allowed pageId. Runtime owns no router; native modified-click links must preserve the supplied application prefix/history form.

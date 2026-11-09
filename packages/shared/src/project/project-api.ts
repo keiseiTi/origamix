@@ -1,3 +1,4 @@
+import { ProjectRoutingSchema, InitialLayoutVariantSchema } from './project-routing.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import { PageRecordSchema } from '../page/page-api.ts';
@@ -20,6 +21,8 @@ export type ProjectWithPages = Static<typeof ProjectWithPagesSchema>;
 
 export const CreateProjectSchema = Type.Object({
   layoutEnabled: Type.Optional(Type.Boolean()),
+  layoutVariant: Type.Optional(InitialLayoutVariantSchema),
+  routing: Type.Optional(ProjectRoutingSchema),
   name: Type.String({ minLength: 1, maxLength: 80 }),
   code: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
   pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),

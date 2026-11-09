@@ -19,12 +19,22 @@ describe('workspace tab recovery', () => {
     const session = parseWorkspaceSession(
       JSON.stringify({
         activeTabId: 'page_a',
-        openPages: projects[0].pages.map((page) => ({
-          ...page,
-          projectId: 'project_1',
-          mode: page.id === 'page_a' ? 'edit' : 'chat',
-          status: 'in_sync',
-        })),
+        openPages: [
+          {
+            id: 'layout:project_1',
+            name: '布局配置',
+            kind: 'layout',
+            fileName: '',
+            projectId: 'project_1',
+            mode: 'edit',
+          },
+          ...projects[0].pages.map((page) => ({
+            ...page,
+            projectId: 'project_1',
+            mode: page.id === 'page_a' ? 'edit' : 'chat',
+            status: 'in_sync',
+          })),
+        ],
         pageDrafts: { page_a: 'retained draft', removed: 'stale' },
       }),
     );
@@ -39,6 +49,7 @@ describe('workspace tab recovery', () => {
       mode: 'edit',
       status: null,
     });
+    expect(restored.openPages.find((tab) => tab.kind === 'layout')?.mode).toBe('chat');
     expect(restored.pageDrafts[activePage!.id]).toBe('retained draft');
     expect(restored.pageDrafts).not.toHaveProperty('removed');
   });

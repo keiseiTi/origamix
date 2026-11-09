@@ -10,5 +10,9 @@
   },
   "layout": {
     "enabled": false
+  },
+  "routing": {
+    "mode": "browser",
+    "basePath": "/"
   }
 }

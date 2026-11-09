@@ -32,6 +32,7 @@ export class ProjectScaffoldService {
             pageDirectory: input.pageDirectory,
             pages: [],
             layout: { enabled: false },
+            routing: { mode: 'browser', basePath: '/' },
           },
           null,
           2,
