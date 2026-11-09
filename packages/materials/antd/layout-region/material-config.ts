@@ -29,7 +29,7 @@ const LayoutRegionMaterial = defineMaterial({
           {
             field: 'headerBackground',
             label: '背景色（留空跟随主题）',
-            uiType: 'input',
+            uiType: 'color',
             schema: { type: 'string', maxLength: 100 },
           },
           { field: 'fixedHeader', label: '固定顶部', uiType: 'switch' },

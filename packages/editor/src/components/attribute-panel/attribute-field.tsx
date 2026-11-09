@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  ColorPicker,
   Input,
   RadioGroup,
   RadioGroupItem,
@@ -211,7 +212,14 @@ const renderAttributeControl = ({
       ) : null;
     }
     case 'color':
-      return <p className='m-0 text-xs text-zinc-500'>暂不支持此配置控件。</p>;
+      return (
+        <ColorPicker
+          key={`${elementId}:${config.field}`}
+          aria-label={label}
+          value={typeof value === 'string' ? value : ''}
+          onChange={(next) => update(config.field, next)}
+        />
+      );
     default:
       return null;
   }

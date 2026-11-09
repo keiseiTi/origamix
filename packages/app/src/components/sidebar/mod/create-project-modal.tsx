@@ -182,18 +182,15 @@ export const CreateProjectModal = ({
               required
             />
           </Field>
-          <label
-            className='flex items-center justify-between gap-3 text-sm'
-            htmlFor='create-layout-enabled'
-          >
-            启用布局配置
+          <Field orientation='horizontal'>
             <Switch
               id='create-layout-enabled'
               checked={layoutEnabled}
               onCheckedChange={setLayoutEnabled}
               disabled={isSubmitting}
             />
-          </label>
+            <FieldLabel>是否启用布局配置</FieldLabel>
+          </Field>
           {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>
             <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>

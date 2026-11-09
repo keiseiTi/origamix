@@ -9,6 +9,6 @@ export default defineConfig({
   outputOptions: { codeSplitting: false },
   sourcemap: true,
   deps: {
-    neverBundle: ['react', 'react-dom', 'react/jsx-runtime'],
+    neverBundle: ['react', 'react-dom', 'react/jsx-runtime', '@uiw/react-color-chrome'],
   },
 });
