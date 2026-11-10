@@ -1,51 +1,28 @@
-import { cp, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
+import { access, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { ProjectManifestStore } from './project-manifest-store';
+import { withExclusiveProjectActivity } from './project-activity';
+import { conflict } from '../errors';
 import { nanoid } from 'nanoid';
-import { writeFileAtomically } from '../infrastructure/atomic-file';
-import { ProjectSourceService } from './project-source';
 
+/** Existing projects only opt into page management; never copy an application scaffold. */
 export class ProjectScaffoldService {
-  private readonly source: ProjectSourceService;
-
-  constructor(templatePath: string) {
-    this.source = new ProjectSourceService(templatePath);
-  }
-
-  async initializeDirectoryAsNewProject(
+  initializeExistingProject = (
     path: string,
     input: { name: string; code: string; pageDirectory: string },
-  ): Promise<void> {
-    const staging = await mkdtemp(join(dirname(path), '.origamix-scaffold-'));
-    const prepared = join(staging, 'project');
-    try {
-      await this.source.prepareNewProject(prepared, input);
-      await writeFileAtomically(
-        join(prepared, 'origamix.project.json'),
-        `${JSON.stringify(
-          {
-            projectId: `project_${nanoid()}`,
-            name: input.name,
-            code: input.code,
-            framework: BUILTIN_PROJECT_STACK.framework,
-            materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
-            pageDirectory: input.pageDirectory,
-            pages: [],
-            layout: { enabled: false, initialVariant: 'side' },
-            routing: { mode: 'browser', basePath: '/' },
-          },
-          null,
-          2,
-        )}\n`,
-      );
-      for (const entry of await readdir(prepared))
-        await cp(join(prepared, entry), join(path, entry), {
-          recursive: true,
-          errorOnExist: true,
-          force: false,
-        });
-    } finally {
-      await rm(staging, { recursive: true, force: true });
-    }
-  }
+  ): Promise<void> =>
+    withExclusiveProjectActivity(path, async () => {
+      await mkdir(path, { recursive: true });
+      try {
+        await access(join(path, 'origamix.project.json'));
+        throw conflict('项目已经初始化，请重新打开');
+      } catch (error) {
+        if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+      }
+      await new ProjectManifestStore().initializeManifest(path, {
+        ...input,
+        projectId: `project_${nanoid()}`,
+        runtime: 'external',
+      });
+    });
 }

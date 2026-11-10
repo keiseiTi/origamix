@@ -25,6 +25,7 @@ const Navigation = ({ horizontal, config }: { horizontal: boolean; config: Confi
   const { token } = theme.useToken();
   const state = useContext(LayoutContext);
   const mixed = config.variant === 'mix';
+  const sectionMenu = horizontal && mixed && !navigation;
   const sections = [
     { key: 'workspace', label: '工作台' },
     { key: 'management', label: '系统管理' },
@@ -82,18 +83,14 @@ const Navigation = ({ horizontal, config }: { horizontal: boolean; config: Confi
         mode={horizontal ? 'horizontal' : 'inline'}
         style={{ minWidth: 0, flex: 1, background: 'transparent', color: 'inherit' }}
         selectedKeys={
-          horizontal && mixed
-            ? [state.section]
-            : navigation
-              ? [navigation.currentPageId]
-              : undefined
+          sectionMenu ? [state.section] : navigation ? [navigation.currentPageId] : undefined
         }
         defaultSelectedKeys={['overview']}
         onClick={({ key }) => {
-          if (horizontal && mixed) state.setSection(key);
+          if (sectionMenu) state.setSection(key);
         }}
         items={
-          horizontal && mixed
+          sectionMenu
             ? sections
             : (pages ??
               mockItems.map((item) => ({

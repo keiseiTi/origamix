@@ -1,3 +1,4 @@
+import { useApplicationMetadata } from './use-application-metadata';
 import { validateLayoutSchema } from '@origamix/shared';
 import { assertAntdLayoutSchema } from '@origamix/materials/antd/layout/manifest';
 import { Editor as EditorView } from '@origamix/editor';
@@ -36,6 +37,7 @@ export const PageEditor = ({
   readOnly = false,
   ...viewProps
 }: EditorProps) => {
+  const application = useApplicationMetadata(projectId, visible && targetKind === 'page');
   const notifications = useToastManager();
   const [returningToChat, setReturningToChat] = useState(false);
   const returnToChat = async (): Promise<void> => {
@@ -133,12 +135,18 @@ export const PageEditor = ({
           </Button>
         </div>
       )}
+      {application?.error && (
+        <p role='alert' className='px-4 text-sm text-destructive'>
+          {application.error}；普通页面编辑可继续，应用动作请重新打开应用配置后重试。
+        </p>
+      )}
       <MaterialProvider mode={theme}>
         <EditorView
           {...viewProps}
           schema={session.snapshot.schema}
           sessionKey={session.snapshot.sessionKey}
           registration={registration!}
+          application={application?.value}
           validateSchema={targetKind === 'layout' ? validateLayoutCandidate : undefined}
           theme={theme}
           readOnlyMessage={

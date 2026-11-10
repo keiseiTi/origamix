@@ -43,7 +43,7 @@ const owners = new Map([
     ],
   ],
 ]);
-const business = /^(projects|schema|layout|conversations|agent|diagnostics)\//;
+const business = /^(projects|schema|layout|preview|conversations|agent|diagnostics)\//;
 const testOnly = /(^test\/|\.test$)/;
 const typeOnly = (node: BoundaryNode) =>
   node.importKind === 'type' ||

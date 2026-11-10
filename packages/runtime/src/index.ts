@@ -18,3 +18,11 @@ export type {
   OrigamixApplicationPageProps,
   LayoutNavigation,
 } from './layout';
+
+export { applicationPages } from '@origamix/shared';
+export { ApplicationShell } from './application-shell';
+
+export { ApplicationProvider, ApplicationAccess, useApplication } from './application';
+export { createApplicationSession } from './application-session';
+export type { ApplicationSession, ApplicationNavigation } from './application-session';
+export { readApplicationDefinition } from '@origamix/shared';

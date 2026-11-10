@@ -1,3 +1,4 @@
+import { ProjectPreviewWindows } from './project-preview';
 import { registerDevelopmentControl } from './development-control';
 import {
   app,
@@ -10,7 +11,7 @@ import {
   utilityProcess,
   type UtilityProcess,
 } from 'electron';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { resolveDesktopConfig } from './config';
 import { installApplicationMenu } from './menu';
 import { pathToFileURL } from 'node:url';
@@ -200,6 +201,7 @@ const spawnBackend = async (): Promise<BackendConnection> => {
         workbenchOrigin: new URL(workbenchEntryUrl()).origin,
         databasePath: desktopConfig.databasePath,
         templatePath: desktopConfig.templatePath,
+        previewAssetDirectory: dirname(desktopConfig.rendererPath),
         desktopToken: token,
         serviceInstanceId,
       });
@@ -433,6 +435,12 @@ app
       });
     };
     handleWorkbench('backend:get-connection', () => ensureBackend());
+    const projectPreviews = new ProjectPreviewWindows(ensureBackend);
+    app.on('before-quit', projectPreviews.close);
+    handleWorkbench('project-preview:open', (_event, projectId: unknown) => {
+      if (typeof projectId !== 'string') throw new Error('项目 ID 无效');
+      return projectPreviews.open(projectId);
+    });
     handleWorkbench('dialog:choose-project-parent', async () => {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
@@ -473,7 +481,7 @@ app
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      if (BrowserWindow.getAllWindows().length === 0) workbenchWindow = createWindow();
+      if (!workbenchWindow || workbenchWindow.isDestroyed()) workbenchWindow = createWindow();
     });
   })
   .catch((error: unknown) => {

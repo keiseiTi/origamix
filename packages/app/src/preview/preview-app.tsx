@@ -1,16 +1,26 @@
-import {
-  Spinner,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@origamix/ui';
+import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
-import type { ApplicationSnapshot } from '@origamix/shared';
+import {
+  SCHEMA_VERSION,
+  type ApplicationSnapshot,
+  type OrigamixPageSchema,
+} from '@origamix/shared';
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { isHostToPreviewMessage, type PreviewToHostMessage } from './protocol';
+
+// Presentation-only outlet placeholder; never persisted as a page or reported as a page draft.
+const layoutPlaceholder: OrigamixPageSchema = {
+  elements: {
+    root: { type: 'container', props: {} },
+    text: { type: 'text', props: { text: '实际页面将在这里展示' } },
+  },
+  layout: { root: 'root', structure: { root: ['text'] } },
+  flows: {},
+  bindElements: [],
+  context: { globalVariables: [] },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
+};
 
 const postToHost = (message: PreviewToHostMessage): void => {
   window.parent.postMessage(message, '*');
@@ -22,7 +32,6 @@ export const PreviewApp = (): React.JSX.Element => {
   const pageId = params.get('pageId') ?? '';
   const [snapshot, setSnapshot] = useState<ApplicationSnapshot | null>(null);
   const reportSequence = useRef(0);
-  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(
     projectId && pageId ? null : '预览 URL 缺少 projectId 或 pageId',
   );
@@ -59,10 +68,20 @@ export const PreviewApp = (): React.JSX.Element => {
       </div>
     );
 
-  const currentPageId = snapshot.pages.some((page) => page.pageId === selectedPageId)
-    ? selectedPageId!
-    : snapshot.initialPageId;
+  const currentPageId = snapshot.initialPageId;
   const page = currentPageId ? snapshot.pageSchemas[currentPageId] : null;
+  if (snapshot.layout.enabled && !page)
+    return (
+      <RuntimePreview
+        stack={snapshot.stack}
+        theme={snapshot.theme}
+        schema={layoutPlaceholder}
+        pageId='layout-placeholder'
+        layout={snapshot.layout}
+        navigation={undefined}
+        revisionId={snapshot.snapshotId}
+      />
+    );
   if (!page || !currentPageId)
     return (
       <div className='grid h-screen place-content-center gap-2 p-6 text-center text-sm'>
@@ -72,27 +91,6 @@ export const PreviewApp = (): React.JSX.Element => {
     );
   return (
     <main className='flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
-      <div className='flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-4 pr-28 text-sm'>
-        <span className='text-muted-foreground'>应用预览 · 当前草稿</span>
-        <Select
-          value={currentPageId}
-          items={snapshot.pages.map((item) => ({ value: item.pageId, label: item.name }))}
-          onValueChange={(id) => {
-            if (id && snapshot.pages.some((item) => item.pageId === id)) setSelectedPageId(id);
-          }}
-        >
-          <SelectTrigger size='sm' aria-label='预览页面'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {snapshot.pages.map((item) => (
-              <SelectItem key={item.pageId} value={item.pageId}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       <div className='min-h-0 flex-1 overflow-auto'>
         <RuntimePreview
           stack={snapshot.stack}
@@ -104,7 +102,7 @@ export const PreviewApp = (): React.JSX.Element => {
             currentPageId,
             pageIds: snapshot.pages.map((item) => item.pageId),
             pages: snapshot.pages,
-            navigateToPage: setSelectedPageId,
+            navigateToPage: () => undefined,
           }}
           revisionId={`${snapshot.snapshotId}:${currentPageId}`}
           onOutcome={({ outcome, diagnostics }) =>

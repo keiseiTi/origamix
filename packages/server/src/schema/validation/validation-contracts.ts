@@ -28,6 +28,7 @@ export interface MaterialValidationResult {
 }
 
 export interface MaterialValidationRuntime {
+  application?: import('@origamix/shared').ApplicationMetadata;
   validateSemantics?: (schema: OrigamixPageSchema) => MaterialValidationError[];
   materialSet: { id: string; version: string };
   registry: Readonly<Record<string, ValidationMaterialManifest>>;

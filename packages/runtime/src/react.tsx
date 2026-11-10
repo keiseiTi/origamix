@@ -1,3 +1,4 @@
+import { bindApplication, useApplication } from './application';
 import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
@@ -173,6 +174,7 @@ const RuntimeCanvas = ({
   schema: Schema;
   materials: MaterialRegistry;
 }): React.JSX.Element => {
+  const application = useApplication();
   const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
   const activeSchema = useRef<Schema | null>(schema);
 
@@ -194,6 +196,7 @@ const RuntimeCanvas = ({
         `页面 Schema 版本不受支持，当前支持 ${SCHEMA_VERSION}。请使用兼容应用；页面不会自动转换`,
       );
     const instance = createEngine(schema);
+    bindApplication(instance, application);
     installMaterialState(instance, materials);
     withFlowEngine({
       engine: instance,
@@ -209,7 +212,7 @@ const RuntimeCanvas = ({
     });
     bindMaterialEventPayloads(instance);
     return instance;
-  }, [schema, materials]);
+  }, [schema, materials, application]);
 
   useLayoutEffect(() => {
     engine.activate();

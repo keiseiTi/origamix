@@ -26,6 +26,15 @@ export interface ProductDocsSearchInput {
 
 export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
   {
+    id: 'application-flow',
+    sectionId: 'application-state-navigation',
+    version: '1.0.0',
+    title: '应用状态与事件逻辑',
+    keywords: ['登录', '路由', '应用状态', '接口', '跳转'],
+    markdown:
+      '# 应用逻辑\n项目配置声明初始应用状态与访问规则；页面使用普通表单、按钮和逻辑流。接口、自定义JS、成功判断、会话恢复和401处理均由事件表达。setApplicationState更新已声明字段，resetApplicationState重置，navigatePage跳转page/home/return/login；application.<name>读取共享状态。接口节点credentials显式选择Cookie方式；没有固定认证接口、专用登录物料、自动会话检查或自动退出按钮。所有效果先更新Working，用户明确保存和应用后才进入项目预览。',
+  },
+  {
     id: 'builder-layout',
     sectionId: 'layout-conversation',
     version: '1.0.0',

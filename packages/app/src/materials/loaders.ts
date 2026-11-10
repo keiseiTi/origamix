@@ -61,7 +61,7 @@ export const loadRuntimeMaterials = async (materialSet: ProjectStack['materialSe
   let pending = runtimeLoads.get(key);
   if (!pending) {
     pending = Promise.all([builtinLoaders.runtime(), builtinLoaders.layoutRuntime()]).then(
-      ([page, layout]) => ({ ...page, default: { ...page.default, ...layout.default } }),
+      ([page, layout]) => ({ ...page, default: { ...layout.default, ...page.default } }),
     );
     runtimeLoads.set(key, pending);
   }

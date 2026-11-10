@@ -199,6 +199,7 @@ export const CreateProjectModal = ({
               required
             />
           </Field>
+          <RoutingFields value={routing} onChange={setRouting} disabled={isSubmitting} />
           <Field orientation='horizontal'>
             <Switch
               id='create-layout-enabled'
@@ -236,7 +237,7 @@ export const CreateProjectModal = ({
               </p>
             </Field>
           )}
-          <RoutingFields value={routing} onChange={setRouting} disabled={isSubmitting} />
+
           {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>
             <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>

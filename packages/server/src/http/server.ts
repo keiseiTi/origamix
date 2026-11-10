@@ -1,3 +1,4 @@
+import { registerProjectPreviewRoutes } from './project-preview-routes';
 import { registerLayoutRoutes } from './layout-routes';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { nanoid } from 'nanoid';
@@ -107,6 +108,7 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   }));
   const context = { server, input, route };
   registerProjectRoutes(context);
+  registerProjectPreviewRoutes(context);
   registerSchemaRoutes(context);
   registerLayoutRoutes(context);
   registerApplyRoutes(context);

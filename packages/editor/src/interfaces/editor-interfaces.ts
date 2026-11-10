@@ -66,6 +66,7 @@ export type EditorTargetSelection = Readonly<{
 }>;
 
 export interface EditorProps {
+  application?: import('@origamix/shared').ApplicationMetadata;
   editor: EditorInstance;
   onSave?: EditorSaveOptions['onSave'];
   onFlush?: EditorSaveOptions['onFlush'];

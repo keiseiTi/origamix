@@ -14,6 +14,7 @@ export interface HttpServerInput {
   serviceInstanceId: string;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage' | 'listProjects' | 'listPages'>;
   projectService: ProjectService;
+  projectPreview?: import('../preview/project-preview-service').ProjectPreviewService;
   projectTasks?: Pick<import('../agent/project-task-service').ProjectTaskService, 'get' | 'decide'>;
   projectApplyService?: ProjectApplyService;
   layoutService?: Pick<

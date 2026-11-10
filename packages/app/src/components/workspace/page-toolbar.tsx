@@ -204,7 +204,7 @@ export const PageToolbarShell = ({
             >
               <Eye size={15} />
             </TooltipTrigger>
-            <TooltipContent side='bottom'>预览完整应用（当前草稿）</TooltipContent>
+            <TooltipContent side='bottom'>预览当前页面</TooltipContent>
           </Tooltip>
         </div>
       </EditorToolbar>

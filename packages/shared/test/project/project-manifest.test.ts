@@ -8,6 +8,7 @@ import {
 import { isProjectManifest, isProjectLayoutEnabled } from '../../src/project/project-manifest.ts';
 
 const manifest = () => ({
+  runtime: 'origamix' as const,
   layout: { enabled: false, initialVariant: 'side' as const },
   routing: { mode: 'browser' as const, basePath: '/' },
   projectId: 'project_one',
@@ -21,6 +22,38 @@ const manifest = () => ({
 describe('project manifest protocol', () => {
   it('accepts the supported project and page format', () => {
     expect(isProjectManifest(manifest())).toBe(true);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        applicationState: { user: null },
+        access: { enabled: false },
+      }),
+    ).toBe(true);
+    expect(isProjectManifest({ ...manifest(), applicationState: { 'invalid.key': false } })).toBe(
+      false,
+    );
+    expect(isProjectManifest({ ...manifest(), authentication: { enabled: false } })).toBe(false);
+    expect(
+      isProjectManifest({
+        ...manifest(),
+        access: {
+          enabled: true,
+          loginPageId: 'page_login',
+          homePageId: 'page_home',
+          publicPageIds: [],
+          stateKey: 'signedIn',
+        },
+      }),
+    ).toBe(false);
+    expect(isProjectManifest({ ...manifest(), runtime: undefined })).toBe(false);
+    expect(isProjectManifest({ ...manifest(), runtime: 'unknown' })).toBe(false);
+    expect(
+      isProjectLayoutEnabled({
+        ...manifest(),
+        runtime: 'external',
+        layout: { enabled: true, initialVariant: 'side' },
+      }),
+    ).toBe(false);
     expect(isProjectLayoutEnabled(manifest())).toBe(false);
     expect(
       isProjectManifest({

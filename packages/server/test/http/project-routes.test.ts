@@ -75,6 +75,7 @@ describe('Project and Schema HTTP flows', () => {
     expect(
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
+      runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'side' as const },
       routing: { mode: 'browser' as const, basePath: '/' },
       framework: 'react',

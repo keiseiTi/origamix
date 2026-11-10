@@ -173,7 +173,9 @@ export const validatePageAgainstMaterials = (
       );
     }
   }
-  errors.push(...validateFlowReferences(schema, runtime.registry, executableFlowIds));
+  errors.push(
+    ...validateFlowReferences(schema, runtime.registry, executableFlowIds, runtime.application),
+  );
   return { valid: errors.length === 0, errors };
 };
 

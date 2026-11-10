@@ -6,12 +6,15 @@ import {
   DropdownMenuTrigger,
 } from '@origamix/ui';
 
-import { Ellipsis, Pencil, Trash2, PanelsTopLeft, Settings2 } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2, PanelsTopLeft, Settings2, Play } from 'lucide-react';
 
 interface SidebarActionMenuProps {
   label: string;
   onRename: () => void;
   onDelete: () => void;
+  onPreview?: () => void;
+  previewDisabled?: boolean;
+  onApplication?: () => void;
   onRouting?: () => void;
   layout?: { enabled: boolean; disabled: boolean; onToggle: () => void };
 }
@@ -22,6 +25,9 @@ export const SidebarActionMenu = ({
   onDelete,
   layout,
   onRouting,
+  onApplication,
+  onPreview,
+  previewDisabled,
 }: SidebarActionMenuProps): React.JSX.Element => {
   return (
     <DropdownMenu>
@@ -42,6 +48,18 @@ export const SidebarActionMenu = ({
           <Pencil />
           编辑
         </DropdownMenuItem>
+        {onPreview && (
+          <DropdownMenuItem disabled={previewDisabled} onClick={onPreview}>
+            <Play />
+            预览项目
+          </DropdownMenuItem>
+        )}
+        {onApplication && (
+          <DropdownMenuItem onClick={onApplication}>
+            <Settings2 />
+            应用配置
+          </DropdownMenuItem>
+        )}
         {onRouting && (
           <DropdownMenuItem onClick={onRouting}>
             <Settings2 />

@@ -32,6 +32,7 @@ export const validateFlowReferences = (
   schema: OrigamixPageSchema,
   registry: Readonly<Record<string, ValidationMaterialManifest>>,
   executableFlowIds: ReadonlySet<string> = new Set(),
+  application?: import('@origamix/shared').ApplicationMetadata,
 ): MaterialValidationError[] => {
   const errors: MaterialValidationError[] = [];
   const globals = new Set(
@@ -72,7 +73,10 @@ export const validateFlowReferences = (
           report(at, 'Invalid context reference');
           return;
         }
-        if (kind === 'global') {
+        if (kind === 'application') {
+          if (!application?.stateKeys.includes(name))
+            report(at, 'Application state must be declared by this project');
+        } else if (kind === 'global') {
           if (!globals.has(name)) report(at, 'Global variable must be declared in this page');
         } else if (kind === 'state' || kind === 'method') {
           const manifest = target(name, at);
@@ -113,6 +117,50 @@ export const validateFlowReferences = (
         } else report(at, 'Unknown context namespace');
       };
 
+      if (
+        ['setApplicationState', 'resetApplicationState', 'navigatePage'].includes(node.type) &&
+        !application
+      )
+        report(path, 'Application actions require an Origamix application');
+      if (node.type === 'setApplicationState' && isFlowNodeProps('setApplicationState', node.props))
+        for (const [index, setter] of node.props.setters.entries()) {
+          if (
+            application?.access?.stateKey === setter.name &&
+            ['string', 'number', 'null'].includes(setter.value.type)
+          )
+            report(`${path}/props/setters/${index}/value`, 'Access state requires a boolean');
+          if ((setter.name || complete) && !application?.stateKeys.includes(setter.name))
+            report(
+              `${path}/props/setters/${index}/name`,
+              'Application state must be declared by this project',
+            );
+        }
+      if (
+        node.type === 'navigatePage' &&
+        isFlowNodeProps('navigatePage', node.props) &&
+        node.props.destination === 'page' &&
+        (node.props.pageId || complete) &&
+        !application?.pages.some((page) => page.pageId === node.props.pageId)
+      )
+        report(`${path}/props/pageId`, 'Navigation target must be a page in this project');
+      if (
+        complete &&
+        node.type === 'setApplicationState' &&
+        isFlowNodeProps('setApplicationState', node.props) &&
+        !node.props.setters.length
+      )
+        report(
+          `${path}/props/setters`,
+          'Generated application setter list cannot be empty',
+          'INCOMPLETE_FLOW',
+        );
+      if (
+        node.type === 'navigatePage' &&
+        isFlowNodeProps('navigatePage', node.props) &&
+        node.props.destination === 'login' &&
+        !application?.access
+      )
+        report(`${path}/props/destination`, 'Login navigation requires a configured access rule');
       // Only recognized node parameters may contain executable HyperValue envelopes.
       if (!isFlowNodeProps(node.type as FlowNodeType, node.props)) continue;
       const inspect = (value: unknown, at: string): void => {

@@ -4,7 +4,11 @@ import type { Material } from '../../interfaces/material-interfaces';
 import type { MaterialManifest } from '@origamix/shared';
 
 /** Internal view contract; the parent Editor owns the engine and edit session. */
+export const EditorApplicationContext = createContext<
+  import('@origamix/shared').ApplicationMetadata | undefined
+>(undefined);
 export interface FlowEditorSession {
+  application?: import('@origamix/shared').ApplicationMetadata;
   schema: Schema;
   materials: readonly Pick<Material, 'type' | 'title' | 'contextConfig' | 'editorConfig'>[];
   catalog: readonly MaterialManifest[];

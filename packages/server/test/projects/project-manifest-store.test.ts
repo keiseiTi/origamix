@@ -15,6 +15,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
       await writeFile(
         join(directory, 'origamix.project.json'),
         JSON.stringify({
+          runtime: 'origamix' as const,
           layout: { enabled: false, initialVariant: 'side' as const },
           routing: { mode: 'browser' as const, basePath: '/' },
           projectId: 'project_test',
@@ -38,6 +39,7 @@ it('rejects missing material contract versions without inferring or rewriting th
   const store = new ProjectManifestStore();
   try {
     await store.initializeManifest(directory, {
+      runtime: 'origamix' as const,
       projectId: 'project_test',
       name: 'Current project',
       pageDirectory: 'pages',

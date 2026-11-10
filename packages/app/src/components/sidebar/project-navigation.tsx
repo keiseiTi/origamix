@@ -1,3 +1,4 @@
+import { ApplicationDialog } from '@/components/project-settings/application-dialog';
 import { useState } from 'react';
 import { RoutingDialog } from '@/components/project-settings/routing-dialog';
 import { useLayoutConfig } from '@/components/layout/use-layout-config';
@@ -26,7 +27,23 @@ const ProjectNavigationRow = ({
   project: ProjectItem;
   activePageId: string | null;
 }): React.JSX.Element => {
+  const [applicationOpen, setApplicationOpen] = useState(false);
   const [routingOpen, setRoutingOpen] = useState(false);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const openPreview = async () => {
+    if (previewBusy) return;
+    setPreviewBusy(true);
+    setPreviewError(null);
+    try {
+      if (!window.api?.projectPreview) throw new Error('项目预览需要在桌面应用中打开');
+      await window.api.projectPreview.open(project.id);
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : '项目预览启动失败');
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
   const layout = useLayoutConfig(project.id, true);
   const roles = usePageRoles(project.id);
   return (
@@ -35,13 +52,26 @@ const ProjectNavigationRow = ({
         <Folder size={14} />
         <span className='min-w-0 flex-1 truncate'>{project.name}</span>
         <SidebarActionMenu
-          onRouting={() => setRoutingOpen(true)}
+          onApplication={
+            layout.config?.runtime === 'origamix' ? () => setApplicationOpen(true) : undefined
+          }
+          onRouting={layout.config?.runtime === 'origamix' ? () => setRoutingOpen(true) : undefined}
+          onPreview={
+            layout.config?.runtime === 'origamix' && layout.config.enabled
+              ? () => void openPreview()
+              : undefined
+          }
+          previewDisabled={previewBusy || layout.busy}
           label={`${project.name} 项目操作`}
-          layout={{
-            enabled: layout.config?.enabled ?? false,
-            disabled: !layout.config || layout.busy,
-            onToggle: () => void layout.toggle(!layout.config?.enabled),
-          }}
+          layout={
+            layout.config?.runtime === 'origamix'
+              ? {
+                  enabled: layout.config?.enabled ?? false,
+                  disabled: !layout.config || layout.busy,
+                  onToggle: () => void layout.toggle(!layout.config?.enabled),
+                }
+              : undefined
+          }
           onRename={() =>
             onLifecycle({ kind: 'rename-project', id: project.id, name: project.name })
           }
@@ -59,12 +89,32 @@ const ProjectNavigationRow = ({
           <Plus size={14} />
         </Button>
       </div>
+      {applicationOpen && (
+        <ApplicationDialog
+          key={project.id}
+          projectId={project.id}
+          onClose={() => setApplicationOpen(false)}
+        />
+      )}
       {routingOpen && (
         <RoutingDialog
           key={project.id}
           projectId={project.id}
           onClose={() => setRoutingOpen(false)}
         />
+      )}
+      {previewBusy && (
+        <p role='status' className='px-3 py-1 text-xs text-muted-foreground'>
+          正在准备项目预览…
+        </p>
+      )}
+      {previewError && (
+        <div role='alert' className='px-3 py-1 text-xs text-destructive'>
+          {previewError}
+          <Button size='sm' variant='ghost' onClick={() => void openPreview()}>
+            重试预览
+          </Button>
+        </div>
       )}
       {layout.error && (
         <div role='alert' className='px-3 py-1 text-xs text-destructive'>

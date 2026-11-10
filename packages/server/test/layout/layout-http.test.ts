@@ -28,6 +28,7 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
     await writeFile(
       join(path, 'origamix.project.json'),
       JSON.stringify({
+        runtime: 'origamix' as const,
         layout: { enabled: false, initialVariant: 'side' as const },
         routing: { mode: 'browser' as const, basePath: '/' },
         projectId: 'project_test',
@@ -68,6 +69,7 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
     const manifestPath = join(path, 'origamix.project.json');
     const originalManifest = await readFile(manifestPath, 'utf8');
     expect((await server.inject(configRequest)).json().data).toEqual({
+      runtime: 'origamix',
       name: '布局配置',
       enabled: false,
     });
@@ -81,7 +83,11 @@ it('protects layout endpoints with the existing boundary and exposes project-sco
         headers,
         payload: { projectId: 'project_test', enabled },
       });
-    expect((await toggle(true)).json().data).toEqual({ name: '布局配置', enabled: true });
+    expect((await toggle(true)).json().data).toEqual({
+      runtime: 'origamix',
+      name: '布局配置',
+      enabled: true,
+    });
     expect(JSON.parse(await readFile(manifestPath, 'utf8')).layout).toEqual({
       enabled: true,
       initialVariant: 'side',

@@ -1,3 +1,5 @@
+import { notifyApplicationChanged } from './application-events';
+import type { ProjectApplicationSettings, ProjectApplicationUpdate } from '@origamix/shared';
 import {
   type PageRoleState,
   type ProjectRoutingState,
@@ -18,6 +20,15 @@ import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
 export const projectsService = {
+  application: (projectId: string): Promise<ProjectApplicationSettings> =>
+    request('/projects/application/get', { projectId }),
+  updateApplication: async (
+    input: ProjectApplicationUpdate,
+  ): Promise<ProjectApplicationSettings> => {
+    const state = await request<ProjectApplicationSettings>('/projects/application/update', input);
+    notifyApplicationChanged(input.projectId);
+    return state;
+  },
   routing: (projectId: string): Promise<ProjectRoutingState> =>
     request('/projects/routing/get', { projectId }),
   updateRouting: (input: ProjectRoutingUpdate): Promise<ProjectRoutingState> =>
@@ -64,12 +75,19 @@ export const projectsService = {
       return await request<PageRecord>('/pages/create', { projectId, ...input });
     } finally {
       notifyPageRolesChanged(projectId);
+      notifyApplicationChanged(projectId);
     }
   },
-  renamePage: (projectId: string, pageId: string, name: string): Promise<PageRecord> =>
-    request<PageRecord>('/pages/rename', { projectId, pageId, name }),
-  duplicatePage: (projectId: string, pageId: string): Promise<PageRecord> =>
-    request<PageRecord>('/pages/duplicate', { projectId, pageId }),
+  renamePage: async (projectId: string, pageId: string, name: string): Promise<PageRecord> => {
+    const page = await request<PageRecord>('/pages/rename', { projectId, pageId, name });
+    notifyApplicationChanged(projectId);
+    return page;
+  },
+  duplicatePage: async (projectId: string, pageId: string): Promise<PageRecord> => {
+    const page = await request<PageRecord>('/pages/duplicate', { projectId, pageId });
+    notifyApplicationChanged(projectId);
+    return page;
+  },
   deletePage: async (projectId: string, pageId: string): Promise<{ deleted: true }> => {
     try {
       return await request<{ deleted: true }>('/pages/delete', {
@@ -79,6 +97,7 @@ export const projectsService = {
       });
     } finally {
       notifyPageRolesChanged(projectId);
+      notifyApplicationChanged(projectId);
     }
   },
 };

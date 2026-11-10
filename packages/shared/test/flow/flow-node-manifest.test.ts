@@ -17,7 +17,8 @@ describe('flow node configuration contract', () => {
     expect(
       Value.Check(manifest.propsSchema, { ...request, headers: { type: 'json', value: {} } }),
     ).toBe(false);
-    expect(Value.Check(manifest.propsSchema, { ...request, credentials: 'include' })).toBe(false);
+    expect(Value.Check(manifest.propsSchema, { ...request, credentials: 'include' })).toBe(true);
+    expect(Value.Check(manifest.propsSchema, { ...request, credentials: 'platform' })).toBe(false);
   });
 
   it('accepts typed values and function bindings and rejects invalid envelopes', () => {

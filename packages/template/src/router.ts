@@ -13,7 +13,7 @@ const routes = pages.map((page) => {
   if (!Component) throw new Error(`页面入口不存在：${page.slug}`);
   return { path: page.path, Component };
 });
-if (pages.length && !pages.some((page) => page.slug === 'home'))
+if (pages.length && !pages.some((page) => page.path === '/'))
   routes.push({
     path: '/',
     Component: () => createElement(Navigate, { to: `/${pages[0]!.slug}`, replace: true }),

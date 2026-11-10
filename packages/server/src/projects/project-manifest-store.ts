@@ -31,12 +31,14 @@ export class ProjectManifestStore {
     projectPath: string,
     input: Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'> & {
       code: string;
+      runtime?: ProjectManifest['runtime'];
       layout?: ProjectManifest['layout'];
       routing?: ProjectManifest['routing'];
     },
   ): Promise<void> {
     await this.writeManifest(projectPath, {
       ...input,
+      runtime: input.runtime ?? 'external',
       framework: BUILTIN_PROJECT_STACK.framework,
       materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],

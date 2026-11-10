@@ -1,3 +1,4 @@
+import { engineApplication } from './application';
 import {
   assertRuntimeField,
   assertRuntimeMethod,
@@ -25,6 +26,8 @@ export const resolveHyperContext = (context: Context, reference: string): unknow
   if (!name || !safe(name) || path.some((key) => !safe(key)))
     throw new Error('Invalid context reference');
   switch (kind) {
+    case 'application':
+      return readPath(engineApplication(context.engine).read(name), path);
     case 'global':
       return readPath(context.engine.getGlobalVariable(name), path);
     case 'result':

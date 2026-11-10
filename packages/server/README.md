@@ -340,3 +340,11 @@ SQLite 存储版本 2 允许会话/Run 的页面键为空，以表达唯一的�
 `/projects/page-roles/get` reads role configuration plus the current manifest hash. `/projects/page-roles/update` accepts the complete role configuration, expected manifest hash and stable client request ID. The project queue preserves unrelated layout/manifest settings; durable receipts distinguish prepared and committed writes.
 
 Page Agent terminal `propose_project` records a structured role-operation proposal without writing Working or the manifest. `/agent/project-task/get` reads durable task state; `/agent/project-task/decide` explicitly confirms or cancels it. Confirmed roles use the same project service, followed by a deterministic page Run for the optional page intent. Unknown outcomes require explicit same-task recovery; startup never resumes a model call. Page-stage failure preserves committed project configuration.
+
+## 内置项目预览
+
+`preview/project-snapshot.ts` 读取项目中已应用的页面和布局，校验归属、物料及文件一致性；只查看现有草稿是否与目标不同，不初始化或写入 Working。项目必须明确声明 `runtime: "origamix"` 且启用布局；已有项目初始化为 external，只接入页面管理，不复制应用模板。缺少 runtime 直接拒绝，不推断、不迁移。
+
+`projects/preview/open`、`status`、`close` 沿用工作台认证边界。Server 使用宿主提供的内置 App 资源启动独立 loopback 只读会话，Main 直接设置临时 HttpOnly Cookie 后打开无 preload 的窗口。Cookie 不进入 URL，预览获得的只有本项目已应用快照，不提供工作台 API 或任意文件读取。布局关闭时立即撤销会话，服务关闭时清理监听器。
+
+本阶段支持 Browser/Hash、访问前缀、布局和页面导航，以及项目图片（单张 2MB、合计 20MB；本地图片拒绝路径越界与符号链接）。项目 scripts、自定义入口、构建插件、代理和后端不会执行。项目可声明应用共享状态和基于布尔状态的页面访问规则；配置引用无效页面时拒绝写入。业务接口、登录退出和状态恢复均由页面事件流表达，平台不约定认证协议。

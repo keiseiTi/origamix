@@ -16,6 +16,7 @@ const api: DesktopApi = {
       return () => ipcRenderer.removeListener('backend:status-changed', receive);
     },
   },
+  projectPreview: { open: (projectId) => ipcRenderer.invoke('project-preview:open', projectId) },
   dialog: {
     chooseProjectParent: (): Promise<{ directoryGrantId: string; displayPath: string } | null> =>
       ipcRenderer.invoke('dialog:choose-project-parent'),

@@ -29,7 +29,7 @@ utilityProcess.fork = (...args) => {
   return backend;
 };
 let passed = false;
-const timer = setTimeout(() => fail(new Error('Real Main smoke timed out')), 30000);
+const timer = setTimeout(() => fail(new Error('Real Main smoke timed out')), 60000);
 const fail = (error: unknown) => {
   console.error(error);
   app.exit(1);
@@ -88,7 +88,7 @@ app
       return result.data;
     };
     const grant = await window.api.dialog.chooseProjectParent();
-    const project = await request('/projects/create', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages' });
+    const project = await request('/projects/create', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages', layoutEnabled: true });
     await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
     const pages = await request('/pages/list', { projectId: project.id });
     const working = await request('/pages/working-state/get', { projectId: project.id, pageId: pages[0].id });
@@ -176,6 +176,70 @@ app
       })()`),
       'undefined',
     );
+    // Full-project preview is a separate no-preload window, backed only by explicit Apply outputs.
+    await main.webContents.executeJavaScript(`(async () => {
+      const connection = await window.api.backend.getConnection();
+      const request = async (path, body) => {
+        const response = await fetch(connection.baseUrl + path, { method: 'POST', headers: {
+          Authorization: 'Bearer ' + connection.token, 'X-Origamix-Service': connection.serviceInstanceId, 'Content-Type': 'application/json'
+        }, body: JSON.stringify(body) });
+        const result = await response.json(); if (!result.success) throw new Error(result.message); return result.data;
+      };
+      const scope = { projectId: ${JSON.stringify(result.projectId)}, pageId: ${JSON.stringify(result.pageId)} };
+      const working = await request('/pages/working-state/get', scope);
+      const saved = await request('/pages/revisions/save', { ...scope, expectedWorkingVersion: working.workingVersion });
+      await request('/pages/apply', { ...scope, expectedRevisionId: saved.revisionId, expectedWorkingVersion: saved.workingVersion, clientRequestId: 'desktop_page_apply' });
+      const layout = await request('/layout/working/get', { projectId: scope.projectId });
+      const layoutSaved = await request('/layout/revisions/save', { projectId: scope.projectId, expectedWorkingVersion: layout.workingVersion });
+      await request('/layout/apply', { projectId: scope.projectId, expectedRevisionId: layoutSaved.revisionId, expectedWorkingVersion: layoutSaved.workingVersion, clientRequestId: 'desktop_layout_apply' });
+      await window.api.projectPreview.open(scope.projectId);
+    })()`);
+    const projectPreview = await waitFor(() =>
+      BrowserWindow.getAllWindows().find((window) => window !== main),
+    );
+    await waitFor(() =>
+      projectPreview.webContents.executeJavaScript(
+        `Boolean(document.querySelector('iframe[title="项目应用"]')?.contentDocument?.body.innerText.includes('Desktop preview verified'))`,
+      ),
+    );
+    assert.equal(
+      await projectPreview.webContents.executeJavaScript('typeof window.api'),
+      'undefined',
+    );
+    assert.equal(
+      await projectPreview.webContents.executeJavaScript(
+        `typeof document.querySelector('iframe')?.contentWindow?.api`,
+      ),
+      'undefined',
+    );
+    await main.webContents.executeJavaScript(
+      `window.api.projectPreview.open(${JSON.stringify(result.projectId)})`,
+    );
+    assert.equal(BrowserWindow.getAllWindows().length, 2);
+    await projectPreview.webContents.executeJavaScript(
+      `document.querySelector('button[aria-label="切换深色"]')?.click()`,
+    );
+    await waitFor(() =>
+      projectPreview.webContents.executeJavaScript(
+        `Boolean(document.querySelector('iframe')?.contentDocument?.documentElement.classList.contains('dark'))`,
+      ),
+    );
+    await projectPreview.webContents.executeJavaScript(
+      `document.querySelector('button[aria-label="切换浅色"]')?.click()`,
+    );
+    await waitFor(() =>
+      projectPreview.webContents.executeJavaScript(
+        `!document.querySelector('iframe')?.contentDocument?.documentElement.classList.contains('dark')`,
+      ),
+    );
+    await main.webContents.executeJavaScript(`(async () => {
+      const connection = await window.api.backend.getConnection();
+      const response = await fetch(connection.baseUrl + '/layout/config/update', { method: 'POST', headers: {
+        Authorization: 'Bearer ' + connection.token, 'X-Origamix-Service': connection.serviceInstanceId, 'Content-Type': 'application/json'
+      }, body: JSON.stringify({ projectId: ${JSON.stringify(result.projectId)}, enabled: false }) });
+      const result = await response.json(); if (!result.success) throw new Error(result.message);
+    })()`);
+    await waitFor(() => projectPreview.isDestroyed());
     // A renderer-driven same-window navigation must not replace the trusted document.
     const trustedUrl = main.webContents.getURL();
     const blockedNavigation = new Promise((resolve) => {

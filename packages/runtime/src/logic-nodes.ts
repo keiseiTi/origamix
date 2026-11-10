@@ -1,3 +1,4 @@
+import { engineApplication } from './application';
 import {
   assertRuntimeField,
   assertRuntimeMethod,
@@ -133,10 +134,10 @@ const handlers: NodeHandlers = {
       const body = await executeHyperValue(context, data.bodyParams);
       if (method !== 'GET' && body !== null && body !== undefined && !headers.has('content-type'))
         headers.set('content-type', 'application/json');
-      const response = await fetch(url, {
+      const response = await fetch(url.toString(), {
         method,
         headers,
-        credentials: 'omit',
+        credentials: data.credentials ?? 'omit',
         redirect: 'error',
         signal: context.signal
           ? AbortSignal.any([context.signal, AbortSignal.timeout(10000)])
@@ -166,6 +167,22 @@ const handlers: NodeHandlers = {
         error: error instanceof Error ? error.message : '接口请求失败',
       };
     }
+  },
+  setApplicationState: async (context) => {
+    const session = engineApplication(context.engine);
+    const entries = [];
+    for (const setter of context.data.setters)
+      entries.push({ name: setter.name, value: await executeHyperValue(context, setter.value) });
+    if (context.signal?.aborted || context.engine.disposed) return;
+    session.update(entries);
+  },
+  resetApplicationState: (context) => {
+    if (!context.signal?.aborted && !context.engine.disposed)
+      engineApplication(context.engine).reset();
+  },
+  navigatePage: (context) => {
+    if (!context.signal?.aborted && !context.engine.disposed)
+      engineApplication(context.engine).navigate(context.data.destination, context.data.pageId);
   },
   customJS: (context) => executeHyperValue(context, context.data.value),
 };

@@ -123,9 +123,9 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   );
   await act(async () => report.reject(new Error('obsolete report failure')));
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
-  mocks.config.mockRejectedValueOnce(new Error('layout unavailable'));
+  mocks.workingState.mockRejectedValueOnce(new Error('page unavailable'));
   view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='four' />);
-  await waitFor(() => expect(view.getByRole('alert').textContent).toContain('layout unavailable'));
+  await waitFor(() => expect(view.getByRole('alert').textContent).toContain('page unavailable'));
   expect(post.mock.calls.at(-1)![0].snapshot.pageSchemas.page_test.workingVersion).toBe(3);
   const layoutSchema = working(4).schema;
   mocks.config.mockResolvedValue({ enabled: true });
@@ -147,18 +147,22 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     },
   });
   view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='five' />);
+  await waitFor(() =>
+    expect(post.mock.calls.at(-1)![0].snapshot.pageSchemas.page_test.workingVersion).toBe(3),
+  );
+  expect(post.mock.calls.at(-1)![0].snapshot.layout.enabled).toBe(false);
+  expect(mocks.layoutWorking).not.toHaveBeenCalled();
+  // Layout-only previews never fetch page drafts or persist page diagnostics.
+  const pageReads = mocks.workingState.mock.calls.length;
+  view.rerender(<PagePreviewFrame {...props} active targetKind='layout' schemaRefreshKey='six' />);
   await waitFor(() => expect(post.mock.calls.at(-1)![0].snapshot.layout.enabled).toBe(true));
   const composed = post.mock.calls.at(-1)![0].snapshot;
+  expect(composed.pages).toEqual([]);
+  expect(mocks.workingState).toHaveBeenCalledTimes(pageReads);
   send({
     type: 'origamix.preview.outcome',
-    report: {
-      ...outcome,
-      snapshotId: composed.snapshotId,
-      pageHash: composed.pageSchemas.page_test.hash,
-      layoutHash: composed.layout.hash,
-    },
+    report: { ...outcome, snapshotId: composed.snapshotId, layoutHash: composed.layout.hash },
   });
-  // A composed failure/success must never be persisted as a page-only diagnostic.
   expect(mocks.report).toHaveBeenCalledOnce();
 });
 

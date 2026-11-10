@@ -86,6 +86,7 @@ export const LayoutConfigUpdateRequestSchema = Type.Object(
 );
 export const LayoutConfigStateSchema = Type.Object(
   {
+    runtime: Type.Union([Type.Literal('origamix'), Type.Literal('external')]),
     name: Type.Literal(LAYOUT_NAME),
     enabled: Type.Boolean(),
   },

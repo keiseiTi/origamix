@@ -472,12 +472,19 @@ it('initializes a project manifest when opening an uninitialized directory', asy
   await expect(readFile(join(directory, 'origamix.project.json'), 'utf8')).rejects.toMatchObject({
     code: 'ENOENT',
   });
-  const opened = await service.openProject({
-    directoryGrantId: 'grant_existing',
-    name: '导入项目',
-    code: 'imported-project',
-    initializeIfNeeded: true,
-  });
+  const initialization = () =>
+    service.openProject({
+      directoryGrantId: 'grant_existing',
+      name: '导入项目',
+      code: 'imported-project',
+      initializeIfNeeded: true,
+    });
+  const attempts = await Promise.allSettled([initialization(), initialization()]);
+  expect(attempts.filter((item) => item.status === 'fulfilled')).toHaveLength(1);
+  expect(attempts.filter((item) => item.status === 'rejected')).toHaveLength(1);
+  const accepted = attempts.find((item) => item.status === 'fulfilled');
+  if (!accepted || accepted.status !== 'fulfilled') throw new Error('expected initialized project');
+  const opened = accepted.value;
   if (opened.status !== 'opened') throw new Error('expected opened project');
   const project = opened.project;
   const manifest = JSON.parse(await readFile(join(directory, 'origamix.project.json'), 'utf8')) as {
@@ -496,8 +503,13 @@ it('initializes a project manifest when opening an uninitialized directory', asy
     materialSet: { id: 'official-antd', version: '1.0.0' },
     pages: [],
   });
-  await access(join(directory, 'src', 'router.ts'));
-  await access(join(directory, 'vite.config.ts'));
+  expect(manifest).toMatchObject({ runtime: 'external', layout: { enabled: false } });
+  await expect(access(join(directory, 'src', 'router.ts'))).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
+  await expect(access(join(directory, 'vite.config.ts'))).rejects.toMatchObject({ code: 'ENOENT' });
+  await expect(service.setLayoutEnabled(project.id, true)).rejects.toThrow('自行管理');
+  await expect(service.getRouting(project.id)).rejects.toThrow('自行管理');
   database.close();
 });
 
@@ -555,6 +567,65 @@ it('initializes the chosen layout before publication and preserves drafts throug
     expect(
       (await layouts.getWorking(project.id)).document.schema.elements.layout!.props.variant,
     ).toBe('side');
+  } finally {
+    database.close();
+  }
+});
+
+// Application references and manifest concurrency must be enforced before any page deletion or config write.
+it('validates application ownership and references, preserves stale drafts, and guards referenced pages', async () => {
+  const { database, service, project, page } = await deletionFixture();
+  try {
+    const login = await service.createPage(project.id, { name: '登录', slug: 'login' });
+    const initial = await service.getApplication(project.id);
+    const access = {
+      enabled: true as const,
+      loginPageId: login.id,
+      homePageId: page.id,
+      publicPageIds: [],
+      stateKey: 'authenticated',
+    };
+    await expect(
+      service.updateApplication({
+        projectId: project.id,
+        expectedManifestHash: initial.manifestHash,
+        initialState: { authenticated: false },
+        access: { ...access, homePageId: 'page_other' },
+      }),
+    ).rejects.toThrow('页面不存在');
+    const saved = await service.updateApplication({
+      projectId: project.id,
+      expectedManifestHash: initial.manifestHash,
+      initialState: { authenticated: false },
+      access,
+    });
+    expect(saved.access).toEqual(access);
+    expect(
+      await service.updateApplication({
+        projectId: project.id,
+        expectedManifestHash: initial.manifestHash,
+        initialState: { authenticated: false },
+        access,
+      }),
+    ).toEqual(saved);
+    await expect(
+      service.updateApplication({
+        projectId: project.id,
+        expectedManifestHash: initial.manifestHash,
+        initialState: { authenticated: true },
+        access,
+      }),
+    ).rejects.toThrow('配置已变化');
+    expect((await service.getApplication(project.id)).access).toEqual(access);
+    await expect(service.deletePage(project.id, login.id)).rejects.toThrow('访问规则引用');
+    expect(await readFile(join(project.path, 'src/pages/login/schema.json'), 'utf8')).toBeTruthy();
+    await service.updateApplication({
+      projectId: project.id,
+      expectedManifestHash: saved.manifestHash,
+      initialState: {},
+      access: { enabled: false },
+    });
+    await service.deletePage(project.id, login.id);
   } finally {
     database.close();
   }

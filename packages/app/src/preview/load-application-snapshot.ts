@@ -10,15 +10,17 @@ export const loadApplicationSnapshot = async (
   theme: 'light' | 'dark',
 ): Promise<ApplicationSnapshot> => {
   const [records, stack, config] = await Promise.all([
-    projectsService.pages(projectId),
+    projectsService
+      .pages(projectId)
+      .then((pages) => (initialPageId ? pages.filter((page) => page.id === initialPageId) : [])),
     projectsService.stack(projectId),
-    layoutService.config(projectId),
+    initialPageId ? Promise.resolve({ enabled: false }) : layoutService.config(projectId),
   ]);
   if (records.some((page) => page.projectId !== projectId))
     throw new Error('预览页面不属于当前项目');
   const [states, layout] = await Promise.all([
     Promise.all(records.map((page) => schemaService.workingState(projectId, page.id))),
-    config.enabled ? layoutService.workingState(projectId) : null,
+    initialPageId === null && config.enabled ? layoutService.workingState(projectId) : null,
   ]);
   if (layout && layout.document.projectId !== projectId) throw new Error('预览布局不属于当前项目');
   const pages = records.map((page) => ({

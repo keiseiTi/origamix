@@ -1,3 +1,4 @@
+import { ProjectPreviewService } from './preview/project-preview-service';
 import { ProjectTaskService } from './agent/project-task-service';
 import { agentTarget } from './agent/agent-target';
 import { LayoutService } from './layout/layout-service';
@@ -34,6 +35,7 @@ export const startServer = async (input: {
   port?: number;
   databasePath: string;
   templatePath: string;
+  previewAssetDirectory?: string;
   desktopToken: string;
   serviceInstanceId: string;
   projectPath?: string;
@@ -203,7 +205,10 @@ export const startServer = async (input: {
         (await getCurrentRevision(projectId, pageId)).workingVersion,
       startPage: (request) => agentService.start(request),
     });
+    const projectPreview = new ProjectPreviewService(projects, input.previewAssetDirectory);
+    projectService.setPreviewCloser(projectPreview.endProject);
     const server = createHttpServer({
+      projectPreview,
       ...input,
       projects,
       projectService,
@@ -236,6 +241,7 @@ export const startServer = async (input: {
       const agents = agentService.shutdown();
       closePromise = (async () => {
         const http = server.close();
+        await projectPreview.close();
         void http.catch(() => undefined);
         // Do not close SQLite underneath an Agent or an HTTP mutation still in flight.
         await agents;

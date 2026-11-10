@@ -65,6 +65,11 @@ export const flowNodeManifests = [
       bodyParams: { type: 'function', value: { params: [], body: 'return null;' } },
     },
     propsSchema: props({
+      credentials: Type.Optional(
+        Type.Union([Type.Literal('omit'), Type.Literal('same-origin'), Type.Literal('include')], {
+          description: '是否携带浏览器业务Cookie，由流程显式选择；平台不会自动处理401。',
+        }),
+      ),
       url: value('HTTP(S) URL, resolved through HyperValue.'),
       method: Type.Union(
         (['get', 'post', 'put', 'patch', 'delete'] as const).map((method) => Type.Literal(method)),
@@ -191,6 +196,59 @@ export const flowNodeManifests = [
     returnsSchema: Type.Boolean(),
     connections: { acceptsInput: true, outputs: ['true', 'false'] },
     constraints: ['真、假分支各最多连接一个后续节点；映射中的 nextNode 必须与节点 next 连线一致。'],
+  },
+  {
+    type: 'setApplicationState',
+    title: '设置应用状态',
+    description: '原子更新项目声明的应用状态，供所有页面共享；登录结果也由业务流程明确写入。',
+    executable: true,
+    defaultProps: { setters: [{ name: '', value: { type: 'null', value: null } }] },
+    propsSchema: props({
+      setters: Type.Array(
+        Type.Object(
+          {
+            name: Type.String(),
+            value: value('应用状态的新值，可以读取接口结果或 application 上下文。'),
+          },
+          { additionalProperties: false },
+        ),
+        { minItems: 1 },
+      ),
+    }),
+    connections: sequence,
+    constraints: [
+      '状态名称必须由项目应用初始状态声明；不得存入平台凭据或把密码/Token写入Schema默认值。访问状态字段只能赋布尔值。',
+    ],
+  },
+  {
+    type: 'resetApplicationState',
+    title: '重置应用状态',
+    description: '恢复项目声明的初始状态；不自动调用退出接口或导航。',
+    executable: true,
+    defaultProps: {},
+    propsSchema: props({}),
+    connections: sequence,
+    constraints: ['仅修改当前应用会话内存。'],
+  },
+  {
+    type: 'navigatePage',
+    title: '跳转页面',
+    description: '跳转项目页面、默认首页、原访问页或配置的登录页，自动处理路由模式与访问前缀。',
+    executable: true,
+    defaultProps: { destination: 'page', pageId: '' },
+    propsSchema: props({
+      destination: Type.Union([
+        Type.Literal('page'),
+        Type.Literal('home'),
+        Type.Literal('return'),
+        Type.Literal('login'),
+      ]),
+      pageId: Type.Optional(Type.String()),
+    }),
+    connections: sequence,
+    constraints: [
+      '指定页面时必须选择当前项目的真实pageId；返回页只接受当前项目页面ID，不接受外部URL。',
+    ],
   },
   {
     type: 'setGlobalVariable',

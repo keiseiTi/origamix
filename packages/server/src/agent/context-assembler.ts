@@ -305,7 +305,12 @@ export class ContextAssembler {
             })),
           ),
       logicSummary: logicSummary(current.schema),
-      flowGuide: input.layout ? '布局不支持业务流程、事件绑定、全局变量。' : FLOW_GENERATION_GUIDE,
+      flowGuide: input.layout
+        ? '布局不支持业务流程、事件绑定、全局变量。'
+        : FLOW_GENERATION_GUIDE +
+          '\n项目应用上下文（只读配置，不得猜测或擅自新增）：' +
+          JSON.stringify(materials.application ?? null) +
+          '\n应用状态用 application.<name> 读取；setApplicationState 写入已声明状态，resetApplicationState 重置，navigatePage 跳转真实项目页面或 home/return/login。接口 credentials 由节点显式配置；401/登录成功等判断须在逻辑流表达，不存在自动认证服务。缺少状态声明时请用户先在项目应用配置中声明。',
       schemaOutline: outline(current.schema),
       schemaFragment: schema.value,
       productDocs: docs,

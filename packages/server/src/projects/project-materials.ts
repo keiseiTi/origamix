@@ -1,4 +1,5 @@
 import {
+  assertAntdLayoutSchema,
   antdLayoutManifest,
   antdLayoutAgentCatalog,
   antdLayoutValidationRegistry,
@@ -14,6 +15,8 @@ import {
   BUILTIN_PROJECT_STACK,
   validateResolvedProjectStack,
   type ProjectStack,
+  readApplicationDefinition,
+  resolveProjectStack,
 } from '@origamix/shared';
 
 import { ProjectManifestStore } from './project-manifest-store';
@@ -41,8 +44,19 @@ export const getProjectMaterials = (stack: ProjectStack) => {
 export const builtinProjectMaterials = getProjectMaterials(BUILTIN_PROJECT_STACK);
 
 export const loadProjectMaterials = async (projectPath: string) => {
-  const stack = await new ProjectManifestStore().readStack(projectPath);
-  return getProjectMaterials(stack);
+  const store = new ProjectManifestStore();
+  const manifest = await store.readManifest(projectPath);
+  const materials = getProjectMaterials(resolveProjectStack(manifest));
+  const definition = readApplicationDefinition(manifest);
+  const application =
+    manifest.runtime === 'origamix'
+      ? {
+          pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
+          stateKeys: Object.keys(definition.initialState),
+          ...(definition.access.enabled ? { access: definition.access } : {}),
+        }
+      : undefined;
+  return { ...materials, application, validation: { ...materials.validation, application } };
 };
 
 export const loadLayoutMaterials = async (projectPath: string) => {
@@ -53,4 +67,14 @@ export const loadLayoutMaterials = async (projectPath: string) => {
     agentCatalog: antdLayoutAgentCatalog,
     validation: { ...materials.validation, registry: antdLayoutValidationRegistry },
   };
+};
+
+export const assertAppliedLayoutSchema = (
+  schema: import('@origamix/shared').OrigamixPageSchema,
+): void => {
+  try {
+    assertAntdLayoutSchema(schema);
+  } catch {
+    throw invalid('已应用布局区域与公开配置不一致，请重新应用布局');
+  }
 };

@@ -26,7 +26,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.
-- Preview is rendered by App in a sandboxed iframe with read-only application snapshots sent by the trusted workbench via postMessage, without a Desktop bridge or backend credentials; Agent HTTP/SSE is implemented. Preview capability sessions remain future work.
+- Page/layout draft preview is rendered by App in a sandboxed iframe with read-only snapshots sent by the trusted workbench via postMessage. Full-project preview uses a Server-owned applied snapshot/session and an independent Main-owned no-preload window, with a sandboxed application iframe and no workbench credentials. Only runtime=origamix with enabled layout supports project preview; external projects retain page management only. Agent HTTP/SSE is implemented; page-preview capability sessions remain future work.
 
 ## Architecture invariants
 

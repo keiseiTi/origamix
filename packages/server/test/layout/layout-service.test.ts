@@ -25,6 +25,7 @@ const fixture = async () => {
   const path = await mkdtemp(join(tmpdir(), 'origamix-layout-'));
   directories.push(path);
   const manifest = {
+    runtime: 'origamix' as const,
     routing: { mode: 'browser' as const, basePath: '/' },
     projectId: 'project_test',
     name: '测试项目',

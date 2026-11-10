@@ -35,3 +35,5 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 - MaterialView consumes validated layoutShrink alongside layoutGrow on the shared frame. Managed sidebars set shrink to zero so their frame tracks the native sidebar width during collapse without overlapping sibling content. Do not patch material DOM ancestors to force sizing.
 
 - Injected navigation may carry a validated local href for Browser basename or Hash links, separately from its slug path and allowed pageId. Runtime owns no router; native modified-click links must preserve the supplied application prefix/history form.
+
+- `application-shell.tsx` shares layout composition between Template and project preview. `application.tsx` owns the router-independent access gate and application context; `application-session.ts` owns transient shared JSON state and page-ID navigation. Business requests and session restoration use ordinary event flows, without automatic authentication or 401 handling.

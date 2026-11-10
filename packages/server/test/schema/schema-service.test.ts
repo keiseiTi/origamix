@@ -95,6 +95,7 @@ const createPageFixture = async (): Promise<{
   await writeFile(
     join(projectPath, 'origamix.project.json'),
     JSON.stringify({
+      runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'side' as const },
       routing: { mode: 'browser' as const, basePath: '/' },
       projectId: 'project_test',
