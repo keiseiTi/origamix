@@ -1,7 +1,7 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { ComponentType, LazyExoticComponent, ReactNode } from 'react';
 
-/** Accept JSON module inference; the rendering boundary checks the release tag. */
+/** Accept JSON module inference for extension metadata. */
 export type RuntimeSchema = Omit<OrigamixPageSchema, 'extensions'> & {
   extensions: Record<string, unknown>;
 };

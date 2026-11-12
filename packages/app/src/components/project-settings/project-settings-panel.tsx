@@ -2,7 +2,7 @@ import { useProjectSettingsSession } from './use-project-settings-session';
 import { ProjectSettingsChat } from './project-settings-chat';
 import { useState } from 'react';
 import { EditorToolbar } from '@origamix/editor';
-import { ConfiguredShell } from '@origamix/runtime';
+import { LayoutEffect } from './layout-effect';
 import { type ProjectMenuItem } from '@origamix/shared';
 import {
   Button,
@@ -235,8 +235,7 @@ export const ProjectSettingsPanel = ({
       ) : (
         <div className='grid min-h-0 flex-1 gap-4 overflow-auto p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:overflow-hidden'>
           <div className='min-w-0 overflow-auto rounded-lg border border-border'>
-            <ConfiguredShell
-              className='min-h-96 lg:min-h-full'
+            <LayoutEffect
               config={{ ...draft.shell, navigation: draft.shell.navigation ?? exampleMenu }}
               title={draft.name}
               enabled={
@@ -251,7 +250,7 @@ export const ProjectSettingsPanel = ({
                 {draft.pages.find((page) => page.pageId === selectedPage)?.name ??
                   examplePages.find((page) => page.pageId === selectedPage)?.name}
               </div>
-            </ConfiguredShell>
+            </LayoutEffect>
           </div>
           <Tabs
             value={mode}

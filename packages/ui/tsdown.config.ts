@@ -6,8 +6,9 @@ export default defineConfig({
   fixedExtension: false,
   dts: true,
   clean: true,
-  outputOptions: { codeSplitting: false },
+  outputOptions: { codeSplitting: true },
   sourcemap: true,
+  unbundle: true,
   deps: {
     neverBundle: ['react', 'react-dom', 'react/jsx-runtime', '@uiw/react-color-chrome'],
   },

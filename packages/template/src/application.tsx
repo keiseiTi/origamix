@@ -1,11 +1,12 @@
 // Origamix application shell 1.0.0
 import { useSyncExternalStore, useMemo, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate, useHref } from 'react-router';
-import { ConfiguredShell, readProjectShell, PageNavigationProvider } from '@origamix/runtime';
+import { readProjectShell, PageNavigationProvider } from '@origamix/runtime';
 import { RuntimeProvider } from '@origamix/materials/antd/runtime';
 import manifest from '../origamix.project.json';
 import { readLayoutVariant } from './routing-config';
 import { projectPages } from './project-pages';
+import { ApplicationShell } from './application-shell';
 const subscribeTheme = (notify: () => void) => {
   const observer = new MutationObserver(notify);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
@@ -39,7 +40,7 @@ const Application = (): React.JSX.Element => {
     <RuntimeProvider mode={mode}>
       <div className='min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
         <PageNavigationProvider pages={pages} onNavigate={go}>
-          <ConfiguredShell
+          <ApplicationShell
             config={{
               ...shell,
               logo: shell.logo.startsWith('/')
@@ -54,7 +55,7 @@ const Application = (): React.JSX.Element => {
             onNavigate={go}
           >
             <Outlet />
-          </ConfiguredShell>
+          </ApplicationShell>
         </PageNavigationProvider>
       </div>
     </RuntimeProvider>

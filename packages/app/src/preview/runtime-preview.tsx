@@ -84,9 +84,9 @@ export const RuntimePreview = ({
     <Provider mode={theme}>
       <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
         <OrigamixPage
+          key={revisionId}
           schema={schema as Schema}
           materials={current.materials.components}
-          resetKey={revisionId}
           onOutcome={(outcome) => onOutcome?.(toPreviewOutcome(outcome))}
           renderError={(error, retry) => (
             <div

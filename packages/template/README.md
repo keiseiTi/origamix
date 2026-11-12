@@ -55,7 +55,7 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 
 ## 项目布局与路由
 
-新项目在 `origamix.project.json` 的 `shell` 中声明标题、Logo、菜单、首页、404 和独立页面。`layout.enabled` 开关布局，`layout.initialVariant` 选择 side/top/mix。模板通过 Runtime 的 ConfiguredShell 渲染固定布局，不需要生成或应用布局 Schema。
+新项目在 `origamix.project.json` 的 `shell` 中声明标题、Logo、菜单、首页、404 和独立页面。`layout.enabled` 开关布局，`layout.initialVariant` 选择 side/top/mix。模板通过 [application-shell.tsx](src/application-shell.tsx) 使用 Ant Design 的 Layout 和 Menu 渲染外壳。生成后可在项目内直接定制。已有项目如果升级到移除 `ConfiguredShell` 导出的 Runtime，需要将应用入口改为使用项目自己的外壳。
 
 菜单按数组顺序展示，以 id/parentId 表达层级；pageId 可省略，表示分组。标题留空跟随页面名称，hidden 隐藏整棵子树。缺少 navigation 表示尚未配置，运行项目不展示示例菜单；空数组表示主动清空。
 

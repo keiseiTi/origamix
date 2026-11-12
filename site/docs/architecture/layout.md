@@ -9,8 +9,8 @@ description: 项目清单配置、服务端保存和模板布局渲染的职责�
 
 - Shared 的 project-shell.ts 定义 shell 与设置协议，校验菜单父级、循环、Logo 和页面引用。
 - ProjectService 的 getSettings/updateSettings 在项目队列和独占租约内读取、校验、检查 manifestHash 并原子写入 origamix.project.json。相同已完成更新可安全重试，不覆盖更新的配置。
-- App 的项目设置表单持有一份临时草稿，左侧通过 Runtime ConfiguredShell 展示布局效果；示例菜单仅存在于设置界面。
-- Template 读取同一清单并使用 ConfiguredShell。菜单导航由模板路由提供 href 与 pageId 回调，Runtime 不访问文件或后端。
+- App 的项目设置表单持有一份临时草稿，左侧展示布局配置示意；示例菜单仅存在于设置界面。
+- Template 读取同一清单，用 Ant Design 的 Layout 和 Menu 渲染应用外壳。链接和跳转由模板路由提供。
 - 首页映射到根路径；未知路由保留地址并渲染配置的 404。standalonePageIds 控制页面是否使用布局，关闭全局布局不改变路由规则。
 - 页面内容继续通过唯一的 Working、显式 Revision 和显式 Apply 管线管理。平台仅提供页面草稿预览，完整项目行为在生成应用中验证。
 

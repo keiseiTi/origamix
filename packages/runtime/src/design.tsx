@@ -1,5 +1,4 @@
 import { useMemo, type ReactNode, type HTMLAttributes, type RefAttributes } from 'react';
-import { SCHEMA_VERSION } from '@origamix/shared';
 import { parseLayout } from './core/layout';
 import type { MaterialRegistry, RuntimeSchema } from './core/types';
 import { DiagnosticsProvider, type RuntimeDiagnosticsProps } from './diagnostics';
@@ -33,14 +32,7 @@ export const DesignRenderer = ({
   onRenderError,
   renderElementError,
 }: DesignRendererProps): React.JSX.Element => {
-  const layouts = useMemo(() => {
-    if (
-      (schema.extensions.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
-      SCHEMA_VERSION
-    )
-      throw new Error('页面版本不受支持');
-    return parseLayout(schema);
-  }, [schema]);
+  const layouts = useMemo(() => parseLayout(schema), [schema]);
 
   return (
     <DiagnosticsProvider

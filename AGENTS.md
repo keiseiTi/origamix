@@ -115,4 +115,4 @@ pnpm build
 
 - Custom Node command entrypoints and integration launchers use TypeScript executed by tsx. Declare tsx in each invoking package, including public packages that invoke root packing tools; root scripts are checked by tsconfig.scripts.json. Preserve loader arguments for Node child scripts and keep Electron runtime fixtures distinct from Node launchers.
 
-- Project settings use required manifest shell/layout/routing and Runtime ConfiguredShell. Layout effects are configuration feedback only. Page previews show Working in an isolated iframe. Layout settings are saved through ProjectService.
+- Project settings and Template use required manifest shell/layout/routing. Template owns the generated application shell. Layout effects are configuration feedback only. Page previews show Working in an isolated iframe. Layout settings are saved through ProjectService.

@@ -24,10 +24,10 @@ test/                 核心流程测试
 ```tsx
 import { OrigamixPage } from '@origamix/runtime';
 
-<OrigamixPage schema={schema} materials={materials} resetKey={revisionId} />;
+<OrigamixPage key={revisionId} schema={schema} materials={materials} />;
 ```
 
-调用者提供 Schema 和物料注册表。Runtime 负责本地运行会话 与按元素订阅的 React 渲染装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。`resetKey` 变化会重建页面会话并恢复错误边界。
+调用者提供 Schema 和物料注册表。Runtime 负责本地运行会话 与按元素订阅的 React 渲染装配、未知物料检测和渲染错误捕获；可选 `onOutcome` 返回诊断，`renderError` 允许调用者提供重试界面。调用方可以通过改变 `OrigamixPage` 的 React `key` 开启新会话。
 
 该根入口也导出 `DesignRenderer`、`MaterialRegistry`、`RuntimeMaterialProps`、`RuntimeDiagnostic`、`RuntimeOutcome` 和 `findUnknownMaterialTypes`。UI 风格、诊断上传及页面刷新属于调用方；生成项目无需依赖 App、Shared 或 Server。
 
@@ -39,7 +39,7 @@ import { OrigamixPage } from '@origamix/runtime';
 
 取值字段统一使用 Shared 的 `HyperValue`：`{ type, value }`。字面值类型为 `string`、`number`、`boolean` 和 `null`；`contextValue` 读取 `state.elementId.property`、`event.payload.path`、`global.name` 或 `result.nodeId.path`。函数参数也可绑定 `method.elementId.methodName`。上下文读取拒绝原型链路径。
 
-[execute.ts](src/execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败显示执行错误、停止本次事件后续动作，下一次触发可重新执行。
+[execute.ts](src/execute.ts) 为所有节点统一求值：`expression` 执行表达式；`function` 根据 `{ params: [{ name, value: contextPath }], body }` 按顺序绑定参数并执行函数体，等待 Promise 返回值。`customJS` 的 `value` 使用函数类型。方法节点将求值结果作为单个参数传入，数组不展开。请求节点仍返回 `{ ok, status, data, error }`，仅接受 HTTP(S) URL，不隐式携带凭据。脚本失败时会停止本次事件的后续动作，下一次触发可重新执行。`OrigamixPage` 的可选回调 `onFlowError(error)` 会收到原始错误，调用方决定如何处理。传给 `onOutcome` 的诊断仍只包含安全摘要。
 
 项目 JavaScript 在页面环境中执行，求值器本身不是沙箱。工作台预览继续使用既有的 sandbox iframe，不接收后端凭据或 Desktop bridge；生成页面在自身宿主环境中运行。Editor 和 Server 不执行项目代码。节点契约 1.0 不接受原来的原始值和 `$ref` 格式。
 
@@ -69,7 +69,6 @@ const Page = (): React.JSX.Element => (
   <OrigamixPage
     schema={schema}
     materials={materials}
-    resetKey={JSON.stringify(schema)}
     renderError={(_error, retry) => (
       <main role='alert'>
         页面渲染失败。<button onClick={retry}>重试</button>
@@ -83,11 +82,11 @@ export default Page;
 
 调用项目需要直接声明 Runtime、Materials 及其 peer dependencies，并启用 TypeScript JSON 导入；Schema 示例见 [Shared README](../shared/README.md)。样式由调用者导入，生成项目的 [index.css](../template/src/index.css) 包含 Tailwind 与 HeroUI 样式入口，Runtime 不会注入工作台主题。
 
-渲染异常由页面级边界兜底；每个 Schema 元素另有局部边界，运行态与设计态共用。未知物料或单个物料失败时，仅替换对应子树，兄弟元素继续显示；容器自身失败仍会隐藏其子树。`renderError` 自定义页面级错误，`renderElementError({ diagnostic, error, retry })` 自定义元素占位。默认占位保留布局框和设计态 frame 属性，提供错误详情与重试；设计弹层即使尚未打开也能显示失败占位。普通事件处理器、异步回调和 SSR 异常不由 React ErrorBoundary 捕获，流程执行继续使用原有错误入口。
+渲染异常由页面级边界兜底；每个 Schema 元素另有局部边界，运行态与设计态共用。未知物料或单个物料失败时，仅替换对应子树，兄弟元素继续显示；容器自身失败仍会隐藏其子树。`renderError` 自定义页面级错误，`renderElementError({ diagnostic, error, retry })` 自定义元素占位。默认占位保留布局框和设计态 frame 属性，提供错误详情与重试；设计弹层即使尚未打开也能显示失败占位。普通事件处理器、异步回调和 SSR 异常不由 React ErrorBoundary 捕获，流程执行错误通过 `onFlowError` 交给调用方。
 
 `OrigamixPage` 和 `DesignRenderer` 均接受 `onDiagnosticsChange`、`onOutcome`、`onRenderError` 与 `renderElementError`。`onDiagnosticsChange` 返回当前诊断集合，元素诊断含 `elementId`、`materialType`、`scope: 'page' | 'layout'`；`onOutcome` 从相同集合派生，只要仍有诊断就为 `failed`，不代表整个页面不可用。删除、隐藏或成功恢复元素会移除对应诊断。`safeMessage` 是适合宿主传输的通用摘要；`onRenderError(error, diagnostic, componentStack)` 及展示钩子的 `error` 提供本地原始异常，宿主不要直接传输或持久化其中的敏感内容。
 
-点击重试仅重挂失败子树，不重放事件或流程。元素输入或对应物料实现发生变化时自动重试，无关元素更新不会重试。运行会话的 `resetKey` 变化会清空原会话诊断；保持自定义 `resetKey` 时由宿主保证页面会话身份正确。成功诊断不证明所有交互、样式或服务端校验已通过。
+点击重试仅重挂失败子树，不重放事件或流程。元素输入或对应物料实现发生变化时自动重试，无关元素更新不会重试。页面会话重建时会清空原会话诊断。成功诊断不证明所有交互、样式或服务端校验已通过。
 
 请求头、查询参数和请求体通过函数返回值配置；条件节点直接按表达式或函数结果判断真假，不维护额外比较操作符。请求保留 10 秒超时与无宿主凭据的执行约束。
 
@@ -111,7 +110,7 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 
 工作区与发布包统一从 `dist` 消费 JavaScript 和类型声明。单独构建时先构建 Shared，再构建 Runtime；根 `pnpm build:libs` 按依赖顺序准备这些产物。
 
-Runtime 包随应用统一发布，但接受的页面格式由独立 SemVer `SCHEMA_VERSION` 决定。相同契约可跨应用发布使用；当前不推断范围、不自动转换旧页面。
+Runtime 包随应用统一发布。运行态和设计态要求页面结构和语义与当前渲染器兼容，Schema 的版本号可以不同。Runtime 不会自动转换旧页面。
 
 ## 布局与页面组合
 

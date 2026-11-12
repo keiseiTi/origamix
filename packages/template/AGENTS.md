@@ -47,4 +47,4 @@ pnpm --filter @origamix/server test:template
 
 - routing-config.ts is a pure local reader shared by Vite and runtime configuration. project-pages.ts maps the single manifest page directory for router/navigation. Browser uses basename; Hash keeps the prefix outside the hash. Both use the same Vite asset base. No automatic source upgrade of existing projects.
 
-- application.tsx consumes required manifest shell through Runtime ConfiguredShell. Router owns home/404 and standalonePageIds policy, including unknown-route 404 page identity without redirect. No layout Schema projection, compatibility branch or project-preview transport.
+- `application.tsx` consumes the required manifest shell through the template-owned Ant Design `application-shell.tsx`. Router owns home/404 and standalonePageIds policy, including unknown-route 404 page identity without redirect. No layout Schema projection, compatibility branch or project-preview transport.

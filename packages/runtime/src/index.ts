@@ -8,9 +8,6 @@ export type { RuntimeDiagnosticsProps, ElementErrorPresentation } from './diagno
 
 export { applicationPages } from '@origamix/shared';
 
-export { ConfiguredShell } from './configured-shell';
-export type { ConfiguredShellProps } from './configured-shell';
-
 export type { ProjectShell } from '@origamix/shared';
 
 export { readProjectShell } from '@origamix/shared';

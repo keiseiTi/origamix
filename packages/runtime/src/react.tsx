@@ -1,5 +1,4 @@
 import { bindPageNavigation, usePageNavigation } from './page-navigation';
-import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
   bindMaterialEventPayloads,
@@ -37,7 +36,6 @@ export const findUnknownMaterialTypes = (schema: Schema, materials: MaterialRegi
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  resetKey: string;
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
@@ -48,13 +46,6 @@ export class RuntimeErrorBoundary extends Component<ErrorBoundaryProps, { error:
 
   static getDerivedStateFromError(error: Error): { error: Error } {
     return { error };
-  }
-
-  componentDidUpdate(previous: Readonly<ErrorBoundaryProps>): void {
-    if (previous.resetKey !== this.props.resetKey && this.state.error) {
-      this.context?.set(this, null);
-      this.setState({ error: null });
-    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
@@ -170,13 +161,20 @@ const RuntimeTree = ({
 const RuntimeCanvas = ({
   schema,
   materials,
+  onFlowError,
 }: {
   schema: Schema;
   materials: MaterialRegistry;
+  onFlowError?: (error: unknown) => void;
 }): React.JSX.Element => {
   const navigation = usePageNavigation();
-  const [flowError, setFlowError] = useState<{ schema: Schema; message: string } | null>(null);
+  const [failedSchema, setFailedSchema] = useState<Schema | null>(null);
   const activeSchema = useRef<Schema | null>(schema);
+  const flowErrorHandler = useRef(onFlowError);
+
+  useLayoutEffect(() => {
+    flowErrorHandler.current = onFlowError;
+  }, [onFlowError]);
 
   useLayoutEffect(() => {
     activeSchema.current = schema;
@@ -185,16 +183,9 @@ const RuntimeCanvas = ({
     };
   }, [schema]);
 
-  const executionError = flowError?.schema === schema ? flowError.message : null;
+  const flowFailed = failedSchema === schema;
 
   const engine = useMemo(() => {
-    if (
-      (schema.extensions?.origamix as { schemaVersion?: unknown } | undefined)?.schemaVersion !==
-      SCHEMA_VERSION
-    )
-      throw new Error(
-        `页面 Schema 版本不受支持，当前支持 ${SCHEMA_VERSION}。请使用兼容应用；页面不会自动转换`,
-      );
     const instance = createEngine(schema);
     bindPageNavigation(instance, navigation);
     installMaterialState(instance, materials);
@@ -204,10 +195,8 @@ const RuntimeCanvas = ({
       logicNodes: { start: captureRuntimeEvent, ...createLogicNodes() },
       onError: (error) => {
         if (activeSchema.current !== schema) return;
-        setFlowError({
-          schema,
-          message: (error instanceof Error ? error.message : '流程执行失败').slice(0, 1800),
-        });
+        setFailedSchema(schema);
+        flowErrorHandler.current?.(error);
       },
     });
     bindMaterialEventPayloads(instance);
@@ -221,36 +210,31 @@ const RuntimeCanvas = ({
 
   const flowDiagnostic = useMemo<RuntimeDiagnostic | null>(
     () =>
-      executionError
+      flowFailed
         ? {
             code: 'FLOW_EXECUTION_ERROR',
             stage: 'event',
             safeMessage: '流程执行失败',
           }
         : null,
-    [executionError],
+    [flowFailed],
   );
   useRuntimeDiagnostic(flowDiagnostic);
 
-  return (
-    <>
-      {executionError && <p role='alert'>流程执行失败：{executionError}</p>}
-      <RuntimeTree engine={engine} components={materials} />
-    </>
-  );
+  return <RuntimeTree engine={engine} components={materials} />;
 };
 
 export interface OrigamixPageProps extends RuntimeDiagnosticsProps {
   schema: Schema;
   materials: MaterialRegistry;
-  resetKey?: string;
+  onFlowError?: (error: unknown) => void;
   renderError?: (error: Error, retry: () => void) => ReactNode;
 }
 
 export const OrigamixPage = ({
   schema,
   materials,
-  resetKey = JSON.stringify(schema),
+  onFlowError,
   onOutcome,
   renderError,
   onDiagnosticsChange,
@@ -259,14 +243,13 @@ export const OrigamixPage = ({
 }: OrigamixPageProps): React.JSX.Element => {
   return (
     <DiagnosticsProvider
-      key={resetKey}
       onOutcome={onOutcome}
       onDiagnosticsChange={onDiagnosticsChange}
       onRenderError={onRenderError}
       renderElementError={renderElementError}
     >
-      <RuntimeErrorBoundary resetKey={resetKey} renderError={renderError}>
-        <RuntimeCanvas schema={schema} materials={materials} />
+      <RuntimeErrorBoundary renderError={renderError}>
+        <RuntimeCanvas schema={schema} materials={materials} onFlowError={onFlowError} />
       </RuntimeErrorBoundary>
     </DiagnosticsProvider>
   );

@@ -82,4 +82,4 @@ pnpm --filter @origamix/materials build
 
 - Login and logout use ordinary page materials plus event flows. Layout headers do not inject business authentication controls. Application state and navigation are Runtime capabilities, not dedicated authentication materials.
 
-- Materials exposes page materials only. Project application chrome belongs to Runtime ConfiguredShell and does not use material or layout Schema registries.
+- Materials exposes page materials only. Generated application chrome belongs to Template and does not use material or layout Schema registries.

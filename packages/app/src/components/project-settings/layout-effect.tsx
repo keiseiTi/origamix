@@ -1,20 +1,20 @@
 import { useState, type ReactNode } from 'react';
+import { Button } from '@origamix/ui';
 import { isProjectLogo, type ProjectShell, type InitialLayoutVariant } from '@origamix/shared';
 
-export interface ConfiguredShellProps {
+interface LayoutEffectProps {
   config: ProjectShell;
   title: string;
   enabled: boolean;
   variant: InitialLayoutVariant;
-  pages: readonly { pageId: string; name: string; href?: string }[];
+  pages: readonly { pageId: string; name: string }[];
   currentPageId?: string;
-  onNavigate?: (pageId: string) => void;
+  onNavigate: (pageId: string) => void;
   children: ReactNode;
-  className?: string;
 }
 
-/** Fixed application chrome shared by settings and portable projects; no Schema execution. */
-export const ConfiguredShell = ({
+/** Interactive illustration of the draft project layout. */
+export const LayoutEffect = ({
   config,
   title,
   enabled,
@@ -23,8 +23,7 @@ export const ConfiguredShell = ({
   currentPageId,
   onNavigate,
   children,
-  className = 'min-h-screen',
-}: ConfiguredShellProps): React.JSX.Element => {
+}: LayoutEffectProps): React.JSX.Element => {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState('');
   const items = config.navigation ?? [];
@@ -46,25 +45,16 @@ export const ConfiguredShell = ({
         const label = item.title || page?.name || '未选择页面';
         const hasChildren = items.some((child) => child.parentId === item.id && !child.hidden);
         const content = page ? (
-          <a
-            href={page.href ?? '#'}
+          <Button
+            type='button'
+            size='sm'
+            variant={page.pageId === currentPageId ? 'secondary' : 'ghost'}
             aria-current={page.pageId === currentPageId ? 'page' : undefined}
-            className={`block rounded-md px-3 py-2 text-sm hover:bg-zinc-100 focus-visible:outline-2 dark:hover:bg-zinc-800 ${page.pageId === currentPageId ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200' : ''}`}
-            onClick={(event) => {
-              if (
-                onNavigate &&
-                !event.metaKey &&
-                !event.ctrlKey &&
-                !event.shiftKey &&
-                !event.altKey
-              ) {
-                event.preventDefault();
-                onNavigate(page.pageId);
-              }
-            }}
+            className='w-full justify-start'
+            onClick={() => onNavigate(page.pageId)}
           >
             {label}
-          </a>
+          </Button>
         ) : (
           <span className='block px-3 py-2 text-sm'>{label}</span>
         );
@@ -112,40 +102,42 @@ export const ConfiguredShell = ({
     </nav>
   );
   return (
-    <div
-      className={`flex flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 ${className}`}
-    >
+    <div className='flex min-h-96 flex-col bg-background text-foreground lg:min-h-full'>
       <header className='flex shrink-0 flex-wrap items-center justify-between border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
         {brand}
         {variant === 'mix' && (
           <nav aria-label='一级菜单' className='flex flex-wrap gap-1 p-2'>
             {roots.map((item) => (
-              <button
+              <Button
+                size='sm'
+                variant='ghost'
                 key={item.id}
                 type='button'
                 aria-pressed={group?.id === item.id}
                 onClick={() => {
                   setSelectedGroup(item.id);
-                  if (item.pageId) onNavigate?.(item.pageId);
+                  if (item.pageId) onNavigate(item.pageId);
                 }}
                 className={`rounded-md px-3 py-2 text-sm hover:bg-zinc-100 focus-visible:outline-2 dark:hover:bg-zinc-800 ${group?.id === item.id ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200' : ''}`}
               >
                 {item.title || pages.find((page) => page.pageId === item.pageId)?.name || '未命名'}
-              </button>
+              </Button>
             ))}
           </nav>
         )}
         {variant === 'top' ? (
           navigation
         ) : (
-          <button
+          <Button
+            size='sm'
+            variant='ghost'
             type='button'
             aria-expanded={!collapsed}
             onClick={() => setCollapsed((value) => !value)}
             className='m-2 rounded px-3 py-2 text-xs hover:bg-zinc-100 focus-visible:outline-2 dark:hover:bg-zinc-800'
           >
             {collapsed ? '展开菜单' : '收起菜单'}
-          </button>
+          </Button>
         )}
       </header>
       <div className='flex min-h-0 flex-1'>

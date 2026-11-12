@@ -119,7 +119,7 @@ pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库�
 
 新建项目只填写名称、标识、页面目录、生成位置和启用布局；默认 Browser 路由、根访问前缀和混合布局。关闭布局保留配置，首页和 404 继续有效。引用使用稳定 pageId，删除关联页面前需移除引用。
 
-页面 Agent、可视化编辑和页面预览继续使用 Working → 显式保存 Revision → 显式 Apply。项目设置不经过页面版本流程，不使用布局 Schema 或页面 Agent 写入工具。平台不提供项目预览；完整菜单、路由和业务行为在真实生成项目中验证。布局效果与模板共享 Runtime 的 ConfiguredShell。
+页面 Agent、可视化编辑和页面预览继续使用 Working → 显式保存 Revision → 显式 Apply。项目设置不经过页面版本流程，不使用布局 Schema 或页面 Agent 写入工具。平台不提供项目预览；完整菜单、路由和业务行为在真实生成项目中验证。设置中的布局示意使用项目草稿，生成项目使用 Template 自带的 Ant Design 应用外壳。
 
 布局 AI 助手与表单共用一份临时草稿，AI 修改经过校验后即时展示，点击「保存配置」才写入项目。
 

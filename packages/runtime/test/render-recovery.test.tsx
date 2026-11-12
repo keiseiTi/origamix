@@ -2,7 +2,6 @@
 import { act, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { OrigamixPage } from '../src/react';
 import { DesignRenderer } from '../src/design';
 import type { RuntimeOutcome, RuntimeSchema, MaterialRegistry } from '../src';
@@ -28,7 +27,8 @@ it('isolates failed preview elements, retains sibling state and clears diagnosti
     context: { globalVariables: [] },
     flows: {},
     bindElements: [],
-    extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
+    // A compatible page can reach either renderer with a different version tag.
+    extensions: { origamix: { schemaVersion: '0.9.0' } },
   };
   const Healthy = () => {
     const [count, setCount] = useState(0);
@@ -50,12 +50,7 @@ it('isolates failed preview elements, retains sibling state and clears diagnosti
     await act(async () =>
       root.render(
         mode === 'run' ? (
-          <OrigamixPage
-            schema={source}
-            materials={registry}
-            resetKey='session'
-            onOutcome={onOutcome}
-          />
+          <OrigamixPage schema={source} materials={registry} onOutcome={onOutcome} />
         ) : (
           <DesignRenderer
             schema={source}
