@@ -4,6 +4,7 @@ import type { EditorPublicState } from '../interfaces/editor-instance';
 import { useEditorContext } from './use-editor-context';
 import { useEditorStoreApi } from '../session/editor-context';
 import { createPublicSource } from '../session/editor-public-state';
+
 export const useEditorSelector = <T>(selector: (state: EditorPublicState) => T): T => {
   const editor = useEditorContext();
   const core = useEditorStoreApi();

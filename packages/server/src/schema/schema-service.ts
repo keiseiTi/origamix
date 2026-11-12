@@ -23,6 +23,7 @@ import {
 
 import { conflict, invalid } from '../errors';
 import {
+  WORKING_SCHEMA_FILE_VERSION,
   WorkingSchemaStore,
   type AgentWorkingCommitReceipt,
   type WorkingSchemaFile,
@@ -70,7 +71,7 @@ export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void>
 const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
   const working = await store.readWorking(page);
   if (
-    working.version !== 2 ||
+    working.version !== WORKING_SCHEMA_FILE_VERSION ||
     working.pageId !== page.pageId ||
     !working.lastSavedRevisionId ||
     !Number.isSafeInteger(working.workingVersion) ||

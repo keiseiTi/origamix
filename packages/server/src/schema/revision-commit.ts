@@ -10,12 +10,13 @@ import {
 
 import { invalid } from '../errors';
 import { hashSchema } from './schema-hash';
-import type {
-  WorkingSchemaStore,
-  WorkingSchemaPageRef,
-  RevisionSnapshot,
-  CommitJournal,
-  WorkingSchemaFile,
+import {
+  WORKING_SCHEMA_FILE_VERSION,
+  type WorkingSchemaStore,
+  type WorkingSchemaPageRef,
+  type RevisionSnapshot,
+  type CommitJournal,
+  type WorkingSchemaFile,
 } from './working-schema-store';
 
 export type SchemaWriteStage = 'prepared' | 'revision' | 'schema';
@@ -55,7 +56,7 @@ const requireCurrentWorking = (
   page: WorkingSchemaPageRef,
   working: WorkingSchemaFile,
 ): WorkingSchemaFile => {
-  if (working.version !== 2) throw invalid('页面工作副本版本无效');
+  if (working.version !== WORKING_SCHEMA_FILE_VERSION) throw invalid('页面工作副本版本无效');
   if (working.pageId !== page.pageId) throw invalid('页面工作副本归属无效');
   return working;
 };
@@ -72,7 +73,7 @@ const workingAtSnapshot = (
   )
     return previous;
   return {
-    version: 2,
+    version: WORKING_SCHEMA_FILE_VERSION,
     pageId: page.pageId,
     workingVersion: (previous?.workingVersion ?? 0) + 1,
     workingHash: snapshot.schemaHash,

@@ -1,32 +1,25 @@
+import { drizzle, type NodeSQLiteDatabase } from 'drizzle-orm/node-sqlite';
 import { DatabaseSync } from 'node:sqlite';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type { BetterSQLiteTransaction } from 'drizzle-orm/better-sqlite3/session';
-import type { TablesRelationalConfig } from 'drizzle-orm/relations';
 import { initializeDatabase } from './initialize';
-import { createNodeSQLiteDrizzle } from './node-sqlite-adapter';
 
-type EmptySchema = Record<string, never>;
-export type DatabaseClient =
-  BetterSQLite3Database | BetterSQLiteTransaction<EmptySchema, TablesRelationalConfig>;
-type TransactionRunner = <T>(
-  action: (tx: BetterSQLiteTransaction<EmptySchema, TablesRelationalConfig>) => T,
-  config: { behavior: 'immediate' },
-) => T;
+export type DatabaseClient = NodeSQLiteDatabase;
+type TransactionClient = Parameters<Parameters<DatabaseClient['transaction']>[0]>[0];
+export type TransactionResult<T> = T extends Promise<unknown> ? never : T;
 
 export class ApplicationDatabase {
   readonly connection: DatabaseSync;
-  readonly orm: BetterSQLite3Database;
+  readonly orm: DatabaseClient;
 
   constructor(path: string) {
     const connection = new DatabaseSync(path);
     try {
       this.configure(connection);
+      this.orm = drizzle({ client: connection });
     } catch (error) {
       connection.close();
       throw error;
     }
     this.connection = connection;
-    this.orm = createNodeSQLiteDrizzle(connection);
   }
 
   private configure(connection: DatabaseSync): void {
@@ -36,11 +29,11 @@ export class ApplicationDatabase {
     initializeDatabase(connection);
   }
 
-  transaction<T>(
-    action: (tx: BetterSQLiteTransaction<EmptySchema, TablesRelationalConfig>) => T,
-  ): T {
-    const runTransaction = this.orm.transaction.bind(this.orm) as unknown as TransactionRunner;
-    return runTransaction(action, { behavior: 'immediate' });
+  transaction<T>(action: (tx: TransactionClient) => TransactionResult<T>): T {
+    const { result } = this.orm.transaction((tx) => ({ result: action(tx) }), {
+      behavior: 'immediate',
+    });
+    return result;
   }
 
   close(): void {

@@ -23,6 +23,7 @@ describe('ApplicationDatabase', () => {
     expect(tables.map(({ name }) => name)).toEqual(
       expect.arrayContaining(['projects', 'pages', 'conversations', 'messages', 'agent_runs']),
     );
+    expect(database.connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
     database.close();
     const reopened = new ApplicationDatabase(path);
     expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM projects').get()).toEqual({
@@ -55,13 +56,13 @@ describe('ApplicationDatabase', () => {
     current.connection.exec(
       "INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
     );
-    current.connection.exec('PRAGMA user_version = 1');
+    current.connection.exec('PRAGMA user_version = 3');
     current.close();
     expect(() => new ApplicationDatabase(path)).toThrow('版本不受');
     const preserved = new DatabaseSync(path);
     try {
       expect(preserved.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
-      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 });
     } finally {
       preserved.close();
     }

@@ -118,7 +118,7 @@ SSE 从持久化 Run 终态兜底，重启或事件淘汰后也能结束订阅�
 
 精确读取返回 `complete: true` 和 `data`，或 `complete: false` 的 `json_text_chunk`（`offset`、`totalChars`、`nextOffset`、`json`）。大结果必须按 `nextOffset` 读取至 `null`，核对 Working 版本并按偏移拼接 JSON 后使用；不会截断函数体或丢弃深层参数。工具调用仍受 Run 预算约束，不能完整读取时应保留现有流程。共享流程仅修改一个事件时，生成规则要求复制流程并使用局部绑定。
 
-终态校验失败向模型返回 `page_run_validation` JSON：包含基线版本、`retryable`、错误 `code/path` 和可定位的 `operationIndex`。修复须针对同一基线提交完整操作批次；执行器重新调用模型时会携带上一份有界提交。只有写入前的校验失败进入修复，版本冲突和写入结果不明确均不能自动重放。成功仅表示 Working 更新，运行时行为还需在预览中实际验证。新 Run 的 prompt/toolset 版本分别为 3/2。
+终态校验失败向模型返回 `page_run_validation` JSON：包含基线版本、`retryable`、错误 `code/path` 和可定位的 `operationIndex`。修复须针对同一基线提交完整操作批次；执行器重新调用模型时会携带上一份有界提交。只有写入前的校验失败进入修复，版本冲突和写入结果不明确均不能自动重放。成功仅表示 Working 更新，运行时行为还需在预览中实际验证。新 Run 的 prompt、policy 和 toolset 版本均为 1。
 
 Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origamix/pages/<pageId>/agent-commits/` 目录。回执在 Working 替换前准备、替换后确认；启动恢复仅核对 Run、页面、Operation 摘要、Working Version 与 Hash，不会重新执行 Operation。回执作为审计与恢复证据随页面长期保留，并在页面删除时随页面目录一并删除。
 
@@ -258,7 +258,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 | 409            | 检查 Working 版本、未保存状态或目标外部变化，先读取最新状态      |
 | 500 / 连接中断 | 写入结果可能不明确，先核对持久化结果；Apply/Agent 保留原请求身份 |
 
-具体业务错误以响应文案和拥有该规则的 Service 为准。数据库未知或较新时保留原文件，确认使用的应用版本；已登记的升级路径先备份再迁移，失败回滚，不会自动重置。
+具体业务错误以响应文案和拥有该规则的 Service 为准。数据库版本或结构不兼容时，启动会报错并保留原文件。
 
 ## pi 与模型适配维护
 
@@ -274,7 +274,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 项目清单记录框架及 `materialSet: { id, version }`。清单丢失会阻止写入，已登记或含 `.origamix` 的目录会保留现有文件。Working、Revision 和 Apply 的未完成写入由各自服务按恢复协议处理。
 
-`database/initialize.ts` 创建当前数据库结构，并校验现有数据库的版本和表结构。
+`database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 1`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
 
 发布时执行 `pnpm release:version --set <版本>` 同步包版本。`pnpm release:version --check` 检查包版本、契约 SemVer 和模板物料声明。
 

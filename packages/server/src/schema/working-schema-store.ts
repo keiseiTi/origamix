@@ -11,8 +11,10 @@ export interface WorkingSchemaPageRef {
   relativePath?: string;
 }
 
+export const WORKING_SCHEMA_FILE_VERSION = 1;
+
 export interface WorkingSchemaFile {
-  version: 2;
+  version: typeof WORKING_SCHEMA_FILE_VERSION;
   pageId: string;
   workingVersion: number;
   workingHash: string;

@@ -1,20 +1,27 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
-export const projects = sqliteTable('projects', {
-  id: integer().primaryKey({ autoIncrement: true }),
-  projectId: text('project_id').notNull().unique(),
-  path: text().notNull().unique(),
-  name: text().notNull(),
-  status: integer().notNull().default(0),
-  createdAt: text('created_at').notNull(),
-  lastOpenedAt: text('last_opened_at').notNull(),
-});
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    projectId: text('project_id').notNull(),
+    path: text().notNull(),
+    name: text().notNull(),
+    status: integer().notNull().default(0),
+    createdAt: text('created_at').notNull(),
+    lastOpenedAt: text('last_opened_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('projects_project_id_unique').on(table.projectId),
+    uniqueIndex('projects_path_unique').on(table.path),
+  ],
+);
 
 export const pages = sqliteTable(
   'pages',
   {
     id: integer().primaryKey({ autoIncrement: true }),
-    pageId: text('page_id').notNull().unique(),
+    pageId: text('page_id').notNull(),
     projectId: integer('project_id').notNull(),
     slug: text().notNull(),
     name: text().notNull(),
@@ -24,6 +31,7 @@ export const pages = sqliteTable(
     updatedAt: text('updated_at').notNull(),
   },
   (table) => [
+    uniqueIndex('pages_page_id_unique').on(table.pageId),
     uniqueIndex('idx_pages_project_slug').on(table.projectId, table.slug),
     index('idx_pages_project_id').on(table.projectId),
   ],
@@ -72,7 +80,7 @@ export const agentRuns = sqliteTable(
   'agent_runs',
   {
     id: integer().primaryKey({ autoIncrement: true }),
-    runId: text('run_id').notNull().unique(),
+    runId: text('run_id').notNull(),
     projectId: integer('project_id').notNull(),
     pageId: integer('page_id').notNull(),
     conversationId: integer('conversation_id').notNull(),
@@ -109,6 +117,7 @@ export const agentRuns = sqliteTable(
     finishedAt: text('finished_at'),
   },
   (table) => [
+    uniqueIndex('agent_runs_run_id_unique').on(table.runId),
     uniqueIndex('idx_agent_runs_client_request').on(
       table.projectId,
       table.pageId,

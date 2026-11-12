@@ -152,7 +152,7 @@ export const assertCurrentSchema = (connection: DatabaseSync): void => {
   }
 };
 
-export const DATABASE_VERSION = 3;
+export const DATABASE_VERSION = 1;
 /** Create a fresh current database or validate exactly the current storage contract. No migration. */
 export const initializeDatabase = (connection: DatabaseSync): void => {
   const version = (connection.prepare('PRAGMA user_version').get() as { user_version: number })

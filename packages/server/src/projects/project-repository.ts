@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, isNull, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
 import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared';
-import type { ApplicationDatabase, DatabaseClient } from '../database/database';
+import type { ApplicationDatabase, DatabaseClient, TransactionResult } from '../database/database';
 import {
   agentRuns,
   agentToolAudits,
@@ -41,8 +41,8 @@ export class ProjectRepository {
     this.client = 'orm' in database ? database.orm : database;
     this.database = 'orm' in database ? database : undefined;
   }
-  private transact<T>(action: (client: DatabaseClient) => T): T {
-    return this.database ? this.database.transaction(action) : action(this.client);
+  private transact<T>(action: (client: DatabaseClient) => TransactionResult<T>): T {
+    return this.database ? this.database.transaction<T>(action) : action(this.client);
   }
   listProjects(): ProjectWithPages[] {
     return this.client
