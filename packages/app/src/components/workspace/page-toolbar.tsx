@@ -1,3 +1,4 @@
+import { useWorkspaceStore } from '@/store/workspace';
 import { EditorToolbar } from '@origamix/editor';
 import {
   Button,
@@ -22,10 +23,9 @@ import {
 import { RevisionHistoryDialog } from './history/revision-history-dialog';
 import type { EditorTool } from './editor-tool-dialog';
 import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
-export type WorkspaceMode = 'chat' | 'edit' | 'preview';
+export type { WorkspaceMode } from '@/store/workspace';
 export interface PageToolbarProps {
   active: boolean;
-  targetKind?: 'page';
   canPreview?: boolean;
   saveBusy?: boolean;
   projectName: string;
@@ -34,8 +34,6 @@ export interface PageToolbarProps {
   pageId: string;
   navigation: 'chat' | 'edit';
   children?: ReactNode;
-  onModeChange: (mode: WorkspaceMode) => Promise<void>;
-  onPreview: () => Promise<void>;
   onSaveVersion: () => Promise<void>;
   onRefreshState?: () => Promise<void>;
   onApply: () => Promise<void>;
@@ -50,7 +48,6 @@ export interface PageToolbarProps {
 }
 export const PageToolbarShell = ({
   active,
-  targetKind = 'page',
   canPreview = true,
   saveBusy,
   projectName,
@@ -59,8 +56,6 @@ export const PageToolbarShell = ({
   pageId,
   navigation,
   children,
-  onModeChange,
-  onPreview,
   onSaveVersion,
   onRefreshState,
   onApply,
@@ -73,16 +68,15 @@ export const PageToolbarShell = ({
   canRestore,
   onOpenEditorTool,
 }: PageToolbarProps): React.JSX.Element => {
+  const changePageMode = useWorkspaceStore((state) => state.changePageMode);
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const openWindow = async (): Promise<void> => {
+  const openPreview = async (): Promise<void> => {
     setOpening(true);
     setError(null);
     try {
-      await onPreview();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '无法打开预览标签');
+      await changePageMode(pageId, 'preview');
     } finally {
       setOpening(false);
     }
@@ -169,11 +163,7 @@ export const PageToolbarShell = ({
                     disabled={opening}
                     onClick={() => {
                       setError(null);
-                      void onModeChange(navigation).catch((reason: unknown) =>
-                        setError(
-                          reason instanceof Error ? reason.message : '切换失败，编辑内容已保留',
-                        ),
-                      );
+                      void changePageMode(pageId, navigation);
                     }}
                   />
                 }
@@ -194,7 +184,7 @@ export const PageToolbarShell = ({
                   className='text-zinc-500 dark:text-zinc-400'
                   aria-label={canPreview ? '预览' : '暂时无法预览'}
                   disabled={opening || !canPreview}
-                  onClick={() => void openWindow()}
+                  onClick={() => void openPreview()}
                 />
               }
             >
@@ -209,7 +199,6 @@ export const PageToolbarShell = ({
           isOpen
           projectId={projectId}
           pageId={pageId}
-          targetKind={targetKind}
           canRestore={canRestore}
           onClose={() => setHistoryOpen(false)}
           onRestore={onRestoreRevision}

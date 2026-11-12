@@ -131,8 +131,6 @@ import { PageSession } from '../../../src/components/workspace/page-session';
 const props = {
   pageId: 'page_a',
   editorRef: { current: null },
-  onModeChange: vi.fn(),
-  onPreview: vi.fn(),
 };
 describe('workspace recovery controls', () => {
   beforeEach(() => {
@@ -192,7 +190,7 @@ describe('workspace recovery controls', () => {
   it('keeps the current edit mode when flushing fails and retries without remounting the editor', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
-    useWorkspaceStore.getState().setPageMode('page_a', 'edit');
+    await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
     const flush = vi
       .fn()
       .mockRejectedValueOnce(new Error('草稿保存失败'))
@@ -287,7 +285,7 @@ describe('workspace recovery controls', () => {
     await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2));
     expect(mocks.listConversations).toHaveBeenCalledTimes(2);
     // In edit mode the retained hidden chat toolbar must not dispatch a second save.
-    await act(async () => useWorkspaceStore.getState().setPageMode('page_b', 'edit'));
+    await act(async () => useWorkspaceStore.getState().changePageMode('page_b', 'edit'));
     await waitFor(() => expect(screen.getByRole('button', { name: '逻辑' })).toBeTruthy());
     mocks.saveRevision.mockClear();
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
@@ -338,7 +336,7 @@ describe('workspace recovery controls', () => {
 
     await waitFor(() => expect(mocks.editorRefresh.mock.lastCall?.[0]).toContain('3'));
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
-    useWorkspaceStore.getState().setPageMode('page_a', 'edit');
+    await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
     await act(async () => Promise.resolve());
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });

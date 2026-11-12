@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { EditorHandle } from '@origamix/editor';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 export type PageLifecycleStatus =
@@ -39,13 +40,14 @@ interface WorkspaceState extends WorkspaceSession {
   projects: ProjectItem[];
   workspaceReady: boolean;
   workspaceError: string | null;
+  transitionError: string | null;
   setProjects: (update: ProjectItem[] | ((projects: ProjectItem[]) => ProjectItem[])) => void;
   restoreWorkspace: (projects: ProjectItem[]) => void;
   failWorkspaceRestore: (message: string) => void;
   selectPage: (pageId: string) => void;
   closePage: (pageId: string) => void;
   removePages: (pageIds: Iterable<string>) => void;
-  setPageMode: (pageId: string, mode: WorkspaceMode) => void;
+  changePageMode: (pageId: string, mode: WorkspaceMode) => Promise<void>;
   setPageStatus: (pageId: string, status: PageLifecycleStatus | null) => void;
   setPageDraft: (pageId: string, draft: string) => void;
   replaceWorkspace: (session: Partial<WorkspaceSession>) => void;
@@ -164,11 +166,60 @@ const reconcileTabs = (projects: ProjectItem[], tabs: OpenPageTab[]): OpenPageTa
 const withoutDrafts = (drafts: Record<string, string>, keptIds: Set<string>) =>
   Object.fromEntries(Object.entries(drafts).filter(([id]) => keptIds.has(id)));
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+const editorRefs = new Map<string, { current: EditorHandle | null }>();
+
+export const editorRefForPage = (pageId: string): { current: EditorHandle | null } => {
+  let ref = editorRefs.get(pageId);
+  if (!ref) {
+    ref = { current: null };
+    editorRefs.set(pageId, ref);
+  }
+  return ref;
+};
+
+export const flushEditor = async (
+  pageId = useWorkspaceStore.getState().activeTabId,
+): Promise<void> => {
+  if (pageId) await editorRefs.get(pageId)?.current?.flush();
+};
+
+let transitionPending = false;
+export const runWorkspaceTransition = async (
+  pageId: string,
+  action: () => void,
+  includeProject = false,
+): Promise<void> => {
+  if (transitionPending) return;
+  transitionPending = true;
+  const { activeTabId, openPages } = useWorkspaceStore.getState();
+  const pageIds = new Set([activeTabId, pageId]);
+  const target = openPages.find((tab) => tab.id === pageId);
+  if (includeProject && target) {
+    for (const tab of openPages) {
+      if (tab.projectId === target.projectId) pageIds.add(tab.id);
+    }
+  }
+  try {
+    useWorkspaceStore.setState({ transitionError: null });
+    for (const id of pageIds) {
+      if (id) await flushEditor(id);
+    }
+    action();
+  } catch (reason) {
+    useWorkspaceStore.setState({
+      transitionError: reason instanceof Error ? reason.message : '保存失败，请重试',
+    });
+  } finally {
+    transitionPending = false;
+  }
+};
+
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...readSession(),
   projects: [],
   workspaceReady: false,
   workspaceError: null,
+  transitionError: null,
   setProjects: (update) =>
     set((state) => {
       const projects = typeof update === 'function' ? update(state.projects) : update;
@@ -247,12 +298,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             : (openPages[0]?.id ?? null),
       };
     }),
-  setPageMode: (pageId, mode) =>
-    set((state) => ({
-      openPages: state.openPages.map((tab) =>
-        tab.id === pageId ? { ...tab, mode: tab.kind === 'project-settings' ? 'chat' : mode } : tab,
-      ),
-    })),
+  changePageMode: async (pageId, mode) => {
+    const target = get().openPages.find((tab) => tab.id === pageId);
+    if (!target || target.kind === 'project-settings' || target.mode === mode) return;
+    await runWorkspaceTransition(
+      pageId,
+      () =>
+        set((state) => {
+          const current = state.openPages.find((tab) => tab.id === pageId);
+          if (!current || current.projectId !== target.projectId) return state;
+          return {
+            openPages: state.openPages.map((tab) => (tab === current ? { ...tab, mode } : tab)),
+          };
+        }),
+      mode === 'preview',
+    );
+  },
   setPageStatus: (pageId, status) =>
     set((state) => {
       const tab = state.openPages.find((item) => item.id === pageId);
@@ -266,7 +327,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   replaceWorkspace: (session) => set(session),
 }));
 
-useWorkspaceStore.subscribe((state) => {
+useWorkspaceStore.subscribe((state, previous) => {
+  if (state.openPages !== previous.openPages) {
+    const openIds = new Set(state.openPages.map((tab) => tab.id));
+    for (const pageId of editorRefs.keys()) {
+      if (!openIds.has(pageId)) editorRefs.delete(pageId);
+    }
+  }
+  if (
+    state.openPages === previous.openPages &&
+    state.activeTabId === previous.activeTabId &&
+    state.pageDrafts === previous.pageDrafts
+  )
+    return;
   try {
     const session: WorkspaceSession = {
       activeTabId: state.activeTabId,

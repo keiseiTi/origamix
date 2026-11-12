@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { PageEditor } from '@/components/editor';
 import { useCreateEditor, type EditorHandle } from '@origamix/editor';
-import { type WorkspaceMode } from './page-toolbar';
 import { AgentChatToolbar } from './agent-chat-toolbar';
 import { createWorkspaceToolbarPlugin } from './workspace-toolbar-plugin';
 import { usePageSession } from './hooks/use-page-session';
@@ -17,8 +16,6 @@ export interface PageSessionProps {
   active?: boolean;
   pageId: string;
   editorRef: RefObject<EditorHandle | null>;
-  onModeChange: (mode: WorkspaceMode) => Promise<void>;
-  onPreview: () => Promise<void>;
   onConfigureModel?: () => void;
 }
 
@@ -26,8 +23,6 @@ export const PageSession = ({
   active = true,
   pageId,
   editorRef,
-  onModeChange,
-  onPreview,
   onConfigureModel,
 }: PageSessionProps): React.JSX.Element => {
   const { page, project } = useWorkspaceStore(
@@ -49,8 +44,6 @@ export const PageSession = ({
       projectId={project.id}
       projectName={project.name}
       editorRef={editorRef}
-      onModeChange={onModeChange}
-      onPreview={onPreview}
       onConfigureModel={onConfigureModel}
     />
   );
@@ -62,8 +55,6 @@ const PageSessionContent = ({
   projectId,
   projectName,
   editorRef,
-  onModeChange,
-  onPreview,
   onConfigureModel,
 }: Omit<PageSessionProps, 'pageId'> & {
   page: PageItem;
@@ -77,18 +68,12 @@ const PageSessionContent = ({
       setPageDraft: state.setPageDraft,
     })),
   );
-  const kind = 'page' as const;
   const available = true;
   const theme = usePreferencesStore((state) => state.theme);
-  const previousMode = useRef<Exclude<WorkspaceMode, 'preview'>>('chat');
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
-  useEffect(() => {
-    if (mode !== 'preview') previousMode.current = mode;
-  }, [mode]);
   const { pageApply, agent, capabilities, schemaRefreshKey } = usePageSession({
     projectId,
     pageId: page.id,
-    kind,
     available,
     active,
     editorRef,
@@ -117,14 +102,11 @@ const PageSessionContent = ({
   const editorSchemaRefreshKey = `${schemaRefreshKey}:${agent.state.workingRefreshKey ?? ''}`;
   const toolbarProps = {
     active: active,
-    targetKind: kind,
     canPreview: true,
     projectName: projectName ?? '未命名项目',
     pageName: page.name,
     projectId: projectId,
     pageId: page.id,
-    onModeChange: onModeChange,
-    onPreview: onPreview,
     onSaveVersion: pageApply.saveVersion,
     onRefreshState: pageApply.refreshApplyState,
     onApply: pageApply.applyPage,
@@ -133,7 +115,7 @@ const PageSessionContent = ({
     applyStatus: available ? pageApply.applyStatus : ('disabled' as const),
     canApply: capabilities.canApply,
     canSaveVersion: capabilities.canSaveVersion,
-    canReload: kind === 'page' && capabilities.canReload,
+    canReload: capabilities.canReload,
     canRestore: capabilities.canEdit,
   };
 
@@ -154,26 +136,23 @@ const PageSessionContent = ({
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
         <ChatWorkspace
+          pageId={page.id}
           pageName={page.name}
-          targetKind={kind}
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
           session={agent}
-          onViewChanges={() => onModeChange('edit')}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
         />
       </div>
       <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <PageEditor
-          targetKind={kind}
           visible={active && mode === 'edit'}
           schemaRefreshKey={editorSchemaRefreshKey}
           ref={editorRef}
           editor={editor}
           projectId={projectId}
           pageId={page.id}
-          onReturnToChat={() => onModeChange('chat')}
           onWorkingCommitted={onWorkingCommitted}
           readOnly={!capabilities.canEdit}
           readOnlyMessage={
@@ -194,14 +173,12 @@ const PageSessionContent = ({
       </div>
       <div className={mode === 'preview' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <PagePreviewFrame
-          targetKind={kind}
           active={active && mode === 'preview'}
           projectId={projectId}
           pageId={page.id}
           pageName={page.name}
           schemaRefreshKey={editorSchemaRefreshKey}
           theme={theme}
-          onExit={() => void onModeChange(previousMode.current)}
         />
       </div>
     </section>

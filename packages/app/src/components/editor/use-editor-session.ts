@@ -6,7 +6,6 @@ import type { EditorTransaction, EditorWorkingState } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
-type SessionKind = 'page';
 type WorkingState = Awaited<ReturnType<typeof schemaService.workingState>>;
 type Session = {
   scope: {
@@ -14,7 +13,6 @@ type Session = {
     pageId: string;
   };
   active: boolean;
-  kind: SessionKind;
   ready: boolean;
   generation: number;
   draft: OrigamixPageSchema | null;
@@ -35,7 +33,6 @@ export const useEditorSession = (
   onWorkingCommitted?: () => void,
   readyToEdit = true,
   schemaRefreshKey = '',
-  kind: SessionKind = 'page',
 ) => {
   const service = schemaService;
   // A new ref cell per scope isolates queues even when an old request is pending.
@@ -46,7 +43,6 @@ export const useEditorSession = (
       current: {
         scope: { projectId, pageId },
         active: false,
-        kind,
         ready: false,
         generation: 0,
         draft: null,
@@ -58,7 +54,7 @@ export const useEditorSession = (
         attempt: null,
       },
     }),
-    [projectId, pageId, kind],
+    [projectId, pageId],
   );
   const [loaded, setLoaded] = useState<{
     sessionRef: {

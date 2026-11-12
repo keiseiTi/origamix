@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useWorkspacePageController } from '../../src/hooks/use-workspace-page-controller';
-import { useWorkspaceStore } from '../../src/store/workspace';
+import { editorRefForPage, useWorkspaceStore } from '../../src/store/workspace';
 
 afterEach(() => {
   cleanup();
@@ -33,22 +33,22 @@ describe('workspace page operations', () => {
       .mockResolvedValue(undefined);
     const secondSave = vi.fn().mockResolvedValue(undefined);
     const hook = renderHook(() => useWorkspacePageController({ onPageSelected }));
-    hook.result.current.editorRefForPage('a').current = {
+    editorRefForPage('a').current = {
       flush: firstSave,
     };
-    hook.result.current.editorRefForPage('b').current = {
+    editorRefForPage('b').current = {
       flush: secondSave,
     };
 
     await act(async () => hook.result.current.selectPage('b'));
     expect(useWorkspaceStore.getState().activeTabId).toBe('a');
     expect(useWorkspaceStore.getState().pageDrafts.a).toBe('retained draft');
-    expect(hook.result.current.transitionError).toBe('save failed');
+    expect(useWorkspaceStore.getState().transitionError).toBe('save failed');
     expect(onPageSelected).not.toHaveBeenCalled();
     await act(async () => hook.result.current.selectPage('b'));
     expect(useWorkspaceStore.getState().activeTabId).toBe('b');
     expect(onPageSelected).toHaveBeenCalledOnce();
-    expect(hook.result.current.transitionError).toBeNull();
+    expect(useWorkspaceStore.getState().transitionError).toBeNull();
 
     let release!: () => void;
     firstSave.mockImplementationOnce(
@@ -64,7 +64,7 @@ describe('workspace page operations', () => {
     expect(firstSave).toHaveBeenCalledTimes(3);
     expect(useWorkspaceStore.getState().openPages).toHaveLength(2);
     const savesBeforePreview = secondSave.mock.calls.length;
-    await act(async () => hook.result.current.openPreview('b'));
+    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
     expect(secondSave).toHaveBeenCalledTimes(savesBeforePreview);
     expect(useWorkspaceStore.getState().openPages.find((page) => page.id === 'b')?.mode).toBe(
       'edit',
@@ -75,13 +75,15 @@ describe('workspace page operations', () => {
     });
     expect(useWorkspaceStore.getState().openPages.map((page) => page.id)).toEqual(['b']);
 
+    secondSave.mockClear();
     secondSave.mockRejectedValueOnce(new Error('preview save failed'));
-    await act(async () => hook.result.current.openPreview('b'));
-    expect(hook.result.current.transitionError).toBe('preview save failed');
+    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
+    expect(useWorkspaceStore.getState().transitionError).toBe('preview save failed');
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('edit');
-    await act(async () => hook.result.current.openPreview('b'));
+    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('preview');
-    expect(hook.result.current.transitionError).toBeNull();
+    expect(secondSave).toHaveBeenCalledTimes(2);
+    expect(useWorkspaceStore.getState().transitionError).toBeNull();
 
     // Only the browser owns unsent drafts in retained editors: the preview
     // barrier must include an inactive page, without touching other projects.
@@ -111,13 +113,13 @@ describe('workspace page operations', () => {
       .mockRejectedValueOnce(new Error('inactive draft failed'))
       .mockResolvedValue(undefined);
     const otherSave = vi.fn();
-    hook.result.current.editorRefForPage('page_inactive').current = { flush: inactiveSave };
-    hook.result.current.editorRefForPage('other').current = { flush: otherSave };
-    await act(async () => hook.result.current.openPreview('b'));
-    expect(hook.result.current.transitionError).toBe('inactive draft failed');
+    editorRefForPage('page_inactive').current = { flush: inactiveSave };
+    editorRefForPage('other').current = { flush: otherSave };
+    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
+    expect(useWorkspaceStore.getState().transitionError).toBe('inactive draft failed');
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('edit');
     expect(otherSave).not.toHaveBeenCalled();
-    await act(async () => hook.result.current.openPreview('b'));
+    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('preview');
     expect(inactiveSave).toHaveBeenCalledTimes(2);
     expect(otherSave).not.toHaveBeenCalled();

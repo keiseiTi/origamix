@@ -1,24 +1,16 @@
 import { ProjectSettingsPanel } from '@/components/project-settings/project-settings-panel';
-import type { EditorHandle } from '@origamix/editor';
 import { WorkspaceRecoveryView } from './workspace-recovery-view';
-import { useWorkspaceStore } from '@/store/workspace';
+import { editorRefForPage, useWorkspaceStore } from '@/store/workspace';
 import { EmptyWorkspace } from './empty-workspace';
 import { PageSession } from './page-session';
 import { useMountedPages } from './hooks/use-mounted-pages';
-import type { WorkspaceMode } from './page-toolbar';
 
 export interface WorkspaceContentProps {
-  editorRefForPage: (pageId: string) => { current: EditorHandle | null };
-  onModeChange: (pageId: string, mode: WorkspaceMode) => Promise<void>;
-  onPreview: (pageId: string) => Promise<void>;
   onConfigureModel: () => void;
   onCreateProject: () => void;
 }
 
 export const WorkspaceContent = ({
-  editorRefForPage,
-  onModeChange,
-  onPreview,
   onConfigureModel,
   onCreateProject,
 }: WorkspaceContentProps): React.JSX.Element => {
@@ -51,8 +43,6 @@ export const WorkspaceContent = ({
                 active={active}
                 pageId={pageId}
                 editorRef={editorRefForPage(pageId)}
-                onModeChange={(mode) => onModeChange(pageId, mode)}
-                onPreview={() => onPreview(pageId)}
                 onConfigureModel={onConfigureModel}
               />
             )}

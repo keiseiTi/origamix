@@ -1,15 +1,15 @@
 import { usePageNavigationMetadata } from './use-page-navigation-metadata';
 import { Editor as EditorView } from '@origamix/editor';
 import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
-import { Spinner, Button, useToastManager } from '@origamix/ui';
+import { Spinner, Button } from '@origamix/ui';
 import { useImperativeHandle, useState, type Ref } from 'react';
+import { useWorkspaceStore } from '@/store/workspace';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
 interface EditorProps {
   ref?: Ref<EditorHandle>;
   visible: boolean;
-  targetKind?: 'page';
   schemaRefreshKey: string;
   projectId: string;
   pageId: string;
@@ -17,7 +17,6 @@ interface EditorProps {
   readOnlyMessage?: string;
   editor: EditorInstance;
   onWorkingCommitted?: () => void;
-  onReturnToChat: () => Promise<void>;
   targetSelection?: EditorTargetSelection;
 }
 export const PageEditor = ({
@@ -25,25 +24,18 @@ export const PageEditor = ({
   projectId,
   pageId,
   visible,
-  targetKind = 'page',
   schemaRefreshKey,
   onWorkingCommitted,
-  onReturnToChat,
   readOnly = false,
   ...viewProps
 }: EditorProps) => {
   const navigation = usePageNavigationMetadata(projectId, visible && true);
-  const notifications = useToastManager();
+  const changePageMode = useWorkspaceStore((state) => state.changePageMode);
   const [returningToChat, setReturningToChat] = useState(false);
   const returnToChat = async (): Promise<void> => {
     setReturningToChat(true);
     try {
-      await onReturnToChat();
-    } catch (reason) {
-      notifications.add({
-        type: 'error',
-        title: reason instanceof Error ? reason.message : '返回对话失败，编辑内容已保留',
-      });
+      await changePageMode(pageId, 'chat');
     } finally {
       setReturningToChat(false);
     }
@@ -54,7 +46,7 @@ export const PageEditor = ({
     </Button>
   );
   const theme = usePreferencesStore((state) => state.theme);
-  const materials = useEditorMaterials(projectId, visible, targetKind);
+  const materials = useEditorMaterials(projectId, visible);
   const registration = materials.registration;
   const MaterialProvider = materials.Provider;
   const session = useEditorSession(
@@ -64,7 +56,6 @@ export const PageEditor = ({
     onWorkingCommitted,
     visible && Boolean(materials.registration),
     schemaRefreshKey,
-    targetKind,
   );
   useImperativeHandle(
     ref,

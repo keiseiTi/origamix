@@ -61,10 +61,6 @@ const App = (): React.JSX.Element => {
           <Workspace
             onSelectPage={pages.selectPage}
             onClosePage={pages.closePage}
-            transitionError={pages.transitionError}
-            editorRefForPage={pages.editorRefForPage}
-            onModeChange={pages.changeMode}
-            onPreview={pages.openPreview}
             onConfigureModel={openModelSettings}
             onCreateProject={() => setIsHomeProjectModalOpen(true)}
           />

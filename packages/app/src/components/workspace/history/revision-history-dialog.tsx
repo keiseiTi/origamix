@@ -16,7 +16,6 @@ import { Braces, History, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 interface RevisionHistoryProps {
   projectId: string;
-  targetKind?: 'page';
   pageId: string;
   canRestore: boolean;
   onClose: () => void;
@@ -30,7 +29,6 @@ const formatTime = (value: string): string => {
 const RevisionHistoryContent = ({
   projectId,
   pageId,
-  targetKind = 'page',
   canRestore,
   onClose,
   onRestore,
@@ -68,7 +66,7 @@ const RevisionHistoryContent = ({
     return () => {
       active = false;
     };
-  }, [projectId, pageId, listAttempt, targetKind]);
+  }, [projectId, pageId, listAttempt]);
   useEffect(() => {
     if (!selected) return;
     let active = true;
@@ -82,7 +80,7 @@ const RevisionHistoryContent = ({
     return () => {
       active = false;
     };
-  }, [projectId, pageId, selected, viewAttempt, targetKind]);
+  }, [projectId, pageId, selected, viewAttempt]);
   const view = (revision: RevisionHistoryItem): void => {
     setSelected(revision);
     setSchema(null);

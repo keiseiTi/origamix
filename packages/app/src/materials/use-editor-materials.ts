@@ -3,9 +3,9 @@ import type { EditorMaterialRegistration } from '@origamix/editor';
 import { projectsService } from '@/services/projects';
 import { loadEditorMaterials, loadRuntimeMaterials } from './loaders';
 
-export const useEditorMaterials = (projectId: string, enabled: boolean, kind: 'page' = 'page') => {
+export const useEditorMaterials = (projectId: string, enabled: boolean) => {
   const [attempt, setAttempt] = useState(0);
-  const scope = useMemo(() => ({ projectId, attempt, kind }), [projectId, attempt, kind]);
+  const scope = useMemo(() => ({ projectId, attempt }), [projectId, attempt]);
   const [result, setResult] = useState<{
     scope: typeof scope;
     registration?: EditorMaterialRegistration;

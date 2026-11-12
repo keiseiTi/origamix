@@ -2,20 +2,23 @@ import { nanoid } from 'nanoid';
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ApplicationRenderReport, ApplicationSnapshot } from '@origamix/shared';
+import {
+  equalJson,
+  type ApplicationRenderReport,
+  type ApplicationSnapshot,
+} from '@origamix/shared';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
 import { loadApplicationSnapshot } from '@/preview/load-application-snapshot';
+import { useWorkspaceStore } from '@/store/workspace';
 import type { AppTheme } from '@/store/preferences';
 interface PagePreviewFrameProps {
   active: boolean;
-  targetKind?: 'page';
   projectId: string;
   pageId: string;
   pageName: string;
   schemaRefreshKey: string;
   theme: AppTheme;
-  onExit: () => void;
 }
 export const PagePreviewFrame = ({
   active,
@@ -24,12 +27,19 @@ export const PagePreviewFrame = ({
   pageName,
   schemaRefreshKey,
   theme,
-  onExit,
 }: PagePreviewFrameProps): React.JSX.Element | null => {
-  const [opened, setOpened] = useState(active);
-  if (active && !opened) setOpened(true);
+  const changePageMode = useWorkspaceStore((state) => state.changePageMode);
+  const mode = useWorkspaceStore(
+    (state) => state.openPages.find((tab) => tab.id === pageId)?.mode ?? 'chat',
+  );
+  const previousMode = useRef<'chat' | 'edit'>('chat');
+  useEffect(() => {
+    if (mode !== 'preview') previousMode.current = mode;
+  }, [mode]);
+  const [frameKey, setFrameKey] = useState<string | null>(active ? '' : null);
+  if (active && frameKey === null) setFrameKey('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [snapshot, setSnapshot] = useState<ApplicationSnapshot | null>(null);
+  const [hasSnapshot, setHasSnapshot] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
@@ -37,6 +47,7 @@ export const PagePreviewFrame = ({
   const reportSequence = useRef(0);
   const observedAt = useRef(0);
   const ready = useRef(false);
+
   useEffect(
     () => () => {
       generation.current += 1;
@@ -57,30 +68,53 @@ export const PagePreviewFrame = ({
     }
     return url.toString();
   }, [pageId, projectId]);
+
   useEffect(() => {
     ready.current = false;
   }, [previewUrl]);
-  const postToPreview = useCallback((message: HostToPreviewMessage): void => {
-    iframeRef.current?.contentWindow?.postMessage(message, '*');
-  }, []);
+
   const publishSnapshot = useCallback(
     (next: ApplicationSnapshot): void => {
       if (ready.current)
-        postToPreview({ type: 'origamix.preview.snapshot', projectId, pageId, snapshot: next });
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            type: 'origamix.preview.snapshot',
+            projectId,
+            pageId,
+            snapshot: next,
+          } satisfies HostToPreviewMessage,
+          '*',
+        );
     },
-    [pageId, postToPreview, projectId],
+    [pageId, projectId],
   );
-  const refresh = useCallback(
-    async (manual = false): Promise<void> => {
+
+  const replaceSnapshot = useCallback(
+    (next: ApplicationSnapshot): void => {
+      const hasRetainedSnapshot = currentSnapshot.current !== null;
+      currentSnapshot.current = next;
+      reportSequence.current = 0;
+      setHasSnapshot(true);
+      if (hasRetainedSnapshot) {
+        // Ignore messages from the old frame while React mounts its replacement.
+        iframeRef.current = null;
+        ready.current = false;
+        setFrameKey(next.snapshotId);
+      } else {
+        publishSnapshot(next);
+      }
+    },
+    [publishSnapshot],
+  );
+
+  const readSnapshot = useCallback(
+    async (apply: (next: ApplicationSnapshot) => void): Promise<void> => {
       const requestGeneration = ++generation.current;
-      if (manual) setRefreshing(true);
+      setRefreshing(true);
       try {
         const next = await loadApplicationSnapshot(projectId, pageId, theme);
         if (requestGeneration !== generation.current) return;
-        currentSnapshot.current = next;
-        reportSequence.current = 0;
-        setSnapshot(next);
-        publishSnapshot(next);
+        apply(next);
         setError(null);
       } catch (reason) {
         if (requestGeneration !== generation.current) return;
@@ -90,8 +124,32 @@ export const PagePreviewFrame = ({
         if (requestGeneration === generation.current) setRefreshing(false);
       }
     },
-    [pageId, projectId, publishSnapshot, theme],
+    [pageId, projectId, theme],
   );
+
+  const refresh = () => readSnapshot(replaceSnapshot);
+
+  const syncPreview = useCallback(
+    () =>
+      readSnapshot((next) => {
+        const retained = currentSnapshot.current;
+        const previousPage = retained?.pageSchemas[pageId];
+        const nextPage = next.pageSchemas[pageId];
+        if (
+          retained &&
+          previousPage?.workingVersion === nextPage?.workingVersion &&
+          previousPage?.hash === nextPage?.hash &&
+          equalJson(retained.stack, next.stack)
+        ) {
+          // Keep the runtime alive while updating the revision used for reports.
+          currentSnapshot.current = { ...next, snapshotId: retained.snapshotId };
+          return;
+        }
+        replaceSnapshot(next);
+      }),
+    [pageId, readSnapshot, replaceSnapshot],
+  );
+
   const reportRender = useCallback(
     async (report: ApplicationRenderReport): Promise<void> => {
       const current = currentSnapshot.current;
@@ -108,9 +166,16 @@ export const PagePreviewFrame = ({
       // Only the current page Working identity can publish diagnostics.
       if (!page.revisionId || page.workingVersion === null) return;
       observedAt.current = Math.max(Date.now(), observedAt.current + 1);
-      const isCurrent = () =>
-        currentSnapshot.current?.snapshotId === report.snapshotId &&
-        reportSequence.current === report.reportSequence;
+      const isCurrent = () => {
+        const latest = currentSnapshot.current;
+        const latestPage = latest?.pageSchemas[report.pageId];
+        return (
+          latest?.snapshotId === report.snapshotId &&
+          latestPage?.workingVersion === page.workingVersion &&
+          latestPage?.revisionId === page.revisionId &&
+          reportSequence.current === report.reportSequence
+        );
+      };
       try {
         const result = await runtimeService.report(projectId, report.pageId, {
           revisionId: page.revisionId,
@@ -135,21 +200,23 @@ export const PagePreviewFrame = ({
     },
     [projectId],
   );
+
   useEffect(() => {
     const receive = (event: MessageEvent): void => {
-      if (event.source !== iframeRef.current?.contentWindow || !isPreviewToHostMessage(event.data))
+      const frameWindow = iframeRef.current?.contentWindow;
+      if (!frameWindow || event.source !== frameWindow || !isPreviewToHostMessage(event.data))
         return;
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.ready') {
+        const wasReady = ready.current;
         ready.current = true;
         // Read completion can precede React's commit. Read the same authority
         // used by report validation so readiness never misses that snapshot.
         const retained = currentSnapshot.current;
         if (retained) {
-          const next = { ...retained, snapshotId: nanoid() };
+          const next = wasReady ? { ...retained, snapshotId: nanoid() } : retained;
           currentSnapshot.current = next;
           reportSequence.current = 0;
-          setSnapshot(next);
           publishSnapshot(next);
         }
       } else {
@@ -159,21 +226,30 @@ export const PagePreviewFrame = ({
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, [pageId, projectId, publishSnapshot, reportRender]);
+
   useEffect(() => {
     if (!active) return;
-    const initial = window.setTimeout(() => void refresh(true), 0);
+    const initial = window.setTimeout(() => void syncPreview(), 0);
     return () => {
       window.clearTimeout(initial);
+      generation.current += 1;
     };
-  }, [active, refresh, schemaRefreshKey]);
+  }, [active, schemaRefreshKey, syncPreview]);
+
   useEffect(() => {
-    if (!snapshot || snapshot.theme === theme) return;
-    publishSnapshot({ ...snapshot, theme });
-  }, [publishSnapshot, snapshot, theme]);
-  if (!opened) return null;
+    const retained = currentSnapshot.current;
+    if (!retained || retained.theme === theme) return;
+    const next = { ...retained, theme };
+    currentSnapshot.current = next;
+    publishSnapshot(next);
+  }, [publishSnapshot, theme]);
+
+  if (frameKey === null) return null;
+
   return (
     <div className='relative size-full bg-white dark:bg-zinc-950'>
       <iframe
+        key={frameKey}
         ref={iframeRef}
         title={`${pageName} 预览`}
         className='size-full border-0 bg-white dark:bg-zinc-950'
@@ -185,7 +261,7 @@ export const PagePreviewFrame = ({
         variant='secondary'
         className='absolute top-3 right-3 z-50 shadow-md'
         aria-label='退出预览'
-        onClick={onExit}
+        onClick={() => void changePageMode(pageId, previousMode.current)}
       >
         <EyeOff size={17} />
       </Button>
@@ -195,7 +271,7 @@ export const PagePreviewFrame = ({
         className='absolute top-3 right-14 z-50 shadow-md'
         aria-label='刷新应用预览'
         disabled={refreshing}
-        onClick={() => void refresh(true)}
+        onClick={() => void refresh()}
       >
         <RefreshCw size={17} className={refreshing ? 'animate-spin' : undefined} />
       </Button>
@@ -205,14 +281,14 @@ export const PagePreviewFrame = ({
           className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-danger/10 p-4 text-sm text-danger backdrop-blur'
         >
           <span>
-            {error}。{snapshot ? '保留上次应用快照。' : '请重试。'}
+            {error}。{hasSnapshot ? '保留上次应用快照。' : '请重试。'}
           </span>
           <Button
             size='icon-sm'
             variant='secondary'
             aria-label='重试预览'
             disabled={refreshing}
-            onClick={() => void refresh(true)}
+            onClick={() => void refresh()}
           >
             <RefreshCw size={15} />
           </Button>

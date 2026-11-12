@@ -25,7 +25,10 @@ export const PreviewApp = (): React.JSX.Element => {
       if (event.source !== window.parent || !isHostToPreviewMessage(event.data)) return;
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.snapshot') {
-        setSnapshot(event.data.snapshot);
+        const next = event.data.snapshot;
+        setSnapshot((current) =>
+          current?.snapshotId === next.snapshotId ? { ...current, theme: next.theme } : next,
+        );
         setError(null);
         document.documentElement.dataset.theme = event.data.snapshot.theme;
         document.documentElement.classList.toggle('dark', event.data.snapshot.theme === 'dark');

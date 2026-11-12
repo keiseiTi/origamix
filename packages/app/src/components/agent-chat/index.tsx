@@ -3,6 +3,7 @@ import { ProjectTaskCard } from './project-task-card';
 import { Button, Spinner } from '@origamix/ui';
 import { ChevronDown, ChevronUp, RotateCcw, Sparkles } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useWorkspaceStore } from '@/store/workspace';
 import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
 import { MessageMarkdown } from './message-markdown';
@@ -54,25 +55,25 @@ const ProgressSteps = ({ messages }: { messages: string[] }): React.JSX.Element 
   );
 };
 export const ChatWorkspace = ({
+  pageId,
   pageName,
   draft,
   onDraftChange,
   session,
-  onViewChanges,
   onConfigureModel,
   onClarificationHover,
   unavailableReason,
 }: {
+  pageId: string;
   pageName: string;
-  targetKind?: 'page';
   unavailableReason?: string;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
-  onViewChanges: () => Promise<void>;
   onConfigureModel?: () => void;
   onClarificationHover?: (elementId: string | null) => void;
 }): React.JSX.Element => {
+  const changePageMode = useWorkspaceStore((state) => state.changePageMode);
   const hasModelApiKey = usePreferencesStore((state) => state.hasModelApiKey);
   const {
     state,
@@ -210,7 +211,7 @@ export const ChatWorkspace = ({
           {state.workingRefreshKey && (
             <div className='mt-3 flex items-center gap-2' role='status'>
               <span className='text-xs text-success'>AI 已修改草稿，尚未保存版本。</span>
-              <Button size='sm' variant='ghost' onClick={() => void onViewChanges()}>
+              <Button size='sm' variant='ghost' onClick={() => void changePageMode(pageId, 'edit')}>
                 查看修改
               </Button>
             </div>

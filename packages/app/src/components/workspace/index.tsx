@@ -1,3 +1,4 @@
+import { useWorkspaceStore } from '@/store/workspace';
 import { useWorkspaceRestore } from '@/hooks/use-workspace-restore';
 import { WorkspaceContent, type WorkspaceContentProps } from './workspace-content';
 import { PageTabs } from './page-tabs';
@@ -5,16 +6,15 @@ import { PageTabs } from './page-tabs';
 interface WorkspaceProps extends WorkspaceContentProps {
   onSelectPage: (pageId: string) => void;
   onClosePage: (pageId: string) => void;
-  transitionError: string | null;
 }
 
 export const Workspace = ({
   onSelectPage,
   onClosePage,
-  transitionError,
   ...contentProps
 }: WorkspaceProps): React.JSX.Element => {
   useWorkspaceRestore();
+  const transitionError = useWorkspaceStore((state) => state.transitionError);
 
   return (
     <section aria-label='工作区' className='flex min-h-0 min-w-0 flex-1 flex-col'>
