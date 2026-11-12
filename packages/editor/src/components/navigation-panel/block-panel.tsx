@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { useState } from 'react';
 import {
   Button,
@@ -39,7 +40,7 @@ const BlockItem = ({ block }: { block: BlockDefinition }) => {
         parameters,
         schema,
         parentId,
-        createId: () => `element-${crypto.randomUUID()}`,
+        createId: () => `element-${nanoid()}`,
       });
       setSchema(result.schema, { source: 'panel' });
       setOpen(false);

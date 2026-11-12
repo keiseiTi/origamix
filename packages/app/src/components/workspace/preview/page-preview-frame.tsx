@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -145,7 +146,7 @@ export const PagePreviewFrame = ({
         // used by report validation so readiness never misses that snapshot.
         const retained = currentSnapshot.current;
         if (retained) {
-          const next = { ...retained, snapshotId: crypto.randomUUID() };
+          const next = { ...retained, snapshotId: nanoid() };
           currentSnapshot.current = next;
           reportSequence.current = 0;
           setSnapshot(next);

@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { equalJson, type OrigamixPageSchema } from '@origamix/shared';
 import type {
   EditorChangeOptions,
@@ -192,7 +193,7 @@ export const createEditorEvents = () => {
     ): void => {
       if (previousElementId !== elementId)
         emit('selectionChange', {
-          transactionId: crypto.randomUUID(),
+          transactionId: nanoid(),
           source,
           previousElementId,
           elementId,
@@ -205,7 +206,7 @@ export const createEditorEvents = () => {
       selection?: { previousElementId: string | null; elementId: string | null },
     ): void => {
       if (!listeners.size) return;
-      const meta = { transactionId: crypto.randomUUID(), source: options.source ?? 'panel' };
+      const meta = { transactionId: nanoid(), source: options.source ?? 'panel' };
       const changes = [...listeners.keys()].some((key) => key !== 'selectionChange')
         ? describeEditorChanges(before, after, options.movedElementId)
         : [];

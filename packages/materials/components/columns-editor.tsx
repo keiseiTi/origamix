@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { Choice } from './choice';
 import { useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Settings2, Trash2 } from 'lucide-react';
@@ -157,7 +158,7 @@ export const ColumnsEditor = ({ value, onChange }: CollectionEditorProps) => {
         open={open}
         onOpenChange={(next) => {
           if (next) {
-            setDraft(readColumns(value).map((column) => ({ id: crypto.randomUUID(), column })));
+            setDraft(readColumns(value).map((column) => ({ id: nanoid(), column })));
           }
           setError(undefined);
           setOpen(next);
@@ -355,7 +356,7 @@ export const ColumnsEditor = ({ value, onChange }: CollectionEditorProps) => {
               onClick={() => {
                 setDraft((previous) => [
                   ...previous,
-                  { id: crypto.randomUUID(), column: { title: '', dataIndex: '' } },
+                  { id: nanoid(), column: { title: '', dataIndex: '' } },
                 ]);
                 setError(undefined);
               }}

@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { Choice } from './choice';
 import { validateAntdMaterialProps } from '../antd/validation';
 import { useState } from 'react';
@@ -142,8 +143,7 @@ const CollectionEditor = ({
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          if (next)
-            setDraft(readOptions(value).map((option) => ({ id: crypto.randomUUID(), option })));
+          if (next) setDraft(readOptions(value).map((option) => ({ id: nanoid(), option })));
           setError(undefined);
           setOpen(next);
         }}
@@ -300,10 +300,7 @@ const CollectionEditor = ({
             variant='outline'
             className='self-start'
             onClick={() => {
-              setDraft((rows) => [
-                ...rows,
-                { id: crypto.randomUUID(), option: { label: '', value: '' } },
-              ]);
+              setDraft((rows) => [...rows, { id: nanoid(), option: { label: '', value: '' } }]);
               setError(undefined);
             }}
           >

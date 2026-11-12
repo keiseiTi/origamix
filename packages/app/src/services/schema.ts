@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import {
   type OrigamixPageSchema,
   type SchemaOperation,
@@ -86,7 +87,7 @@ export const schemaService = {
     pageId: string,
     expectedRevisionId: string,
     expectedWorkingVersion: number,
-    clientRequestId: string = crypto.randomUUID(),
+    clientRequestId: string = nanoid(),
   ): Promise<ApplyPageResult> =>
     request<ApplyPageResult>(
       '/pages/apply',

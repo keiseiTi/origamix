@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline';
 
 import type { ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { nanoid } from 'nanoid';
 
 const prefix = '[origamix-development-control]';
 
@@ -66,7 +66,7 @@ export const createDesktopControl = (child: ChildProcess) => {
         child.signalCode !== null
       )
         throw new Error('桌面开发控制通道已关闭');
-      const id = randomUUID();
+      const id = nanoid();
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);

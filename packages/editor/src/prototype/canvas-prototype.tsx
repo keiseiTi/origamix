@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { getInsertionAxis } from '../components/canvas/layout-axis';
 import {
   useCallback,
@@ -163,7 +164,7 @@ const Surface = ({ ref, registration, onSnapshot }: Omit<Props, 'schema'>) => {
           )
             throw new Error('物料不允许放入该容器');
           const element = {
-            id: `prototype_${crypto.randomUUID()}`,
+            id: `prototype_${nanoid()}`,
             type: material.type,
             props: structuredClone(material.defaultProps ?? {}),
           };

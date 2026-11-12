@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import type { MaterialEventProps } from '../../src/runtime-material';
 import { Children, isValidElement } from 'react';
 import { Tabs as AntdTabs, theme, type TabsProps } from 'antd';
@@ -44,7 +45,7 @@ export const Tabs = (props: IProps) => {
       style={{ backgroundColor: token.colorBgContainer, color: token.colorText }}
       onEdit={(key, action) => {
         if (action === 'add') {
-          const id = `tab_${crypto.randomUUID()}`;
+          const id = `tab_${nanoid()}`;
           setPages([...pages, { key: id, label: '新页签', children: '' }]);
           setActive(id);
         } else if (typeof key === 'string') {

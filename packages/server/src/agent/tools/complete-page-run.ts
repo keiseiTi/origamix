@@ -1,6 +1,6 @@
 import type { ProjectProposal, ProjectRoleOperation } from '@origamix/shared';
 import type { ProjectMaterialReader } from './material-reader';
-import { randomUUID } from 'node:crypto';
+import { nanoid } from 'nanoid';
 import { hashOperations as operationDigest } from './operation-digest';
 import { Value } from '@sinclair/typebox/value';
 import {
@@ -225,7 +225,7 @@ export const createCompletePageRunTool = (
       const outcomeJson =
         input.outcome === 'needs_clarification'
           ? {
-              clarificationId: `clarification_${randomUUID()}`,
+              clarificationId: `clarification_${nanoid()}`,
               baseWorkingVersion: scope.baseWorkingVersion,
               question: input.question,
               ...(candidates ? { candidates } : {}),

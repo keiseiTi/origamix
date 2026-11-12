@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import type { EditorCore } from './editor-store';
 import type {
   EditorElementPosition,
@@ -102,7 +103,7 @@ export const createEditorOperations = (
       if (state.rootMaterialTypes.includes(materialType)) throw new Error('根物料不能重复插入');
       const target = placement(state, materialType, position);
       const material = state.materials.find((item) => item.type === materialType)!;
-      const id = `element-${crypto.randomUUID()}`;
+      const id = `element-${nanoid()}`;
       const result = SchemaUtils.insertElement(state.schema, target.parentId, {
         id,
         type: materialType,

@@ -1,5 +1,5 @@
 import { instantiateBlock, type BlockDefinition } from '@origamix/shared';
-import { randomUUID } from 'node:crypto';
+import { nanoid } from 'nanoid';
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import type { ProjectMaterialReader } from './material-reader';
@@ -230,7 +230,7 @@ export const createReadOnlyAgentTools = (
                 schema: current.schema,
                 parentId: input.parentId,
                 parameters: input.parameters ?? {},
-                createId: () => `element-${randomUUID()}`,
+                createId: () => `element-${nanoid()}`,
               });
               return {
                 rootId: result.rootId,

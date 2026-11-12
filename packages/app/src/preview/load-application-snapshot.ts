@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { isApplicationSnapshot, type ApplicationSnapshot } from '@origamix/shared';
 import { projectsService } from '@/services/projects';
 import { schemaService } from '@/services/schema';
@@ -26,7 +27,7 @@ export const loadApplicationSnapshot = async (
   }));
   const snapshot: ApplicationSnapshot = {
     version: '1',
-    snapshotId: crypto.randomUUID(),
+    snapshotId: nanoid(),
     source: 'working',
     stack,
     theme,

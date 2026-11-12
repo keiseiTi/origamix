@@ -7,7 +7,7 @@ const { existsSync, mkdtempSync, rmSync, readFileSync } =
   require('node:fs') as typeof import('node:fs');
 const { join, resolve } = require('node:path') as typeof import('node:path');
 const { tmpdir } = require('node:os') as typeof import('node:os');
-const { randomUUID } = require('node:crypto') as typeof import('node:crypto');
+const { nanoid } = require('nanoid') as typeof import('nanoid');
 
 const state = mkdtempSync(join(tmpdir(), 'origamix-electron-smoke-'));
 app.setPath('userData', state);
@@ -54,8 +54,8 @@ process.on('exit', () => rmSync(state, { recursive: true, force: true }));
 app
   .whenReady()
   .then(async () => {
-    const token = randomUUID();
-    const serviceInstanceId = randomUUID();
+    const token = nanoid(48);
+    const serviceInstanceId = nanoid();
     backend = utilityProcess.fork(join(desktopDist, 'main', 'server.cjs'), [], { stdio: 'pipe' });
     backend.stderr?.on('data', (data) => process.stderr.write(data));
     backend.once('exit', (code) => {

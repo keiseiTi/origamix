@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { equalJson } from '@origamix/shared';
 import { ApiRequestError, subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
@@ -162,7 +163,7 @@ export const useEditorSession = (
         if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
         const attempt = {
           schema: structuredClone(draft),
-          requestId: crypto.randomUUID(),
+          requestId: nanoid(),
         };
         sessionRef.current.attempt = attempt;
         const transaction: EditorTransaction = createEditorTransaction(

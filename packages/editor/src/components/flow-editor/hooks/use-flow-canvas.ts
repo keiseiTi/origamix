@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { equalJson, getElementLabel } from '@origamix/shared';
 import { useToastManager } from '@origamix/ui';
 import LogicFlow from '@logicflow/core';
@@ -38,7 +39,7 @@ export const useFlowCanvas = (target: EventTarget | null) => {
         schema,
         target.elementId,
         target.event,
-        binding?.flowId ?? `flow-${crypto.randomUUID()}`,
+        binding?.flowId ?? `flow-${nanoid()}`,
         flow,
       );
       lastGraph.current = structuredClone(graph);

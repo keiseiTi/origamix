@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { schemaService } from '@/services/schema';
 type SessionKind = 'page';
@@ -104,7 +105,7 @@ export const usePageApplyState = ({
     const request = previousRequest ?? {
       revisionId: current.revisionId!,
       workingVersion: current.workingVersion,
-      clientRequestId: crypto.randomUUID(),
+      clientRequestId: nanoid(),
     };
     operations.setApply(requestPageKey, { ...request, inFlight: true });
     try {

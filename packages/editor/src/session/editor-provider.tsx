@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import type { EditorPlugin } from '../interfaces/plugin-interfaces';
 import { Toaster, createToastManager } from '@origamix/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -285,7 +286,7 @@ export const EditorProvider = ({
                   schema: state.schema,
                   parentId: parentId!,
                   index,
-                  createId: () => `element-${crypto.randomUUID()}`,
+                  createId: () => `element-${nanoid()}`,
                 });
                 if (parent.props.layoutMode === 'absolute') {
                   const id = result.rootId;
@@ -310,7 +311,7 @@ export const EditorProvider = ({
                   })
                 : (() => {
                     const element = {
-                      id: `${material.type}-${crypto.randomUUID()}`,
+                      id: `${material.type}-${nanoid()}`,
                       type: material.type,
                       props: structuredClone(material.defaultProps ?? {}),
                     };

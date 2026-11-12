@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { useProjectSettingsSession } from './use-project-settings-session';
 import { ProjectSettingsChat } from './project-settings-chat';
 import { useState } from 'react';
@@ -99,7 +100,7 @@ const AddMenuDialog = ({
             event.preventDefault();
             if (!canAdd) return;
             onAdd({
-              id: crypto.randomUUID(),
+              id: nanoid(),
               title: title.trim(),
               pageId: pageId || undefined,
               parentId: parentId || undefined,

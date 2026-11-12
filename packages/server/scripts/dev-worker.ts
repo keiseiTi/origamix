@@ -1,12 +1,12 @@
 import { loadServerConfig } from './config.ts';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { nanoid } from 'nanoid';
 import { startServer } from '@origamix/server/runtime';
 
 const config = loadServerConfig();
 await mkdir(config.stateDir, { recursive: true });
-const serviceInstanceId = config.serviceInstanceId ?? randomUUID();
+const serviceInstanceId = config.serviceInstanceId ?? nanoid();
 const server = await startServer({
   port: config.serverPort,
   databasePath: resolve(config.stateDir, 'origamix.db'),

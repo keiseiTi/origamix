@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { getElementLabel } from '@origamix/shared';
 import { useFlowEditorSession } from '../flow-editor-context';
 import { Plus, Trash2 } from 'lucide-react';
@@ -24,7 +25,7 @@ export const SettersFields = ({
   const setters: Record<string, unknown>[] = Array.isArray(properties.setters)
     ? properties.setters.map(asRecord)
     : [];
-  const [keys, setKeys] = useState(() => setters.map(() => crypto.randomUUID()));
+  const [keys, setKeys] = useState(() => setters.map(() => nanoid()));
   const patch = (index: number, value: Record<string, unknown>): void =>
     onChange({
       setters: setters.map((setter, i) => (i === index ? { ...setter, ...value } : setter)),
@@ -139,7 +140,7 @@ export const SettersFields = ({
               (defaultNodeProps(type).setters as Record<string, unknown>[])[0]!,
             ],
           });
-          setKeys((current) => [...current, crypto.randomUUID()]);
+          setKeys((current) => [...current, nanoid()]);
         }}
       >
         <Plus size={13} />

@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Button, Input, FieldLabel } from '@origamix/ui';
 import type { CanvasPrototypeCommand, CanvasPrototypeSnapshot } from './canvas-prototype';
@@ -19,11 +20,11 @@ export const CanvasPrototypeSession = ({
   const current = useRef({ version: 0, command: 0 });
   const [scope] = useState<Scope>(() => ({
     protocol: 1,
-    instanceId: crypto.randomUUID(),
+    instanceId: nanoid(),
     projectId: 'prototype',
     pageId: 'sample',
   }));
-  const [nonce] = useState(() => crypto.randomUUID());
+  const [nonce] = useState(() => nanoid());
   const [localVersion, setLocalVersion] = useState(0);
   const timeoutRef = useRef<number | undefined>(undefined);
   const latest = useRef<CanvasPrototypeSnapshot | null>(null);

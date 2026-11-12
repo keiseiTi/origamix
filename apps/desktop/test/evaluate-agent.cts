@@ -53,7 +53,8 @@ const {
 } = require('node:fs') as typeof import('node:fs');
 const { join, resolve } = require('node:path') as typeof import('node:path');
 const { tmpdir } = require('node:os') as typeof import('node:os');
-const { createHash, randomUUID } = require('node:crypto') as typeof import('node:crypto');
+const { createHash } = require('node:crypto') as typeof import('node:crypto');
+const { nanoid } = require('nanoid') as typeof import('nanoid');
 const { spawn, execFileSync } =
   require('node:child_process') as typeof import('node:child_process');
 const assert: typeof import('node:assert/strict') = require('node:assert/strict');
@@ -248,7 +249,7 @@ const runAgent = async (
     version: '1',
     ...scope,
     baseWorkingVersion: before.workingVersion,
-    clientRequestId: randomUUID(),
+    clientRequestId: nanoid(),
     ...(conversationId ? { conversationId } : {}),
     content: { version: '1', blocks: [{ type: 'text', text: prompt }] },
   });
@@ -267,7 +268,7 @@ const runAgent = async (
     await request('/agent/runs/cancel', {
       projectId: scope.projectId,
       runId: started.runId,
-      requestId: randomUUID(),
+      requestId: nanoid(),
     });
     throw error;
   }
@@ -595,7 +596,7 @@ app
           ...scope,
           expectedRevisionId: saved.revisionId,
           expectedWorkingVersion: applicable.workingVersion,
-          clientRequestId: randomUUID(),
+          clientRequestId: nanoid(),
         };
         await request('/pages/apply', applyInput);
         await request('/pages/apply', applyInput);

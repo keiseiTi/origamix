@@ -1,5 +1,5 @@
 import { loadAppConfig } from './config.ts';
-import { randomUUID } from 'node:crypto';
+import { nanoid } from 'nanoid';
 import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
@@ -24,8 +24,8 @@ export const localWebServer = (): Plugin => {
         runtimePackage: fileURLToPath(new URL('../runtime', import.meta.url)),
         materialsPackage: fileURLToPath(new URL('../materials', import.meta.url)),
       });
-      const token = randomUUID();
-      const serviceInstanceId = randomUUID();
+      const token = nanoid(48);
+      const serviceInstanceId = nanoid();
       const port = vite.config.server.port ?? config.port;
       const hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
       const backend = await startServer({
