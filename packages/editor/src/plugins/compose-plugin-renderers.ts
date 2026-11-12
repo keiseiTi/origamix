@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { EditorPlugin, EditorToolbarArea } from '../interfaces/plugin-interfaces';
-import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
+import type { EditorPlugin, EditorToolbarArea } from '../interfaces/plugin';
+import type { EditorInstance } from '../interfaces/editor-instance';
 
 /** Each callback receives the content already composed by plugins to its right. */
 export const composePluginRenderers = (

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useStore } from 'zustand';
-import type { EditorPublicState } from '../interfaces/editor-instance-interfaces';
+import type { EditorPublicState } from '../interfaces/editor-instance';
 import { useEditorContext } from './use-editor-context';
 import { useEditorStoreApi } from '../session/editor-context';
 import { createPublicSource } from '../session/editor-public-state';

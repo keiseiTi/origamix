@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import type { EditorInstance, EditorSaveOptions } from '../interfaces/editor-instance-interfaces';
+import type { EditorInstance, EditorSaveOptions } from '../interfaces/editor-instance';
 import { useEditorStoreApi } from './editor-context';
 import { bindEditorSession, updateEditorBinding } from './editor-instance';
 export const useBindEditor = (

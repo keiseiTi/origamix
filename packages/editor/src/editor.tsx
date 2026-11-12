@@ -1,7 +1,7 @@
 import { EditorPageNavigationContext } from './components/flow-editor/flow-editor-context';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorProps } from './interfaces/editor-interfaces';
+import type { EditorProps } from './interfaces/editor';
 import { EditorProvider } from './session/editor-provider';
 import { EditorChrome } from './components/editor-layout/editor-toolbar';
 import { EditorCanvas } from './components/editor-layout/editor-canvas';

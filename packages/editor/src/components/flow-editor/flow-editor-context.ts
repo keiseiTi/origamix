@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
-import type { Material } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
 import type { MaterialManifest } from '@origamix/shared';
 
 /** Internal view contract; the parent Editor owns the engine and edit session. */

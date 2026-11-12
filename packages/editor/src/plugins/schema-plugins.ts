@@ -3,12 +3,12 @@ import type {
   EditorChangeSource,
   EditorEvents,
   EditorReadonly,
-} from '../interfaces/editor-operation-interfaces';
+} from '../interfaces/editor-operation';
 import type {
   EditorPlugin,
   EditorPluginSchemaContext,
   EditorSchemaEventName,
-} from '../interfaces/plugin-interfaces';
+} from '../interfaces/plugin';
 import { editorSnapshot } from '../session/editor-snapshots';
 
 export const subscribeSchemaPlugin = (

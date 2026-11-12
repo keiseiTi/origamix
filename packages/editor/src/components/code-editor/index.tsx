@@ -5,7 +5,7 @@ import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.
 import { configureMonacoWorkers } from './monaco-workers';
 import { cn } from '@origamix/ui';
 import { useEditorTheme } from '../../session/editor-environment';
-import type { EditorTheme } from '../../interfaces/editor-interfaces';
+import type { EditorTheme } from '../../interfaces/editor';
 
 export interface CodeEditorProps {
   theme?: EditorTheme;

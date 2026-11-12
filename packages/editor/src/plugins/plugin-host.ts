@@ -1,7 +1,7 @@
 import { getPluginPropsBinding } from './plugin-props';
-import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import type { EditorPlugin } from '../interfaces/plugin';
 import { subscribeSchemaPlugin } from './schema-plugins';
-import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
+import type { EditorInstance } from '../interfaces/editor-instance';
 
 /** Capture one session's definitions; later renders cannot replace its plugin set. */
 export const snapshotEditorPlugins = (

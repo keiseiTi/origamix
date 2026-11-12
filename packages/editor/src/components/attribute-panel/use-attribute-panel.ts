@@ -8,7 +8,7 @@ import { useMaterialCatalog } from '../../session/editor-environment';
 import { SchemaUtils } from '../../schema/schema-utils';
 import { useEditorCore } from '../../session/editor-context';
 import { type ActiveElement } from '../../session/editor-store';
-import type { AttributeConfig, Material } from '../../interfaces/material-interfaces';
+import type { AttributeConfig, Material } from '../../interfaces/material';
 import { isVisible } from './attribute-rules';
 
 export const useAttributePanel = (focusTarget: EventFocusProps['focusTarget']) => {

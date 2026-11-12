@@ -1,5 +1,5 @@
 import { Button } from '@origamix/ui';
-import type { Material } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
 import type { EventFocusProps } from '../editor-layout/event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
 type MaterialEvent = NonNullable<NonNullable<Material['contextConfig']>['events']>[number];

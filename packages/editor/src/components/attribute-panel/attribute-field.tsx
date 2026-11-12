@@ -13,8 +13,8 @@ import {
   FieldLabel,
 } from '@origamix/ui';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { AttributeConfig, Material } from '../../interfaces/material-interfaces';
-import type { JsonAttributeConfig } from '../../interfaces/property-editor-interfaces';
+import type { AttributeConfig, Material } from '../../interfaces/material';
+import type { JsonAttributeConfig } from '../../interfaces/property-editor';
 import { SchemaUtils } from '../../schema/schema-utils';
 import { JsonAttributeField } from '../json-attribute-field';
 import { isVisible, optionsOf } from './attribute-rules';

@@ -1,4 +1,4 @@
-import type { AttributeConfig } from '../../interfaces/material-interfaces';
+import type { AttributeConfig } from '../../interfaces/material';
 
 interface OptionItem {
   label: string;

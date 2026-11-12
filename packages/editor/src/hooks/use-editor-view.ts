@@ -1,5 +1,5 @@
 import { useStore } from 'zustand';
-import type { EditorInstance, EditorViewState } from '../interfaces/editor-instance-interfaces';
+import type { EditorInstance, EditorViewState } from '../interfaces/editor-instance';
 import { getEditorViewStore } from '../session/editor-instance';
 export const useEditorView = <T>(
   editor: EditorInstance,

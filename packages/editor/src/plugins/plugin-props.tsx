@@ -1,5 +1,5 @@
 import { useSyncExternalStore, type ReactNode } from 'react';
-import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import type { EditorPlugin } from '../interfaces/plugin';
 
 export const pluginPropsBinding = Symbol('editor.pluginProps');
 export interface PluginPropsRuntime {

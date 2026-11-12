@@ -1,4 +1,4 @@
-import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import type { EditorPlugin } from '../interfaces/plugin';
 import { equalJson } from '@origamix/shared';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { isPageSchema, type OrigamixPageSchema } from '@origamix/shared';
@@ -7,12 +7,12 @@ import type {
   EditorChangeOptions,
   EditorReadonly,
   EditorOperations,
-} from '../interfaces/editor-operation-interfaces';
+} from '../interfaces/editor-operation';
 import { SchemaUtils } from '../schema/schema-utils';
-import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
-import type { EditorTheme, EditorTargetSelection } from '../interfaces/editor-interfaces';
+import type { EditorInstance } from '../interfaces/editor-instance';
+import type { EditorTheme, EditorTargetSelection } from '../interfaces/editor';
 import type { MaterialManifest } from '@origamix/shared';
-import type { Material } from '../interfaces/material-interfaces';
+import type { Material } from '../interfaces/material';
 
 export type ActiveElement = {
   id: string;

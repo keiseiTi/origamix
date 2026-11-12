@@ -17,7 +17,7 @@ import { SchemaUtils } from '../schema/schema-utils';
 import { type OrigamixPageSchema as Schema } from '@origamix/shared';
 import { TooltipProvider } from '@origamix/ui';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorMaterialRegistration } from '../interfaces/editor-interfaces';
+import type { EditorMaterialRegistration } from '../interfaces/editor';
 import { DropIndicator } from '../components/canvas/drop-indicator';
 import { TargetSelectionMarker } from '../components/canvas/target-selection-marker';
 import { SelectionToolbar } from '../components/canvas/selection-toolbar';

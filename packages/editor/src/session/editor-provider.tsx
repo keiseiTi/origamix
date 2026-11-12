@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+import type { EditorPlugin } from '../interfaces/plugin';
 import { Toaster, createToastManager } from '@origamix/ui';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -15,15 +15,12 @@ import {
   type CollisionDetection,
 } from '@dnd-kit/core';
 import { instantiateBlock, type OrigamixPageSchema } from '@origamix/shared';
-import type { Material } from '../interfaces/material-interfaces';
+import type { Material } from '../interfaces/material';
 import { createEditorSession, type DragElement, type EditorEnvironment } from './editor-store';
 import { EditorSessionContext } from './editor-context';
 import { getInsertionAxis } from '../components/canvas/layout-axis';
 import { useBindEditor } from './use-bind-editor';
-import {
-  type EditorInstance,
-  type EditorSaveOptions,
-} from '../interfaces/editor-instance-interfaces';
+import { type EditorInstance, type EditorSaveOptions } from '../interfaces/editor-instance';
 import { SchemaUtils } from '../schema/schema-utils';
 
 const EMPTY_BLOCKS: NonNullable<EditorProviderProps['blocks']> = [];

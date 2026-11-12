@@ -1,5 +1,5 @@
 import { Draggable } from '../canvas/canvas-drag-controls';
-import { type MaterialGroup } from '../../interfaces/material-interfaces';
+import { type MaterialGroup } from '../../interfaces/material';
 
 export const MaterialPanel = ({ groups }: { groups: MaterialGroup[] }): React.JSX.Element => {
   return (

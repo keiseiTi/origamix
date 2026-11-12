@@ -2,7 +2,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useMemo, type ReactNode, type MouseEvent } from 'react';
 import { DesignRenderer, type DesignElementProps } from '@origamix/runtime';
 import { useDroppable } from '@dnd-kit/core';
-import type { Material } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
 import { useEditorCore } from '../../session/editor-context';
 import { SchemaUtils } from '../../schema/schema-utils';
 import { SelectionOverlay } from './selection-overlay';

@@ -1,12 +1,8 @@
-import type {
-  EditorEvents,
-  EditorReadonly,
-  EditorChangeSource,
-} from './editor-operation-interfaces';
+import type { EditorEvents, EditorReadonly, EditorChangeSource } from './editor-operation';
 import type { ReactNode } from 'react';
 import type { MaterialManifest, OrigamixPageSchema } from '@origamix/shared';
-import type { Material, PanelConfig } from './material-interfaces';
-import type { EditorInstance } from './editor-instance-interfaces';
+import type { Material, PanelConfig } from './material';
+import type { EditorInstance } from './editor-instance';
 
 export type EditorToolbarArea = 'all' | 'start' | 'center' | 'end';
 export type EditorPluginRenderContext<Props = undefined> = Readonly<{

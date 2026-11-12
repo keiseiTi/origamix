@@ -1,4 +1,4 @@
-import type { EditorReadonly } from '../interfaces/editor-operation-interfaces';
+import type { EditorReadonly } from '../interfaces/editor-operation';
 
 /** Clone data before freezing so callers never freeze or mutate the session's objects. */
 export const editorSnapshot = <T>(value: T): EditorReadonly<T> => {

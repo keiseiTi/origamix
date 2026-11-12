@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
-import { Button, Textarea } from '@origamix/ui';
+import { Button } from '@origamix/ui';
+import { CodeEditor } from './code-editor';
 
 interface Props {
   label: string;
@@ -35,15 +36,19 @@ export const JsonAttributeField = ({
     onChange(candidate);
   };
   return (
-    <div className='space-y-2'>
-      <Textarea
-        aria-label={label}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
-        className='min-h-32 font-mono text-xs'
+    <div
+      role='group'
+      className='space-y-2'
+      aria-invalid={Boolean(error)}
+      aria-describedby={error ? errorId : undefined}
+    >
+      <CodeEditor
+        ariaLabel={label}
+        language='json'
+        className='h-36 rounded-md border border-border'
         value={text}
-        onChange={(event) => {
-          setText(event.target.value);
+        onChange={(next) => {
+          setText(next);
           setError(undefined);
         }}
       />

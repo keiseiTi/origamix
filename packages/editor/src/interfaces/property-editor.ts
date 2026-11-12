@@ -1,6 +1,6 @@
-import type { AttributeConfig } from './material-interfaces';
+import type { AttributeConfig } from './material';
 import type { ComponentType } from 'react';
-import type { EditorPageScope } from './editor-interfaces';
+import type { EditorPageScope } from './editor';
 
 /** A property editor can change only the selected element's props, atomically. */
 export type ElementPropsChange = Readonly<{

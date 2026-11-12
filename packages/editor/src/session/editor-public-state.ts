@@ -4,7 +4,7 @@ import type {
   EditorInstance,
   EditorPublicState,
   EditorViewState,
-} from '../interfaces/editor-instance-interfaces';
+} from '../interfaces/editor-instance';
 import { getEditorViewStore } from './editor-instance';
 export const createPublicSource = (
   editor: EditorInstance,

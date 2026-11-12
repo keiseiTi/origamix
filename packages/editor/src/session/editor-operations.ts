@@ -4,7 +4,7 @@ import type {
   EditorElementPosition,
   EditorOperations,
   EditorResolvedPosition,
-} from '../interfaces/editor-operation-interfaces';
+} from '../interfaces/editor-operation';
 import { editorSnapshot } from './editor-snapshots';
 import { SchemaUtils } from '../schema/schema-utils';
 

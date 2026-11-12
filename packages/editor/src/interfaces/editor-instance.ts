@@ -1,7 +1,7 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { EditorOperations } from './editor-operation-interfaces';
-import type { EditorPlugin } from './plugin-interfaces';
-import type { EditorMode } from './editor-interfaces';
+import type { EditorOperations } from './editor-operation';
+import type { EditorPlugin } from './plugin';
+import type { EditorMode } from './editor';
 export type EditorSaveOptions = Readonly<{
   onSave?: () => Promise<void>;
   onFlush?: () => Promise<void>;

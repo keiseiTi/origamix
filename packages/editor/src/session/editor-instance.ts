@@ -7,8 +7,8 @@ import type {
   EditorSaveOptions,
   CreateEditorOptions,
   EditorViewState,
-} from '../interfaces/editor-instance-interfaces';
-import type { EditorPlugin } from '../interfaces/plugin-interfaces';
+} from '../interfaces/editor-instance';
+import type { EditorPlugin } from '../interfaces/plugin';
 import { createEditorOperations } from './editor-operations';
 import { snapshotEditorPlugins, startEditorPlugins } from '../plugins/plugin-host';
 type Binding = {

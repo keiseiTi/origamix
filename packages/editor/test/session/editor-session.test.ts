@@ -4,8 +4,8 @@ import { defineEditorPlugin } from '../../src/plugins/define-editor-plugin';
 import { composePluginRenderers } from '../../src/plugins/compose-plugin-renderers';
 import { extendEditorMaterial } from '../../src/plugins/material-plugins';
 import type { MaterialManifest } from '@origamix/shared';
-import type { EditorPlugin } from '../../src/interfaces/plugin-interfaces';
-import type { EditorEvents } from '../../src/interfaces/editor-operation-interfaces';
+import type { EditorPlugin } from '../../src/interfaces/plugin';
+import type { EditorEvents } from '../../src/interfaces/editor-operation';
 import { describe, expect, it, vi } from 'vitest';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { createEditorSession } from '../../src/session/editor-store';
@@ -15,7 +15,7 @@ import {
   getEditorPlugins,
   updateEditorOptions,
 } from '../../src/session/editor-instance';
-import type { EditorInstance } from '../../src/interfaces/editor-instance-interfaces';
+import type { EditorInstance } from '../../src/interfaces/editor-instance';
 import { SchemaUtils } from '../../src/schema/schema-utils';
 
 const document = (): OrigamixPageSchema => ({

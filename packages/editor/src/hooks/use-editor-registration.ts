@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { snapshotEditorPlugins } from '../plugins/plugin-host';
 import { extendEditorMaterial } from '../plugins/material-plugins';
 import { getEditorPlugins } from '../session/editor-instance';
-import type { EditorInstance } from '../interfaces/editor-instance-interfaces';
-import type { EditorMaterialRegistration } from '../interfaces/editor-interfaces';
+import type { EditorInstance } from '../interfaces/editor-instance';
+import type { EditorMaterialRegistration } from '../interfaces/editor';
 export const useEditorRegistration = (
   editor: EditorInstance,
   registration: EditorMaterialRegistration,

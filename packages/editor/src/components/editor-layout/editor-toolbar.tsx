@@ -1,13 +1,13 @@
 import { useEditorCore } from '../../session/editor-context';
-import type { EditorPlugin } from '../../interfaces/plugin-interfaces';
+import type { EditorPlugin } from '../../interfaces/plugin';
 import type { ReactNode } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@origamix/ui';
 import { useEditorContext } from '../../hooks/use-editor-context';
 import { useEditorSelector } from '../../hooks/use-editor-selector';
-import { type EditorInstance } from '../../interfaces/editor-instance-interfaces';
+import { type EditorInstance } from '../../interfaces/editor-instance';
 import { composePluginRenderers } from '../../plugins/compose-plugin-renderers';
-import type { EditorToolbarArea as ToolbarArea } from '../../interfaces/plugin-interfaces';
+import type { EditorToolbarArea as ToolbarArea } from '../../interfaces/plugin';
 
 export type EditorToolbarArea = ToolbarArea;
 

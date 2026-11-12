@@ -7,7 +7,7 @@ import { type ActiveElement } from '../../session/editor-store';
 import { useMemo, useState } from 'react';
 import { BlockPanel } from './block-panel';
 import { MaterialPanel } from './material-panel';
-import type { MaterialGroup } from '../../interfaces/material-interfaces';
+import type { MaterialGroup } from '../../interfaces/material';
 import type { EventFocusProps } from '../editor-layout/event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
 

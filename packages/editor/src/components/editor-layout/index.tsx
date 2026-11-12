@@ -1,13 +1,13 @@
 import { useEventNavigation } from './use-event-navigation';
 import { FlowEditorLoader } from '../flow-editor/flow-editor-loader';
-import type { EditorMode } from '../../interfaces/editor-interfaces';
+import type { EditorMode } from '../../interfaces/editor';
 import { CanvasEditor } from '../canvas';
 import { AttributePanel } from '../attribute-panel';
 import { DropIndicator } from '../canvas/drop-indicator';
 import { TargetSelectionMarker } from '../canvas/target-selection-marker';
 import { SelectionToolbar } from '../canvas/selection-toolbar';
 import { NavigationPanel } from '../navigation-panel';
-import type { MaterialGroup } from '../../interfaces/material-interfaces';
+import type { MaterialGroup } from '../../interfaces/material';
 
 export const EditorLayout = ({
   groups,

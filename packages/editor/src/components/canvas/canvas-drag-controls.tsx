@@ -1,6 +1,6 @@
 import type { ReactNode, CSSProperties, MouseEvent } from 'react';
 import { useDraggable, DragOverlay as DndDragOverlay } from '@dnd-kit/core';
-import type { Material } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
 import { useEditorCore } from '../../session/editor-context';
 
 export const Draggable = ({

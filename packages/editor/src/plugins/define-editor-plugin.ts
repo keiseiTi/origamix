@@ -1,4 +1,4 @@
-import type { EditorPlugin, EditorPluginDefinition } from '../interfaces/plugin-interfaces';
+import type { EditorPlugin, EditorPluginDefinition } from '../interfaces/plugin';
 import { createPluginPropsRuntime, pluginPropsBinding } from './plugin-props';
 
 export const defineEditorPlugin = <Props = undefined>(

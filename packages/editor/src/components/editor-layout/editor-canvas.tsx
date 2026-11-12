@@ -1,9 +1,9 @@
 import { DragOverlay } from '../canvas/canvas-drag-controls';
 import { InsertPositionIndicator } from '../canvas/insert-position-indicator';
 import { useEditorCore } from '../../session/editor-context';
-import type { Material } from '../../interfaces/material-interfaces';
-import type { EditorMode } from '../../interfaces/editor-interfaces';
-import type { MaterialGroup } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
+import type { EditorMode } from '../../interfaces/editor';
+import type { MaterialGroup } from '../../interfaces/material';
 import { EditorLayout } from './index';
 export const EditorCanvas = ({
   groups,

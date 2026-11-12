@@ -1,5 +1,5 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { Material } from './material-interfaces';
+import type { Material } from './material';
 
 export type EditorReadonly<T> = T extends (...args: never[]) => unknown
   ? T

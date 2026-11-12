@@ -1,6 +1,6 @@
 import { useToastManager } from '@origamix/ui';
 import { useState } from 'react';
-import type { EditorMode } from '../../interfaces/editor-interfaces';
+import type { EditorMode } from '../../interfaces/editor';
 import type { EventTarget } from '../flow-editor/flow-graph';
 import type { EventFocusTarget } from './event-focus-target';
 export const useEventNavigation = (onModeChange: (mode: EditorMode) => Promise<void>) => {

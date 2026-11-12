@@ -1,5 +1,5 @@
 import { getMaterialDisplay, type OrigamixPageSchema } from '@origamix/shared';
-import type { Material } from '../../interfaces/material-interfaces';
+import type { Material } from '../../interfaces/material';
 import { SchemaUtils } from '../../schema/schema-utils';
 
 /** Parent layout owns ordering; flow falls back to each item's declared occupancy. */

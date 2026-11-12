@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
-import type { EditorInstance, EditorSaveOptions } from './editor-instance-interfaces';
-import type { EditorPlugin } from './plugin-interfaces';
-import type { Material } from './material-interfaces';
+import type { EditorInstance, EditorSaveOptions } from './editor-instance';
+import type { EditorPlugin } from './plugin';
+import type { Material } from './material';
 import {
   type MaterialManifestCatalog,
   type OrigamixPageSchema,
   type SchemaOperation,
 } from '@origamix/shared';
 
-import type { PropertyEditorRegistration } from './property-editor-interfaces';
+import type { PropertyEditorRegistration } from './property-editor';
 
 export type EditorTheme = 'light' | 'dark';
 export type EditorMode = 'view' | 'logic';
