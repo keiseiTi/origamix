@@ -25,7 +25,7 @@ export const withProjectActivity = async <T>(
   const current = owner.getStore();
   if (current?.path === path && current.active) return action();
   const state = activityFor(path);
-  if (state.exclusive) throw conflict('项目正在执行删除或升级，请稍后重试');
+  if (state.exclusive) throw conflict('项目正在更新，请稍后重试');
   state.readers += 1;
   try {
     return await action();

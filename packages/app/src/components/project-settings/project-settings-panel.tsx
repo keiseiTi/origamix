@@ -1,10 +1,18 @@
 import { useProjectSettingsSession } from './use-project-settings-session';
 import { ProjectSettingsChat } from './project-settings-chat';
 import { useState } from 'react';
+import { EditorToolbar } from '@origamix/editor';
 import { ConfiguredShell } from '@origamix/runtime';
 import { type ProjectMenuItem } from '@origamix/shared';
 import {
   Button,
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
   Field,
   FieldLabel,
   Input,
@@ -14,8 +22,12 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
 } from '@origamix/ui';
-import { ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Plus, Save, Trash2 } from 'lucide-react';
 import { RoutingFields } from './routing-fields';
 
 const Choice = ({
@@ -46,13 +58,108 @@ const Choice = ({
   </Field>
 );
 
+const AddMenuDialog = ({
+  pages,
+  parents,
+  onAdd,
+}: {
+  pages: { value: string; label: string }[];
+  parents: { value: string; label: string }[];
+  onAdd: (item: ProjectMenuItem) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [pageId, setPageId] = useState('');
+  const [title, setTitle] = useState('');
+  const [parentId, setParentId] = useState('');
+  const [hidden, setHidden] = useState(false);
+  const validPage = !pageId || pages.some((page) => page.value === pageId);
+  const validParent = !parentId || parents.some((parent) => parent.value === parentId);
+  const canAdd = validPage && validParent && Boolean(pageId || title.trim());
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          setPageId('');
+          setTitle('');
+          setParentId('');
+          setHidden(false);
+        }
+        setOpen(next);
+      }}
+    >
+      <DialogTrigger render={<Button size='sm' type='button' variant='outline' />}>
+        <Plus size={14} />
+        添加菜单
+      </DialogTrigger>
+      <DialogContent className='sm:max-w-md'>
+        <form
+          className='grid gap-4'
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!canAdd) return;
+            onAdd({
+              id: crypto.randomUUID(),
+              title: title.trim(),
+              pageId: pageId || undefined,
+              parentId: parentId || undefined,
+              hidden,
+            });
+            setOpen(false);
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>添加菜单</DialogTitle>
+          </DialogHeader>
+          <Choice
+            label='关联页面'
+            value={pageId}
+            items={[{ value: '', label: '仅作为分组' }, ...pages]}
+            onChange={setPageId}
+          />
+          <Field>
+            <FieldLabel htmlFor='new-menu-title'>菜单标题</FieldLabel>
+            <Input
+              id='new-menu-title'
+              maxLength={80}
+              required={!pageId}
+              placeholder={pageId ? '留空跟随页面名称' : '输入分组名称'}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </Field>
+          <Choice
+            label='父级菜单'
+            value={parentId}
+            items={[{ value: '', label: '顶级菜单' }, ...parents]}
+            onChange={setParentId}
+          />
+          <Field orientation='horizontal'>
+            <Switch id='new-menu-hidden' checked={hidden} onCheckedChange={setHidden} />
+            <FieldLabel htmlFor='new-menu-hidden'>隐藏菜单及子菜单</FieldLabel>
+          </Field>
+          {(!validPage || !validParent) && (
+            <p role='alert' className='text-sm text-destructive'>
+              页面或父级菜单已变化，请重新选择。
+            </p>
+          )}
+          <DialogFooter>
+            <DialogClose render={<Button type='button' variant='outline' />}>取消</DialogClose>
+            <Button type='submit' disabled={!canAdd}>
+              添加
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const ProjectSettingsPanel = ({
   projectId,
-  onClose,
   onConfigureModel,
 }: {
   projectId: string;
-  onClose: () => void;
   onConfigureModel: () => void;
 }) => {
   const session = useProjectSettingsSession(projectId);
@@ -84,83 +191,95 @@ export const ProjectSettingsPanel = ({
     },
   ];
   return (
-    <section className='flex min-h-0 flex-1 flex-col gap-4 bg-white p-5 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
-      <header className='shrink-0'>
-        <h1 className='text-base font-semibold'>布局配置</h1>
-      </header>
+    <section className='flex min-h-0 min-w-0 flex-1 flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
+      <EditorToolbar>
+        <div className='min-w-0 flex-1'>
+          {saved && !error && (
+            <p role='status' className='text-muted-foreground'>
+              配置已保存
+            </p>
+          )}
+          {draft && error && (
+            <p role='alert' className='truncate text-danger' title={error}>
+              {error}
+            </p>
+          )}
+        </div>
+        <Button
+          size='sm'
+          variant='secondary'
+          className='shrink-0 px-2 text-xs'
+          aria-busy={busy}
+          disabled={!draft || busy || session.running}
+          onClick={() => void save()}
+        >
+          <Save size={14} />
+          {busy ? '保存中…' : '保存配置'}
+        </Button>
+      </EditorToolbar>
       {!draft ? (
-        <div className='p-8' role='status'>
-          {error ? '无法读取项目设置' : '正在读取项目设置…'}
+        <div className='grid justify-items-start gap-3 p-8'>
+          {error ? (
+            <>
+              <p role='alert' className='text-sm text-destructive'>
+                {error}
+              </p>
+              <Button variant='outline' onClick={session.reload}>
+                重试读取
+              </Button>
+            </>
+          ) : (
+            <p role='status'>正在读取项目设置…</p>
+          )}
         </div>
       ) : (
-        <div className='grid min-h-0 flex-1 gap-5 overflow-auto lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]'>
-          <section className='min-w-0 lg:sticky lg:top-0 lg:self-start'>
-            <div className='mb-2 flex items-center justify-between text-xs text-muted-foreground'>
-              <span>布局效果</span>
-              {draft.shell.navigation === undefined && <span>示例菜单 · 仅用于展示</span>}
-            </div>
-            <div className='min-h-96 overflow-hidden rounded-lg border border-border'>
-              <ConfiguredShell
-                className='min-h-96'
-                config={{ ...draft.shell, navigation: draft.shell.navigation ?? exampleMenu }}
-                title={draft.name}
-                enabled={
-                  draft.layout.enabled && !draft.shell.standalonePageIds.includes(selectedPage)
-                }
-                variant={draft.layout.initialVariant}
-                pages={draft.shell.navigation === undefined ? examplePages : draft.pages}
-                currentPageId={selectedPage}
-                onNavigate={setSelectedPage}
-              >
-                <div className='grid min-h-96 place-content-center gap-3 p-6 text-center'>
-                  <p className='font-medium'>
-                    {draft.pages.find((page) => page.pageId === selectedPage)?.name ??
-                      examplePages.find((page) => page.pageId === selectedPage)?.name ??
-                      '页面内容区域'}
-                  </p>
-                  <p className='max-w-64 text-xs text-muted-foreground'>
-                    此处展示布局与菜单效果。页面内容请使用页面预览，路由和业务行为请在生成项目中验证。
-                  </p>
-                </div>
-              </ConfiguredShell>
-            </div>
-          </section>
-          <section className='flex min-h-0 flex-col gap-3'>
-            <div className='flex shrink-0 gap-2' role='group' aria-label='布局配置方式'>
-              <Button
-                variant={mode === 'assistant' ? 'secondary' : 'ghost'}
-                aria-pressed={mode === 'assistant'}
-                onClick={() => setMode('assistant')}
-              >
-                AI 助手
-              </Button>
-              <Button
-                variant={mode === 'form' ? 'secondary' : 'ghost'}
-                aria-pressed={mode === 'form'}
-                onClick={() => setMode('form')}
-              >
-                表单配置
-              </Button>
-            </div>
-            <div
-              className={
-                mode === 'assistant' ? 'flex min-h-96 flex-1 flex-col lg:min-h-0' : 'hidden'
+        <div className='grid min-h-0 flex-1 gap-4 overflow-auto p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:overflow-hidden'>
+          <div className='min-w-0 overflow-auto rounded-lg border border-border'>
+            <ConfiguredShell
+              className='min-h-96 lg:min-h-full'
+              config={{ ...draft.shell, navigation: draft.shell.navigation ?? exampleMenu }}
+              title={draft.name}
+              enabled={
+                draft.layout.enabled && !draft.shell.standalonePageIds.includes(selectedPage)
               }
+              variant={draft.layout.initialVariant}
+              pages={draft.shell.navigation === undefined ? examplePages : draft.pages}
+              currentPageId={selectedPage}
+              onNavigate={setSelectedPage}
+            >
+              <div className='grid min-h-72 place-content-center p-6 text-center font-medium'>
+                {draft.pages.find((page) => page.pageId === selectedPage)?.name ??
+                  examplePages.find((page) => page.pageId === selectedPage)?.name}
+              </div>
+            </ConfiguredShell>
+          </div>
+          <Tabs
+            value={mode}
+            onValueChange={(value) => {
+              if (value === 'assistant' || value === 'form') setMode(value);
+            }}
+            className='min-h-0 min-w-0 gap-3'
+          >
+            <TabsList aria-label='布局配置方式'>
+              <TabsTrigger value='assistant'>AI 助手</TabsTrigger>
+              <TabsTrigger value='form'>表单配置</TabsTrigger>
+            </TabsList>
+            <TabsContent
+              value='assistant'
+              keepMounted
+              className='min-h-96 flex-col not-data-hidden:flex lg:min-h-0'
             >
               <ProjectSettingsChat
                 session={session}
                 onConfigureModel={onConfigureModel}
                 onViewChanges={() => setMode('form')}
               />
-            </div>
-            <fieldset
-              hidden={mode !== 'form'}
-              disabled={busy}
-              className={
-                mode === 'form'
-                  ? 'grid content-start gap-5 overflow-y-auto pb-2 disabled:opacity-60'
-                  : 'hidden'
-              }
+            </TabsContent>
+            <TabsContent
+              value='form'
+              keepMounted
+              render={<fieldset disabled={busy} />}
+              className='content-start gap-5 overflow-y-auto pb-2 not-data-hidden:grid disabled:opacity-60'
             >
               {draft.layout.enabled && (
                 <>
@@ -198,7 +317,10 @@ export const ProjectSettingsPanel = ({
                       placeholder={draft.name}
                       value={draft.shell.title}
                       onChange={(event) =>
-                        setDraft({ ...draft, shell: { ...draft.shell, title: event.target.value } })
+                        setDraft({
+                          ...draft,
+                          shell: { ...draft.shell, title: event.target.value },
+                        })
                       }
                     />
                   </Field>
@@ -209,27 +331,38 @@ export const ProjectSettingsPanel = ({
                       placeholder='/logo.png 或 https://…'
                       value={draft.shell.logo}
                       onChange={(event) =>
-                        setDraft({ ...draft, shell: { ...draft.shell, logo: event.target.value } })
+                        setDraft({
+                          ...draft,
+                          shell: { ...draft.shell, logo: event.target.value },
+                        })
                       }
                     />
                   </Field>
                   <section className='grid gap-3' aria-label='菜单配置'>
                     <div className='flex items-center justify-between'>
                       <h3 className='text-sm font-medium'>菜单配置</h3>
-                      <Button
-                        size='sm'
-                        type='button'
-                        variant='outline'
-                        onClick={() =>
-                          updateMenu([
-                            ...menu,
-                            { id: crypto.randomUUID(), title: '新分组', hidden: false },
-                          ])
+                      <AddMenuDialog
+                        pages={pageItems.slice(1)}
+                        parents={menu.map((item) => ({
+                          value: item.id,
+                          label:
+                            item.title ||
+                            draft.pages.find((page) => page.pageId === item.pageId)?.name ||
+                            '未命名',
+                        }))}
+                        onAdd={(item) =>
+                          setDraft(
+                            (current) =>
+                              current && {
+                                ...current,
+                                shell: {
+                                  ...current.shell,
+                                  navigation: [...(current.shell.navigation ?? []), item],
+                                },
+                              },
+                          )
                         }
-                      >
-                        <Plus size={14} />
-                        添加菜单
-                      </Button>
+                      />
                     </div>
                     {draft.shell.navigation === undefined && (
                       <p className='text-xs text-muted-foreground'>
@@ -427,37 +560,10 @@ export const ProjectSettingsPanel = ({
                 onChange={(routing) => setDraft({ ...draft, routing })}
                 disabled={busy}
               />
-            </fieldset>
-          </section>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
-      {saved && !error && (
-        <p role='status' className='text-xs text-muted-foreground'>
-          布局配置已保存
-        </p>
-      )}
-      {error && (
-        <p role='alert' className='text-sm text-destructive'>
-          {error}
-        </p>
-      )}
-      <p className='text-xs text-muted-foreground'>
-        保存将直接更新
-        origamix.project.json。页面草稿仍需单独保存版本并应用；完整效果请在生成项目中验证。
-      </p>
-      <footer className='flex shrink-0 items-center justify-end gap-2'>
-        <Button variant='outline' disabled={busy} onClick={onClose}>
-          取消
-        </Button>
-        {!draft && error && (
-          <Button variant='outline' onClick={() => session.reload()}>
-            重试读取
-          </Button>
-        )}
-        <Button disabled={!draft || busy || session.running} onClick={() => void save()}>
-          {busy ? '保存中…' : '保存布局配置'}
-        </Button>
-      </footer>
     </section>
   );
 };

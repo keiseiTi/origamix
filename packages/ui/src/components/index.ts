@@ -19,3 +19,5 @@ export { cn } from '../lib/utils';
 
 export * from './toast';
 export { createToastManager, useToastManager, toast } from '../lib/toast-manager';
+
+export * from './tabs';

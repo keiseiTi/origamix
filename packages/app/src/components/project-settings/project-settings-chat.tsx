@@ -34,7 +34,7 @@ export const ProjectSettingsChat = ({
       <div ref={scroll} className='min-h-0 flex-1 space-y-4 overflow-y-auto py-3 text-sm'>
         <div className='flex gap-2 text-muted-foreground'>
           <Sparkles size={16} className='mt-0.5 shrink-0' />
-          <p>描述布局、品牌或菜单需求。AI 和表单共用当前草稿，确认效果后点击“保存布局配置”。</p>
+          <p>描述布局、品牌或菜单需求。AI 和表单共用当前草稿，确认效果后点击“保存配置”。</p>
         </div>
         {!session.messages.length && (
           <p className='rounded-lg border border-dashed border-border p-3 text-muted-foreground'>

@@ -10,7 +10,7 @@ import { workingResult } from './working-schema-result';
 import { assertPageNotDeleting } from '../projects/page-deletion-store';
 import { withProjectActivity } from '../projects/project-activity';
 import { ProjectManifestStore } from '../projects/project-manifest-store';
-import { requireCompatibleSchema, schemaVersionOf } from './schema-compatibility';
+import { requireCompatibleSchema } from './schema-compatibility';
 import { readTargetSchema } from './target-schema-reader';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { RevisionCommit, createRevisionSnapshot, validateSnapshot } from './revision-commit';
@@ -406,35 +406,11 @@ export const getSchemaRevision = async (
   });
 };
 
-/** Startup recovery reads durable commit evidence without opening or upgrading a page. */
+/** Startup recovery reads durable commit evidence without initializing Working. */
 export const getRetainedWorkingSchemaState = (
   page: SchemaPageRef,
 ): Promise<WorkingSchemaReadResult> =>
   withSchemaPageQueue(page, async () => {
     await commits.recover(page);
     return workingResult(await readWorking(page));
-  });
-
-/** Read-only: never initializes Working or recovers transactions. */
-export const inspectPageSchemaCompatibility = (
-  page: SchemaPageRef,
-): Promise<{ schemaVersion: string | null; issue: string | null }> =>
-  withSchemaPageQueue(page, async () => {
-    let schemaVersion: string | null = null;
-    try {
-      const working = await store.readWorkingIfPresent(page);
-      if (
-        working &&
-        (working.version !== 2 ||
-          working.pageId !== page.pageId ||
-          hashSchema(working.schema) !== working.workingHash)
-      )
-        throw invalid('保留的 Working 文件无效，请使用兼容应用恢复');
-      const candidate = working?.schema ?? (await readTargetSchema(page));
-      schemaVersion = schemaVersionOf(candidate);
-      requireCompatibleSchema(candidate);
-      return { schemaVersion, issue: null };
-    } catch (reason) {
-      return { schemaVersion, issue: reason instanceof Error ? reason.message : '无法检查页面' };
-    }
   });

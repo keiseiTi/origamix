@@ -92,7 +92,7 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 ### 统一发布版本
 
-所有自有包统一使用根版本。`pnpm release:version --check` 检查包版本对齐及独立契约的 SemVer；`pnpm release:version --set <版本>` 只更新包发布版本，不递增物料契约或 Schema。`MATERIAL_CONTRACT_VERSION`、`SCHEMA_VERSION` 独立维护，遵循 SemVer：patch 修复、minor 向后兼容扩展、major 不兼容变化。当前仅接受明确支持的精确版本，不推断兼容范围。页面打开只检查，不自动转换。见 [Server README](packages/server/README.md#页面与数据库升级)。
+所有自有包统一使用根版本。`pnpm release:version --check` 检查包版本对齐及独立契约的 SemVer；`pnpm release:version --set <版本>` 只更新包发布版本，不递增物料契约或 Schema。`MATERIAL_CONTRACT_VERSION`、`SCHEMA_VERSION` 独立维护，遵循 SemVer：patch 修复、minor 向后兼容扩展、major 不兼容变化。当前仅接受明确支持的精确版本，不推断兼容范围。页面打开只检查，不自动转换。见 [Server README](packages/server/README.md#契约校验与恢复)。
 
 ## 开发环境文件
 
@@ -121,7 +121,7 @@ pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库�
 
 页面 Agent、可视化编辑和页面预览继续使用 Working → 显式保存 Revision → 显式 Apply。项目设置不经过页面版本流程，不使用布局 Schema 或页面 Agent 写入工具。平台不提供项目预览；完整菜单、路由和业务行为在真实生成项目中验证。布局效果与模板共享 Runtime 的 ConfiguredShell。
 
-不提供旧布局或旧清单兼容、迁移和自动升级。登录接入不在首版范围。布局 AI 助手与表单共用一份临时草稿，AI 修改经过校验后即时展示，点击「保存布局配置」才写入项目。
+布局 AI 助手与表单共用一份临时草稿，AI 修改经过校验后即时展示，点击「保存配置」才写入项目。
 
 使用方法见 [项目布局指南](site/docs/guide/layout.md)。
 

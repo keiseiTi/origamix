@@ -101,18 +101,8 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 `ORIGAMIX_VERSION` 是统一包发布版本；`SCHEMA_VERSION` 和 `MATERIAL_CONTRACT_VERSION` 为独立的 SemVer 契约，应用发布不会自动递增它们。支持版本显式声明，初期精确匹配，不按 major/minor 推断。项目清单保存 framework、materialSet 对象，页面通过 `extensions.origamix.schemaVersion` 声明格式。打开、预览、历史恢复均不自动转换；不兼容时保留原文件并说明原因。
 
-## 项目 layout 契约
+## 项目布局配置
 
-[layout/](src/layout/) 定义独立的 `LAYOUT_SCHEMA_VERSION`、`ProjectLayoutDocument` 和 `/layout` 请求/响应。每个项目只有一份固定名称的“布局配置”（`LAYOUT_NAME`），没有多布局 ID、重命名、默认布局或页面覆盖。项目清单的 `layout.enabled` 是唯一开关；未声明的旧清单按关闭读取，不自动补写文件。
+[project-shell.ts](src/project/project-shell.ts) 定义项目清单中的布局配置及保存请求。配置包含菜单、品牌、首页、404 和独立页面。保存时用清单哈希检查变更冲突。
 
-布局文档的 `schema` 直接使用 `PageSchema`：`elements` 存放节点定义，`layout.root/structure` 存放根节点与父子关系，`flows`、`bindElements`、`context`、`extensions` 保持相同形状。`LayoutOperationSchema` 直接复用 `SchemaOperationSchema`，没有另一套节点编辑协议。布局额外要求唯一、可达且无子节点的 `PageOutlet`，可选的系统 `PageNavigation` 只支持方向和占位属性；首期流程、事件绑定和全局变量必须为空。实际项目物料由 Server 校验。
-
-布局开关只存在项目 manifest；Working/Revision 只保存布局内容，恢复历史不会重新开启或关闭项目开关。布局与页面 Schema 在渲染时通过 Outlet 组合，不合并节点表。未发布阶段的旧多布局草稿不自动转换；不匹配的新契约会拒绝并保留原文件。
-
-`SessionTarget` / `AgentTarget` 定义 PageSession 与 Run 的 `page | layout` 目标。布局 Agent 使用明确的项目 target 和 layout_assistant，不携带 pageId；页面请求保留原页面身份。[ApplicationSnapshot](src/transport/application-snapshot.ts) 定义只读应用快照和诊断身份，包含从项目配置解析的 enabled；关闭时无需加载布局文档。已应用文件不依赖本地 Working，因此其 workingVersion 可为空。App 在可信宿主侧组装 Working 应用快照并校验后发送至隔离 iframe；预览本身不读取后端。组合渲染报告绑定 snapshotId、pageId、layoutHash 和 pageHash，不混入仅页面诊断。
-
-layout Apply 请求绑定 projectId、当前保存 Revision、Working 版本和请求身份；响应与状态契约见 `LayoutApplyRequestSchema` / `LayoutApplyResultSchema` / `LayoutApplyStateSchema`。固定目标投影不属于项目 manifest，项目开关也不属于布局 Revision。
-
-`LayoutUpdateRequestSchema` 定义视觉编辑器的内部完整候选回退，与普通节点操作共用版本与最终布局校验。`LayoutApplyState.pendingRequest` 仅携带请求身份和保存版本，供工作台在内存丢失后显式恢复；读取状态本身不会重新应用。
-
-Agent 范围校验由 `resolveAgentTarget` 统一核对项目与页面身份；传输 Schema 拒绝混合布局 target 与 pageId。布局与页面复用终态操作载荷及状态机，布局工具名为 `complete_layout_run`，写策略为 `layout_write`。
+[project-settings-agent.ts](src/project/project-settings-agent.ts) 定义布局助手请求及流式事件。配置建议绑定项目和草稿版本，用户通过布局配置页显式保存。

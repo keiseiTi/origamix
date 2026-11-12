@@ -25,7 +25,6 @@ export const WorkspaceContent = ({
   const workspaceReady = useWorkspaceStore((state) => state.workspaceReady);
   const selectedPageId = useWorkspaceStore((state) => state.activeTabId);
   const tabs = useWorkspaceStore((state) => state.openPages);
-  const closePage = useWorkspaceStore((state) => state.closePage);
   const mountedPageIds = useMountedPages();
 
   if (!workspaceReady) return <WorkspaceRecoveryView />;
@@ -46,11 +45,7 @@ export const WorkspaceContent = ({
             inert={active ? undefined : true}
           >
             {tab?.kind === 'project-settings' ? (
-              <ProjectSettingsPanel
-                projectId={tab.projectId}
-                onClose={() => closePage(pageId)}
-                onConfigureModel={onConfigureModel}
-              />
+              <ProjectSettingsPanel projectId={tab.projectId} onConfigureModel={onConfigureModel} />
             ) : (
               <PageSession
                 active={active}

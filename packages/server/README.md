@@ -268,15 +268,15 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 事件生成默认预算为 24 次工具调用；系统提示包含剩余预算并要求为提交和修复保留调用。物料 Manifest 与逻辑工具共用精确分页格式，保留大小写类型和深层属性定义。工具异常保留原始文本错误内容，避免空 `details` 遮蔽修复信息。
 
-## 页面与数据库升级
+## 契约校验与恢复
 
-页面打开通过 `schema/schema-compatibility.ts` 检查独立的 Schema SemVer，受支持后才初始化或恢复 Working；不执行自动迁移。已有 Working 优先，较新、较旧、无效版本都会被保留并拒绝编辑。历史快照可按原文查看，恢复前须兼容，不重写历史。
+页面打开时校验 Schema 版本，再初始化或读取 Working。历史快照可按原文查看，恢复时校验快照。
 
-项目清单只接受当前框架及 `materialSet: { id, version }` 契约；不提供兼容性检查、旧清单转换或项目升级接口。数据库不存配置快照；清单丢失阻止写入，已登记或含 `.origamix` 的目录不会重新初始化。Working、Revision 和 Apply 的未完成写入仍由各自服务按现有恢复协议处理。
+项目清单记录框架及 `materialSet: { id, version }`。清单丢失会阻止写入，已登记或含 `.origamix` 的目录会保留现有文件。Working、Revision 和 Apply 的未完成写入由各自服务按恢复协议处理。
 
-`database/initialize.ts` 只创建当前结构（存储版本 2）或验证当前版本，不提供旧库迁移、备份转换或结构猜测。非空数据库缺少版本、版本不是当前值或结构不一致时直接拒绝，原记录不改写。
+`database/initialize.ts` 创建当前数据库结构，并校验现有数据库的版本和表结构。
 
-发布时执行 `pnpm release:version --set <版本>`，仅同步包发布版本，不改变 Schema 或物料契约。`pnpm release:version --check` 检查包版本对齐、契约 SemVer 和模板物料声明。只有真实契约变化才调整独立版本；不登记旧格式转换链或数据库迁移步骤。
+发布时执行 `pnpm release:version --set <版本>` 同步包版本。`pnpm release:version --check` 检查包版本、契约 SemVer 和模板物料声明。
 
 ## 独立开发环境配置
 
@@ -292,16 +292,6 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 
 物料协议与校验分工：Shared 检查页面结构及唯一父节点；Server 检查通用 Manifest 属性、层级和安全边界；Materials 的 React-free `antd/validation` 入口检查该物料族的字段与跨元素语义。Server 校验器单测使用固定测试清单，Materials 生成器检查真实默认值。
 
-## 项目 layout Working 与版本
-
-## Layout Agent
-
-`/layout/agent/conversations/list`、`messages/list`、`runs/create|get|cancel` 和 `/projects/:projectId/layout/agent/runs/:runId/events` 复用现有 Agent 服务。Run 明确绑定 `{ kind: 'layout', projectId }` 与起始 Working 版本；页面接口拒绝布局 Run，布局接口也不能读取页面 Run。布局会话不产生伪造页面记录。
-
-上下文读取当前 Layout Working 和包含 PageOutlet/PageNavigation 的物料目录；不注入页面 Schema 或开放业务流程工具。`complete_layout_run` 复用终态决策、预算与修复机制，在 LayoutService 校验后原子提交 Working。保存 Revision 和应用仍由用户显式触发。提交凭据位于受检的 `.origamix/layout/agent-receipts/`，用于启动恢复而非自动重放。
-
-SQLite 存储版本 2 允许会话/Run 的页面键为空，以表达唯一的项目布局，并通过部分唯一索引保护布局请求身份。数据库升级保留页面会话、消息及序列号；项目 Schema/manifest 不随之转换。
-
 ### Project roles and Agent proposals
 
 `/projects/page-roles/get` reads role configuration plus the current manifest hash. `/projects/page-roles/update` accepts the complete role configuration, expected manifest hash and stable client request ID. The project queue preserves unrelated layout/manifest settings; durable receipts distinguish prepared and committed writes.
@@ -310,8 +300,8 @@ Page Agent terminal `propose_project` records a structured role-operation propos
 
 ## 项目设置
 
-`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。已完成的相同更新可安全重试。新项目不初始化布局 Working，也不写布局目标 Schema。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
+`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
 
-布局 Schema、布局 Agent 和项目预览服务已移除。模板直接解释必填项目配置，完整效果在真实项目中验证；旧格式直接拒绝，不迁移。
+模板读取项目配置并渲染应用布局。
 
 布局配置助手由 `agent/project-settings-agent-service.ts` 处理，通过经过认证的 POST `/projects/settings/assist` 流式返回 NDJSON。它复用页面模型引擎、凭据和预算，仅允许读取配置和提交经校验的草稿建议，不能写项目文件或页面 Working。服务端校验真实页面引用和清单版本；关闭连接会停止模型，关闭服务会中止并等待配置请求退出。配置保存仍由显式 settings/update 完成。

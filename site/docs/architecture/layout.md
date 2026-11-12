@@ -14,6 +14,6 @@ description: 项目清单配置、服务端保存和模板布局渲染的职责�
 - 首页映射到根路径；未知路由保留地址并渲染配置的 404。standalonePageIds 控制页面是否使用布局，关闭全局布局不改变路由规则。
 - 页面内容继续通过唯一的 Working、显式 Revision 和显式 Apply 管线管理。平台仅提供页面草稿预览，完整项目行为在生成应用中验证。
 
-shell 为必填协议。没有旧布局或旧清单兼容、迁移分支。
+清单中的 shell、layout 和 routing 均为必填。
 
 布局助手通过经过认证的 POST /projects/settings/assist 返回 NDJSON 事件，复用 PiAgentEngine、模型凭据与 RunBudgetController。工具白名单只有读取配置和 complete_project_settings，服务只产生建议，不能写清单或页面 Working。服务端校验页面引用与清单哈希；App 的共享配置会话再检查项目、草稿版本和连接身份。AI、表单和左侧效果使用同一临时草稿，显式保存仍只调用 ProjectService.updateSettings。布局对话为当前标签内的临时会话，不伪造页面 Run，不复用页面数据库记录，不做自动续跑。

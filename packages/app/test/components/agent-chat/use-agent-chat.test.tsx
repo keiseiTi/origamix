@@ -13,14 +13,10 @@ const mocks = vi.hoisted(() => ({
   cancelAgentRun: vi.fn(),
   subscribeAgentEvents: vi.fn(),
   workingState: vi.fn(),
-  layoutWorkingState: vi.fn(),
 }));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({
   schemaService: { workingState: mocks.workingState },
-}));
-vi.mock('../../../src/services/layout', () => ({
-  layoutService: { workingState: mocks.layoutWorkingState },
 }));
 import { useAgentChat } from '../../../src/components/agent-chat/use-agent-chat';
 
@@ -103,11 +99,6 @@ describe('Agent recovery', () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.listAllMessages.mockResolvedValue({ messages: [] });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
-    mocks.layoutWorkingState.mockResolvedValue({
-      revisionId: null,
-      workingVersion: 1,
-      document: { schema: {} },
-    });
     mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'completed' } });
     mocks.subscribeAgentEvents.mockReturnValue(() => undefined);
   });

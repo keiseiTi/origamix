@@ -173,7 +173,7 @@ describe('Project page persistence and recovery', () => {
       const deletion = service.deletePage(project.id, page.id);
       // The queued project owner marks admission closed before waiting on the retained writer.
       await Promise.resolve();
-      await expect(getWorkingSchemaState(pageRef)).rejects.toThrow('删除或升级');
+      await expect(getWorkingSchemaState(pageRef)).rejects.toMatchObject({ statusCode: 409 });
       expect(removed).not.toHaveBeenCalled();
       release.resolve();
       await write;
