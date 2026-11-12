@@ -79,7 +79,8 @@ const adaptTool = (
         if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') onFatal(error);
         throw error;
       }
-      if (['complete_page_run', 'complete_layout_run'].includes(tool.name)) onTerminalDecision();
+      if (['complete_page_run', 'complete_project_settings'].includes(tool.name))
+        onTerminalDecision();
       return {
         content: [{ type: 'text', text: JSON.stringify(result) }],
         details: result,
@@ -179,7 +180,9 @@ export class PiAgentEngine implements AgentEngine {
         if (fatalBudgetError) throw fatalBudgetError;
         if (controller.signal.aborted) throw new AgentEngineError('CANCELLED', '模型请求已取消');
         const writeCalls = assistantMessage.content.filter(
-          (entry) => entry.type === 'toolCall' && entry.name === 'complete_page_run',
+          (entry) =>
+            entry.type === 'toolCall' &&
+            ['complete_page_run', 'complete_project_settings'].includes(entry.name),
         );
         if (writeCalls.length > 1) {
           return {

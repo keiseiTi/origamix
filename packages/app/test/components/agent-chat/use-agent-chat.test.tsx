@@ -356,10 +356,10 @@ describe('Agent recovery', () => {
     expect(mocks.subscribeAgentEvents).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['page', 'layout'] as const)(
+  it.each(['page'] as const)(
     'retries the exact uncertain %s request after unmount without automatically resending',
     async (kind) => {
-      const pageId = kind === 'layout' ? 'layout:project_1' : 'page_a';
+      const pageId = 'page_a';
       mocks.createAgentRun
         .mockRejectedValueOnce(new Error('connection lost'))
         .mockResolvedValueOnce({
@@ -375,10 +375,7 @@ describe('Agent recovery', () => {
       });
       const original = mocks.createAgentRun.mock.calls[0]![0];
       expect(original.target.kind).toBe(kind);
-      if (kind === 'layout') {
-        expect(original.pageId).toBeUndefined();
-        expect(mocks.workingState).not.toHaveBeenCalled();
-      }
+
       first.unmount();
       // Recovery discovers a conversation created by the ambiguous request. Retry must
       // still omit conversationId exactly as the original request did.

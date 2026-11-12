@@ -1,22 +1,12 @@
+import { ChatComposer } from './chat-composer';
 import { ProjectTaskCard } from './project-task-card';
-import { Button, Spinner, Textarea } from '@origamix/ui';
-
-import {
-  ChevronDown,
-  ChevronUp,
-  CircleStop,
-  KeyRound,
-  LayoutPanelLeft,
-  RotateCcw,
-  Send,
-  Sparkles,
-} from 'lucide-react';
+import { Button, Spinner } from '@origamix/ui';
+import { ChevronDown, ChevronUp, RotateCcw, Sparkles } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
 import { MessageMarkdown } from './message-markdown';
 import type { AgentChatSession } from './use-agent-chat';
-
 const stageLabels = {
   queued: '已排队',
   preparing: '正在准备',
@@ -32,11 +22,9 @@ const stageLabels = {
   cancelled: '已停止',
   interrupted: '已中断',
 } as const;
-
 const ProgressSteps = ({ messages }: { messages: string[] }): React.JSX.Element => {
   const [expanded, setExpanded] = useState(false);
   const latest = messages.at(-1);
-
   return (
     <div className='max-w-[88%] text-xs text-zinc-500 dark:text-zinc-400' aria-label='处理进度'>
       {expanded && messages.length > 1 && (
@@ -65,7 +53,6 @@ const ProgressSteps = ({ messages }: { messages: string[] }): React.JSX.Element 
     </div>
   );
 };
-
 export const ChatWorkspace = ({
   pageName,
   draft,
@@ -75,10 +62,9 @@ export const ChatWorkspace = ({
   onConfigureModel,
   onClarificationHover,
   unavailableReason,
-  targetKind = 'page',
 }: {
   pageName: string;
-  targetKind?: 'page' | 'layout';
+  targetKind?: 'page';
   unavailableReason?: string;
   draft: string;
   onDraftChange: (draft: string) => void;
@@ -117,14 +103,12 @@ export const ChatWorkspace = ({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages, state.streamedText, state.progressHistory, state.stage]);
-
   const currentUserMessageId = [...state.messages]
     .reverse()
     .find((message) => message.runId === state.run?.runId && message.role === 'user')?.messageId;
   const progress = state.progressHistory.length > 0 && (
     <ProgressSteps key={state.run?.runId ?? 'pending'} messages={state.progressHistory} />
   );
-
   const submit = async (): Promise<void> => {
     if (
       unavailableReason ||
@@ -141,7 +125,6 @@ export const ChatWorkspace = ({
       // The hook keeps the actionable error and the draft remains available.
     }
   };
-
   return (
     <div ref={scrollRef} className='agent-chat-scrollbar min-h-0 flex-1 overflow-y-auto'>
       <div className='mx-auto flex min-h-full w-[min(780px,calc(100%-40px))] flex-col sm:w-[min(780px,calc(100%-64px))]'>
@@ -154,9 +137,7 @@ export const ChatWorkspace = ({
               <strong className='text-sm'>准备好修改“{pageName}”</strong>
               <p className='mt-1 max-w-155 text-zinc-600 dark:text-zinc-300'>
                 {unavailableReason ??
-                  (targetKind === 'layout'
-                    ? '修改项目唯一的布局配置。布局变更会先校验并保留为草稿，由你决定何时保存版本和应用。'
-                    : '以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。')}
+                  '以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。'}
               </p>
             </div>
           </div>
@@ -167,9 +148,7 @@ export const ChatWorkspace = ({
             </div>
           ) : state.messages.length === 0 && !state.error ? (
             <p className='rounded-xl border border-dashed border-zinc-200 p-4 text-center text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-              {targetKind === 'layout'
-                ? '可以从“创建顶部导航和侧边栏布局”开始。'
-                : '可以从“创建一个表单表格”开始。'}
+              {'可以从“创建一个表单表格”开始。'}
             </p>
           ) : (
             <ol className='space-y-4' aria-label='对话记录'>
@@ -286,97 +265,32 @@ export const ChatWorkspace = ({
             </div>
           )}
         </div>
-        <div className='sticky bottom-0 z-10 bg-linear-to-t from-white from-85% to-white/0 pt-3 dark:from-zinc-950 dark:to-zinc-950/0'>
-          {modelConfigurationRequired && (
-            <div
-              className='mb-2 flex items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-amber-950 shadow-md dark:border-amber-800/70 dark:bg-amber-950 dark:text-amber-100'
-              role='status'
-            >
-              <KeyRound size={16} className='shrink-0 text-amber-600 dark:text-amber-400' />
-              <div className='min-w-0 flex-1'>
-                <strong className='block text-xs'>尚未配置 DeepSeek API Key</strong>
-                <span className='text-[11px] text-amber-700 dark:text-amber-300'>
-                  配置后即可开始 AI 对话。
-                </span>
-              </div>
-              <Button size='sm' variant='ghost' onClick={onConfigureModel}>
-                前往设置
-              </Button>
-            </div>
-          )}
-          <div className='rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-[0_8px_24px_rgb(0_0_0/0.1)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[0_8px_24px_rgb(0_0_0/0.35)]'>
-            <Textarea
-              value={draft}
-              onChange={(event) => onDraftChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  void submit();
-                }
-              }}
-              disabled={
-                Boolean(unavailableReason) ||
-                activity !== 'idle' ||
-                projectPending ||
-                modelConfigurationRequired
-              }
-              className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
-              aria-label='发送消息'
-              placeholder={
-                unavailableReason
-                  ? unavailableReason
-                  : modelConfigurationRequired
-                    ? '请先配置 DeepSeek API Key'
-                    : activity === 'unknown'
-                      ? targetKind === 'layout'
-                        ? '正在确认布局状态…'
-                        : '正在确认页面状态…'
-                      : active
-                        ? '本轮完成后可继续修改'
-                        : targetKind === 'layout'
-                          ? '描述你想创建或修改的布局'
-                          : '描述你想创建或修改的页面'
-              }
-            />
-            <footer className='flex items-center justify-between mt-2'>
-              <span className='flex items-center gap-1.5 px-2 text-xs text-zinc-500 dark:text-zinc-400'>
-                <LayoutPanelLeft size={14} />
-                {targetKind === 'layout' ? '项目布局' : '当前页面'}
-              </span>
-
-              {active ? (
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  onClick={() => void cancel()}
-                  aria-label='停止生成'
-                >
-                  <CircleStop size={14} />
-                  停止
-                </Button>
-              ) : (
-                <Button
-                  size='icon-sm'
-                  className='h-6 min-h-6 w-6 min-w-6'
-                  aria-label='发送'
-                  disabled={
-                    Boolean(unavailableReason) ||
-                    !draft.trim() ||
-                    activity !== 'idle' ||
-                    projectPending ||
-                    modelConfigurationRequired
-                  }
-                  onClick={() => void submit()}
-                >
-                  <Send size={14} />
-                </Button>
-              )}
-            </footer>
-          </div>
-          <p className='mt-2 mb-2.5 text-center text-[10px] text-zinc-400 dark:text-zinc-500'>
-            AI 可能会出错，请检查生成结果。
-          </p>
-        </div>
+        <ChatComposer
+          value={draft}
+          onChange={onDraftChange}
+          onSubmit={() => void submit()}
+          onCancel={() => void cancel()}
+          running={active}
+          disabled={
+            Boolean(unavailableReason) ||
+            activity !== 'idle' ||
+            projectPending ||
+            modelConfigurationRequired
+          }
+          configurationRequired={modelConfigurationRequired}
+          onConfigureModel={onConfigureModel}
+          contextLabel='当前页面'
+          placeholder={
+            unavailableReason ??
+            (modelConfigurationRequired
+              ? '请先配置 DeepSeek API Key'
+              : activity === 'unknown'
+                ? '正在确认页面状态…'
+                : active
+                  ? '本轮完成后可继续修改'
+                  : '描述你想创建或修改的页面')
+          }
+        />
       </div>
     </div>
   );

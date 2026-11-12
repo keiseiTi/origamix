@@ -4,7 +4,6 @@ const options: import('tsdown').UserConfig = {
   entry: {
     index: 'src/index.ts',
     'antd/editor': 'antd/editor.ts',
-    'antd/layout/editor': 'antd/layout/editor.ts',
   },
   format: ['esm'],
   platform: 'browser',
@@ -36,8 +35,6 @@ export default defineConfig([
     ...options,
     entry: {
       'antd/runtime': 'antd/runtime.ts',
-      'antd/layout/runtime': 'antd/layout/runtime.ts',
-      'antd/layout/manifest': 'antd/layout/manifest.ts',
       'antd/manifest': 'antd/manifest.ts',
       'antd/validation': 'antd/validation.ts',
     },

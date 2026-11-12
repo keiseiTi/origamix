@@ -49,7 +49,6 @@ export interface ReadOnlyToolScope {
 type ReadState = { schema: OrigamixPageSchema; revisionId: string | null; workingVersion: number };
 export interface ReadOnlyToolDependencies {
   getProjectRoles?: (projectId: string) => Promise<import('@origamix/shared').PageRoleState>;
-  readLayout?: (projectId: string) => Promise<ReadState>;
   loadMaterials: ProjectMaterialReader;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   readSchema?: (page: SchemaPageRef) => Promise<ReadState>;
@@ -148,14 +147,12 @@ export const createReadOnlyAgentTools = (
     materialManifest = materials.manifest;
     blocks = materials.blocks ?? [];
     agentCatalog = materials.agentCatalog;
-    schemaPromise ??= !scope.pageId
-      ? dependencies.readLayout!(scope.projectId)
-      : (dependencies.readSchema ?? getWorkingSchemaState)({
-          projectPath: project.path,
-          pageId: page!.id,
-          slug: page!.slug,
-          relativePath: page!.relativePath,
-        });
+    schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)({
+      projectPath: project.path,
+      pageId: page!.id,
+      slug: page!.slug,
+      relativePath: page!.relativePath,
+    });
     const current = await schemaPromise;
     assertNotAborted(signal);
     if (current.workingVersion !== scope.workingVersion) throw conflict('页面草稿已变化');
@@ -251,7 +248,7 @@ export const createReadOnlyAgentTools = (
         })
       : []),
     {
-      name: scope.pageId ? 'get_page_context' : 'get_layout_context',
+      name: 'get_page_context',
       description: '读取当前页面的精简上下文、Revision 和物料使用统计。',
       parameters: PageScopeInputSchema,
       execute: async (raw, signal) => {
@@ -265,7 +262,7 @@ export const createReadOnlyAgentTools = (
           const materialTypes = Object.values(schema.elements).map(({ type }) => type);
           return boundedResult({
             projectId: scope.projectId,
-            target: scope.pageId ? { kind: 'page', pageId: scope.pageId } : { kind: 'layout' },
+            target: { kind: 'page', pageId: scope.pageId },
             page: page ? { id: page.id, name: page.name, slug: page.slug } : undefined,
             revisionId,
             schemaVersion: schema.extensions.origamix.schemaVersion,

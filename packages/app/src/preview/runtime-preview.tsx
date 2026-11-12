@@ -3,16 +3,11 @@ import { loadRuntimeMaterials } from '@/materials/loaders';
 import {
   type ProjectStack,
   type OrigamixPageSchema,
-  type ApplicationLayout,
   type PreviewRenderDiagnostic,
 } from '@origamix/shared';
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  OrigamixApplicationPage,
-  type RuntimeOutcome,
-  type OrigamixLayoutProps,
-} from '@origamix/runtime';
+import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 
 type RenderOutcome =
@@ -28,9 +23,6 @@ const toPreviewOutcome = (outcome: RuntimeOutcome): RenderOutcome => {
 
 export const RuntimePreview = ({
   schema,
-  pageId,
-  layout,
-  navigation,
   stack,
   revisionId,
   theme,
@@ -38,8 +30,6 @@ export const RuntimePreview = ({
 }: {
   schema: OrigamixPageSchema;
   pageId: string;
-  layout: ApplicationLayout;
-  navigation: OrigamixLayoutProps['navigation'];
   stack: ProjectStack;
   revisionId: string;
   theme: 'light' | 'dark';
@@ -93,10 +83,7 @@ export const RuntimePreview = ({
   return (
     <Provider mode={theme}>
       <div className='size-full overflow-auto bg-white dark:bg-zinc-950'>
-        <OrigamixApplicationPage
-          pageId={pageId}
-          layout={layout}
-          navigation={navigation}
+        <OrigamixPage
           schema={schema as Schema}
           materials={current.materials.components}
           resetKey={revisionId}

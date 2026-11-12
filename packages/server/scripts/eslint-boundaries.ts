@@ -22,8 +22,6 @@ const serverRoot = fileURLToPath(new URL('../', import.meta.url));
 const normalize = (path: string) => path.replaceAll('\\', '/').replace(/\.(?:[cm]?[jt]sx?)$/, '');
 const sourcePath = (path: string) => normalize(path).replace(/^src\//, '');
 const owners = new Map([
-  ['layout/layout-store', ['layout/layout-service']],
-  ['layout/layout-operation', ['layout/layout-service']],
   ['schema/revision-commit', ['schema/schema-service']],
   ['schema/working-schema-store', ['schema/schema-service', 'schema/revision-commit']],
   ['schema/target-schema-store', ['schema/project-apply-service']],
@@ -39,11 +37,10 @@ const owners = new Map([
       'schema/working-schema-store',
       'schema/target-schema-store',
       'schema/project-apply-service',
-      'layout/layout-store',
     ],
   ],
 ]);
-const business = /^(projects|schema|layout|preview|conversations|agent|diagnostics)\//;
+const business = /^(projects|schema|conversations|agent|diagnostics)\//;
 const testOnly = /(^test\/|\.test$)/;
 const typeOnly = (node: BoundaryNode) =>
   node.importKind === 'type' ||
@@ -84,8 +81,7 @@ export const serverBoundaries: Rule.RuleModule = {
       }
       if (
         specifier.startsWith('@origamix/materials') &&
-        !/^@origamix\/materials\/[^/]+\/(?:manifest|validation)$/.test(specifier) &&
-        specifier !== '@origamix/materials/antd/layout/manifest'
+        !/^@origamix\/materials\/[^/]+\/(?:manifest|validation)$/.test(specifier)
       ) {
         report(node, 'Server may import Materials pure manifest/validation entries only.');
       }

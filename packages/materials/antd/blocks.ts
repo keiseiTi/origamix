@@ -75,7 +75,7 @@ const definitions: readonly BlockDefinition[] = [
   {
     id: 'login-form',
     title: '登录表单',
-    description: '账号密码表单与接口请求；通过事件流设置应用状态并跳转页面。',
+    description: '账号密码表单校验与接口请求；结果通过页面事件流展示。',
     parameters: endpoint(['login'], 'n2'),
     schema: shell(
       {

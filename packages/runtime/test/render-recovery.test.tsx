@@ -2,8 +2,7 @@
 import { act, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { ORIGAMIX_VERSION, createEmptyLayoutDocument, PAGE_OUTLET_TYPE } from '@origamix/shared';
-import { OrigamixApplicationPage } from '../src/layout';
+import { ORIGAMIX_VERSION } from '@origamix/shared';
 import { OrigamixPage } from '../src/react';
 import { DesignRenderer } from '../src/design';
 import type { RuntimeOutcome, RuntimeSchema, MaterialRegistry } from '../src';
@@ -120,58 +119,6 @@ it('isolates failed preview elements, retains sibling state and clears diagnosti
     // Switching page sessions cannot retain old failures.
     await render('run', removed);
     expect(outcomes.at(-1)).toEqual({ outcome: 'success', diagnostics: [] });
-
-    // A merged application must aggregate layout/page errors even when their IDs match.
-    const layout = createEmptyLayoutDocument('project_test');
-    layout.schema = {
-      ...schema,
-      extensions: { origamix: { schemaVersion: ORIGAMIX_VERSION } },
-      elements: {
-        root: { type: 'container', props: {} },
-        bad: { type: 'layout-broken', props: {} },
-        outlet: { type: PAGE_OUTLET_TYPE, props: {} },
-      },
-      layout: { root: 'root', structure: { root: ['bad', 'outlet'] } },
-    };
-    let layoutBroken = true;
-    const applicationMaterials = {
-      ...materials,
-      'layout-broken': () => {
-        if (layoutBroken) throw new Error('layout failure');
-        return <span>layout recovered</span>;
-      },
-    };
-    const renderApplication = async (pageId: string) => {
-      await act(async () =>
-        root.render(
-          <OrigamixApplicationPage
-            pageId={pageId}
-            schema={removed}
-            layout={{ enabled: true, document: layout }}
-            materials={applicationMaterials}
-            onOutcome={onOutcome}
-          />,
-        ),
-      );
-    };
-    broken = true;
-    outcomes.length = 0;
-    await renderApplication('page_one');
-    expect(outcomes.every((entry) => entry.outcome === 'failed')).toBe(true);
-    expect(
-      outcomes
-        .at(-1)
-        ?.diagnostics.map(({ scope, elementId }) => `${scope}:${elementId}`)
-        .sort(),
-    ).toEqual(['layout:bad', 'page:bad']);
-    layoutBroken = false;
-    await retry('bad');
-    expect(outcomes.at(-1)?.diagnostics.map(({ scope }) => scope)).toEqual(['page']);
-    broken = false;
-    await renderApplication('page_two');
-    expect(outcomes.at(-1)).toEqual({ outcome: 'success', diagnostics: [] });
-    expect(host.textContent).toContain('layout recovered');
-    expect(host.textContent).toContain('recovered');
   } finally {
     await act(async () => root.unmount());
     host.remove();

@@ -1,4 +1,3 @@
-import type { LayoutService } from '../layout/layout-service';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ProjectService } from '../projects/project-service';
@@ -14,19 +13,9 @@ export interface HttpServerInput {
   serviceInstanceId: string;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage' | 'listProjects' | 'listPages'>;
   projectService: ProjectService;
-  projectPreview?: import('../preview/project-preview-service').ProjectPreviewService;
+  settingsAgent?: import('../agent/project-settings-agent-service').ProjectSettingsAgentService;
   projectTasks?: Pick<import('../agent/project-task-service').ProjectTaskService, 'get' | 'decide'>;
   projectApplyService?: ProjectApplyService;
-  layoutService?: Pick<
-    LayoutService,
-    | 'getWorking'
-    | 'applyOperations'
-    | 'updateWorking'
-    | 'saveRevision'
-    | 'listRevisions'
-    | 'getRevision'
-    | 'restoreRevision'
-  >;
   allowedOrigins?: readonly string[];
   agent?: {
     conversations: Pick<ConversationService, 'list' | 'history'>;

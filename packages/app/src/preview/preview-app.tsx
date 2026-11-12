@@ -1,26 +1,9 @@
 import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
-import {
-  SCHEMA_VERSION,
-  type ApplicationSnapshot,
-  type OrigamixPageSchema,
-} from '@origamix/shared';
+import { type ApplicationSnapshot } from '@origamix/shared';
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { isHostToPreviewMessage, type PreviewToHostMessage } from './protocol';
-
-// Presentation-only outlet placeholder; never persisted as a page or reported as a page draft.
-const layoutPlaceholder: OrigamixPageSchema = {
-  elements: {
-    root: { type: 'container', props: {} },
-    text: { type: 'text', props: { text: '实际页面将在这里展示' } },
-  },
-  layout: { root: 'root', structure: { root: ['text'] } },
-  flows: {},
-  bindElements: [],
-  context: { globalVariables: [] },
-  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
-};
 
 const postToHost = (message: PreviewToHostMessage): void => {
   window.parent.postMessage(message, '*');
@@ -70,18 +53,6 @@ export const PreviewApp = (): React.JSX.Element => {
 
   const currentPageId = snapshot.initialPageId;
   const page = currentPageId ? snapshot.pageSchemas[currentPageId] : null;
-  if (snapshot.layout.enabled && !page)
-    return (
-      <RuntimePreview
-        stack={snapshot.stack}
-        theme={snapshot.theme}
-        schema={layoutPlaceholder}
-        pageId='layout-placeholder'
-        layout={snapshot.layout}
-        navigation={undefined}
-        revisionId={snapshot.snapshotId}
-      />
-    );
   if (!page || !currentPageId)
     return (
       <div className='grid h-screen place-content-center gap-2 p-6 text-center text-sm'>
@@ -97,13 +68,6 @@ export const PreviewApp = (): React.JSX.Element => {
           theme={snapshot.theme}
           schema={page.schema}
           pageId={currentPageId}
-          layout={snapshot.layout}
-          navigation={{
-            currentPageId,
-            pageIds: snapshot.pages.map((item) => item.pageId),
-            pages: snapshot.pages,
-            navigateToPage: () => undefined,
-          }}
           revisionId={`${snapshot.snapshotId}:${currentPageId}`}
           onOutcome={({ outcome, diagnostics }) =>
             postToHost({
@@ -113,7 +77,6 @@ export const PreviewApp = (): React.JSX.Element => {
               report: {
                 snapshotId: snapshot.snapshotId,
                 pageId: currentPageId,
-                layoutHash: snapshot.layout.enabled ? snapshot.layout.hash : null,
                 pageHash: page.hash,
                 reportSequence: ++reportSequence.current,
                 observedAt: new Date().toISOString(),

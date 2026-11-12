@@ -31,8 +31,5 @@ export const isPreviewToHostMessage = (value: unknown): value is PreviewToHostMe
 
 export const isHostToPreviewMessage = (value: unknown): value is HostToPreviewMessage =>
   hasIdentity(value) &&
-  ((value.type === 'origamix.preview.snapshot' &&
-    isApplicationSnapshot(value.snapshot) &&
-    (!value.snapshot.layout.enabled ||
-      value.snapshot.layout.document.projectId === value.projectId)) ||
+  ((value.type === 'origamix.preview.snapshot' && isApplicationSnapshot(value.snapshot)) ||
     (value.type === 'origamix.preview.error' && typeof value.message === 'string'));

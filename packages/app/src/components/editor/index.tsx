@@ -1,19 +1,15 @@
-import { useApplicationMetadata } from './use-application-metadata';
-import { validateLayoutSchema } from '@origamix/shared';
-import { assertAntdLayoutSchema } from '@origamix/materials/antd/layout/manifest';
+import { usePageNavigationMetadata } from './use-page-navigation-metadata';
 import { Editor as EditorView } from '@origamix/editor';
 import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
 import { Spinner, Button, useToastManager } from '@origamix/ui';
-
 import { useImperativeHandle, useState, type Ref } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { useEditorSession } from './use-editor-session';
-
 interface EditorProps {
   ref?: Ref<EditorHandle>;
   visible: boolean;
-  targetKind?: 'page' | 'layout';
+  targetKind?: 'page';
   schemaRefreshKey: string;
   projectId: string;
   pageId: string;
@@ -24,7 +20,6 @@ interface EditorProps {
   onReturnToChat: () => Promise<void>;
   targetSelection?: EditorTargetSelection;
 }
-
 export const PageEditor = ({
   ref,
   projectId,
@@ -37,7 +32,7 @@ export const PageEditor = ({
   readOnly = false,
   ...viewProps
 }: EditorProps) => {
-  const application = useApplicationMetadata(projectId, visible && targetKind === 'page');
+  const navigation = usePageNavigationMetadata(projectId, visible && true);
   const notifications = useToastManager();
   const [returningToChat, setReturningToChat] = useState(false);
   const returnToChat = async (): Promise<void> => {
@@ -135,9 +130,9 @@ export const PageEditor = ({
           </Button>
         </div>
       )}
-      {application?.error && (
+      {navigation?.error && (
         <p role='alert' className='px-4 text-sm text-destructive'>
-          {application.error}；普通页面编辑可继续，应用动作请重新打开应用配置后重试。
+          {navigation.error}；普通页面编辑可继续，页面跳转选项请重新打开页面后重试。
         </p>
       )}
       <MaterialProvider mode={theme}>
@@ -146,8 +141,7 @@ export const PageEditor = ({
           schema={session.snapshot.schema}
           sessionKey={session.snapshot.sessionKey}
           registration={registration!}
-          application={application?.value}
-          validateSchema={targetKind === 'layout' ? validateLayoutCandidate : undefined}
+          pageNavigation={navigation?.value}
           theme={theme}
           readOnlyMessage={
             session.refreshing ? '正在加载最新页面，请稍候' : viewProps.readOnlyMessage
@@ -158,10 +152,4 @@ export const PageEditor = ({
       </MaterialProvider>
     </>
   );
-};
-
-const validateLayoutCandidate = (schema: Parameters<typeof validateLayoutSchema>[0]): void => {
-  assertAntdLayoutSchema(schema);
-  const issue = validateLayoutSchema(schema)[0];
-  if (issue) throw new Error(issue.message);
 };

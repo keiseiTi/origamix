@@ -45,10 +45,6 @@ pnpm --filter @origamix/server test:template
 
 - Keep eslint.config.mjs in the scaffold copy allowlist and standalone installation checks.
 
-- `src/application.tsx` owns the new-project application shell: manifest-enabled layout projection at `src/origamix-layout/schema.json`, Material RuntimeProvider theme, page-ID routing adapter and Outlet composition. `application-error.tsx` owns actionable application errors. Router adds home fallback/unknown routes. Both Materials and Runtime dist are Tailwind sources. No old-project migration or draft-preview transport is part of this shell.
-
-- Application imports both /antd/runtime and /antd/layout/runtime material registries and passes the merged registry to OrigamixLayout; page shells continue using only page materials. Both use the same installed Runtime peer and theme provider. Layout files remain explicit Apply projections, never generated during application startup.
-
 - routing-config.ts is a pure local reader shared by Vite and runtime configuration. project-pages.ts maps the single manifest page directory for router/navigation. Browser uses basename; Hash keeps the prefix outside the hash. Both use the same Vite asset base. No automatic source upgrade of existing projects.
 
-- Templates explicitly declare runtime=origamix. Existing external-project initialization does not copy this scaffold. Template and preview share ApplicationShell, applicationPages, ApplicationProvider and ApplicationAccess. Login pages configured by access rules bypass layout/menu; redirects use allowlisted page IDs. Application state is memory-only; refresh restoration, requests and logout are ordinary event flows.
+- application.tsx consumes required manifest shell through Runtime ConfiguredShell. Router owns home/404 and standalonePageIds policy, including unknown-route 404 page identity without redirect. No layout Schema projection, compatibility branch or project-preview transport.

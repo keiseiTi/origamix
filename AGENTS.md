@@ -26,7 +26,6 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 - [README.md](README.md): current setup, development, builds and integration checks.
 - Package READMEs own usage and public APIs; package AGENTS files own maintenance constraints.
-- Page/layout draft preview is rendered by App in a sandboxed iframe with read-only snapshots sent by the trusted workbench via postMessage. Full-project preview uses a Server-owned applied snapshot/session and an independent Main-owned no-preload window, with a sandboxed application iframe and no workbench credentials. Only runtime=origamix with enabled layout supports project preview; external projects retain page management only. Agent HTTP/SSE is implemented; page-preview capability sessions remain future work.
 
 ## Architecture invariants
 
@@ -115,3 +114,5 @@ pnpm build
 - Root `pnpm check` uses `build:libs:check` to prepare Shared/Runtime, verify the committed Materials Manifest before regeneration, then build Materials once and run all four gates. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.
 
 - Custom Node command entrypoints and integration launchers use TypeScript executed by tsx. Declare tsx in each invoking package, including public packages that invoke root packing tools; root scripts are checked by tsconfig.scripts.json. Preserve loader arguments for Node child scripts and keep Electron runtime fixtures distinct from Node launchers.
+
+- Project settings use required manifest shell/layout/routing and Runtime ConfiguredShell. Layout effects are configuration feedback only. Page previews show Working in an isolated iframe. Layout Schema/Agent and project preview are removed, with no compatibility or migration paths.

@@ -1,3 +1,4 @@
+import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, Settings, User } from 'lucide-react';
 import { useState } from 'react';
@@ -172,19 +173,29 @@ export const Sidebar = ({
           onCreated={onPageCreated}
         />
       )}
-      <LifecycleModal
-        key={lifecycleTarget ? `${lifecycleTarget.kind}:${lifecycleTarget.id}` : 'closed'}
-        target={lifecycleTarget}
-        onClose={() => setLifecycleTarget(null)}
-        onConfirm={async (target, name) => {
-          if (target.kind === 'rename-project')
-            await projectActions.renameProject(target.id, name!);
-          else if (target.kind === 'delete-project') await projectActions.deleteProject(target.id);
-          else if (target.kind === 'rename-page')
-            await projectActions.renamePage(target.projectId, target.id, name!);
-          else await projectActions.deletePage(target.projectId, target.id);
-        }}
-      />
+      {lifecycleTarget?.kind === 'rename-project' ? (
+        <EditProjectModal
+          key={lifecycleTarget.id}
+          projectId={lifecycleTarget.id}
+          initialName={lifecycleTarget.name}
+          onClose={() => setLifecycleTarget(null)}
+        />
+      ) : (
+        <LifecycleModal
+          key={lifecycleTarget ? `${lifecycleTarget.kind}:${lifecycleTarget.id}` : 'closed'}
+          target={lifecycleTarget}
+          onClose={() => setLifecycleTarget(null)}
+          onConfirm={async (target, name) => {
+            if (target.kind === 'rename-project')
+              await projectActions.renameProject(target.id, name!);
+            else if (target.kind === 'delete-project')
+              await projectActions.deleteProject(target.id);
+            else if (target.kind === 'rename-page')
+              await projectActions.renamePage(target.projectId, target.id, name!);
+            else await projectActions.deletePage(target.projectId, target.id);
+          }}
+        />
+      )}
       {actionError && (
         <div
           role='alert'

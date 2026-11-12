@@ -153,48 +153,26 @@ describe('Manifest-driven Schema validation', () => {
   });
 });
 
-// Persisted Agent/visual edits must never reference undeclared application state or another project's pages.
-it('validates application actions against project metadata before accepting a schema', () => {
+// Page navigation cannot target a page outside the owning project.
+it('validates page navigation against project page IDs before accepting a schema', () => {
   const schema = page();
   schema.flows.save = {
-    startId: 'set',
+    startId: 'go',
     nodes: {
-      set: {
-        id: 'set',
-        type: 'setApplicationState',
-        props: { setters: [{ name: 'signedIn', value: { type: 'boolean', value: true } }] },
-        prev: [],
-        next: ['go'],
-      },
-      go: {
-        id: 'go',
-        type: 'navigatePage',
-        props: { destination: 'page', pageId: 'page_home' },
-        prev: ['set'],
-        next: [],
-      },
+      go: { id: 'go', type: 'navigatePage', props: { pageId: 'page_home' }, prev: [], next: [] },
     },
   };
-  const appRuntime = {
+  const navigationRuntime = {
     ...runtime,
-    application: { pages: [{ pageId: 'page_home', name: '首页' }], stateKeys: ['signedIn'] },
+    navigation: { pages: [{ pageId: 'page_home', name: '首页' }] },
   };
-  expect(validatePageAgainstMaterials(schema, sets, appRuntime).valid).toBe(true);
+  expect(validatePageAgainstMaterials(schema, sets, navigationRuntime).valid).toBe(true);
   expect(validatePageAgainstMaterials(schema, sets, runtime).valid).toBe(false);
-  schema.flows.save.nodes.go!.props = { destination: 'page', pageId: 'page_foreign' };
-  expect(validatePageAgainstMaterials(schema, sets, appRuntime).errors).toContainEqual(
+  schema.flows.save.nodes.go!.props = { pageId: 'page_foreign' };
+  expect(validatePageAgainstMaterials(schema, sets, navigationRuntime).errors).toContainEqual(
     expect.objectContaining({
       code: 'INVALID_FLOW_REFERENCE',
       path: '/flows/save/nodes/go/props/pageId',
-    }),
-  );
-  schema.flows.save.nodes.set!.props = {
-    setters: [{ name: 'undeclared', value: { type: 'boolean', value: true } }],
-  };
-  expect(validatePageAgainstMaterials(schema, sets, appRuntime).errors).toContainEqual(
-    expect.objectContaining({
-      code: 'INVALID_FLOW_REFERENCE',
-      path: '/flows/save/nodes/set/props/setters/0/name',
     }),
   );
 });

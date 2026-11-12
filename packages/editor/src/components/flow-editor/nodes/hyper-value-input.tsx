@@ -59,7 +59,7 @@ export const HyperInput = ({
   onChange: (value: HyperValue) => void;
   showTypes?: readonly HyperValue['type'][];
 }): React.JSX.Element => {
-  const { schema, materials, catalog, application } = useFlowEditorSession();
+  const { schema, materials, catalog } = useFlowEditorSession();
   const data = asRecord(value);
   const type = String(data.type ?? showTypes?.[0] ?? 'string') as HyperValue['type'];
   const [open, setOpen] = useState(false);
@@ -117,13 +117,6 @@ export const HyperInput = ({
           tags: ['事件'],
         },
       ],
-      (application?.stateKeys ?? []).map((name) => ({
-        value: `application.${name}`,
-        name,
-        label: `应用状态 · ${name}`,
-        property: name,
-        tags: ['应用状态'],
-      })),
       (schema.context?.globalVariables ?? []).map((item) => ({
         value: `global.${item.name}`,
         name: item.name,

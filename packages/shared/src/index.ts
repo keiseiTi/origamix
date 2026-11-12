@@ -340,58 +340,6 @@ export {
   contractCompatibilityIssue,
 } from './version.ts';
 
-// One fixed-name layout per project; its enabled flag belongs to the project manifest.
-export {
-  LAYOUT_SCHEMA_VERSION,
-  PAGE_OUTLET_TYPE,
-  PAGE_NAVIGATION_TYPE,
-  PageNavigationPropsSchema,
-  LAYOUT_NAME,
-  LayoutSchema,
-  PageOutletPropsSchema,
-  ApplicationLayoutSchema,
-  ProjectLayoutDocumentSchema,
-  SessionTargetSchema,
-  AgentTargetSchema,
-  LayoutFocusSchema,
-  createEmptyLayoutDocument,
-} from './layout/layout-schema.ts';
-export type {
-  ProjectLayoutDocument,
-  ApplicationLayout,
-  SessionTarget,
-  AgentTarget,
-  LayoutFocus,
-} from './layout/layout-schema.ts';
-export {
-  validateLayoutSchema,
-  isLayoutSchema,
-  validateLayoutDocument,
-  isLayoutDocument,
-} from './layout/layout-validation.ts';
-export type { LayoutValidationIssue } from './layout/layout-validation.ts';
-export {
-  LayoutOperationSchema,
-  LayoutScopeSchema,
-  LayoutOperationsRequestSchema,
-  LayoutSaveRevisionRequestSchema,
-  LayoutRevisionRequestSchema,
-  LayoutRestoreRevisionRequestSchema,
-  LayoutWorkingStateSchema,
-  LayoutRevisionSnapshotSchema,
-  LayoutRevisionHistorySchema,
-  LayoutConfigRequestSchema,
-  LayoutConfigUpdateRequestSchema,
-  LayoutConfigStateSchema,
-} from './layout/layout-api.ts';
-export type {
-  LayoutOperation,
-  LayoutOperationsRequest,
-  LayoutWorkingState,
-  LayoutRevisionSnapshot,
-  LayoutRevisionHistory,
-  LayoutConfigState,
-} from './layout/layout-api.ts';
 export {
   ApplicationSnapshotSchema,
   isApplicationSnapshot,
@@ -405,29 +353,6 @@ export type {
 export { agentTargetFields, resolveAgentTarget } from './agent/agent-target.ts';
 
 export { ProjectLayoutConfigSchema, isProjectLayoutEnabled } from './project/project-manifest.ts';
-
-export {
-  LayoutApplyRequestSchema,
-  LayoutApplyResultSchema,
-  LayoutApplyStateSchema,
-} from './layout/layout-api.ts';
-export type {
-  LayoutApplyRequest,
-  LayoutApplyResult,
-  LayoutApplyState,
-} from './layout/layout-api.ts';
-
-export {
-  isLayoutConfigState,
-  isLayoutWorkingState,
-  isLayoutRevisionHistory,
-  isLayoutRevisionSnapshot,
-  isLayoutApplyState,
-  isLayoutApplyResult,
-} from './layout/layout-response-validation.ts';
-
-export { LayoutUpdateRequestSchema } from './layout/layout-api.ts';
-export type { LayoutUpdateRequest } from './layout/layout-api.ts';
 
 export { BlockDefinitionSchema, instantiateBlock } from './block/block.ts';
 export type { BlockDefinition } from './block/block.ts';
@@ -475,31 +400,38 @@ export type {
 } from './project/project-routing.ts';
 
 export { applicationPages } from './project/application-pages.ts';
-export {
-  ProjectPreviewScopeSchema,
-  ProjectPreviewSessionSchema,
-  ProjectPreviewSnapshotSchema,
-  isProjectPreviewSnapshot,
-} from './project/project-preview.ts';
-export type {
-  ProjectPreviewSnapshot,
-  ProjectPreviewSession,
-  ProjectPreviewLaunch,
-} from './project/project-preview.ts';
 
 export {
-  ApplicationStateSchema,
-  ApplicationStateNameSchema,
-  ProjectAccessSchema,
-  ProjectApplicationUpdateSchema,
-  applicationIssue,
-  readApplicationDefinition,
-} from './project/project-application.ts';
+  ProjectShellSchema,
+  ProjectMenuItemSchema,
+  ProjectSettingsUpdateSchema,
+  defaultProjectShell,
+  projectShellIssue,
+} from './project/project-shell.ts';
 export type {
-  ApplicationDefinition,
-  ApplicationMetadata,
-  ApplicationState,
-  ProjectAccess,
-  ProjectApplicationUpdate,
-  ProjectApplicationSettings,
-} from './project/project-application.ts';
+  ProjectShell,
+  ProjectMenuItem,
+  ProjectSettings,
+  ProjectSettingsUpdate,
+} from './project/project-shell.ts';
+
+export { AgentTargetSchema, SessionTargetSchema } from './agent/agent-target.ts';
+export type { AgentTarget, SessionTarget } from './agent/agent-target.ts';
+
+export { isProjectLogo, readProjectShell } from './project/project-shell.ts';
+
+export type {
+  PageNavigationMetadata,
+  ProjectNavigationInfo,
+} from './project/project-navigation.ts';
+
+export {
+  ProjectSettingsDraftSchema,
+  ProjectSettingsAgentRequestSchema,
+  isProjectSettingsAgentEvent,
+} from './project/project-settings-agent.ts';
+export type {
+  ProjectSettingsDraft,
+  ProjectSettingsAgentRequest,
+  ProjectSettingsAgentEvent,
+} from './project/project-settings-agent.ts';

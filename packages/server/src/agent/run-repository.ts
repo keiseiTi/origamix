@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import {
   AgentRunStatusSchema,
@@ -27,7 +27,7 @@ import { agentRunStatus } from '../database/status-codecs';
 export interface AgentRunRecord {
   id: string;
   projectId: string;
-  pageId?: string;
+  pageId: string;
   conversationId: string;
   userMessageId: string;
   clientRequestId: string;
@@ -64,6 +64,7 @@ export interface AgentRunRecord {
 
 type RunRow = typeof agentRuns.$inferSelect;
 const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
+  if (row.pageId === null) throw new Error('Agent Run 缺少页面归属');
   let budget: unknown;
   try {
     budget = JSON.parse(row.budgetJson);
@@ -88,7 +89,7 @@ const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
   return {
     id: row.runId,
     projectId: projectPublicId(client, row.projectId),
-    ...(row.pageId === null ? {} : { pageId: pagePublicId(client, row.pageId) }),
+    pageId: pagePublicId(client, row.pageId),
     conversationId: encodeDatabaseId('conversation', row.conversationId),
     userMessageId: encodeDatabaseId('message', row.userMessageId),
     clientRequestId: row.clientRequestId,
@@ -131,7 +132,7 @@ const toRow = (run: AgentRunRecord, client: DatabaseClient): typeof agentRuns.$i
   id: undefined,
   runId: run.id,
   projectId: projectKey(client, run.projectId),
-  pageId: run.pageId ? pageKey(client, run.pageId) : null,
+  pageId: pageKey(client, run.pageId),
   conversationId: decodeDatabaseId('conversation', run.conversationId),
   userMessageId: decodeDatabaseId('message', run.userMessageId),
   status: agentRunStatus.encode(run.status),
@@ -169,13 +170,14 @@ export class AgentRunRepository {
     pageId: string | undefined,
     clientRequestId: string,
   ): AgentRunRecord | undefined {
+    if (!pageId) throw new Error('页面 ID 缺失');
     const row = this.client
       .select()
       .from(agentRuns)
       .where(
         and(
           eq(agentRuns.projectId, projectKey(this.client, projectId)),
-          pageId ? eq(agentRuns.pageId, pageKey(this.client, pageId)) : isNull(agentRuns.pageId),
+          eq(agentRuns.pageId, pageKey(this.client, pageId)),
           eq(agentRuns.clientRequestId, clientRequestId),
         ),
       )

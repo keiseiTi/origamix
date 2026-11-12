@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
 import type { EditorHandle } from '@origamix/editor';
-import { usePageApplicationState } from './use-page-application-state';
+import { usePageApplyState } from './use-page-apply-state';
 
 export const derivePageCapabilities = ({
   agentActivity,
   applyStatus,
 }: {
   agentActivity: 'unknown' | 'idle' | 'running';
-  applyStatus: ReturnType<typeof usePageApplicationState>['applyStatus'];
+  applyStatus: ReturnType<typeof usePageApplyState>['applyStatus'];
 }) => {
   const agentIdle = agentActivity === 'idle';
   return {
@@ -32,7 +32,7 @@ export const usePageSession = ({
   projectId: string;
   pageId: string;
   active?: boolean;
-  kind?: 'page' | 'layout';
+  kind?: 'page';
   available?: boolean;
   editorRef: RefObject<EditorHandle | null>;
 }) => {
@@ -44,7 +44,7 @@ export const usePageSession = ({
     },
     [pageId],
   );
-  const application = usePageApplicationState({
+  const pageApply = usePageApplyState({
     projectId,
     pageId,
     schemaRefreshKey,
@@ -69,21 +69,14 @@ export const usePageSession = ({
   }, [agent.state.workingRefreshKey, onSchemaCommitted, pageId]);
 
   return {
-    application,
+    pageApply,
     agent,
     schemaRefreshKey,
     capabilities: {
       ...derivePageCapabilities({
-        agentActivity:
-          available &&
-          !(kind === 'layout' && ['loading', 'error'].includes(application.applyStatus))
-            ? agent.activity
-            : 'unknown',
-        applyStatus: application.applyStatus,
+        agentActivity: available ? agent.activity : 'unknown',
+        applyStatus: pageApply.applyStatus,
       }),
-      ...(kind === 'layout' && application.applyStatus === 'result_pending'
-        ? { canEdit: false, canSaveVersion: false }
-        : {}),
     },
   };
 };

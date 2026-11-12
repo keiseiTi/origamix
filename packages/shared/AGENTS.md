@@ -51,12 +51,12 @@ pnpm --filter @origamix/shared build
 
 - Page validation owns unique-parent layout semantics (including rejection of a parent for the root). Consumers reuse this rule; Runtime retains rendering-boundary checks. equalJson compares acyclic JSON values independently of object key order; compileJsonSchema caches strict property validators by schema identity.
 
-- `src/layout/` owns the sole fixed-name project layout document, PageOutlet rules, reused page operations and `/layout` contracts. ProjectManifest.layout.enabled is the sole enablement source; no page bindings or multiple layouts. SessionTarget/AgentTarget describe page/layout dispatch. Layout Agent requests/events require an explicit project target without a pageId; page requests retain their page identity. `transport/application-snapshot.ts` owns full-application snapshot/report identities. No layout migration on read.
-
 - `block/block.ts` defines serializable composition templates and a pure ID/reference expansion into ordinary Schema operations. IDs come from the caller; code is never evaluated or rewritten. Internal references use structured HyperValue bindings/function parameters. Project `page-role.ts` owns the fixed login/home/not-found roles and one-to-one assignments; roles have no implicit runtime/layout behavior. Agent `project-proposal.ts` owns confirmed project-role proposals and recoverable task transport.
 
-- project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, separate from Layout Schema; layout (including initialVariant) and routing are required in every project manifest; missing fields are rejected, not defaulted on reads.
+- project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, independent of page Schema; layout (including initialVariant) and routing are required in every project manifest; missing fields are rejected, not defaulted on reads.
 
-- Manifest runtime is required and has only origamix/external values, without runtime version or inference. `project-preview.ts` owns applied project snapshots and session scopes; snapshots are distinct from Working application snapshots. `application-pages.ts` is the common page/path mapping consumed through Runtime by the portable template and built-in preview.
+- project-shell.ts owns required shell and hash-checked settings. Stable page references, acyclic menu parents and safe logo URLs are validated. Agent/session targets are page-only. application-snapshot.ts transports page Working previews without layout data. No old manifest fallback.
 
-- `project-application.ts` owns declared JSON application state, boolean-state access rules, page-reference validation and hash-checked application settings. These are generic configuration, without authentication endpoint contracts.
+- project-navigation.ts defines read-only page navigation metadata. navigatePage accepts only pageId; no application-state nodes or context namespace. ProjectManifest rejects removed applicationState/access fields through its current strict shape.
+
+- project-settings-agent.ts defines read-only proposal requests and streamed events with project/draft-version identity. This does not extend page Run/Session targets or persisted page protocols.

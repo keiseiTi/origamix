@@ -12,8 +12,8 @@ import {
 } from '@/services/agent';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
-import { sessionService, type SessionKind } from '@/services/session';
-import { useMemo } from 'react';
+import { schemaService } from '@/services/schema';
+type SessionKind = 'page';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 import { uniqueId } from '@/utils';
 
@@ -40,7 +40,7 @@ export const useAgentChat = (
   enabled = true,
   kind: SessionKind = 'page',
 ): AgentChatSession => {
-  const schema = useMemo(() => sessionService(kind), [kind]);
+  const schema = schemaService;
   const [projectTask, setProjectTask] = useState<
     import('@origamix/shared').ProjectTaskState | null
   >(null);
@@ -208,7 +208,6 @@ export const useAgentChat = (
           if (!current()) return;
           if (event.target && (event.target.kind !== kind || event.target.projectId !== projectId))
             return;
-          if (kind === 'layout' && event.target?.kind !== 'layout') return;
           dispatch({ type: 'event.received', event });
           if (
             event.type === 'run.completed' ||
@@ -291,9 +290,8 @@ export const useAgentChat = (
         input = retryInput ?? {
           version: '1',
           projectId,
-          ...(kind === 'page'
-            ? { pageId, target: { kind: 'page' as const, projectId, pageId } }
-            : { target: { kind: 'layout' as const, projectId } }),
+          pageId,
+          target: { kind: 'page' as const, projectId, pageId },
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
           clientRequestId: requestId(),
           baseWorkingVersion,

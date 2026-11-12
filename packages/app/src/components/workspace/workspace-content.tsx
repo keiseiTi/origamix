@@ -1,3 +1,4 @@
+import { ProjectSettingsPanel } from '@/components/project-settings/project-settings-panel';
 import type { EditorHandle } from '@origamix/editor';
 import { WorkspaceRecoveryView } from './workspace-recovery-view';
 import { useWorkspaceStore } from '@/store/workspace';
@@ -23,6 +24,8 @@ export const WorkspaceContent = ({
 }: WorkspaceContentProps): React.JSX.Element => {
   const workspaceReady = useWorkspaceStore((state) => state.workspaceReady);
   const selectedPageId = useWorkspaceStore((state) => state.activeTabId);
+  const tabs = useWorkspaceStore((state) => state.openPages);
+  const closePage = useWorkspaceStore((state) => state.closePage);
   const mountedPageIds = useMountedPages();
 
   if (!workspaceReady) return <WorkspaceRecoveryView />;
@@ -34,6 +37,7 @@ export const WorkspaceContent = ({
     <div className='relative flex min-h-0 flex-1'>
       {mountedPageIds.map((pageId) => {
         const active = pageId === selectedPageId;
+        const tab = tabs.find((tab) => tab.id === pageId);
         return (
           <div
             key={pageId}
@@ -41,14 +45,22 @@ export const WorkspaceContent = ({
             aria-hidden={!active}
             inert={active ? undefined : true}
           >
-            <PageSession
-              active={active}
-              pageId={pageId}
-              editorRef={editorRefForPage(pageId)}
-              onModeChange={(mode) => onModeChange(pageId, mode)}
-              onPreview={() => onPreview(pageId)}
-              onConfigureModel={onConfigureModel}
-            />
+            {tab?.kind === 'project-settings' ? (
+              <ProjectSettingsPanel
+                projectId={tab.projectId}
+                onClose={() => closePage(pageId)}
+                onConfigureModel={onConfigureModel}
+              />
+            ) : (
+              <PageSession
+                active={active}
+                pageId={pageId}
+                editorRef={editorRefForPage(pageId)}
+                onModeChange={(mode) => onModeChange(pageId, mode)}
+                onPreview={() => onPreview(pageId)}
+                onConfigureModel={onConfigureModel}
+              />
+            )}
           </div>
         );
       })}

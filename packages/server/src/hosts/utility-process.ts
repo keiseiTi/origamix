@@ -106,8 +106,6 @@ controlPort.on('message', async ({ data }) => {
       allowedOrigins:
         typeof input.workbenchOrigin === 'string' ? [input.workbenchOrigin] : undefined,
       templatePath: input.templatePath,
-      previewAssetDirectory:
-        typeof input.previewAssetDirectory === 'string' ? input.previewAssetDirectory : undefined,
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,
       getModelCredential: requestCredential,

@@ -169,7 +169,7 @@ describe('PiAgentEngine', () => {
     );
   });
 
-  it.each(['complete_page_run', 'complete_layout_run'])(
+  it.each(['complete_page_run', 'complete_project_settings'])(
     'ends after an accepted %s decision without another provider request',
     async (terminalTool) => {
       const { engine } = setup([

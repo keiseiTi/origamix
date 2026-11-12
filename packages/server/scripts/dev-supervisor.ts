@@ -2,7 +2,12 @@ import { fork } from 'node:child_process';
 import { watch } from 'node:fs';
 import { once } from 'node:events';
 import { join } from 'node:path';
-import { libraryNames, libraryWatchPaths, buildLibraries } from './development-libraries.ts';
+import {
+  libraryNames,
+  libraryWatchPaths,
+  buildLibraries,
+  createSourceChangeFilter,
+} from './development-libraries.ts';
 import { fileURLToPath } from 'node:url';
 
 export const stopChild = async (child: import('node:child_process').ChildProcess | undefined) => {
@@ -90,11 +95,10 @@ export const runDevelopment = ({
     await Promise.all([stopChild(builder), stopChild(worker)]);
     process.exitCode = code;
   };
+  const sourceGroups = { ...libraryWatchPaths, server: ['packages/server/src'] };
+  const sourceChanged = watchServer ? createSourceChangeFilter(root, sourceGroups) : undefined;
   if (watchServer)
-    for (const [name, paths] of Object.entries({
-      ...libraryWatchPaths,
-      server: ['packages/server/src'],
-    }))
+    for (const [name, paths] of Object.entries(sourceGroups))
       for (const path of paths) {
         try {
           watchers.push(
@@ -104,6 +108,7 @@ export const runDevelopment = ({
                 filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
               )
                 return;
+              if (!sourceChanged?.(name)) return;
               dirty.add(name);
               schedule();
             }),

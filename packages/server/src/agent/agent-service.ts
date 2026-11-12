@@ -145,11 +145,11 @@ export class AgentService {
         const started = this.dependencies.conversations.startRun({
           ...request,
           modelRef,
-          runKind: target.kind === 'layout' ? 'layout_assistant' : 'page_assistant',
+          runKind: 'page_assistant',
           budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
           promptVersion: '6',
           policyVersion: '1',
-          toolsetVersion: target.kind === 'layout' ? '3' : '4',
+          toolsetVersion: '4',
           materialManifestVersion: 'official-antd@1.0.0',
         });
         if (started.created) {
@@ -216,7 +216,7 @@ export class AgentService {
   cancel(runId: string, requestId: string): AgentRunRecord {
     const run = this.dependencies.runService.cancel(runId);
     this.dependencies.executor.cancel(runId);
-    const progress = progressPayload(run.status, run.pageId ? 'page' : 'layout');
+    const progress = progressPayload(run.status);
     if (progress)
       this.dependencies.events.publish({
         type: 'run.progress',

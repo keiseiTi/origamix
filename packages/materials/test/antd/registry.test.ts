@@ -1,9 +1,3 @@
-import { antdLayoutManifest, antdLayoutValidationRegistry } from '../../antd/layout/manifest';
-import {
-  rootMaterials as layoutRoots,
-  materialGroups as layoutGroups,
-} from '../../antd/layout/editor';
-import layoutRuntime from '../../antd/layout/runtime';
 import { validateAntdMaterialProps, validateAntdMaterialSemantics } from '../../antd/validation';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import { materialGroups, rootMaterials, createAntdFormPlugin } from '../../antd/editor';
@@ -14,23 +8,6 @@ import { antdMaterialManifest, antdValidationMaterialRegistry } from '../../antd
 describe('material boundary used by editing and preview', () => {
   it('publishes serializable materials that validation and rendering both recognize', () => {
     expect(() => structuredClone(antdMaterialManifest)).not.toThrow();
-    expect(() => structuredClone(antdLayoutManifest)).not.toThrow();
-    expect(layoutRoots.map((material) => material.type)).toEqual([
-      'Layout',
-      'LayoutRegion',
-      'PageOutlet',
-    ]);
-    expect(
-      layoutGroups
-        .flatMap((group) => group.children)
-        .some((material) => material.type === 'LayoutRegion'),
-    ).toBe(false);
-    for (const manifest of antdLayoutManifest.materials) {
-      expect(manifest.type in layoutRuntime).toBe(true);
-      expect(antdLayoutValidationRegistry[manifest.type]?.propsSchema).toEqual(
-        manifest.propsSchema,
-      );
-    }
     expect(() => JSON.stringify(antdMaterialManifest)).not.toThrow();
     const formPlugin = createAntdFormPlugin();
     for (const material of materialGroups.flatMap((group) => group.children)) {

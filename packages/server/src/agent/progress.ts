@@ -10,15 +10,12 @@ const messages: Partial<Record<AgentRunStatus, string>> = {
   committing: '正在保存页面草稿',
 };
 
-export const progressPayload = (
-  status: AgentRunStatus,
-  kind: 'page' | 'layout' = 'page',
-): AgentProgressEventPayload | undefined => {
+export const progressPayload = (status: AgentRunStatus): AgentProgressEventPayload | undefined => {
   const message = messages[status];
   if (!message) return undefined;
   return {
     status,
     phase: status as AgentProgressEventPayload['phase'],
-    message: kind === 'layout' ? message.replaceAll('页面', '布局') : message,
+    message: message,
   };
 };

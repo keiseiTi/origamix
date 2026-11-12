@@ -23,17 +23,8 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 
 - Runtime material metadata supplies role and valueProp. Portal actions and Form writes use these capabilities, never concrete Ant Design names; initial state and event projection remain component-owned. Runtime snapshots the first event callback argument as serializable event.payload, without per-material event converters. Components publish initial state and register actions before lifecycle init runs.
 
-- `src/diagnostics.tsx` owns per-element error isolation and session-local diagnostic aggregation for run/design modes. Preserve sibling state and design frame attributes on fallback; nested layout/page renderers share one outer diagnostic reporter; scope diagnostics at PageOutlet and never report page success independently of active layout/element/flow failures. Raw exceptions are local presentation/debug data, not diagnostic transport payloads.
-- `src/layout.tsx` owns declarative layout/page composition and PageOutlet. Never merge their node tables or create a layout business engine. OrigamixApplicationPage follows the manifest-derived project enabled flag (no per-page overrides) and shares the existing error boundary; DesignLayoutRenderer remains execution-free. Navigation is an explicitly injected page-ID allowlist/callback, not a router or host capability. Template/app preview orchestration stays outside Runtime.
-
-- Layout system PageNavigation renders only injected allowed page IDs and slug paths, with native links/current-page semantics; routing stays in Template. resolveApplicationLayout validates the manifest-derived enabled state and layout ownership without reading files. Template supplies theme and includes Runtime dist in Tailwind scanning.
-
 - Common layoutPosition/layoutX/layoutY/layoutZIndex are consumed on the same MaterialView frame in design/run modes. Container owns its relative positioning context. Page roles are project metadata and do not alter public layout composition or navigation automatically.
 
-- Antd layout materials consume the exported useLayoutNavigation context through their Runtime peer; do not bundle a second context or add Material-family imports to Runtime. PageOutlet remains Runtime-owned injection and diagnostic scope. Template/App merge the separate Materials page/layout runtime registries.
+- MaterialView consumes validated layoutShrink alongside layoutGrow on the shared frame. Do not patch material DOM ancestors to force sizing.
 
-- MaterialView consumes validated layoutShrink alongside layoutGrow on the shared frame. Managed sidebars set shrink to zero so their frame tracks the native sidebar width during collapse without overlapping sibling content. Do not patch material DOM ancestors to force sizing.
-
-- Injected navigation may carry a validated local href for Browser basename or Hash links, separately from its slug path and allowed pageId. Runtime owns no router; native modified-click links must preserve the supplied application prefix/history form.
-
-- `application-shell.tsx` shares layout composition between Template and project preview. `application.tsx` owns the router-independent access gate and application context; `application-session.ts` owns transient shared JSON state and page-ID navigation. Business requests and session restoration use ordinary event flows, without automatic authentication or 401 handling.
+- configured-shell.tsx owns the sole fixed application chrome shared by project settings and templates. Injected hrefs and page-ID callbacks own navigation. It never reads files, invokes backend APIs or interprets layout Schema. PageNavigationProvider injects only a current-project page-ID allowlist and router callback; it has no shared state or authentication behavior.

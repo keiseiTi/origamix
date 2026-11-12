@@ -43,7 +43,6 @@ src/routing-config.ts       运行与构建共用的路由配置读取
 src/project-pages.ts        路由与菜单共用的页面路径
 src/application.tsx         项目应用外壳、公共布局与导航
 src/application-error.tsx   应用加载/渲染错误反馈
-src/origamix-layout/schema.json 显式应用后的项目布局投影
 src/index.css               全局样式
 src/pages/<slug>/index.tsx   页面渲染入口
 src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
@@ -54,15 +53,15 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 
 页面入口、样式和业务代码可在项目内继续开发。普通编辑、保存版本和历史恢复不重写这些源码；Apply 只更新目标 `schema.json`。直接修改该文件会被 Origamix 识别为外部变化，下一次 Apply 前需要处理冲突。增加或删除页面属于项目管理操作，不能由“Apply 只更新 Schema”推断这些操作不创建或删除页面源码。
 
-## 项目布局
+## 项目布局与路由
 
-每个项目只有一份固定名称的“布局配置”。`origamix.project.json` 的 `layout.enabled` 是唯一开关，作用于所有页面，不支持页面覆盖。默认关闭；开启后应用外壳读取固定的 `src/origamix-layout/schema.json`，没有该文件或项目归属不符时显示提示，要求先保存并应用布局。
+新项目在 `origamix.project.json` 的 `shell` 中声明标题、Logo、菜单、首页、404 和独立页面。`layout.enabled` 开关布局，`layout.initialVariant` 选择 side/top/mix。模板通过 Runtime 的 ConfiguredShell 渲染固定布局，不需要生成或应用布局 Schema。
 
-布局投影由 Origamix 的显式 layout Apply 写入；编辑、保存版本和历史恢复只更新 `.origamix/layout/`。布局节点与页面节点不拼接，页面继续由自己的稳定入口渲染，在唯一 `PageOutlet` 中显示。普通 Apply 不重写应用外壳、页面入口、项目路由或依赖。
+菜单按数组顺序展示，以 id/parentId 表达层级；pageId 可省略，表示分组。标题留空跟随页面名称，hidden 隐藏整棵子树。缺少 navigation 表示尚未配置，运行项目不展示示例菜单；空数组表示主动清空。
 
-可在布局中使用系统节点 `PageNavigation`（`direction: horizontal | vertical`）。它从项目 `pages` 读取名称与稳定 pageId，外壳解析路由，跳转时更新选中项。`home` 对应 `/`，其余页面对应 `/<slug>`；没有 home 时 `/` 跳转到第一个页面。未知路由显示返回首页入口。导航不携带工作台凭证或后端能力，Ctrl/Command 点击仍使用普通浏览器链接。
+首页 pageId 映射到 `/`；未配置时使用 home slug 或第一个页面。未知路由保留原地址并渲染 notFoundPageId 对应页面，未指定时显示默认 404。standalonePageIds 中的页面不使用公共布局，包括被指定为 404 的页面。关闭布局不关闭路由规则。
 
-应用默认亮色。宿主或项目代码切换根元素的 `dark` class 后，外壳与 Ant Design RuntimeProvider 同步切换主题；Runtime 系统导航类已纳入 Tailwind 扫描。此阶段仅面向新建项目，不包含旧项目外壳迁移或草稿应用预览。
+Logo 支持 HTTP(S) 地址或项目根路径（如 `/logo.png`）；项目根路径的图片放到 public 目录，并自行确认部署路径可访问。设置界面不会读取项目任意资源。
 
 ## 本地运行与部署排查
 
@@ -76,16 +75,14 @@ src/pages/<slug>/schema.json Origamix 初始化或 Apply 写入的页面数据
 
 `.origamix/` 不参与部署，但包含尚未应用的草稿和历史，清理前确认是否仍需在 Origamix 中继续编辑。
 
-模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目。发布前本地归档验证不等同于 npm registry 已可安装。
+模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。发布前本地归档验证不等同于 npm registry 已可安装。
 
-### 平台项目预览
+### 验证项目
 
-本模板声明 `runtime: "origamix"`，开启布局后可以在平台项目菜单中预览已应用的完整应用。平台使用与模板共用的页面路径映射和应用布局外壳，不运行项目启动命令、自定义入口或构建插件。未应用草稿不会出现在项目预览中。应用共享状态和页面访问规则在项目菜单“应用配置”中设置，登录页面角色本身不会开启访问限制。
+平台只提供页面草稿预览和项目设置中的布局效果，不提供完整项目预览。页面保存版本并应用后，在本项目中运行 `pnpm dev` 验证真实路由、菜单、404 与业务行为。项目设置保存后直接更新清单，开发服务需刷新，生产部署需重新构建。
 
-### 应用事件流
+### 页面事件与导航
 
-应用配置声明初始 JSON 状态，例如 `{ "signedIn": false, "user": null }`。访问规则可选择布尔字段、登录页、默认首页和公开页面；未满足规则时，私有页面不会挂载，登录页不展示布局或菜单。
+页面自身的变量、接口请求和事件逻辑继续由页面 Schema 管理。navigatePage 只接受当前项目的明确 pageId，模板处理 Browser/Hash 和部署前缀。页面预览不执行项目路由，页面间跳转需在生成项目中运行。
 
-页面使用普通表单和事件流实现业务：接口请求 → 条件判断 → 设置应用状态 → 跳转页面。退出、接口失败和 401 分支同样由事件流显式配置。参数可读取 `application.user` 等已声明状态；页面跳转仅接受当前项目页面 ID，支持默认首页、登录页和返回页面。
-
-共享状态只保留在当前应用内存中，刷新后恢复初始值。需要恢复登录时，在登录页初始化事件中请求业务接口并设置状态。Cookie 请求需要逐个选择凭据模式；跨域接口需正确配置 CORS 和浏览器 Cookie 策略。平台不约定登录接口、不自动轮询、不自动处理 401，不注入退出按钮。前端访问规则不能代替业务后端授权。不要将密码或令牌放入应用初始状态。
+项目清单不声明共享应用状态或登录访问规则，模板不提供登录态检查、登录后返回或自动退出。页面的登录角色只是标记，不附加运行行为。

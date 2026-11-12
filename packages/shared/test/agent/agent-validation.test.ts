@@ -99,22 +99,13 @@ describe('agent domain protocol', () => {
       updatedAt: timestamp,
     };
     expect(validateAgentRun(run).valid).toBe(true);
-    const layoutRun = {
-      ...run,
-      pageId: undefined,
-      target: { kind: 'layout', projectId: run.projectId },
-      runKind: 'layout_assistant',
-    };
-    expect(validateAgentRun(layoutRun).valid).toBe(true);
-    expect(validateAgentRun({ ...layoutRun, target: undefined }).valid).toBe(false);
-    expect(validateAgentRun({ ...layoutRun, pageId: run.pageId }).valid).toBe(false);
     expect(
       resolveAgentTarget({
         projectId: 'project_other',
-        target: { kind: 'layout', projectId: run.projectId },
+        pageId: run.pageId,
+        target: { kind: 'page', projectId: run.projectId, pageId: run.pageId },
       }),
     ).toBeNull();
-
     expect(validateAgentRun({ ...run, status: 'done' }).valid).toBe(false);
     for (const status of [
       'preparing',

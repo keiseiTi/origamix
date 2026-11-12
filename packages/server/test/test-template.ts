@@ -191,50 +191,28 @@ try {
     expectedWorkingVersion: aboutSaved.workingVersion,
     clientRequestId: 'about-apply',
   });
-  await request('/layout/config/update', { projectId: created.id, enabled: true });
-  const layoutWorking = await request('/layout/working/get', { projectId: created.id });
-  const layoutDraft = await request('/layout/working/operations', {
+  const settings = await request('/projects/settings/get', { projectId: created.id });
+  await request('/projects/settings/update', {
     projectId: created.id,
-    baseWorkingVersion: layoutWorking.workingVersion,
-    clientRequestId: 'layout-edit',
-    operations: [
-      {
-        operation: 'updateElementProps',
-        elementId: 'layout',
-        set: {
-          title: 'Origamix application layout',
-          variant: 'mix',
-        },
-      },
-      {
-        operation: 'updateElementProps',
-        elementId: 'layout__footer',
-        set: { footerText: '应用页脚' },
-      },
-    ],
+    expectedManifestHash: settings.manifestHash,
+    layout: { enabled: true, initialVariant: 'mix' },
+    routing: settings.routing,
+    shell: {
+      title: 'Application settings',
+      logo: '',
+      homePageId: page.id,
+      notFoundPageId: about.id,
+      standalonePageIds: [about.id],
+      navigation: [
+        { id: 'management', title: '管理', hidden: false },
+        { id: 'home', parentId: 'management', title: '', pageId: page.id, hidden: false },
+      ],
+    },
   });
-  const layoutTarget = join(project, 'src/origamix-layout/schema.json');
-  await assert.rejects(readFile(layoutTarget));
-  const layoutSaved = await request('/layout/revisions/save', {
-    projectId: created.id,
-    expectedWorkingVersion: layoutDraft.workingVersion,
-  });
-  await assert.rejects(readFile(layoutTarget));
-  const layoutInput = {
-    projectId: created.id,
-    expectedRevisionId: layoutSaved.revisionId,
-    expectedWorkingVersion: layoutSaved.workingVersion,
-    clientRequestId: 'layout-apply',
-  };
-  const layoutReceipt = await request('/layout/apply', layoutInput);
-  assert.deepEqual(JSON.parse(await readFile(layoutTarget, 'utf8')), layoutSaved.document);
-  await backend.close();
-  backend = await startServer(backendOptions);
-  assert.deepEqual(await request('/layout/apply', layoutInput), layoutReceipt);
-  assert.equal(
-    (await request('/layout/apply-state/get', { projectId: created.id })).status,
-    'in_sync',
+  const configuredManifest = JSON.parse(
+    await readFile(join(project, 'origamix.project.json'), 'utf8'),
   );
+  assert.equal(configuredManifest.shell.notFoundPageId, about.id);
   assert.equal(await readFile(shellPath, 'utf8'), originalShell);
   const readme = await readFile(join(project, 'README.md'), 'utf8');
   assert.ok(readme.startsWith('# Template smoke'));
@@ -316,7 +294,7 @@ try {
     );
   }
   console.info(
-    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, project layout Apply/retry after restart, independent two-page application installation, typecheck and Browser/Hash builds with a deployment prefix.',
+    'Template smoke passed: project creation, draft recovery after restart, explicit save, history restore and Apply, stable page shell, project shell configuration, independent two-page application installation, typecheck and Browser/Hash builds with a deployment prefix.',
   );
 } finally {
   await backend?.close();

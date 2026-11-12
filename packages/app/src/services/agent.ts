@@ -1,5 +1,5 @@
 import { notifyPageRolesChanged } from './page-role-events';
-import type { SessionKind } from './session';
+type SessionKind = 'page';
 import type {
   AgentEvent,
   CancelAgentRunResponse,
@@ -16,7 +16,10 @@ import {
   subscribeBackendStatus,
 } from './request';
 
-const agentPrefix = (kind: SessionKind) => (kind === 'layout' ? '/layout/agent' : '/agent');
+const agentPrefix = (kind: SessionKind) => {
+  if (kind !== 'page') throw new Error('只支持页面 Agent');
+  return '/agent';
+};
 const agentScope = (projectId: string, pageId: string, kind: SessionKind) => ({
   projectId,
   ...(kind === 'page' ? { pageId } : {}),
@@ -35,11 +38,8 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
     event['type'].length > 0 &&
     typeof event['runId'] === 'string' &&
     /^run_[A-Za-z0-9_-]+$/.test(event['runId']) &&
-    ((event['pageId'] === undefined &&
-      !!event['target'] &&
-      typeof event['target'] === 'object' &&
-      (event['target'] as { kind?: string }).kind === 'layout') ||
-      (typeof event['pageId'] === 'string' && /^page_[A-Za-z0-9_-]+$/.test(event['pageId']))) &&
+    typeof event['pageId'] === 'string' &&
+    /^page_[A-Za-z0-9_-]+$/.test(event['pageId']) &&
     typeof event['requestId'] === 'string' &&
     event['requestId'].length > 0 &&
     typeof event['occurredAt'] === 'string' &&

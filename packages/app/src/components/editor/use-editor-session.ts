@@ -4,11 +4,14 @@ import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorTransaction, EditorWorkingState } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { sessionService, type SessionKind } from '@/services/session';
-
-type WorkingState = Awaited<ReturnType<ReturnType<typeof sessionService>['workingState']>>;
+import { schemaService } from '@/services/schema';
+type SessionKind = 'page';
+type WorkingState = Awaited<ReturnType<typeof schemaService.workingState>>;
 type Session = {
-  scope: { projectId: string; pageId: string };
+  scope: {
+    projectId: string;
+    pageId: string;
+  };
   active: boolean;
   kind: SessionKind;
   ready: boolean;
@@ -19,9 +22,11 @@ type Session = {
   pending: Promise<void> | null;
   timer: number | null;
   failed: boolean;
-  attempt: { schema: OrigamixPageSchema; requestId: string } | null;
+  attempt: {
+    schema: OrigamixPageSchema;
+    requestId: string;
+  } | null;
 };
-
 export const useEditorSession = (
   projectId: string,
   pageId: string,
@@ -31,9 +36,11 @@ export const useEditorSession = (
   schemaRefreshKey = '',
   kind: SessionKind = 'page',
 ) => {
-  const service = useMemo(() => sessionService(kind), [kind]);
+  const service = schemaService;
   // A new ref cell per scope isolates queues even when an old request is pending.
-  const sessionRef = useMemo<{ current: Session }>(
+  const sessionRef = useMemo<{
+    current: Session;
+  }>(
     () => ({
       current: {
         scope: { projectId, pageId },
@@ -53,22 +60,24 @@ export const useEditorSession = (
     [projectId, pageId, kind],
   );
   const [loaded, setLoaded] = useState<{
-    sessionRef: { current: Session };
+    sessionRef: {
+      current: Session;
+    };
     initial: WorkingState | null;
     refreshKey: string;
     error: string | null;
   } | null>(null);
   const [failure, setFailure] = useState<{
-    sessionRef: { current: Session };
+    sessionRef: {
+      current: Session;
+    };
     message: string;
   } | null>(null);
   const onWorkingCommittedRef = useRef(onWorkingCommitted);
   useEffect(() => {
     onWorkingCommittedRef.current = onWorkingCommitted;
   }, [onWorkingCommitted]);
-
   const [retry, setRetry] = useState(0);
-
   useEffect(() => {
     const ownedSession = sessionRef.current;
     ownedSession.active = true;
@@ -78,7 +87,6 @@ export const useEditorSession = (
       if (ownedSession.timer !== null) window.clearTimeout(ownedSession.timer);
     };
   }, [sessionRef]);
-
   useEffect(() => {
     let active = true;
     const ownedSession = sessionRef.current;
@@ -126,7 +134,6 @@ export const useEditorSession = (
       active = false;
     };
   }, [projectId, pageId, sessionRef, schemaRefreshKey, retry, service]);
-
   useEffect(() => {
     if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
     const ownedSession = sessionRef.current;
@@ -138,7 +145,6 @@ export const useEditorSession = (
       ownedSession.ready = false;
     };
   }, [loaded, sessionRef, readyToEdit]);
-
   const flush = useCallback(async (): Promise<void> => {
     if (sessionRef.current.timer !== null) {
       window.clearTimeout(sessionRef.current.timer);
@@ -154,7 +160,7 @@ export const useEditorSession = (
         const draft = sessionRef.current.draft;
         if (!draft || equalJson(draft, sessionRef.current.savedSchema)) return;
         if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
-        const attempt = (kind === 'layout' ? sessionRef.current.attempt : null) ?? {
+        const attempt = {
           schema: structuredClone(draft),
           requestId: crypto.randomUUID(),
         };
@@ -174,14 +180,14 @@ export const useEditorSession = (
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.operations,
-                ...(kind === 'layout' ? ([attempt.requestId] as const) : []),
+                ...[],
               )
             : service.updateWorking(
                 transaction.scope.projectId,
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.schema,
-                ...(kind === 'layout' ? ([attempt.requestId] as const) : []),
+                ...[],
               );
         const operation = request
           .then((result) => {
@@ -212,10 +218,14 @@ export const useEditorSession = (
       }
       throw reason;
     }
-  }, [readOnly, sessionRef, kind, service]);
-
+  }, [readOnly, sessionRef, service]);
   const generation = sessionRef.current.generation;
-  const onChange = (schema: OrigamixPageSchema, options?: { immediate: boolean }): void => {
+  const onChange = (
+    schema: OrigamixPageSchema,
+    options?: {
+      immediate: boolean;
+    },
+  ): void => {
     if (
       generation !== sessionRef.current.generation ||
       !sessionRef.current.active ||
@@ -233,7 +243,6 @@ export const useEditorSession = (
         options?.immediate ? 0 : 700,
       );
   };
-
   const acknowledgeWorking = useCallback(
     (working: EditorWorkingState): void => {
       const current = sessionRef.current;
@@ -250,7 +259,6 @@ export const useEditorSession = (
     },
     [sessionRef],
   );
-
   const current = loaded?.sessionRef === sessionRef ? loaded : null;
   const initial = current?.initial ?? null;
   // A canvas mount consumes the retained draft; ordinary saves do not change

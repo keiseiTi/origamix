@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import { useEditorCore } from '../../session/editor-context';
 import { Button, Spinner } from '@origamix/ui';
 import { useMaterialCatalog } from '../../session/editor-environment';
-import { EditorApplicationContext, FlowEditorSessionContext } from './flow-editor-context';
+import { EditorPageNavigationContext, FlowEditorSessionContext } from './flow-editor-context';
 import type { EventTarget } from './flow-graph';
 
 type FlowComponent = (typeof import('./index'))['FlowEditor'];
@@ -25,7 +25,7 @@ export const FlowEditorLoader = ({
   target: EventTarget | null;
   onTargetChange: (target: EventTarget) => void;
 }): React.JSX.Element => {
-  const application = useContext(EditorApplicationContext);
+  const pageNavigation = useContext(EditorPageNavigationContext);
   const schema = useEditorCore((state) => state.schema);
   const materials = useEditorCore((state) => state.materials);
   const setSchema = useEditorCore((state) => state.setSchema);
@@ -79,7 +79,7 @@ export const FlowEditorLoader = ({
     <FlowEditorSessionContext.Provider
       value={{
         schema,
-        application,
+        pageNavigation,
         materials,
         catalog,
         onChange: setSchema,

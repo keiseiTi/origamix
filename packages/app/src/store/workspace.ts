@@ -1,14 +1,13 @@
-import { LAYOUT_NAME } from '@origamix/shared';
 import { create } from 'zustand';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 export type PageLifecycleStatus =
   'in_sync' | 'draft_unsaved' | 'saved_pending_apply' | 'external_change';
 
-export const layoutTabId = (projectId: string): string => `layout:${projectId}`;
+export const projectSettingsTabId = (projectId: string): string => `project-settings:${projectId}`;
 
 export interface PageItem {
-  kind?: 'page' | 'layout';
+  kind?: 'page' | 'project-settings';
   id: string;
   name: string;
   fileName: string;
@@ -19,6 +18,8 @@ export interface ProjectItem {
   name: string;
   path: string;
   pages: PageItem[];
+  runtime?: 'origamix' | 'external';
+  layoutEnabled?: boolean;
 }
 
 export interface OpenPageTab extends PageItem {
@@ -86,7 +87,7 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           typeof tab.projectId !== 'string' ||
           typeof tab.name !== 'string' ||
           typeof tab.fileName !== 'string' ||
-          (tab.kind === 'layout' && tab.id !== layoutTabId(tab.projectId as string))
+          (tab.kind === 'project-settings' && tab.id !== projectSettingsTabId(tab.projectId))
         )
           continue;
         seen.add(tab.id);
@@ -96,13 +97,15 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
           name: tab.name,
           fileName: tab.fileName,
           mode:
-            tab.kind === 'layout'
+            tab.kind === 'project-settings'
               ? 'chat'
               : isMode(tab.mode) && tab.mode !== 'preview'
                 ? tab.mode
                 : 'chat',
+          ...(tab.kind === 'project-settings'
+            ? { kind: 'project-settings' as const, name: '布局配置' }
+            : {}),
           status: null,
-          ...(tab.kind === 'layout' ? { kind: 'layout' as const, name: LAYOUT_NAME } : {}),
         });
       }
     }
@@ -126,13 +129,16 @@ const readSession = (): WorkspaceSession => {
 };
 
 export const pageLocation = (projects: ProjectItem[], pageId: string) => {
-  const layoutProject = projects.find((project) => layoutTabId(project.id) === pageId);
-  if (layoutProject)
-    return {
-      project: layoutProject,
-      page: { id: pageId, name: LAYOUT_NAME, fileName: '', kind: 'layout' as const },
-    };
   for (const project of projects) {
+    if (
+      pageId === projectSettingsTabId(project.id) &&
+      project.runtime !== 'external' &&
+      project.layoutEnabled !== false
+    )
+      return {
+        project,
+        page: { id: pageId, name: '布局配置', fileName: '', kind: 'project-settings' as const },
+      };
     const page = project.pages.find((item) => item.id === pageId);
     if (page) return { project, page };
   }
@@ -188,12 +194,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         openPages,
         pageDrafts: withoutDrafts(
           state.pageDrafts,
-          new Set(
-            projects.flatMap((project) => [
-              layoutTabId(project.id),
-              ...project.pages.map((page) => page.id),
-            ]),
-          ),
+          new Set(projects.flatMap((project) => [...project.pages.map((page) => page.id)])),
         ),
       };
     }),
@@ -249,9 +250,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setPageMode: (pageId, mode) =>
     set((state) => ({
       openPages: state.openPages.map((tab) =>
-        tab.id === pageId
-          ? { ...tab, mode: tab.kind === 'layout' && mode === 'edit' ? 'chat' : mode }
-          : tab,
+        tab.id === pageId ? { ...tab, mode: tab.kind === 'project-settings' ? 'chat' : mode } : tab,
       ),
     })),
   setPageStatus: (pageId, status) =>

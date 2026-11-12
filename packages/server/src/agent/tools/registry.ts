@@ -16,12 +16,7 @@ export interface ToolAuditEvent {
 }
 
 const operationEvidence = (toolName: string, args: unknown) => {
-  if (
-    !['complete_page_run', 'complete_layout_run'].includes(toolName) ||
-    !args ||
-    typeof args !== 'object'
-  )
-    return {};
+  if (!['complete_page_run'].includes(toolName) || !args || typeof args !== 'object') return {};
   const operations = (args as { operations?: unknown }).operations;
   if (!Array.isArray(operations)) return {};
   const operationTypeCounts = operations.reduce<Record<string, number>>((counts, item) => {
@@ -63,10 +58,8 @@ export interface RegisteredAgentTool {
 }
 
 const READ_TOOL_NAMES = new Set([
-  'get_layout_context',
   'prepare_block',
   'get_project_page_roles',
-  'validate_layout_schema',
   'get_page_context',
   'get_schema_outline',
   'get_schema_fragment',
@@ -95,12 +88,12 @@ export const createDefaultAgentToolEntries = (
         },
       };
     }
-    if (['complete_page_run', 'complete_layout_run'].includes(tool.name)) {
+    if (['complete_page_run'].includes(tool.name)) {
       return {
         tool,
         policy: {
           toolName: tool.name,
-          scope: tool.name === 'complete_layout_run' ? 'layout_write' : 'page_write',
+          scope: 'page_write',
           risk: 'low',
           requiresConfirmation: false,
         },
@@ -258,8 +251,7 @@ export class AgentToolRegistry {
           });
           try {
             const result = await entry.tool.execute(args, signal);
-            if (['complete_page_run', 'complete_layout_run'].includes(name))
-              terminalAccepted = true;
+            if (['complete_page_run'].includes(name)) terminalAccepted = true;
             await input.audit({
               runId: input.runId,
               toolName: name,

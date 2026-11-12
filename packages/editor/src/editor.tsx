@@ -1,4 +1,4 @@
-import { EditorApplicationContext } from './components/flow-editor/flow-editor-context';
+import { EditorPageNavigationContext } from './components/flow-editor/flow-editor-context';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorProps } from './interfaces/editor-interfaces';
@@ -10,7 +10,7 @@ import { useEditorRegistration } from './hooks/use-editor-registration';
 
 export const Editor = ({
   editor,
-  application,
+  pageNavigation,
   onSave,
   onFlush,
   canSave,
@@ -85,7 +85,7 @@ export const Editor = ({
           正在切换编辑会话…
         </div>
       ) : (
-        <EditorApplicationContext.Provider value={application}>
+        <EditorPageNavigationContext.Provider value={pageNavigation}>
           <EditorProvider
             editor={editor}
             plugins={plugins}
@@ -123,7 +123,7 @@ export const Editor = ({
               </div>
             </EditorChrome>
           </EditorProvider>
-        </EditorApplicationContext.Provider>
+        </EditorPageNavigationContext.Provider>
       )}
     </div>
   );

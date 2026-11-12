@@ -1,8 +1,7 @@
-import { ProjectPreviewService } from './preview/project-preview-service';
+import { ProjectSettingsAgentService } from './agent/project-settings-agent-service';
 import { ProjectTaskService } from './agent/project-task-service';
 import { agentTarget } from './agent/agent-target';
-import { LayoutService } from './layout/layout-service';
-import { loadProjectMaterials, loadLayoutMaterials } from './projects/project-materials';
+import { loadProjectMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
 import { AgentRunRepository } from './agent/run-repository';
@@ -35,7 +34,6 @@ export const startServer = async (input: {
   port?: number;
   databasePath: string;
   templatePath: string;
-  previewAssetDirectory?: string;
   desktopToken: string;
   serviceInstanceId: string;
   projectPath?: string;
@@ -57,7 +55,7 @@ export const startServer = async (input: {
     const runService = new AgentRunService(runs);
     const agentEvents = new AgentEventBroker();
     runService.setTransitionListener((run) => {
-      const payload = progressPayload(run.status, run.pageId ? 'page' : 'layout');
+      const payload = progressPayload(run.status);
       if (!payload) return;
       agentEvents.publish({
         type: 'run.progress',
@@ -91,35 +89,35 @@ export const startServer = async (input: {
       projectApplyService,
       (projectId, pageId) => runtimeDiagnostics.clear(projectId, pageId),
     );
-    const layoutService = new LayoutService(projects);
-    const readLayout = async (projectId: string) => {
-      const value = await layoutService.getWorking(projectId);
-      return { ...value, schema: value.document.schema };
-    };
     const productDocs = new ProductDocsProvider();
     const context = new ContextAssembler(
       { getCurrent: getWorkingSchemaState },
       conversations,
       productDocs,
       {},
-      readLayout,
       projectService.getPageRoles,
     );
     const pi = createPiModels();
+    const engine = new PiAgentEngine({
+      resolveModel: (provider, model) => pi.models.getModel(provider, model),
+      stream: pi.models.streamSimple.bind(pi.models),
+      getCredential: async (provider) => {
+        if (provider !== 'deepseek') return undefined;
+        return input.getModelCredential?.('deepseek');
+      },
+    });
+    const settingsAgent = new ProjectSettingsAgentService({
+      projects: projectService,
+      engine,
+      getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
+    });
     const executor = new RunExecutor({
       projects,
       runs,
       conversations: conversationService,
       runService,
       context,
-      engine: new PiAgentEngine({
-        resolveModel: (provider, model) => pi.models.getModel(provider, model),
-        stream: pi.models.streamSimple.bind(pi.models),
-        getCredential: async (provider) => {
-          if (provider !== 'deepseek') return undefined;
-          return input.getModelCredential?.('deepseek');
-        },
-      }),
+      engine,
       createTools: (scope) =>
         createDefaultAgentToolEntries([
           ...createReadOnlyAgentTools(
@@ -131,8 +129,7 @@ export const startServer = async (input: {
             },
             {
               projects,
-              loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
-              readLayout,
+              loadMaterials: loadProjectMaterials,
               getProjectRoles: projectService.getPageRoles,
             },
           ),
@@ -142,7 +139,6 @@ export const startServer = async (input: {
               projects,
               docs: productDocs,
               diagnostics: runtimeDiagnostics,
-              validateLayout: layoutService.validateSchema,
             },
           ),
           createCompletePageRunTool(
@@ -150,9 +146,8 @@ export const startServer = async (input: {
               projects,
               runs,
               runService,
-              layouts: layoutService,
               prepareProject: (...args) => projectTasks.prepare(...args),
-              loadMaterials: scope.pageId ? loadProjectMaterials : loadLayoutMaterials,
+              loadMaterials: loadProjectMaterials,
             },
             scope,
           ),
@@ -185,7 +180,7 @@ export const startServer = async (input: {
       executor,
       getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
       getCurrentState: async (projectId, pageId) => {
-        if (!pageId) return readLayout(projectId);
+        if (!pageId) throw new Error('页面 ID 缺失');
         const project = projects.getProject(projectId);
         const page = projects.getPage(projectId, pageId);
         if (!project || !page) throw new Error('页面不存在或不属于当前项目');
@@ -205,16 +200,13 @@ export const startServer = async (input: {
         (await getCurrentRevision(projectId, pageId)).workingVersion,
       startPage: (request) => agentService.start(request),
     });
-    const projectPreview = new ProjectPreviewService(projects, input.previewAssetDirectory);
-    projectService.setPreviewCloser(projectPreview.endProject);
     const server = createHttpServer({
-      projectPreview,
       ...input,
       projects,
       projectService,
       projectApplyService,
-      layoutService,
       projectTasks,
+      settingsAgent,
       runtimeDiagnostics,
       agent: {
         conversations: conversationService,
@@ -238,10 +230,9 @@ export const startServer = async (input: {
       if (closePromise) return closePromise;
       closing = true;
       // Fence starts synchronously, before waiting for HTTP/SSE connections to close.
-      const agents = agentService.shutdown();
+      const agents = Promise.all([agentService.shutdown(), settingsAgent.shutdown()]);
       closePromise = (async () => {
         const http = server.close();
-        await projectPreview.close();
         void http.catch(() => undefined);
         // Do not close SQLite underneath an Agent or an HTTP mutation still in flight.
         await agents;
@@ -272,7 +263,7 @@ export const startServer = async (input: {
       projectService.registerGrant('startup-project', input.projectPath);
       await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
-    await recoverAgentRunsOnStartup(runs, projects, conversationService, layoutService);
+    await recoverAgentRunsOnStartup(runs, projects, conversationService);
     await server.listen({ host: '127.0.0.1', port });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');

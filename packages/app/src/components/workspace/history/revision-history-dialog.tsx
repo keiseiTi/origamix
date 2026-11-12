@@ -10,28 +10,23 @@ import {
   DialogTitle,
   Spinner,
 } from '@origamix/ui';
-
-import { sessionService } from '@/services/session';
+import { schemaService } from '@/services/schema';
 import { type RevisionHistoryItem, type OrigamixPageSchema } from '@origamix/shared';
-
 import { Braces, History, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
 interface RevisionHistoryProps {
   projectId: string;
-  targetKind?: 'page' | 'layout';
+  targetKind?: 'page';
   pageId: string;
   canRestore: boolean;
   onClose: () => void;
   onRestore: (revisionId: string) => Promise<void>;
 }
-
 const formatTime = (value: string): string => {
   const date = new Date(value);
   const pad = (number: number): string => String(number).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
-
 const RevisionHistoryContent = ({
   projectId,
   pageId,
@@ -55,17 +50,15 @@ const RevisionHistoryContent = ({
   const [viewAttempt, setViewAttempt] = useState(0);
   const mounted = useRef(false);
   const restorePending = useRef(false);
-
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
     };
   }, []);
-
   useEffect(() => {
     let active = true;
-    sessionService(targetKind)
+    schemaService
       .listRevisions(projectId, pageId)
       .then((result) => active && setRevisions(result.revisions))
       .catch((reason) => {
@@ -76,11 +69,10 @@ const RevisionHistoryContent = ({
       active = false;
     };
   }, [projectId, pageId, listAttempt, targetKind]);
-
   useEffect(() => {
     if (!selected) return;
     let active = true;
-    sessionService(targetKind)
+    schemaService
       .getRevision(projectId, pageId, selected.revisionId)
       .then((result) => active && setSchema(result.schema))
       .catch((reason) => {
@@ -91,7 +83,6 @@ const RevisionHistoryContent = ({
       active = false;
     };
   }, [projectId, pageId, selected, viewAttempt, targetKind]);
-
   const view = (revision: RevisionHistoryItem): void => {
     setSelected(revision);
     setSchema(null);
@@ -99,13 +90,9 @@ const RevisionHistoryContent = ({
     setViewing(true);
     setViewAttempt((attempt) => attempt + 1);
   };
-
   const restore = async (revisionId: string): Promise<void> => {
     if (!canRestore || restorePending.current) return;
-    if (
-      targetKind === 'page' &&
-      !window.confirm('恢复此版本将替换当前草稿，不会自动保存版本或应用到项目。是否继续？')
-    )
+    if (!window.confirm('恢复此版本将替换当前草稿，不会自动保存版本或应用到项目。是否继续？'))
       return;
     restorePending.current = true;
     setRestoring(revisionId);
@@ -121,7 +108,6 @@ const RevisionHistoryContent = ({
       if (mounted.current) setRestoring(null);
     }
   };
-
   return (
     <>
       <Dialog
@@ -246,11 +232,7 @@ const RevisionHistoryContent = ({
                             variant='ghost'
                             disabled={!canRestore || restoring !== null}
                             aria-label={`恢复 ${formatTime(revision.createdAt)} 的版本`}
-                            onClick={() =>
-                              targetKind === 'layout'
-                                ? setRestoreCandidate(revision.revisionId)
-                                : void restore(revision.revisionId)
-                            }
+                            onClick={() => void restore(revision.revisionId)}
                           >
                             {restoring === revision.revisionId ? (
                               <Spinner />
@@ -331,11 +313,12 @@ const RevisionHistoryContent = ({
     </>
   );
 };
-
 export const RevisionHistoryDialog = ({
   isOpen,
   ...props
-}: RevisionHistoryProps & { isOpen: boolean }): React.JSX.Element => (
+}: RevisionHistoryProps & {
+  isOpen: boolean;
+}): React.JSX.Element => (
   <Dialog open={isOpen} onOpenChange={(open) => !open && props.onClose()}>
     <DialogContent className='flex h-[min(80dvh,800px)]  max-w-[1040px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1040px]'>
       {isOpen && <RevisionHistoryContent key={`${props.projectId}:${props.pageId}`} {...props} />}

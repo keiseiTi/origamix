@@ -58,4 +58,4 @@ pnpm --filter @origamix/desktop test:main
 
 - Main sends status-only backend notifications to the owned trusted workbench; getConnection remains the authority boundary. Preload exposes a named subscription with unsubscribe, never restart commands or raw IPC. Startup/update failure must not leave orphan Utility Processes or endlessly pending connection waiters.
 
-- `main/project-preview.ts` owns independent full-project preview windows, separate from Renderer-owned page preview iframes. A named workbench-only capability accepts projectId; Server authorizes and reads project data. Windows have no preload, Node integration or workbench bridge. Main provisions an ephemeral session cookie directly, blocks off-origin navigation/new windows and permissions, and closes windows when their Server session is revoked. Built App assets are supplied to Server as a trusted startup path, never from Renderer input.
+- Project preview windows and DesktopApi capability are removed. Renderer page preview remains supported; project settings show fixed layout effects.

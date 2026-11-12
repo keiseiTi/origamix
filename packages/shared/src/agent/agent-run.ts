@@ -1,6 +1,6 @@
 import { ProjectProposalSchema } from './project-proposal.ts';
 import { withAgentTarget } from './agent-target.ts';
-import { AgentTargetSchema } from '../layout/layout-schema.ts';
+import { AgentTargetSchema } from './agent-target.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import {
@@ -15,10 +15,7 @@ import {
 } from './agent-schema.ts';
 import { PageAgentOutcomeSchema, ClarificationResultSchema } from './agent-outcome.ts';
 
-export const AgentRunKindSchema = Type.Union([
-  Type.Literal('page_assistant'),
-  Type.Literal('layout_assistant'),
-]);
+export const AgentRunKindSchema = Type.Union([Type.Literal('page_assistant')]);
 
 export const AgentRunStatusSchema = Type.Union([
   Type.Literal('queued'),
@@ -52,11 +49,7 @@ export const RunBudgetSchema = strictObject({
 
 export const ToolPolicySchema = strictObject({
   toolName: Type.String({ pattern: '^[a-z][a-z0-9_]*$' }),
-  scope: Type.Union([
-    Type.Literal('read'),
-    Type.Literal('page_write'),
-    Type.Literal('layout_write'),
-  ]),
+  scope: Type.Union([Type.Literal('read'), Type.Literal('page_write')]),
   risk: Type.Union([Type.Literal('low'), Type.Literal('medium'), Type.Literal('high')]),
   requiresConfirmation: Type.Boolean(),
 });

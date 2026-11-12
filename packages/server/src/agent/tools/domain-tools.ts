@@ -25,7 +25,6 @@ export interface DomainToolScope {
 }
 
 export interface DomainToolDependencies {
-  validateLayout?: (projectId: string, schema: OrigamixPageSchema) => Promise<unknown>;
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
   docs: Pick<ProductDocsProvider, 'search'>;
   diagnostics: Pick<RuntimeDiagnosticService, 'getState'>;
@@ -79,18 +78,13 @@ export const createDomainAgentTools = (
       },
     },
     {
-      name: scope.pageId ? 'validate_page_schema' : 'validate_layout_schema',
+      name: 'validate_page_schema',
       description: 'Preflight a candidate page Schema. This never authorizes or commits a write.',
       parameters: ValidateSchema,
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
         const input = parse<{ schema: unknown }>(ValidateSchema, raw);
         assertPage();
-        if (!scope.pageId)
-          return bounded(
-            await dependencies.validateLayout!(scope.projectId, input.schema as OrigamixPageSchema),
-            maxBytes,
-          );
         const structural = validatePage(input.schema);
         const result = structural.valid
           ? await validateProjectPageAgainstMaterials(

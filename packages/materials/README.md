@@ -114,9 +114,3 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 支持表单绑定的控件在 `defineMaterial` 中声明 `formField: true`，按需声明 `valueProp`（默认 `value`）。构建时组合公共字段协议，antd.form 插件在 Editor 中提供独立“表单项”面板；仅在最近的表单祖先内展示，允许中间包含布局容器，不修改共享 panels。字段名、标签、提示、必填与校验规则分别存于 `fieldName`、`fieldLabel`、`fieldTooltip`、`fieldRequired`、`fieldRules`。设计态展示 Form.Item 外观，运行态在最近的 Form 上下文中绑定值并校验；表单外的配置保留但不启用。规则支持长度、数值范围、邮箱、网址和正则，使用声明式数据，不保存回调。字段名在同一表单的全部后代中唯一，嵌套表单独立计数。
 
 `/antd/editor` 导出 `createAntdFormPlugin` 与 `editorPlugins`。App 通过 EditorMaterialRegistration.plugins 安装到统一插件宿主。defineMaterial 保留 formField 标记并生成协议，不再隐式注入 Form 面板；插件采用同一 EditorPlugin 契约，元数据工厂仅使用其类型，避免 Node Manifest/注册检查加载 Monaco。面板字段由已安装 Manifest 验证，布局和原子物料配置保持原样。运行时及纯 Manifest 发布入口不引用 Editor。
-
-## 项目布局物料
-
-布局与页面共享 official-antd 版本，使用独立的 `@origamix/materials/antd/layout/editor`、`/antd/layout/runtime`、`/antd/layout/manifest` 入口。编辑入口只暴露一个 Layout 根物料，LayoutRegion 与 PageOutlet 是内部注册；容器、文字、按钮可作为区域内容复用。运行入口使用 Runtime 的只读导航上下文，所以 Runtime 为显式 peer 依赖，不能内联另一份 Runtime 上下文。
-
-`antd/layout/schema.ts` 拥有纯数据区域派生和校验，供 Editor schema.beforeChange 和 Server 共用。根属性管理 side/top/mix 布局、站点标题/Logo 和 Fluid/Fixed 内容宽度；Header、Sider、Body（content）、Footer 各自管理公开属性。body/main 只是受管理的内部容器。区域身份、派生 config 和位置不可直接修改，切换模式保留区域 ID、属性与自定义内容。新增和修改物料协议仍由 material-config.ts 生成 Manifest；布局 Manifest/运行入口均不导入 Editor。Server 只能导入布局的纯 manifest 入口。

@@ -161,3 +161,62 @@ export const request = async <T>(
     throw new ApiRequestError('服务返回数据无效', 500, response.status);
   return result.data as T;
 };
+
+/** Read-only streamed proposals are never replayed on connection replacement. */
+export const requestStream = async (
+  path: string,
+  data: object,
+  signal: AbortSignal,
+  receive: (value: unknown) => void,
+): Promise<void> => {
+  const current = await getApiConnection();
+  const generation = connectionGeneration;
+  const response = await fetch(`${current.baseUrl}${path}`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: headersFor(current),
+    body: JSON.stringify(data),
+    signal,
+  });
+  const assertCurrent = () => {
+    if (generation !== connectionGeneration || !backendAvailable)
+      throw new BackendConnectionChangedError();
+    signal.throwIfAborted();
+  };
+  assertCurrent();
+  if (!response.ok) {
+    const result: unknown = await response.json();
+    assertCurrent();
+    throw new ApiRequestError(
+      isApiResultEnvelope(result) && !result.success ? (result.message ?? '请求失败') : '请求失败',
+      response.status,
+      response.status,
+    );
+  }
+  if (!response.body || !response.headers.get('content-type')?.includes('application/x-ndjson'))
+    throw new Error('助手返回格式无效');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let bytes = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      assertCurrent();
+      if (chunk.done) break;
+      bytes += chunk.value.length;
+      if (bytes > 1024 * 1024) throw new Error('助手结果过大，请缩小修改范围');
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let newline: number;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline);
+        buffer = buffer.slice(newline + 1);
+        if (line) receive(JSON.parse(line));
+      }
+    }
+    if (buffer.trim()) throw new Error('助手结果不完整，草稿已保留');
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+};

@@ -1,9 +1,8 @@
 import { Value } from '@sinclair/typebox/value';
 import { isPageSchema } from '../page/page-validation.ts';
-import { isLayoutDocument } from '../layout/layout-validation.ts';
 import { PreviewRenderDiagnosticSchema } from './preview-message.ts';
 import { Type, type Static } from '@sinclair/typebox';
-import { ProjectLayoutDocumentSchema, LayoutPageIdSchema } from '../layout/layout-schema.ts';
+import { PageIdSchema } from '../agent/agent-schema.ts';
 import { PageSchema, RevisionIdSchema } from '../page/page-schema.ts';
 import { ProjectStackSchema } from '../project/project-stack.ts';
 
@@ -18,29 +17,22 @@ export const ApplicationSnapshotSchema = Type.Object(
   {
     version: Type.Literal('1'),
     snapshotId: Type.String({ minLength: 1, maxLength: 128 }),
-    source: Type.Union([Type.Literal('working'), Type.Literal('applied')]),
+    source: Type.Literal('working'),
     stack: ProjectStackSchema,
     theme: Type.Union([Type.Literal('light'), Type.Literal('dark')]),
-    initialPageId: Type.Union([LayoutPageIdSchema, Type.Null()]),
+    initialPageId: Type.Union([PageIdSchema, Type.Null()]),
     pages: Type.Array(
       Type.Object(
         {
-          pageId: LayoutPageIdSchema,
+          pageId: PageIdSchema,
           name: Type.String(),
           path: Type.String({ pattern: '^/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$' }),
         },
         strict,
       ),
     ),
-    layout: Type.Union([
-      Type.Object({ enabled: Type.Literal(false) }, strict),
-      Type.Object(
-        { enabled: Type.Literal(true), ...identity, document: ProjectLayoutDocumentSchema },
-        strict,
-      ),
-    ]),
     pageSchemas: Type.Record(
-      LayoutPageIdSchema,
+      PageIdSchema,
       Type.Object({ ...identity, schema: PageSchema }, strict),
       strict,
     ),
@@ -61,12 +53,6 @@ export const isApplicationSnapshot = (value: unknown): value is ApplicationSnaps
     Object.keys(value.pageSchemas).length !== ids.size
   )
     return false;
-  if (
-    value.layout.enabled &&
-    (!isLayoutDocument(value.layout.document) ||
-      (value.source === 'working' && value.layout.workingVersion === null))
-  )
-    return false;
   for (const pageId of ids) {
     const page = value.pageSchemas[pageId];
     if (
@@ -81,8 +67,7 @@ export const isApplicationSnapshot = (value: unknown): value is ApplicationSnaps
 export const ApplicationRenderReportSchema = Type.Object(
   {
     snapshotId: Type.String({ minLength: 1, maxLength: 128 }),
-    pageId: LayoutPageIdSchema,
-    layoutHash: Type.Union([Type.String({ pattern: '^[a-f0-9]{64}$' }), Type.Null()]),
+    pageId: PageIdSchema,
     pageHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
     reportSequence: Type.Integer({ minimum: 1 }),
     outcome: Type.Union([Type.Literal('success'), Type.Literal('failed')]),

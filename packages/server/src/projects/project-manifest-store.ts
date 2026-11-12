@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   isProjectManifest,
+  defaultProjectShell,
   type ProjectManifest,
   type ProjectPageManifest,
   type PageRoleId,
@@ -14,10 +15,16 @@ import {
 import { conflict, invalid, notFound } from '../errors';
 
 export class ProjectManifestStore {
-  async writeManifest(projectPath: string, manifest: ProjectManifest): Promise<void> {
+  async writeManifest(
+    projectPath: string,
+    manifest: ProjectManifest,
+    expectedSource?: string,
+  ): Promise<void> {
     try {
       const source = await readFile(join(projectPath, 'origamix.project.json'), 'utf8');
       this.parseManifest(source);
+      if (expectedSource !== undefined && source !== expectedSource)
+        throw conflict('项目文件已被修改，请重新读取后保存');
     } catch (error) {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
     }
@@ -42,7 +49,8 @@ export class ProjectManifestStore {
       framework: BUILTIN_PROJECT_STACK.framework,
       materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
       pages: [],
-      layout: input.layout ?? { enabled: false, initialVariant: 'side' },
+      shell: defaultProjectShell(),
+      layout: input.layout ?? { enabled: false, initialVariant: 'mix' },
       routing: input.routing ?? { mode: 'browser', basePath: '/' },
     });
   }

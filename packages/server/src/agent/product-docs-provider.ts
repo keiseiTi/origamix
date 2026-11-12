@@ -26,13 +26,13 @@ export interface ProductDocsSearchInput {
 
 export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
   {
-    id: 'application-flow',
-    sectionId: 'application-state-navigation',
+    id: 'page-navigation',
+    sectionId: 'page-navigation',
     version: '1.0.0',
-    title: '应用状态与事件逻辑',
-    keywords: ['登录', '路由', '应用状态', '接口', '跳转'],
+    title: '页面跳转与事件逻辑',
+    keywords: ['页面', '路由', '接口', '跳转'],
     markdown:
-      '# 应用逻辑\n项目配置声明初始应用状态与访问规则；页面使用普通表单、按钮和逻辑流。接口、自定义JS、成功判断、会话恢复和401处理均由事件表达。setApplicationState更新已声明字段，resetApplicationState重置，navigatePage跳转page/home/return/login；application.<name>读取共享状态。接口节点credentials显式选择Cookie方式；没有固定认证接口、专用登录物料、自动会话检查或自动退出按钮。所有效果先更新Working，用户明确保存和应用后才进入项目预览。',
+      '# 页面跳转\nnavigatePage 使用明确的 pageId 跳转当前项目页面，模板负责处理路由模式与访问前缀。页面变量、接口请求和条件由页面事件流管理。页面预览不运行项目路由，完整导航需在生成项目中验证。',
   },
   {
     id: 'builder-layout',

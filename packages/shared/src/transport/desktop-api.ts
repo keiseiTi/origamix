@@ -28,7 +28,6 @@ export interface DesktopApi {
     getConnection(): Promise<BackendConnection>;
     onStatusChanged(listener: (status: BackendStatus) => void): () => void;
   };
-  projectPreview: { open(projectId: string): Promise<void> };
   dialog: {
     chooseProjectParent(): Promise<DirectoryGrant | null>;
     chooseExistingProject(): Promise<DirectoryGrant | null>;

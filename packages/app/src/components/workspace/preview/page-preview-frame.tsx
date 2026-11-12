@@ -6,10 +6,9 @@ import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/pro
 import { runtimeService } from '@/services/runtime';
 import { loadApplicationSnapshot } from '@/preview/load-application-snapshot';
 import type { AppTheme } from '@/store/preferences';
-
 interface PagePreviewFrameProps {
   active: boolean;
-  targetKind?: 'page' | 'layout';
+  targetKind?: 'page';
   projectId: string;
   pageId: string;
   pageName: string;
@@ -17,10 +16,8 @@ interface PagePreviewFrameProps {
   theme: AppTheme;
   onExit: () => void;
 }
-
 export const PagePreviewFrame = ({
   active,
-  targetKind = 'page',
   projectId,
   pageId,
   pageName,
@@ -59,15 +56,12 @@ export const PagePreviewFrame = ({
     }
     return url.toString();
   }, [pageId, projectId]);
-
   useEffect(() => {
     ready.current = false;
   }, [previewUrl]);
-
   const postToPreview = useCallback((message: HostToPreviewMessage): void => {
     iframeRef.current?.contentWindow?.postMessage(message, '*');
   }, []);
-
   const publishSnapshot = useCallback(
     (next: ApplicationSnapshot): void => {
       if (ready.current)
@@ -75,17 +69,12 @@ export const PagePreviewFrame = ({
     },
     [pageId, postToPreview, projectId],
   );
-
   const refresh = useCallback(
     async (manual = false): Promise<void> => {
       const requestGeneration = ++generation.current;
       if (manual) setRefreshing(true);
       try {
-        const next = await loadApplicationSnapshot(
-          projectId,
-          targetKind === 'layout' ? null : pageId,
-          theme,
-        );
+        const next = await loadApplicationSnapshot(projectId, pageId, theme);
         if (requestGeneration !== generation.current) return;
         currentSnapshot.current = next;
         reportSequence.current = 0;
@@ -100,9 +89,8 @@ export const PagePreviewFrame = ({
         if (requestGeneration === generation.current) setRefreshing(false);
       }
     },
-    [pageId, projectId, publishSnapshot, theme, targetKind],
+    [pageId, projectId, publishSnapshot, theme],
   );
-
   const reportRender = useCallback(
     async (report: ApplicationRenderReport): Promise<void> => {
       const current = currentSnapshot.current;
@@ -112,14 +100,12 @@ export const PagePreviewFrame = ({
         !page ||
         current.snapshotId !== report.snapshotId ||
         page.hash !== report.pageHash ||
-        (current.layout.enabled ? current.layout.hash : null) !== report.layoutHash ||
         report.reportSequence <= reportSequence.current
       )
         return;
       reportSequence.current = report.reportSequence;
-      // The existing diagnostic endpoint is page-only. Never record a composed
-      // layout outcome as a page success/failure; composition stays snapshot-scoped.
-      if (current.layout.enabled || !page.revisionId || page.workingVersion === null) return;
+      // Only the current page Working identity can publish diagnostics.
+      if (!page.revisionId || page.workingVersion === null) return;
       observedAt.current = Math.max(Date.now(), observedAt.current + 1);
       const isCurrent = () =>
         currentSnapshot.current?.snapshotId === report.snapshotId &&
@@ -148,7 +134,6 @@ export const PagePreviewFrame = ({
     },
     [projectId],
   );
-
   useEffect(() => {
     const receive = (event: MessageEvent): void => {
       if (event.source !== iframeRef.current?.contentWindow || !isPreviewToHostMessage(event.data))
@@ -173,7 +158,6 @@ export const PagePreviewFrame = ({
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, [pageId, projectId, publishSnapshot, reportRender]);
-
   useEffect(() => {
     if (!active) return;
     const initial = window.setTimeout(() => void refresh(true), 0);
@@ -181,12 +165,10 @@ export const PagePreviewFrame = ({
       window.clearTimeout(initial);
     };
   }, [active, refresh, schemaRefreshKey]);
-
   useEffect(() => {
     if (!snapshot || snapshot.theme === theme) return;
     publishSnapshot({ ...snapshot, theme });
   }, [publishSnapshot, snapshot, theme]);
-
   if (!opened) return null;
   return (
     <div className='relative size-full bg-white dark:bg-zinc-950'>

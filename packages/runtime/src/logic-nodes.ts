@@ -1,4 +1,4 @@
-import { engineApplication } from './application';
+import { navigateEnginePage } from './page-navigation';
 import {
   assertRuntimeField,
   assertRuntimeMethod,
@@ -168,21 +168,9 @@ const handlers: NodeHandlers = {
       };
     }
   },
-  setApplicationState: async (context) => {
-    const session = engineApplication(context.engine);
-    const entries = [];
-    for (const setter of context.data.setters)
-      entries.push({ name: setter.name, value: await executeHyperValue(context, setter.value) });
-    if (context.signal?.aborted || context.engine.disposed) return;
-    session.update(entries);
-  },
-  resetApplicationState: (context) => {
-    if (!context.signal?.aborted && !context.engine.disposed)
-      engineApplication(context.engine).reset();
-  },
   navigatePage: (context) => {
     if (!context.signal?.aborted && !context.engine.disposed)
-      engineApplication(context.engine).navigate(context.data.destination, context.data.pageId);
+      navigateEnginePage(context.engine, context.data.pageId);
   },
   customJS: (context) => executeHyperValue(context, context.data.value),
 };

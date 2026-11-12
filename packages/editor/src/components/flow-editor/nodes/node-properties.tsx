@@ -1,7 +1,7 @@
 import { getElementLabel } from '@origamix/shared';
 import type LogicFlow from '@logicflow/core';
 import { useFlowEditorSession } from '../flow-editor-context';
-import { Checkbox, FieldLabel, Input, Button } from '@origamix/ui';
+import { Checkbox, FieldLabel, Input } from '@origamix/ui';
 
 import { FlowSelect } from '../flow-select';
 import { getNodeDefinition, getNodePropertyChoices } from './node-catalog';
@@ -17,7 +17,7 @@ export const NodeProperties = ({
   onChange: (patch: Record<string, unknown>) => void;
   eventLabel?: string;
 }): React.JSX.Element => {
-  const { schema, materials, catalog, application } = useFlowEditorSession();
+  const { schema, materials, catalog, pageNavigation } = useFlowEditorSession();
   const properties = node.properties ?? {};
   const type = node.type;
   const definition = getNodeDefinition(String(type));
@@ -105,102 +105,20 @@ export const NodeProperties = ({
           )}
         </>
       )}
-      {type === 'setApplicationState' && (
-        <>
-          {((properties.setters ?? []) as { name?: string; value?: unknown }[]).map(
-            (setter, index) => (
-              <div key={index} className='grid gap-2 rounded border border-border p-2'>
-                <FieldLabel>应用状态字段</FieldLabel>
-                <FlowSelect
-                  label='应用状态字段'
-                  value={setter.name ?? ''}
-                  options={(application?.stateKeys ?? []).map((name) => ({
-                    value: name,
-                    label: name,
-                  }))}
-                  onChange={(name) =>
-                    onChange({
-                      setters: ((properties.setters ?? []) as Record<string, unknown>[]).map(
-                        (item, i) => (i === index ? { ...item, name } : item),
-                      ),
-                    })
-                  }
-                />
-                <HyperInput
-                  label='新值'
-                  value={setter.value}
-                  onChange={(value) =>
-                    onChange({
-                      setters: ((properties.setters ?? []) as Record<string, unknown>[]).map(
-                        (item, i) => (i === index ? { ...item, value } : item),
-                      ),
-                    })
-                  }
-                />
-                <Button
-                  size='sm'
-                  variant='ghost'
-                  onClick={() =>
-                    onChange({
-                      setters: ((properties.setters ?? []) as Record<string, unknown>[]).filter(
-                        (_, i) => i !== index,
-                      ),
-                    })
-                  }
-                >
-                  删除字段
-                </Button>
-              </div>
-            ),
-          )}
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={() =>
-              onChange({
-                setters: [
-                  ...((properties.setters ?? []) as Record<string, unknown>[]),
-                  { name: '', value: { type: 'null', value: null } },
-                ],
-              })
-            }
-          >
-            添加字段
-          </Button>
-          {!application?.stateKeys.length && (
-            <p className='text-xs text-muted-foreground'>请先在项目应用配置中声明状态字段。</p>
-          )}
-        </>
-      )}
       {type === 'navigatePage' && (
         <>
-          <FieldLabel>跳转目标</FieldLabel>
+          <FieldLabel>项目页面</FieldLabel>
           <FlowSelect
-            label='跳转目标'
-            value={String(properties.destination ?? 'page')}
-            options={[
-              { value: 'page', label: '指定页面' },
-              { value: 'home', label: '默认首页' },
-              { value: 'return', label: '原访问页面' },
-              { value: 'login', label: '登录页' },
-            ]}
-            onChange={(destination) => onChange({ destination })}
+            label='项目页面'
+            value={String(properties.pageId ?? '')}
+            options={(pageNavigation?.pages ?? []).map((page) => ({
+              value: page.pageId,
+              label: page.name,
+            }))}
+            onChange={(pageId) => onChange({ pageId })}
           />
-          {properties.destination === 'page' && (
-            <FlowSelect
-              label='项目页面'
-              value={String(properties.pageId ?? '')}
-              options={(application?.pages ?? []).map((page) => ({
-                value: page.pageId,
-                label: page.name,
-              }))}
-              onChange={(pageId) => onChange({ pageId })}
-            />
-          )}
-          {!application && (
-            <p className='text-xs text-muted-foreground'>
-              当前编辑会话没有应用上下文，请检查项目运行方式与应用配置。
-            </p>
+          {!pageNavigation && (
+            <p className='text-xs text-muted-foreground'>当前项目未提供页面路由上下文。</p>
           )}
         </>
       )}

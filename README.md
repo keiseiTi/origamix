@@ -113,8 +113,16 @@ pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库�
 
 自定义 Node 工具使用 TypeScript 和 tsx 执行；根目录、Desktop、App、Server 及调用公开归档工具的 Shared/Runtime/Materials 分别声明 tsx 开发依赖。`pnpm install --frozen-lockfile` 后使用原有 pnpm 命令即可。脚本由 tsc 严格检查，tsx 只负责执行。子进程继承 tsx loader；通过 Node 显式启动 TypeScript 子脚本时保留 `process.execArgv`。ESLint 配置统一使用 `.mjs`，边界规则和测试保持 TypeScript。Electron 验收入口使用 `.cts`，由 Node 启动器注册 `tsx/cjs` 后加载；启动器不会把加载配置传给被验收的后端进程。
 
-## 项目布局
+## 项目配置与布局
 
-项目导航中的固定“布局配置”入口复用页面编辑器和 Agent 对话。项目开关控制全部页面，布局草稿、版本与应用独立于页面；完整应用预览使用当前草稿，独立生成项目读取已应用文件。
+项目「… → 编辑」中可启用布局配置，启用后点击项目下的「布局配置」在工作区打开。面板采用左侧布局效果、右侧配置表单，支持左右、顶部、混合布局，标题、Logo、父子菜单及排序/隐藏、首页、404 和页面布局开关。配置直接保存到 `origamix.project.json` 的必填 `shell`、`layout`、`routing`，使用清单哈希检测冲突，失败保留输入。未配置菜单时只在设置界面显示示例数据；显式空菜单保持为空。
 
-操作步骤见 [布局配置指南](site/docs/guide/layout.md)，契约与接口见 [Layout 说明](site/docs/architecture/layout.md)，物料入口见 [Materials 说明](packages/materials/README.md#项目布局物料)。
+新建项目只填写名称、标识、页面目录、生成位置和启用布局；默认 Browser 路由、根访问前缀和混合布局。关闭布局保留配置，首页和 404 继续有效。引用使用稳定 pageId，删除关联页面前需移除引用。
+
+页面 Agent、可视化编辑和页面预览继续使用 Working → 显式保存 Revision → 显式 Apply。项目设置不经过页面版本流程，不使用布局 Schema 或页面 Agent 写入工具。平台不提供项目预览；完整菜单、路由和业务行为在真实生成项目中验证。布局效果与模板共享 Runtime 的 ConfiguredShell。
+
+不提供旧布局或旧清单兼容、迁移和自动升级。登录接入不在首版范围。布局 AI 助手与表单共用一份临时草稿，AI 修改经过校验后即时展示，点击「保存布局配置」才写入项目。
+
+使用方法见 [项目布局指南](site/docs/guide/layout.md)。
+
+布局配置右侧可切换「AI 助手」与「表单配置」。助手使用与页面 Agent 相同的模型、凭据、流式引擎和预算控制；每次携带最新配置及真实页面清单，结果绑定项目与草稿版本。生成期间若手工改动表单，旧结果不会覆盖新草稿。停止、断线和保存失败保留配置；不会自动重发模型请求。当前配置草稿及布局对话仅保留在打开的工作区会话中，关闭标签或退出后不恢复，未保存时请先保存。

@@ -48,7 +48,7 @@ export class ConversationService {
     return this.conversations.create({
       id: '',
       projectId,
-      pageId,
+      pageId: pageId!,
       title: '新对话',
       status: 'active',
       createdAt: timestamp,
@@ -67,9 +67,7 @@ export class ConversationService {
     run: AgentRunRecord;
     created: boolean;
   } {
-    const target = requireAgentTarget(input);
-    if ((target.kind === 'layout') !== (input.runKind === 'layout_assistant'))
-      throw conflict('Agent Run 类型与目标不一致');
+    requireAgentTarget(input);
     try {
       return this.database.transaction(() =>
         this.startRunInTransaction(input, this.projects, this.conversations, this.runs),
@@ -112,7 +110,7 @@ export class ConversationService {
       conversation = conversations.create({
         id: '',
         projectId: input.projectId,
-        pageId: input.pageId,
+        pageId: requireAgentTarget(input).pageId,
         title: '新对话',
         status: 'active',
         createdAt: timestamp,
@@ -141,7 +139,7 @@ export class ConversationService {
     const run: AgentRunRecord = {
       id: runId,
       projectId: input.projectId,
-      pageId: input.pageId,
+      pageId: requireAgentTarget(input).pageId,
       conversationId: conversation.id,
       userMessageId: message.messageId,
       clientRequestId: input.clientRequestId,
@@ -281,8 +279,7 @@ export class ConversationService {
     projects = this.projects,
   ): void {
     if (!projects.getProject(projectId)) throw notFound('项目不存在');
-    if (pageId !== undefined && !projects.getPage(projectId, pageId))
-      throw notFound('页面不存在或不属于项目');
+    if (!pageId || !projects.getPage(projectId, pageId)) throw notFound('页面不存在或不属于项目');
   }
 
   private requireConversation(

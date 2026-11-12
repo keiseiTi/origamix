@@ -174,7 +174,7 @@ export const validatePageAgainstMaterials = (
     }
   }
   errors.push(
-    ...validateFlowReferences(schema, runtime.registry, executableFlowIds, runtime.application),
+    ...validateFlowReferences(schema, runtime.registry, executableFlowIds, runtime.navigation),
   );
   return { valid: errors.length === 0, errors };
 };

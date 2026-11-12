@@ -1,11 +1,4 @@
 import {
-  DEFAULT_PROJECT_ROUTING,
-  isProjectRouting,
-  type InitialLayoutVariant,
-  type ProjectRouting,
-} from '@origamix/shared';
-import { RoutingFields } from '@/components/project-settings/routing-fields';
-import {
   Button,
   Dialog,
   DialogClose,
@@ -37,8 +30,6 @@ export const CreateProjectModal = ({
   onClose,
 }: CreateProjectModalProps): React.JSX.Element => {
   const setProjects = useWorkspaceStore((state) => state.setProjects);
-  const [layoutVariant, setLayoutVariant] = useState<InitialLayoutVariant>('side');
-  const [routing, setRouting] = useState<ProjectRouting>({ ...DEFAULT_PROJECT_ROUTING });
   const [layoutEnabled, setLayoutEnabled] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -51,8 +42,7 @@ export const CreateProjectModal = ({
   const close = (): void => {
     setName('');
     setLayoutEnabled(false);
-    setLayoutVariant('side');
-    setRouting({ ...DEFAULT_PROJECT_ROUTING });
+    setCode('');
     setDirectory('');
     setPageDirectory('pages');
     setDirectoryGrantId('');
@@ -72,10 +62,6 @@ export const CreateProjectModal = ({
     if (!name.trim() || !code.trim() || !pageDirectory.trim() || !directoryGrantId) {
       return setError('请填写所有必填项。');
     }
-    if (!isProjectRouting(routing))
-      return setError(
-        '应用访问前缀应为 / 或 /admin/ 等目录路径，只支持字母、数字、连字符和下划线。',
-      );
     setIsSubmitting(true);
     setError(null);
     try {
@@ -85,8 +71,6 @@ export const CreateProjectModal = ({
         pageDirectory: pageDirectory.trim(),
         directoryGrantId,
         layoutEnabled,
-        layoutVariant,
-        routing,
       });
       setProjects((current) => [
         ...current,
@@ -199,7 +183,6 @@ export const CreateProjectModal = ({
               required
             />
           </Field>
-          <RoutingFields value={routing} onChange={setRouting} disabled={isSubmitting} />
           <Field orientation='horizontal'>
             <Switch
               id='create-layout-enabled'
@@ -209,34 +192,6 @@ export const CreateProjectModal = ({
             />
             <FieldLabel htmlFor='create-layout-enabled'>启用应用布局</FieldLabel>
           </Field>
-          {layoutEnabled && (
-            <Field>
-              <FieldLabel>初始布局</FieldLabel>
-              <div role='group' aria-label='初始布局' className='grid grid-cols-3 gap-2'>
-                {(
-                  [
-                    { value: 'side', label: '左侧菜单' },
-                    { value: 'top', label: '顶部菜单' },
-                    { value: 'mix', label: '混合菜单' },
-                  ] as const
-                ).map((item) => (
-                  <Button
-                    type='button'
-                    key={item.value}
-                    disabled={isSubmitting}
-                    variant={layoutVariant === item.value ? 'secondary' : 'outline'}
-                    aria-pressed={layoutVariant === item.value}
-                    onClick={() => setLayoutVariant(item.value)}
-                  >
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-              <p className='text-xs text-muted-foreground'>
-                创建后通过 AI 对话调整布局，保存版本并应用后在目标项目生效。
-              </p>
-            </Field>
-          )}
 
           {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>

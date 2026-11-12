@@ -94,9 +94,6 @@ const statusFromEvent = (event: AgentEvent): AgentRunStatus | undefined => {
 };
 
 const toolLabels: Record<string, string> = {
-  get_layout_context: '读取布局上下文',
-  validate_layout_schema: '校验布局结构',
-  complete_layout_run: '生成并执行布局操作链',
   get_page_context: '读取页面上下文',
   get_schema_outline: '读取页面结构',
   get_schema_fragment: '读取元素详情',

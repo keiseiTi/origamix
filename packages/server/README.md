@@ -294,39 +294,6 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 
 ## 项目 layout Working 与版本
 
-[LayoutService](src/layout/layout-service.ts) 管理每个项目唯一的布局内容；名称固定为“布局配置”。项目清单的 `layout.enabled` 是唯一启用来源，不支持页面覆盖。配置入口由 [ProjectService](src/projects/project-service.ts) 负责读取与修改，复用项目 manifest 队列、独占生命周期租约和原子文件写入，不在 SQLite 复制开关。缺少该字段的旧清单按关闭处理，读取不补写文件；新项目显式声明 `layout: { enabled: false }`。
-
-具名 POST 接口沿用认证、来源和服务实例检查：
-
-| 接口（前缀 `/api/v1`）       | 请求                                                                   | 结果                   |
-| ---------------------------- | ---------------------------------------------------------------------- | ---------------------- |
-| `/layout/config/get`         | projectId                                                              | 固定 name 与 enabled   |
-| `/layout/config/update`      | projectId、enabled                                                     | 固定 name 与 enabled   |
-| `/layout/apply`              | projectId、expectedRevisionId、expectedWorkingVersion、clientRequestId | LayoutApplyResult      |
-| `/layout/apply-state/get`    | projectId                                                              | LayoutApplyState       |
-| `/layout/working/get`        | projectId                                                              | LayoutWorkingState     |
-| `/layout/working/operations` | projectId、baseWorkingVersion、clientRequestId、operations             | LayoutWorkingState     |
-| `/layout/revisions/save`     | projectId、expectedWorkingVersion                                      | LayoutWorkingState     |
-| `/layout/revisions/list`     | projectId                                                              | LayoutRevisionHistory  |
-| `/layout/revisions/get`      | projectId、revisionId                                                  | LayoutRevisionSnapshot |
-| `/layout/revisions/restore`  | projectId、revisionId、expectedWorkingVersion                          | LayoutWorkingState     |
-
-关闭状态下只有配置接口可用，内容操作返回 409，且不初始化或修改 layout Working。关闭前等待已接纳的内容读写结束；保留的草稿与历史不删除，重新开启后继续使用。布局内容保存在 `.origamix/layout/`，不复制到 manifest。layout Agent 使用独立布局目标与现有 Working 提交链路。新建项目包含应用外壳；此功能不处理旧项目迁移。开启开关不会自动生成布局投影或重写路由/页面壳。
-
-布局直接复用 PageSchema 的节点表与父子结构，操作批次也直接复用页面编辑器协议。第一次读取只初始化包含 PageOutlet 的 Working，不创建 Revision。每个有效批次递增 Working 版本，最终候选经过布局约束和物料校验后才原子写入。
-
-最新操作的请求身份和摘要随 Working 原子提交，紧邻重复请求返回当前结果；已有后续操作时拒绝旧版本重试，不自动重放。保存不改变 Working 内容版本，同内容重复保存不增加 Revision。保存按 journal → 不可变 Revision → Working 指针 → 清理 journal 执行，下一次访问根据保留内容恢复。历史恢复只更新 Working，不创建/应用版本，也不改变项目开关。读写使用固定 metadata 路径、同一 layout 队列与项目生命周期租约，拒绝符号链接、错误归属和不支持版本。
-
-核心验证见 [layout-service.test.ts](test/layout/layout-service.test.ts) 与 [layout-http.test.ts](test/layout/layout-http.test.ts)：覆盖项目开关、保留草稿、原子编辑、冲突、保存中断、物料与路径拒绝。页面场景不能替代项目级文档的这些风险。
-
-### layout Apply 的写入与恢复
-
-`ProjectApplyService.applyLayout` 在 LayoutService 的同一 Working 队列中执行，接受当前显式保存且干净的版本。固定目标为 `src/origamix-layout/schema.json`，只由现有 TargetSchemaStore 写入。目标和 metadata 都检查所有已存在路径组件，拒绝符号链接；未建立应用基线时，已存在的目标视为外部文件，不能覆盖或自动导入。
-
-顺序为：准备 durable pending 回执 → 写入并校验目标 → 提交完成回执 → 更新 Working 基线 → 清理 pending。中断后不自动重放；原请求身份可验证目标是否仍等于之前基线或本次结果，并显式完成恢复。未确认时阻止其他 Apply 及布局修改/保存/恢复。已完成请求重试验证目标，不能回退后来版本的基线；外部变化保留文件与草稿。接口状态包含 `apply_pending`、`draft_unsaved`、`saved_pending_apply`、`in_sync`、`external_change`。
-
-Template smoke 通过编译后的 HTTP 创建两页项目，分别保存并应用页面与布局，重启后验证布局回执，再独立安装、类型检查和构建。它不等同于图形交互检查；页面导航、主题和错误状态需要在生成项目中实际操作验证。
-
 ## Layout Agent
 
 `/layout/agent/conversations/list`、`messages/list`、`runs/create|get|cancel` 和 `/projects/:projectId/layout/agent/runs/:runId/events` 复用现有 Agent 服务。Run 明确绑定 `{ kind: 'layout', projectId }` 与起始 Working 版本；页面接口拒绝布局 Run，布局接口也不能读取页面 Run。布局会话不产生伪造页面记录。
@@ -341,10 +308,10 @@ SQLite 存储版本 2 允许会话/Run 的页面键为空，以表达唯一的�
 
 Page Agent terminal `propose_project` records a structured role-operation proposal without writing Working or the manifest. `/agent/project-task/get` reads durable task state; `/agent/project-task/decide` explicitly confirms or cancels it. Confirmed roles use the same project service, followed by a deterministic page Run for the optional page intent. Unknown outcomes require explicit same-task recovery; startup never resumes a model call. Page-stage failure preserves committed project configuration.
 
-## 内置项目预览
+## 项目设置
 
-`preview/project-snapshot.ts` 读取项目中已应用的页面和布局，校验归属、物料及文件一致性；只查看现有草稿是否与目标不同，不初始化或写入 Working。项目必须明确声明 `runtime: "origamix"` 且启用布局；已有项目初始化为 external，只接入页面管理，不复制应用模板。缺少 runtime 直接拒绝，不推断、不迁移。
+`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。已完成的相同更新可安全重试。新项目不初始化布局 Working，也不写布局目标 Schema。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
 
-`projects/preview/open`、`status`、`close` 沿用工作台认证边界。Server 使用宿主提供的内置 App 资源启动独立 loopback 只读会话，Main 直接设置临时 HttpOnly Cookie 后打开无 preload 的窗口。Cookie 不进入 URL，预览获得的只有本项目已应用快照，不提供工作台 API 或任意文件读取。布局关闭时立即撤销会话，服务关闭时清理监听器。
+布局 Schema、布局 Agent 和项目预览服务已移除。模板直接解释必填项目配置，完整效果在真实项目中验证；旧格式直接拒绝，不迁移。
 
-本阶段支持 Browser/Hash、访问前缀、布局和页面导航，以及项目图片（单张 2MB、合计 20MB；本地图片拒绝路径越界与符号链接）。项目 scripts、自定义入口、构建插件、代理和后端不会执行。项目可声明应用共享状态和基于布尔状态的页面访问规则；配置引用无效页面时拒绝写入。业务接口、登录退出和状态恢复均由页面事件流表达，平台不约定认证协议。
+布局配置助手由 `agent/project-settings-agent-service.ts` 处理，通过经过认证的 POST `/projects/settings/assist` 流式返回 NDJSON。它复用页面模型引擎、凭据和预算，仅允许读取配置和提交经校验的草稿建议，不能写项目文件或页面 Working。服务端校验真实页面引用和清单版本；关闭连接会停止模型，关闭服务会中止并等待配置请求退出。配置保存仍由显式 settings/update 完成。

@@ -9,7 +9,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@origamix/ui';
-
 import { useState, type ReactNode } from 'react';
 import {
   Braces,
@@ -23,12 +22,10 @@ import {
 import { RevisionHistoryDialog } from './history/revision-history-dialog';
 import type { EditorTool } from './editor-tool-dialog';
 import { RevisionActions, type ApplyStatus } from './toolbar/revision-actions';
-
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
-
 export interface PageToolbarProps {
   active: boolean;
-  targetKind?: 'page' | 'layout';
+  targetKind?: 'page';
   canPreview?: boolean;
   saveBusy?: boolean;
   projectName: string;
@@ -51,7 +48,6 @@ export interface PageToolbarProps {
   canRestore: boolean;
   onOpenEditorTool?: (tool: EditorTool | null) => void;
 }
-
 export const PageToolbarShell = ({
   active,
   targetKind = 'page',
@@ -117,11 +113,11 @@ export const PageToolbarShell = ({
               </DropdownMenuItem>
               {onOpenEditorTool && (
                 <>
-                  {targetKind === 'page' && (
+                  {
                     <DropdownMenuItem onClick={() => onOpenEditorTool('globals')}>
                       <ListTree /> 全局变量
                     </DropdownMenuItem>
-                  )}
+                  }
                   <DropdownMenuItem onClick={() => onOpenEditorTool('schema')}>
                     <Braces /> Schema 编辑器
                   </DropdownMenuItem>
@@ -161,7 +157,7 @@ export const PageToolbarShell = ({
               {error}
             </span>
           )}
-          {(targetKind !== 'layout' || navigation === 'chat') && (
+          {
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -188,7 +184,7 @@ export const PageToolbarShell = ({
                 {navigation === 'chat' ? '返回对话' : '编辑'}
               </TooltipContent>
             </Tooltip>
-          )}
+          }
           <Tooltip>
             <TooltipTrigger
               render={

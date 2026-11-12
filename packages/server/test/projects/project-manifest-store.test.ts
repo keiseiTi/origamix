@@ -15,6 +15,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
       await writeFile(
         join(directory, 'origamix.project.json'),
         JSON.stringify({
+          shell: { title: '', logo: '', standalonePageIds: [] },
           runtime: 'origamix' as const,
           layout: { enabled: false, initialVariant: 'side' as const },
           routing: { mode: 'browser' as const, basePath: '/' },

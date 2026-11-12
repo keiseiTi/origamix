@@ -127,7 +127,7 @@ export class RunExecutor {
       ? this.dependencies.projects.getPage(input.projectId, input.pageId)
       : undefined;
     if (!project || (input.pageId && !page)) throw new Error('目标不存在或不属于当前项目');
-    const terminalToolName = input.pageId ? 'complete_page_run' : 'complete_layout_run';
+    const terminalToolName = 'complete_page_run';
     const runId = started.run.id;
     const currentBeforeStart = this.dependencies.runs.get(runId);
     if (currentBeforeStart?.status === 'cancelling') {
@@ -193,7 +193,7 @@ export class RunExecutor {
                 relativePath: page.relativePath,
               },
             }
-          : { layout: { projectPath: project.path, projectId: input.projectId } }),
+          : { page: undefined }),
         conversationId: started.conversation.id,
         currentRequest: message,
         expectedWorkingVersion: input.baseWorkingVersion,
@@ -424,10 +424,7 @@ export class RunExecutor {
 
   private async handleEngineEvent(runId: string, event: AgentEngineEvent): Promise<void> {
     if (event.type === 'tool_start') this.transitionIf(runId, 'reasoning', 'reading');
-    if (
-      event.type === 'tool_end' &&
-      !['complete_page_run', 'complete_layout_run'].includes(event.toolName)
-    ) {
+    if (event.type === 'tool_end' && !['complete_page_run'].includes(event.toolName)) {
       this.transitionIf(runId, 'reading', 'reasoning');
     }
   }

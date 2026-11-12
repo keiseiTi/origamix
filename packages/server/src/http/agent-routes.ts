@@ -9,7 +9,6 @@ import {
   type AgentRun,
   CreateAgentRunRequestSchema,
   ConversationIdSchema,
-  LayoutScopeSchema,
 } from '@origamix/shared';
 import { Value } from '@sinclair/typebox/value';
 import { Type, type Static } from '@sinclair/typebox';
@@ -75,15 +74,13 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       route<Static<typeof ProjectTaskDecisionSchema>>((request) => tasks.decide(request.body)),
     );
   }
-  for (const kind of ['page', 'layout'] as const) {
-    const prefix = kind === 'layout' ? '/layout/agent' : '/agent';
-    const ScopeSchema = kind === 'layout' ? LayoutScopeSchema : PageScopeSchema;
-    const scopePageId = (body: { projectId: string; pageId?: string }) =>
-      kind === 'layout' ? undefined : body.pageId;
+  {
+    const prefix = '/agent';
+    const ScopeSchema = PageScopeSchema;
+    const scopePageId = (body: { projectId: string; pageId?: string }) => body.pageId;
     const requireOwnedRun = (projectId: string, runId: string): AgentRunRecord => {
       const run = agent.runs.get(runId);
-      if (run.projectId !== projectId || (run.pageId ? 'page' : 'layout') !== kind)
-        throw notFound('Agent Run 不存在');
+      if (run.projectId !== projectId || !run.pageId) throw notFound('Agent Run 不存在');
       return run;
     };
 
@@ -158,7 +155,8 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       { schema: { body: CreateAgentRunRequestSchema } },
       route<Static<typeof CreateAgentRunRequestSchema>>(async (request) => {
         const target = resolveAgentTarget(request.body);
-        if (!target || target.kind !== kind) throw new ApiError('Agent 请求目标与接口不一致', 400);
+        if (!target || target.kind !== 'page')
+          throw new ApiError('Agent 请求目标与接口不一致', 400);
         const started = await agent.service.start(request.body);
         return {
           version: '1',

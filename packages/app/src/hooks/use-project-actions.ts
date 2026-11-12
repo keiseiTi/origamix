@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { projectsService } from '@/services/projects';
-import { useWorkspaceStore, type PageItem, type ProjectItem } from '@/store/workspace';
+import {
+  projectSettingsTabId,
+  useWorkspaceStore,
+  type PageItem,
+  type ProjectItem,
+} from '@/store/workspace';
 
 interface ProjectActionsInput {
   flushEditor: () => Promise<void>;
@@ -122,8 +127,8 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     const project = projects.find((item) => item.id === projectId);
     if (!project) return;
     await projectsService.delete(projectId);
+    removePages([projectSettingsTabId(project.id), ...project.pages.map((page) => page.id)]);
     setProjects((current) => current.filter((item) => item.id !== projectId));
-    removePages([`layout:${project.id}`, ...project.pages.map((page) => page.id)]);
   };
 
   const deletePage = async (projectId: string, pageId: string): Promise<void> => {

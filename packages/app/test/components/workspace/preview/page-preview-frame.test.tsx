@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { BUILTIN_PROJECT_STACK, SCHEMA_VERSION, LAYOUT_SCHEMA_VERSION } from '@origamix/shared';
+import { BUILTIN_PROJECT_STACK, SCHEMA_VERSION } from '@origamix/shared';
 
 const mocks = vi.hoisted(() => ({
   workingState: vi.fn(),
@@ -13,9 +13,6 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('../../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../../src/services/projects', () => ({ projectsService: mocks }));
-vi.mock('../../../../src/services/layout', () => ({
-  layoutService: { config: mocks.config, workingState: mocks.layoutWorking },
-}));
 vi.mock('../../../../src/services/runtime', () => ({ runtimeService: mocks }));
 import { PagePreviewFrame } from '../../../../src/components/workspace/preview/page-preview-frame';
 
@@ -95,7 +92,6 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     snapshotId: 'old-preview',
     pageId: 'page_test',
     pageHash: current.pageSchemas.page_test.hash,
-    layoutHash: null,
     reportSequence: 1,
     outcome: 'success',
     diagnostics: [],
@@ -109,7 +105,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   });
   send({
     type: 'origamix.preview.outcome',
-    report: { ...outcome, snapshotId: current.snapshotId, layoutHash: 'a'.repeat(64) },
+    report: { ...outcome, snapshotId: current.snapshotId, pageHash: 'a'.repeat(64) },
   });
   expect(mocks.report).not.toHaveBeenCalled();
   send({
@@ -127,43 +123,6 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='four' />);
   await waitFor(() => expect(view.getByRole('alert').textContent).toContain('page unavailable'));
   expect(post.mock.calls.at(-1)![0].snapshot.pageSchemas.page_test.workingVersion).toBe(3);
-  const layoutSchema = working(4).schema;
-  mocks.config.mockResolvedValue({ enabled: true });
-  mocks.layoutWorking.mockResolvedValue({
-    revisionId: null,
-    workingVersion: 4,
-    workingHash: '4'.repeat(64),
-    document: {
-      projectId: 'project_test',
-      schemaVersion: LAYOUT_SCHEMA_VERSION,
-      schema: {
-        ...layoutSchema,
-        elements: { ...layoutSchema.elements, element_outlet: { type: 'PageOutlet', props: {} } },
-        layout: {
-          root: 'element_root',
-          structure: { element_root: ['element_outlet'], element_outlet: [] },
-        },
-      },
-    },
-  });
-  view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='five' />);
-  await waitFor(() =>
-    expect(post.mock.calls.at(-1)![0].snapshot.pageSchemas.page_test.workingVersion).toBe(3),
-  );
-  expect(post.mock.calls.at(-1)![0].snapshot.layout.enabled).toBe(false);
-  expect(mocks.layoutWorking).not.toHaveBeenCalled();
-  // Layout-only previews never fetch page drafts or persist page diagnostics.
-  const pageReads = mocks.workingState.mock.calls.length;
-  view.rerender(<PagePreviewFrame {...props} active targetKind='layout' schemaRefreshKey='six' />);
-  await waitFor(() => expect(post.mock.calls.at(-1)![0].snapshot.layout.enabled).toBe(true));
-  const composed = post.mock.calls.at(-1)![0].snapshot;
-  expect(composed.pages).toEqual([]);
-  expect(mocks.workingState).toHaveBeenCalledTimes(pageReads);
-  send({
-    type: 'origamix.preview.outcome',
-    report: { ...outcome, snapshotId: composed.snapshotId, layoutHash: composed.layout.hash },
-  });
-  expect(mocks.report).toHaveBeenCalledOnce();
 });
 
 // File-mode iframe readiness can arrive between the completed host read and

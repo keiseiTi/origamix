@@ -135,6 +135,6 @@ ORIGAMIX_DEBUG=1
 
 物料开发更新（包括 antd 组件实现、样式和 Manifest）会按顺序生成 Manifest、构建 Materials 与 Server、准备模板资源，再独立重启后端，通过现有状态通知更新 App 凭证，并重启 Vite、刷新 App。Electron 窗口保持不变；App 刷新会重置页面内存及组件临时状态。Shared、Runtime、Main、Preload 等混合变更仍整端重启。
 
-布局真实模型验收：`pnpm --filter @origamix/desktop evaluate:agent --layout --output /tmp/origamix-layout-quality`。使用已有加密模型设置，经真实 Main 凭据通道调用提供商，会产生模型费用；四个请求覆盖初次生成、连续调整、超范围拒绝和缺少内外间距信息的澄清。输出保留真实运行指标、Working 与显式保存/历史/应用证据，自动断言通过仍需人工查看生成结果。
+平台不再提供项目预览入口或 projectPreview 桌面能力。页面预览继续由 Renderer 的隔离 iframe 承担；项目设置只展示布局效果，完整应用在生成项目中运行验证。
 
-项目菜单“预览项目”仅面向 `runtime: "origamix"` 且已开启布局的项目。它运行平台内置的应用外壳，读取已应用的页面/布局，不执行项目 scripts 或项目源码。需要先构建 App 资源；已有项目初始化为 external，不提供应用布局、路由设置或项目预览。关闭布局会撤销预览会话。认证配置完整并应用登录页后，预览执行真实 Cookie 登录、会话检查和退出流程。
+开发监听按源码内容判断变更，忽略重复通知、文件时间戳及生成产物；真正变化时记录来源，再触发对应构建和重启。

@@ -1,11 +1,10 @@
 import {
-  applicationIssue,
-  readApplicationDefinition,
-  equalJson,
-  type ProjectApplicationUpdate,
-  type ProjectApplicationSettings,
+  projectShellIssue,
+  ProjectSettingsUpdateSchema,
+  type ProjectSettingsUpdate,
+  type ProjectSettings,
 } from '@origamix/shared';
-import { LayoutService } from '../layout/layout-service';
+import { equalJson, type ProjectNavigationInfo } from '@origamix/shared';
 import {
   ProjectRoutingSchema,
   DEFAULT_PROJECT_ROUTING,
@@ -35,9 +34,6 @@ import {
   type ProjectRecord,
   type OrigamixPageSchema,
   resolveProjectStack,
-  isProjectLayoutEnabled,
-  LAYOUT_NAME,
-  type LayoutConfigState,
 } from '@origamix/shared';
 
 import {
@@ -62,11 +58,6 @@ export class ProjectService {
   private readonly manifest = new ProjectManifestStore();
   private readonly scaffold: ProjectScaffoldService;
   private readonly source: ProjectSourceService;
-  private closeProjectPreviews?: (projectId: string) => Promise<void>;
-  setPreviewCloser = (close: (projectId: string) => Promise<void>): void => {
-    this.closeProjectPreviews = close;
-  };
-
   constructor(
     private readonly projects: ProjectRepository,
     templatePath: string,
@@ -118,15 +109,14 @@ export class ProjectService {
         runtime: 'origamix',
         layout: {
           enabled: input.layoutEnabled ?? false,
-          initialVariant: input.layoutVariant ?? 'side',
+          initialVariant: input.layoutVariant ?? 'mix',
         },
         routing: input.routing ?? { ...DEFAULT_PROJECT_ROUTING },
         name,
         code,
         pageDirectory,
       });
-      if (input.layoutEnabled)
-        await new LayoutService(this.projects).initializeProjectLayout(temporaryPath, id);
+
       await rename(temporaryPath, path);
     } catch (error) {
       await rm(temporaryPath, { recursive: true, force: true });
@@ -211,49 +201,88 @@ export class ProjectService {
       });
     });
 
-  getApplication = (projectId: string): Promise<ProjectApplicationSettings> =>
+  getSettings = (projectId: string): Promise<ProjectSettings> =>
     withProjectQueue(projectId, async () => {
       const project = this.projects.getProject(projectId);
       if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
       return withProjectActivity(project.path, async () => {
-        const source = await this.manifest.readSource(project.path),
-          manifest = this.manifest.parseManifest(source);
-        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        const source = await this.manifest.readSource(project.path);
+        const manifest = this.manifest.parseManifest(source);
+        if (manifest.projectId !== projectId || manifest.runtime !== 'origamix')
+          throw invalid('项目不支持应用设置');
         return {
-          ...readApplicationDefinition(manifest),
-          runtime: manifest.runtime,
-          pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
+          projectId,
+          name: manifest.name,
+          pages: manifest.pages,
+          shell: manifest.shell,
+          layout: manifest.layout,
+          routing: manifest.routing,
           manifestHash: manifestHash(source),
         };
       });
     });
-  updateApplication = (input: ProjectApplicationUpdate): Promise<ProjectApplicationSettings> =>
+
+  updateSettings = (input: ProjectSettingsUpdate): Promise<ProjectSettings> =>
     withProjectQueue(input.projectId, async () => {
+      if (!Check(ProjectSettingsUpdateSchema, input)) throw invalid('项目设置无效');
       const project = this.projects.getProject(input.projectId);
       if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
       return withExclusiveProjectActivity(project.path, async () => {
-        const source = await this.manifest.readSource(project.path),
-          manifest = this.manifest.parseManifest(source);
+        const source = await this.manifest.readSource(project.path);
+        const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== input.projectId || manifest.runtime !== 'origamix')
-          throw conflict('此项目不支持平台应用配置');
-        const candidate = { initialState: input.initialState, access: input.access };
-        const issue = applicationIssue(candidate, manifest.pages, manifest.runtime);
+          throw invalid('项目不支持应用设置');
+        const name = input.name?.trim() ?? manifest.name;
+        if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+        const issue = projectShellIssue(input.shell, manifest.pages);
         if (issue) throw invalid(issue);
-        const same = equalJson(readApplicationDefinition(manifest), candidate);
+        const same =
+          manifest.name === name &&
+          equalJson(manifest.shell, input.shell) &&
+          equalJson(manifest.layout, input.layout) &&
+          equalJson(manifest.routing, input.routing);
         if (manifestHash(source) !== input.expectedManifestHash && !same)
-          throw conflict('项目配置已变化，请重新读取应用配置');
-        if (!same)
-          await this.manifest.writeManifest(project.path, {
-            ...manifest,
-            applicationState: input.initialState,
-            access: input.access,
-          });
+          throw conflict('项目文件已被修改。输入已保留，请重新打开设置核对后保存');
+        if (!same) {
+          if (this.projects.hasActiveRuns(input.projectId))
+            throw conflict('项目 Agent 正在运行，请停止后再保存项目设置');
+          await this.manifest.writeManifest(
+            project.path,
+            {
+              ...manifest,
+              name,
+              shell: input.shell,
+              layout: input.layout,
+              routing: input.routing,
+            },
+            source,
+          );
+        }
+        await this.reconcile(project.path);
         const next = await this.manifest.readSource(project.path);
         return {
-          ...candidate,
-          runtime: manifest.runtime,
-          pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
+          projectId: input.projectId,
+          name,
+          pages: manifest.pages,
+          shell: input.shell,
+          layout: input.layout,
+          routing: input.routing,
           manifestHash: manifestHash(next),
+        };
+      });
+    });
+
+  getNavigation = (projectId: string): Promise<ProjectNavigationInfo> =>
+    withProjectQueue(projectId, async () => {
+      const project = this.projects.getProject(projectId);
+      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
+      return withProjectActivity(project.path, async () => {
+        const manifest = await this.manifest.readManifest(project.path);
+        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
+        return {
+          runtime: manifest.runtime,
+          layoutEnabled: manifest.runtime === 'origamix' && manifest.layout.enabled,
+          pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
         };
       });
     });
@@ -297,43 +326,6 @@ export class ProjectService {
           routing: this.manifest.parseManifest(next).routing,
           manifestHash: manifestHash(next),
         };
-      });
-    });
-
-  getLayoutConfig = (projectId: string): Promise<LayoutConfigState> =>
-    withProjectQueue(projectId, async () => {
-      const project = this.projects.getProject(projectId);
-      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-      return withProjectActivity(project.path, async () => {
-        const manifest = await this.manifest.requireEditable(project.path);
-        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
-        return {
-          runtime: manifest.runtime,
-          name: LAYOUT_NAME,
-          enabled: isProjectLayoutEnabled(manifest),
-        };
-      });
-    });
-
-  setLayoutEnabled = (projectId: string, enabled: boolean): Promise<LayoutConfigState> =>
-    withProjectQueue(projectId, async () => {
-      if (typeof enabled !== 'boolean') throw invalid('布局开关无效');
-      const project = this.projects.getProject(projectId);
-      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-      // Drain in-flight layout writes before disabling; keep retained drafts/history intact.
-      return withExclusiveProjectActivity(project.path, async () => {
-        const manifest = await this.manifest.requireEditable(project.path);
-        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
-        if (manifest.runtime !== 'origamix') throw conflict('此项目的应用运行由项目自行管理');
-        if (!enabled && this.projects.hasActiveRuns(projectId, null))
-          throw conflict('布局 Agent 正在运行，请先取消或等待完成');
-        if (manifest.layout.enabled !== enabled)
-          await this.manifest.writeManifest(project.path, {
-            ...manifest,
-            layout: { ...manifest.layout, enabled },
-          });
-        if (!enabled) await this.closeProjectPreviews?.(projectId);
-        return { runtime: manifest.runtime, name: LAYOUT_NAME, enabled };
       });
     });
 
@@ -486,14 +478,15 @@ export class ProjectService {
       return withExclusiveProjectActivity(project.path, async () => {
         const manifest = await this.manifest.readManifest(project.path);
         if (
-          manifest.access?.enabled &&
+          manifest.shell &&
           [
-            manifest.access.loginPageId,
-            manifest.access.homePageId,
-            ...manifest.access.publicPageIds,
+            manifest.shell.homePageId,
+            manifest.shell.notFoundPageId,
+            ...manifest.shell.standalonePageIds,
+            ...(manifest.shell.navigation ?? []).map((item) => item.pageId),
           ].includes(pageId)
         )
-          throw conflict('该页面被访问规则引用，请先修改或关闭访问规则');
+          throw conflict('该页面被项目设置引用，请先移除菜单、首页、404 或独立页面配置中的关联');
         if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
         let deletion = await readPageDeletion(project.path, pageId);
         if (deletion && deletion.projectId !== projectId) throw invalid('页面删除记录归属不匹配');

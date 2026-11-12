@@ -1,5 +1,5 @@
 import { withAgentTarget } from './agent-target.ts';
-import { AgentTargetSchema } from '../layout/layout-schema.ts';
+import { AgentTargetSchema } from './agent-target.ts';
 import {
   strictObject,
   AgentProtocolVersionSchema,

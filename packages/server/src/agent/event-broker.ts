@@ -12,8 +12,7 @@ const eventScope = (input: EventInput) => {
       throw new ApiError('Agent 事件目标无效', 500);
     return { pageId: input.pageId, ...(target ? { target } : {}) };
   }
-  if (target?.kind !== 'layout') throw new ApiError('Agent 事件目标无效', 500);
-  return { target };
+  throw new ApiError('Agent 页面事件缺少页面 ID', 500);
 };
 
 export interface AgentEventSubscription {

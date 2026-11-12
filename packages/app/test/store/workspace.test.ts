@@ -20,14 +20,6 @@ describe('workspace tab recovery', () => {
       JSON.stringify({
         activeTabId: 'page_a',
         openPages: [
-          {
-            id: 'layout:project_1',
-            name: '布局配置',
-            kind: 'layout',
-            fileName: '',
-            projectId: 'project_1',
-            mode: 'edit',
-          },
           ...projects[0].pages.map((page) => ({
             ...page,
             projectId: 'project_1',
@@ -49,7 +41,6 @@ describe('workspace tab recovery', () => {
       mode: 'edit',
       status: null,
     });
-    expect(restored.openPages.find((tab) => tab.kind === 'layout')?.mode).toBe('chat');
     expect(restored.pageDrafts[activePage!.id]).toBe('retained draft');
     expect(restored.pageDrafts).not.toHaveProperty('removed');
   });

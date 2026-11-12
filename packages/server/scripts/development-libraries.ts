@@ -46,3 +46,5 @@ export const buildLibraries = async (
       await run(cli, cwd);
     }
 };
+
+export { createSourceChangeFilter } from './source-changes.ts';

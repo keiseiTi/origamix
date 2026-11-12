@@ -1,4 +1,3 @@
-import { LayoutService } from '../../src/layout/layout-service';
 import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
 import { access, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -41,7 +40,6 @@ describe('Project page persistence and recovery', () => {
   it('keeps project roles unique, preserves layout, and recovers a manifest write without replaying it', async () => {
     const { database, project, page, service, projects } = await deletionFixture();
     try {
-      await service.setLayoutEnabled(project.id, true);
       const before = await service.getPageRoles(project.id);
       const input = {
         projectId: project.id,
@@ -64,7 +62,6 @@ describe('Project page persistence and recovery', () => {
       const reopened = new ProjectService(projects, templatePath);
       expect((await reopened.updatePageRoles(input)).roles).toEqual(input.roles);
       expect(projects.getPage(project.id, page.id)?.name).toBe('Login');
-      expect((await reopened.getLayoutConfig(project.id)).enabled).toBe(true);
       const current = await reopened.getPageRoles(project.id);
       await expect(
         reopened.updatePageRoles({ ...input, clientRequestId: 'roles_stale' }),
@@ -508,124 +505,89 @@ it('initializes a project manifest when opening an uninitialized directory', asy
     code: 'ENOENT',
   });
   await expect(access(join(directory, 'vite.config.ts'))).rejects.toMatchObject({ code: 'ENOENT' });
-  await expect(service.setLayoutEnabled(project.id, true)).rejects.toThrow('自行管理');
+  await expect(service.getSettings(project.id)).rejects.toThrow('不支持');
   await expect(service.getRouting(project.id)).rejects.toThrow('自行管理');
   database.close();
 });
 
 // New project initialization and runtime-config concurrency cannot be proved by page edit tests.
-it('initializes the chosen layout before publication and preserves drafts through routing updates and layout disable/re-enable', async () => {
-  const { database, projects, service, project } = await deletionFixture();
+// Settings references guard page deletion; a completed write is recoverable after a lost response.
+it('saves project settings without layout drafts and preserves configuration on conflict or interruption', async () => {
+  const { database, service, project, page, projects } = await deletionFixture();
   try {
-    service.registerGrant('routing_create', join(project.path, '..'));
-    const created = await service.createProject({
-      name: 'Routed',
-      code: 'routed',
-      directoryGrantId: 'routing_create',
-      layoutEnabled: true,
-      layoutVariant: 'mix',
-      routing: { mode: 'hash', basePath: '/admin/' },
-    });
-    const retained = JSON.parse(
-      await readFile(join(created.path, '.origamix/layout/working.json'), 'utf8'),
-    );
-    expect(retained.revisionId).toBeNull();
-    expect(retained.document.schema.elements.layout.props.variant).toBe('mix');
-    await expect(access(join(created.path, 'src/origamix-layout/schema.json'))).rejects.toThrow();
-    const layouts = new LayoutService(projects);
-    const draft = await layouts.getWorking(created.id);
-    const before = await service.getRouting(created.id);
+    const before = await service.getSettings(project.id);
+    expect(before.layout.initialVariant).toBe('mix');
     const update = {
-      projectId: created.id,
+      name: 'Updated project',
+      projectId: project.id,
       expectedManifestHash: before.manifestHash,
-      routing: { mode: 'browser' as const, basePath: '/console/' },
+      layout: { enabled: true, initialVariant: 'mix' as const },
+      routing: { mode: 'hash' as const, basePath: '/admin/' },
+      shell: {
+        ...before.shell,
+        homePageId: page.id,
+        notFoundPageId: page.id,
+        navigation: [
+          { id: 'group', title: '管理', hidden: false },
+          { id: 'home', parentId: 'group', title: '', pageId: page.id, hidden: false },
+        ],
+      },
     };
     const original = ProjectManifestStore.prototype.writeManifest;
     const injected = vi
       .spyOn(ProjectManifestStore.prototype, 'writeManifest')
       .mockImplementationOnce(async function (this: ProjectManifestStore, path, manifest) {
         await original.call(this, path, manifest);
-        throw new Error('interrupted routing write');
+        throw new Error('interrupted settings write');
       });
-    await expect(service.updateRouting(update)).rejects.toThrow('interrupted');
+    await expect(service.updateSettings(update)).rejects.toThrow('interrupted');
     injected.mockRestore();
     const reopened = new ProjectService(projects, templatePath);
-    expect((await reopened.updateRouting(update)).routing).toEqual(update.routing);
+    const saved = await reopened.updateSettings(update);
+    expect(saved.shell).toEqual(update.shell);
+    expect(saved.name).toBe(update.name);
+    expect(projects.listProjects().find((item) => item.id === project.id)?.name).toBe(update.name);
+    await expect(access(join(project.path, '.origamix/layout/working.json'))).rejects.toThrow();
+    await expect(access(join(project.path, 'src/origamix-layout/schema.json'))).rejects.toThrow();
     await expect(
-      reopened.updateRouting({ ...update, routing: { mode: 'hash', basePath: '/' } }),
-    ).rejects.toThrow('已变化');
+      reopened.updateSettings({ ...update, shell: { ...update.shell, title: 'stale' } }),
+    ).rejects.toThrow('已被修改');
     await expect(
-      reopened.updateRouting({ ...update, routing: { mode: 'hash', basePath: '/../' } }),
-    ).rejects.toThrow('无效');
-    await expect(reopened.getRouting('project_foreign')).rejects.toThrow();
-    await reopened.setLayoutEnabled(created.id, false);
-    await reopened.setLayoutEnabled(created.id, true);
-    expect(await layouts.getWorking(created.id)).toEqual(draft);
-    expect((await reopened.getRouting(created.id)).routing).toEqual(update.routing);
-    // Omitted initial mode has a stable default, and disabled projects have no layout draft.
-    await service.setLayoutEnabled(project.id, true);
-    expect(
-      (await layouts.getWorking(project.id)).document.schema.elements.layout!.props.variant,
-    ).toBe('side');
-  } finally {
-    database.close();
-  }
-});
-
-// Application references and manifest concurrency must be enforced before any page deletion or config write.
-it('validates application ownership and references, preserves stale drafts, and guards referenced pages', async () => {
-  const { database, service, project, page } = await deletionFixture();
-  try {
-    const login = await service.createPage(project.id, { name: '登录', slug: 'login' });
-    const initial = await service.getApplication(project.id);
-    const access = {
-      enabled: true as const,
-      loginPageId: login.id,
-      homePageId: page.id,
-      publicPageIds: [],
-      stateKey: 'authenticated',
-    };
-    await expect(
-      service.updateApplication({
-        projectId: project.id,
-        expectedManifestHash: initial.manifestHash,
-        initialState: { authenticated: false },
-        access: { ...access, homePageId: 'page_other' },
+      reopened.updateSettings({
+        ...update,
+        expectedManifestHash: saved.manifestHash,
+        shell: { ...update.shell, homePageId: 'page_missing' },
       }),
     ).rejects.toThrow('页面不存在');
-    const saved = await service.updateApplication({
-      projectId: project.id,
-      expectedManifestHash: initial.manifestHash,
-      initialState: { authenticated: false },
-      access,
-    });
-    expect(saved.access).toEqual(access);
-    expect(
-      await service.updateApplication({
-        projectId: project.id,
-        expectedManifestHash: initial.manifestHash,
-        initialState: { authenticated: false },
-        access,
-      }),
-    ).toEqual(saved);
     await expect(
-      service.updateApplication({
-        projectId: project.id,
-        expectedManifestHash: initial.manifestHash,
-        initialState: { authenticated: true },
-        access,
+      reopened.updateSettings({
+        ...update,
+        expectedManifestHash: saved.manifestHash,
+        shell: {
+          ...update.shell,
+          navigation: [{ id: 'cycle', parentId: 'cycle', title: 'cycle', hidden: false }],
+        },
       }),
-    ).rejects.toThrow('配置已变化');
-    expect((await service.getApplication(project.id)).access).toEqual(access);
-    await expect(service.deletePage(project.id, login.id)).rejects.toThrow('访问规则引用');
-    expect(await readFile(join(project.path, 'src/pages/login/schema.json'), 'utf8')).toBeTruthy();
-    await service.updateApplication({
-      projectId: project.id,
-      expectedManifestHash: saved.manifestHash,
-      initialState: {},
-      access: { enabled: false },
+    ).rejects.toThrow('循环');
+    await expect(
+      reopened.updateSettings({ ...update, projectId: 'project_foreign' }),
+    ).rejects.toThrow();
+    await expect(reopened.deletePage(project.id, page.id)).rejects.toThrow('项目设置引用');
+    await reopened.renamePage(project.id, page.id, 'Renamed');
+    const renamed = await reopened.getSettings(project.id);
+    expect(renamed.shell.navigation?.[1]?.pageId).toBe(page.id);
+    const disabled = await reopened.updateSettings({
+      ...update,
+      expectedManifestHash: renamed.manifestHash,
+      layout: { ...update.layout, enabled: false },
     });
-    await service.deletePage(project.id, login.id);
+    expect(disabled.shell).toEqual(update.shell);
+    await reopened.updateSettings({
+      ...update,
+      expectedManifestHash: disabled.manifestHash,
+      shell: { title: '', logo: '', navigation: [], standalonePageIds: [] },
+    });
+    await reopened.deletePage(project.id, page.id);
   } finally {
     database.close();
   }

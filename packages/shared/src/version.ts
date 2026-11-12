@@ -3,7 +3,6 @@ export const ORIGAMIX_VERSION = '1.0.0' as const;
 
 /** SemVer contracts: patch fixes, minor backward-compatible additions, major breaking changes. */
 export const SCHEMA_VERSION = '1.0.0' as const;
-export const LAYOUT_SCHEMA_VERSION = '1.0.0' as const;
 export const MATERIAL_CONTRACT_VERSION = '1.0.0' as const;
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [SCHEMA_VERSION];
 export const SUPPORTED_MATERIAL_VERSIONS: readonly string[] = [MATERIAL_CONTRACT_VERSION];

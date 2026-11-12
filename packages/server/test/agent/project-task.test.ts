@@ -113,7 +113,6 @@ it('persists project proposals, stops cancellation/conflicts, and resumes exactl
         records,
         new ProductDocsProvider(),
         {},
-        undefined,
         projectService.getPageRoles,
       ),
       createTools: (scope) =>

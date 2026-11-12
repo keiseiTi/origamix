@@ -78,10 +78,8 @@ pnpm --filter @origamix/materials build
 
 - `antd/blocks.ts` owns pure-data login-form/search-table composition templates, exported by editor and manifest entries. They contain UI and existing executable flow nodes, with required endpoint parameters; do not hard-code business APIs or execute templates on import. Search-table uses explicit remote pagination; local pagination remains the default. Container layoutMode establishes local positioning; common layoutPosition/layoutX/layoutY/layoutZIndex properties are consumed by Runtime frames.
 
-- `antd/layout/` owns the separate Layout editor/runtime/manifest entry points. Only Layout is exposed as a layout root; LayoutRegion and PageOutlet are hidden registrations. Their configs generate the shared Manifest. schema.ts owns immutable, idempotent region derivation/validation; the Editor schema.beforeChange plugin and Server share it. Layout owns side/top/mix, site title/logo and Fluid/Fixed content width. Regions own their declared visual properties; derived config, identity and placement remain protected. Preserve IDs and region content when switching modes, reject managed-node deletion/moves or derived-property edits, and never migrate retained data on reads. Runtime uses the shared Runtime navigation context through an external peer import, not a bundled copy. Layout public entries remain free of Editor/UI imports.
-
 - Attribute description and plain string labels are emitted as JSON Schema description/title; applicableWhen emits field-local region restrictions. Hidden fields remain described but protected by the layout transformer. Defaults for new material instances are not legacy-data conversion.
 
-- Layout Navigation uses mock section/menu data only when no application navigation is injected (layout draft preview). When a generated application or project preview injects pages, both horizontal and sidebar menus use only those real page IDs/links; do not show non-routing mock sections as application navigation.
-
 - Login and logout use ordinary page materials plus event flows. Layout headers do not inject business authentication controls. Application state and navigation are Runtime capabilities, not dedicated authentication materials.
+
+- Materials exposes page materials only. Project application chrome belongs to Runtime ConfiguredShell and does not use material or layout Schema registries.

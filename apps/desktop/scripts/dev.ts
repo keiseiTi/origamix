@@ -35,7 +35,11 @@ import { copyServerArtifact } from './copy-server-artifact.ts';
 import { stopChild } from '@origamix/server/development';
 
 const require = createRequire(import.meta.url);
-import { libraryWatchPaths, buildLibraries } from '@origamix/server/development-libraries';
+import {
+  libraryWatchPaths,
+  buildLibraries,
+  createSourceChangeFilter,
+} from '@origamix/server/development-libraries';
 const dirty = new Set(['shared', 'runtime', 'materials', 'server', 'desktop', 'template']);
 const watchers: import('node:fs').FSWatcher[] = [];
 let electron: import('node:child_process').ChildProcess | undefined;
@@ -262,7 +266,7 @@ const schedule = () => {
   clearTimeout(timer);
   timer = setTimeout(() => void update(), 400);
 };
-for (const [name, paths] of Object.entries({
+const sourceGroups = {
   ...libraryWatchPaths,
   server: [
     'packages/server/src',
@@ -289,7 +293,9 @@ for (const [name, paths] of Object.entries({
     'packages/template/tsconfig.node.json',
     'packages/template/eslint.config.mjs',
   ],
-})) {
+};
+const sourceChanged = createSourceChangeFilter(workspaceRoot, sourceGroups);
+for (const [name, paths] of Object.entries(sourceGroups)) {
   for (const path of paths) {
     try {
       watchers.push(
@@ -299,6 +305,8 @@ for (const [name, paths] of Object.entries({
             filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
           )
             return;
+          if (!sourceChanged(name)) return;
+          console.info(`[开发环境] 源码内容变化：${name}/${filename?.toString() ?? path}`);
           dirty.add(name);
           if (
             name === 'server' &&
@@ -315,7 +323,7 @@ for (const [name, paths] of Object.entries({
 }
 watchers.push(
   watch(desktopRoot, (_event, filename) => {
-    if (filename === '.env.local' || filename === '.env') {
+    if ((filename === '.env.local' || filename === '.env') && sourceChanged('desktop')) {
       dirty.add('desktop');
       schedule();
     }

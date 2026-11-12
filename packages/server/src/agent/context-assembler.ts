@@ -1,6 +1,5 @@
-import { LAYOUT_GENERATION_GUIDE } from './layout-guidance';
 import { AgentEngineError } from './agent-engine';
-import { loadProjectMaterials, loadLayoutMaterials } from '../projects/project-materials';
+import { loadProjectMaterials } from '../projects/project-materials';
 import { flowNodeManifests, type OrigamixPageSchema, type AgentTarget } from '@origamix/shared';
 import { FLOW_GENERATION_GUIDE } from './flow-guidance';
 import { conflict } from '../errors';
@@ -31,7 +30,6 @@ export interface ContextBudget {
 
 export interface AssembleContextInput {
   page?: SchemaPageRef;
-  layout?: { projectId: string; projectPath: string };
   target?: AgentTarget;
   conversationId: string;
   currentRequest: string;
@@ -206,9 +204,6 @@ export class ContextAssembler {
     private readonly historyProvider: ContextHistoryProvider,
     private readonly docsProvider: ProductDocsProvider,
     budget: Partial<ContextBudget> = {},
-    private readonly readLayout?: (
-      projectId: string,
-    ) => Promise<{ schema: OrigamixPageSchema; revisionId: string | null; workingVersion: number }>,
     private readonly readProjectRoles?: (
       projectId: string,
     ) => Promise<import('@origamix/shared').PageRoleState>,
@@ -219,11 +214,7 @@ export class ContextAssembler {
 
   async assemble(input: AssembleContextInput): Promise<AssembledAgentContext> {
     // This read intentionally happens on every assembly; no Schema is cached in conversation state.
-    const current = input.layout
-      ? await this.readLayout?.(input.layout.projectId)
-      : input.page
-        ? await this.schemaReader.getCurrent(input.page)
-        : undefined;
+    const current = input.page ? await this.schemaReader.getCurrent(input.page) : undefined;
     if (!current) throw conflict('Agent 目标上下文不可用');
     if (
       input.expectedWorkingVersion !== undefined &&
@@ -252,27 +243,7 @@ export class ContextAssembler {
       docsTruncated = true;
     }
 
-    const materials = input.layout
-      ? await loadLayoutMaterials(input.layout.projectPath)
-      : await loadProjectMaterials(input.page!.projectPath);
-    const layoutPolicy =
-      SYSTEM_POLICY.split('\n')
-        .filter(
-          (line) =>
-            !line.includes('prepare_block') &&
-            !line.includes('get_project_page_roles') &&
-            !line.includes('pageIntent') &&
-            !line.includes('登录页也是普通页面'),
-        )
-        .filter(
-          (line) =>
-            !line.includes('重置或清空页面') && !line.includes('支持同时生成组件与事件逻辑'),
-        )
-        .join('\n')
-        .replaceAll('页面', '布局')
-        .replaceAll('complete_page_run', 'complete_layout_run') +
-      '\n' +
-      LAYOUT_GENERATION_GUIDE;
+    const materials = await loadProjectMaterials(input.page!.projectPath);
     const roleState =
       input.target?.kind === 'page'
         ? await this.readProjectRoles?.(input.target.projectId)
@@ -289,28 +260,25 @@ export class ContextAssembler {
       currentWorkingVersion: current.workingVersion,
       ...(projectRole !== undefined ? { projectRole } : {}),
       ...(input.target ? { target: input.target } : {}),
-      systemPolicy: input.layout ? layoutPolicy : SYSTEM_POLICY,
+      systemPolicy: SYSTEM_POLICY,
       currentRequest: input.currentRequest,
       history: historyResult.selected,
       ...(summary ? { summarySlot: summary.value } : {}),
       materialCatalog,
-      flowNodeCatalog: input.layout
-        ? '[]'
-        : JSON.stringify(
-            flowNodeManifests.map(({ type, title, description, connections }) => ({
-              type,
-              title,
-              description,
-              connections,
-            })),
-          ),
+      flowNodeCatalog: JSON.stringify(
+        flowNodeManifests.map(({ type, title, description, connections }) => ({
+          type,
+          title,
+          description,
+          connections,
+        })),
+      ),
       logicSummary: logicSummary(current.schema),
-      flowGuide: input.layout
-        ? '布局不支持业务流程、事件绑定、全局变量。'
-        : FLOW_GENERATION_GUIDE +
-          '\n项目应用上下文（只读配置，不得猜测或擅自新增）：' +
-          JSON.stringify(materials.application ?? null) +
-          '\n应用状态用 application.<name> 读取；setApplicationState 写入已声明状态，resetApplicationState 重置，navigatePage 跳转真实项目页面或 home/return/login。接口 credentials 由节点显式配置；401/登录成功等判断须在逻辑流表达，不存在自动认证服务。缺少状态声明时请用户先在项目应用配置中声明。',
+      flowGuide:
+        FLOW_GENERATION_GUIDE +
+        '\n项目页面导航（只读，不得猜测页面 ID）：' +
+        JSON.stringify(materials.navigation ?? null) +
+        '\nnavigatePage 仅使用 {pageId} 跳转当前项目的明确页面；没有登录或返回原访问页等隐式目标。页面变量与请求仍由页面事件流管理。',
       schemaOutline: outline(current.schema),
       schemaFragment: schema.value,
       productDocs: docs,
@@ -345,9 +313,8 @@ export class ContextAssembler {
         ...context,
         flowNodeCatalog: '{"truncated":true}',
         logicSummary: '{"truncated":true}',
-        flowGuide: input.layout
-          ? '布局不支持业务流程。'
-          : '先读取 get_page_logic_context、get_flow_node_manifest 和完整 get_event_flow；使用局部绑定，保留无关逻辑。',
+        flowGuide:
+          '先读取 get_page_logic_context、get_flow_node_manifest 和完整 get_event_flow；使用局部绑定，保留无关逻辑。',
       };
     }
     if (totalSize(context) > this.budget.maxChars) {

@@ -1,3 +1,4 @@
+import { readProjectShell } from '@origamix/runtime';
 // Origamix application shell 1.0.0
 import { createElement, type ComponentType } from 'react';
 import { createBrowserRouter, createHashRouter, Link, Navigate } from 'react-router';
@@ -19,6 +20,12 @@ if (pages.length && !pages.some((page) => page.path === '/'))
     Component: () => createElement(Navigate, { to: `/${pages[0]!.slug}`, replace: true }),
   });
 
+const shell = readProjectShell(manifest);
+const notFoundPageId = shell.notFoundPageId;
+const notFound = pages.find((page) => page.pageId === notFoundPageId);
+const NotFoundComponent = notFound
+  ? modules[`./${manifest.pageDirectory}/${notFound.slug}/index.tsx`]?.default
+  : undefined;
 const routing = readRoutingConfig(manifest);
 const createRouter = routing.mode === 'hash' ? createHashRouter : createBrowserRouter;
 export default createRouter(
@@ -31,16 +38,18 @@ export default createRouter(
             ...routes,
             {
               path: '*',
-              element: createElement(
-                'main',
-                { className: 'p-8' },
-                createElement('h1', { className: 'text-lg font-semibold' }, '页面不存在'),
-                createElement(
-                  Link,
-                  { to: '/', className: 'mt-4 inline-block underline focus-visible:outline-2' },
-                  '返回首页',
-                ),
-              ),
+              element: NotFoundComponent
+                ? createElement(NotFoundComponent)
+                : createElement(
+                    'main',
+                    { className: 'p-8' },
+                    createElement('h1', { className: 'text-lg font-semibold' }, '页面不存在'),
+                    createElement(
+                      Link,
+                      { to: '/', className: 'mt-4 inline-block underline focus-visible:outline-2' },
+                      '返回首页',
+                    ),
+                  ),
             },
           ]
         : [

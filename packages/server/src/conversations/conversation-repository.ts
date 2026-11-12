@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, isNull, isNotNull, lt, max, ne, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, lt, max, ne, or } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import { MessageContentSchema, type AgentMessage, type MessageContent } from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
@@ -19,7 +19,7 @@ export type ConversationStatus = 'active' | 'archived' | 'deleted';
 export interface ConversationRecord {
   id: string;
   projectId: string;
-  pageId?: string;
+  pageId: string;
   title: string;
   status: ConversationStatus;
   createdAt: string;
@@ -39,7 +39,7 @@ const conversationFromRow = (
 ): ConversationRecord => ({
   id: encodeDatabaseId('conversation', row.id),
   projectId: projectPublicId(client, row.projectId),
-  ...(row.pageId === null ? {} : { pageId: pagePublicId(client, row.pageId) }),
+  pageId: pagePublicId(client, row.pageId),
   title: row.title,
   status: conversationStatus.decode(row.status),
   createdAt: row.createdAt,
@@ -85,7 +85,7 @@ export class ConversationRepository {
       .insert(conversations)
       .values({
         projectId: projectKey(this.client, record.projectId),
-        pageId: record.pageId ? pageKey(this.client, record.pageId) : null,
+        pageId: pageKey(this.client, record.pageId),
         title: record.title,
         status: conversationStatus.encode(record.status),
         createdAt: record.createdAt,
@@ -111,15 +111,14 @@ export class ConversationRepository {
     return row && conversationFromRow(row, this.client);
   }
   findActive(projectId: string, pageId: string | undefined): ConversationRecord | undefined {
+    if (!pageId) throw new Error('页面 ID 缺失');
     const row = this.client
       .select()
       .from(conversations)
       .where(
         and(
           eq(conversations.projectId, projectKey(this.client, projectId)),
-          pageId
-            ? eq(conversations.pageId, pageKey(this.client, pageId))
-            : isNull(conversations.pageId),
+          eq(conversations.pageId, pageKey(this.client, pageId!)),
           eq(conversations.status, conversationStatus.encode('active')),
         ),
       )
@@ -140,9 +139,7 @@ export class ConversationRepository {
       .where(
         and(
           eq(conversations.projectId, projectKey(this.client, projectId)),
-          pageId
-            ? eq(conversations.pageId, pageKey(this.client, pageId))
-            : isNull(conversations.pageId),
+          eq(conversations.pageId, pageKey(this.client, pageId!)),
           ne(conversations.status, conversationStatus.encode('deleted')),
           ...(before ? [lt(conversations.updatedAt, before)] : []),
         ),
@@ -291,7 +288,7 @@ export class ConversationRepository {
         pages,
         and(eq(pages.id, conversations.pageId), eq(pages.projectId, conversations.projectId)),
       )
-      .where(or(isNull(projects.id), and(isNotNull(conversations.pageId), isNull(pages.id))))
+      .where(or(isNull(projects.id), isNull(pages.id)))
       .orderBy(asc(conversations.id))
       .all()
       .map(({ id }) => encodeDatabaseId('conversation', id));

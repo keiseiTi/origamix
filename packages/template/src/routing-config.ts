@@ -15,3 +15,12 @@ export const readRoutingConfig = (manifest: {
     );
   return { mode: mode as RoutingConfig['mode'], basePath };
 };
+
+export const readLayoutVariant = (manifest: {
+  layout: { initialVariant: string };
+}): 'side' | 'top' | 'mix' => {
+  const variant = manifest.layout.initialVariant;
+  if (variant !== 'side' && variant !== 'top' && variant !== 'mix')
+    throw new Error('项目布局样式无效');
+  return variant;
+};
