@@ -86,7 +86,7 @@ describe('workspace page operations', () => {
     expect(useWorkspaceStore.getState().transitionError).toBeNull();
 
     // Only the browser owns unsent drafts in retained editors: the preview
-    // barrier must include an inactive page, without touching other projects.
+    // barrier only flushes the page being previewed.
     useWorkspaceStore.setState((state) => ({
       openPages: [
         { ...state.openPages[0]!, mode: 'edit' },
@@ -116,12 +116,9 @@ describe('workspace page operations', () => {
     editorRefForPage('page_inactive').current = { flush: inactiveSave };
     editorRefForPage('other').current = { flush: otherSave };
     await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
-    expect(useWorkspaceStore.getState().transitionError).toBe('inactive draft failed');
-    expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('edit');
-    expect(otherSave).not.toHaveBeenCalled();
-    await act(async () => useWorkspaceStore.getState().changePageMode('b', 'preview'));
+    expect(useWorkspaceStore.getState().transitionError).toBeNull();
     expect(useWorkspaceStore.getState().openPages[0]?.mode).toBe('preview');
-    expect(inactiveSave).toHaveBeenCalledTimes(2);
+    expect(inactiveSave).not.toHaveBeenCalled();
     expect(otherSave).not.toHaveBeenCalled();
   });
 });

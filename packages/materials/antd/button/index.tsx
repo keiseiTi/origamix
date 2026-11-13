@@ -1,5 +1,5 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React, { useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { Button as AntdButton, type ButtonProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 

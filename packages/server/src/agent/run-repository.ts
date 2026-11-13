@@ -154,8 +154,8 @@ const toRow = (run: AgentRunRecord, client: DatabaseClient): typeof agentRuns.$i
 
 export class AgentRunRepository {
   private readonly client: DatabaseClient;
-  constructor(database: ApplicationDatabase | DatabaseClient) {
-    this.client = 'orm' in database ? database.orm : database;
+  constructor(database: ApplicationDatabase) {
+    this.client = database.orm;
   }
   create(run: AgentRunRecord): AgentRunRecord {
     this.client.insert(agentRuns).values(toRow(run, this.client)).run();

@@ -1,5 +1,4 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React from 'react';
 import { InputNumber as AntdInputNumber, type InputNumberProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 

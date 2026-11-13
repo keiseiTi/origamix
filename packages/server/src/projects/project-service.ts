@@ -559,14 +559,6 @@ export class ProjectService {
     });
   }
 
-  private withDestructiveProject<T>(projectId: string, action: () => Promise<T>): Promise<T> {
-    return withProjectQueue(projectId, async () => {
-      const project = this.projects.getProject(projectId);
-      if (!project) throw notFound('项目不存在');
-      return withExclusiveProjectActivity(project.path, action);
-    });
-  }
-
   reconcile = async (path: string): Promise<ProjectRecord> =>
     withProjectActivity(path, async () => {
       const manifest = await this.manifest.readManifest(path);

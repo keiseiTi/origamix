@@ -206,18 +206,72 @@ export const ProjectSettingsPanel = ({
             </p>
           )}
         </div>
+        {draft && session.stale && (
+          <Button
+            size='sm'
+            variant='outline'
+            disabled={busy || session.running}
+            onClick={() => void session.reviewLatest()}
+          >
+            读取最新配置并核对草稿
+          </Button>
+        )}
         <Button
           size='sm'
           variant='secondary'
           className='shrink-0 px-2 text-xs'
           aria-busy={busy}
-          disabled={!draft || busy || session.running}
+          disabled={!draft || busy || session.running || session.stale}
           onClick={() => void save()}
         >
           <Save size={14} />
           {busy ? '保存中…' : '保存配置'}
         </Button>
       </EditorToolbar>
+      {session.latest && session.conflicts && draft && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) session.dismissReview();
+          }}
+        >
+          <DialogContent className='max-h-[85vh] overflow-auto sm:max-w-3xl'>
+            <DialogHeader>
+              <DialogTitle>核对项目配置冲突</DialogTitle>
+            </DialogHeader>
+            <p>
+              以下设置在两边都已修改：{session.conflicts.join('、')}
+              。其余修改会合并到草稿，核对后再保存。
+            </p>
+            <div className='grid min-w-0 gap-4 sm:grid-cols-2'>
+              {[
+                { label: '我的草稿', value: draft },
+                { label: '项目最新配置', value: session.latest },
+              ].map(({ label, value }) => (
+                <div key={label} className='min-w-0'>
+                  <p className='mb-2 font-medium'>{label}</p>
+                  <pre className='max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs'>
+                    {JSON.stringify(
+                      { shell: value.shell, layout: value.layout, routing: value.routing },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant='outline' onClick={session.dismissReview}>
+                稍后核对
+              </Button>
+              <Button variant='outline' onClick={() => session.resolveReview(false)}>
+                冲突项使用最新配置
+              </Button>
+              <Button onClick={() => session.resolveReview(true)}>冲突项保留我的草稿</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {!draft ? (
         <div className='grid justify-items-start gap-3 p-8'>
           {error ? (

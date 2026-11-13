@@ -85,7 +85,13 @@ export const ProjectSettingsChat = ({
         onSubmit={() => void submit()}
         onCancel={session.cancel}
         running={session.running}
-        disabled={session.running || session.busy || configurationRequired || !session.draft}
+        disabled={
+          session.running ||
+          session.busy ||
+          session.stale ||
+          configurationRequired ||
+          !session.draft
+        }
         configurationRequired={configurationRequired}
         onConfigureModel={onConfigureModel}
         placeholder={configurationRequired ? '请先配置 DeepSeek API Key' : '描述你想调整的布局配置'}

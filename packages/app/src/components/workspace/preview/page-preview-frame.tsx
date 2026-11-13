@@ -2,14 +2,10 @@ import { nanoid } from 'nanoid';
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  equalJson,
-  type ApplicationRenderReport,
-  type ApplicationSnapshot,
-} from '@origamix/shared';
+import { equalJson, type PagePreviewReport, type PagePreviewSnapshot } from '@origamix/shared';
 import { isPreviewToHostMessage, type HostToPreviewMessage } from '@/preview/protocol';
 import { runtimeService } from '@/services/runtime';
-import { loadApplicationSnapshot } from '@/preview/load-application-snapshot';
+import { loadPagePreviewSnapshot } from '@/preview/load-page-preview';
 import { useWorkspaceStore } from '@/store/workspace';
 import type { AppTheme } from '@/store/preferences';
 interface PagePreviewFrameProps {
@@ -43,7 +39,7 @@ export const PagePreviewFrame = ({
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-  const currentSnapshot = useRef<ApplicationSnapshot | null>(null);
+  const currentSnapshot = useRef<PagePreviewSnapshot | null>(null);
   const reportSequence = useRef(0);
   const observedAt = useRef(0);
   const ready = useRef(false);
@@ -74,7 +70,7 @@ export const PagePreviewFrame = ({
   }, [previewUrl]);
 
   const publishSnapshot = useCallback(
-    (next: ApplicationSnapshot): void => {
+    (next: PagePreviewSnapshot): void => {
       if (ready.current)
         iframeRef.current?.contentWindow?.postMessage(
           {
@@ -90,7 +86,7 @@ export const PagePreviewFrame = ({
   );
 
   const replaceSnapshot = useCallback(
-    (next: ApplicationSnapshot): void => {
+    (next: PagePreviewSnapshot): void => {
       const hasRetainedSnapshot = currentSnapshot.current !== null;
       currentSnapshot.current = next;
       reportSequence.current = 0;
@@ -108,11 +104,11 @@ export const PagePreviewFrame = ({
   );
 
   const readSnapshot = useCallback(
-    async (apply: (next: ApplicationSnapshot) => void): Promise<void> => {
+    async (apply: (next: PagePreviewSnapshot) => void): Promise<void> => {
       const requestGeneration = ++generation.current;
       setRefreshing(true);
       try {
-        const next = await loadApplicationSnapshot(projectId, pageId, theme);
+        const next = await loadPagePreviewSnapshot(projectId, pageId, theme);
         if (requestGeneration !== generation.current) return;
         apply(next);
         setError(null);
@@ -133,12 +129,10 @@ export const PagePreviewFrame = ({
     () =>
       readSnapshot((next) => {
         const retained = currentSnapshot.current;
-        const previousPage = retained?.pageSchemas[pageId];
-        const nextPage = next.pageSchemas[pageId];
         if (
           retained &&
-          previousPage?.workingVersion === nextPage?.workingVersion &&
-          previousPage?.hash === nextPage?.hash &&
+          retained.workingVersion === next.workingVersion &&
+          retained.hash === next.hash &&
           equalJson(retained.stack, next.stack)
         ) {
           // Keep the runtime alive while updating the revision used for reports.
@@ -147,40 +141,36 @@ export const PagePreviewFrame = ({
         }
         replaceSnapshot(next);
       }),
-    [pageId, readSnapshot, replaceSnapshot],
+    [readSnapshot, replaceSnapshot],
   );
 
   const reportRender = useCallback(
-    async (report: ApplicationRenderReport): Promise<void> => {
+    async (report: PagePreviewReport): Promise<void> => {
       const current = currentSnapshot.current;
-      const page = current?.pageSchemas[report.pageId];
       if (
         !current ||
-        !page ||
+        current.pageId !== report.pageId ||
         current.snapshotId !== report.snapshotId ||
-        page.hash !== report.pageHash ||
+        current.hash !== report.pageHash ||
         report.reportSequence <= reportSequence.current
       )
         return;
       reportSequence.current = report.reportSequence;
-      // Only the current page Working identity can publish diagnostics.
-      if (!page.revisionId || page.workingVersion === null) return;
       observedAt.current = Math.max(Date.now(), observedAt.current + 1);
       const isCurrent = () => {
         const latest = currentSnapshot.current;
-        const latestPage = latest?.pageSchemas[report.pageId];
         return (
           latest?.snapshotId === report.snapshotId &&
-          latestPage?.workingVersion === page.workingVersion &&
-          latestPage?.revisionId === page.revisionId &&
+          latest.workingVersion === current.workingVersion &&
+          latest.revisionId === current.revisionId &&
           reportSequence.current === report.reportSequence
         );
       };
       try {
         const result = await runtimeService.report(projectId, report.pageId, {
-          revisionId: page.revisionId,
-          workingVersion: page.workingVersion,
-          workingHash: page.hash,
+          revisionId: current.revisionId,
+          workingVersion: current.workingVersion,
+          workingHash: current.hash,
           previewId: report.snapshotId,
           reportSequence: report.reportSequence,
           outcome: report.outcome,
@@ -188,7 +178,7 @@ export const PagePreviewFrame = ({
           diagnostics: report.diagnostics.map((diagnostic) => ({
             ...diagnostic,
             pageId: report.pageId,
-            revisionId: page.revisionId!,
+            revisionId: current.revisionId,
           })),
         });
         if (isCurrent() && result.disposition === 'accepted' && report.outcome === 'success')
@@ -269,7 +259,7 @@ export const PagePreviewFrame = ({
         size='icon-sm'
         variant='secondary'
         className='absolute top-3 right-14 z-50 shadow-md'
-        aria-label='刷新应用预览'
+        aria-label='刷新页面预览'
         disabled={refreshing}
         onClick={() => void refresh()}
       >

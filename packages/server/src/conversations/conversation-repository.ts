@@ -77,8 +77,8 @@ const messageFromRow = (
 
 export class ConversationRepository {
   private readonly client: DatabaseClient;
-  constructor(database: ApplicationDatabase | DatabaseClient) {
-    this.client = 'orm' in database ? database.orm : database;
+  constructor(database: ApplicationDatabase) {
+    this.client = database.orm;
   }
   create(record: ConversationRecord): ConversationRecord {
     const result = this.client

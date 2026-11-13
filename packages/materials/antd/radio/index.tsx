@@ -1,5 +1,4 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React from 'react';
 import { Radio as AntdRadio, type RadioGroupProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 

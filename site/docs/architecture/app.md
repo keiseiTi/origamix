@@ -35,8 +35,8 @@ pnpm --filter @origamix/app build
 
 返回[整体架构](/architecture/index)。
 
-## 布局与应用预览
+## 项目设置与页面预览
 
-同一 PageSession 按 page/layout 目标复用编辑器、对话、历史和保存操作。App 只把布局文档的 schema 投影给 Editor，持久化仍归 Server；布局 UI 标签身份不成为后端 pageId。
+项目设置持有清单配置草稿。发生保存冲突时，界面可读取最新清单，将各自独立的字段修改合入草稿，并让用户核对双方都改过的字段。用户确认并再次保存后才写入清单。
 
-可信工作台读取并校验应用快照，隔离 iframe 复用 Runtime 组合布局与页面，在固定快照内导航。刷新失败保留旧快照；就绪握手使用当前快照引用，避免数据读取与 React 提交之间的竞态。详见[Layout 契约与接口](/architecture/layout)。
+可信工作台提交目标页的待保留草稿，读取该页 Working 与物料栈，并将快照交给隔离 iframe 渲染。刷新失败保留已有画面。完整应用的布局与导航由生成模板渲染，详见[项目布局契约](/architecture/layout)。

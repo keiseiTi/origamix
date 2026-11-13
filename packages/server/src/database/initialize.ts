@@ -1,4 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
+import { deepStrictEqual } from 'node:assert';
 
 export const schemaSql = `
 CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_opened_at TEXT NOT NULL);
@@ -24,95 +25,6 @@ CREATE UNIQUE INDEX idx_agent_tool_audits_run_sequence ON agent_tool_audits(run_
 CREATE INDEX idx_agent_tool_audits_run ON agent_tool_audits(run_id, occurred_at);
 `;
 
-const expectedColumns: Record<string, readonly string[]> = {
-  projects: ['id', 'project_id', 'path', 'name', 'status', 'created_at', 'last_opened_at'],
-  pages: [
-    'id',
-    'page_id',
-    'project_id',
-    'slug',
-    'name',
-    'relative_path',
-    'status',
-    'created_at',
-    'updated_at',
-  ],
-  conversations: [
-    'id',
-    'project_id',
-    'page_id',
-    'title',
-    'status',
-    'created_at',
-    'updated_at',
-    'deleted_at',
-  ],
-  messages: [
-    'id',
-    'conversation_id',
-    'run_id',
-    'role',
-    'content_json',
-    'content_version',
-    'status',
-    'sequence',
-    'error_code',
-    'created_at',
-    'updated_at',
-  ],
-  agent_runs: [
-    'id',
-    'run_id',
-    'project_id',
-    'page_id',
-    'conversation_id',
-    'user_message_id',
-    'client_request_id',
-    'base_working_version',
-    'result_working_version',
-    'result_working_hash',
-    'model_ref',
-    'run_kind',
-    'status',
-    'outcome',
-    'outcome_json',
-    'repair_attempts',
-    'operation_count',
-    'operation_digest',
-    'budget_json',
-    'prompt_version',
-    'policy_version',
-    'toolset_version',
-    'material_manifest_version',
-    'retry_of_run_id',
-    'input_tokens',
-    'output_tokens',
-    'model_calls',
-    'tool_calls',
-    'duration_ms',
-    'error_code',
-    'error_message',
-    'failure_stage',
-    'recovered_commit',
-    'created_at',
-    'updated_at',
-    'finished_at',
-  ],
-  agent_tool_audits: [
-    'id',
-    'run_id',
-    'sequence',
-    'tool_name',
-    'phase',
-    'safe_error_code',
-    'duration_ms',
-    'operation_count',
-    'operation_type_counts_json',
-    'operation_digest',
-    'occurred_at',
-  ],
-};
-
 export const assertSchemaSafety = (sql: string): void => {
   if (/\b(foreign\s+key|references)\b/i.test(sql)) throw new Error('数据库结构不能包含外键约束');
 };
@@ -133,22 +45,51 @@ export const currentUserTables = (connection: DatabaseSync): string[] =>
       .all() as Array<{ name: string }>
   ).map(({ name }) => name);
 
-const tableColumns = (connection: DatabaseSync, table: string): string[] =>
-  (connection.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map(
-    ({ name }) => name,
+const tableColumns = (connection: DatabaseSync, table: string) =>
+  connection.prepare('SELECT * FROM pragma_table_info(?) ORDER BY cid').all(table);
+
+const uniqueIndexes = (connection: DatabaseSync, table: string) => {
+  const indexes = connection
+    .prepare('SELECT name, partial FROM pragma_index_list(?) WHERE "unique" = 1 ORDER BY name')
+    .all(table) as { name: string; partial: number }[];
+  const columns = connection.prepare('SELECT * FROM pragma_index_xinfo(?) ORDER BY seqno');
+  return new Map(
+    indexes.map(({ name, partial }) => [name, { partial, columns: columns.all(name) }]),
   );
+};
+
+const readSchemaContract = () => {
+  const reference = new DatabaseSync(':memory:');
+  try {
+    assertSchemaSafety(schemaSql);
+    reference.exec(schemaSql);
+    return currentUserTables(reference).map((table) => ({
+      table,
+      columns: tableColumns(reference, table),
+      indexes: uniqueIndexes(reference, table),
+    }));
+  } finally {
+    reference.close();
+  }
+};
+
+const expectedSchema = readSchemaContract();
 
 export const assertCurrentSchema = (connection: DatabaseSync): void => {
   const actualTables = currentUserTables(connection);
-  const expectedTables = Object.keys(expectedColumns).sort();
+  const expectedTables = expectedSchema.map(({ table }) => table);
   if (JSON.stringify(actualTables) !== JSON.stringify(expectedTables))
     throw new IncompatibleDatabaseError('数据库结构与当前版本不兼容');
-  for (const [table, expected] of Object.entries(expectedColumns)) {
-    const actual = tableColumns(connection, table);
-    if (JSON.stringify(actual) !== JSON.stringify(expected))
-      throw new IncompatibleDatabaseError(`数据库表 ${table} 与当前版本不兼容`);
-    if ((connection.prepare(`PRAGMA foreign_key_list(${table})`).all() as unknown[]).length > 0)
+  for (const { table, columns, indexes } of expectedSchema) {
+    if (connection.prepare('SELECT 1 FROM pragma_foreign_key_list(?) LIMIT 1').get(table))
       throw new Error(`数据库表 ${table} 包含禁止的外键`);
+    const actualIndexes = uniqueIndexes(connection, table);
+    try {
+      deepStrictEqual(tableColumns(connection, table), columns);
+      for (const [name, expected] of indexes) deepStrictEqual(actualIndexes.get(name), expected);
+    } catch {
+      throw new IncompatibleDatabaseError(`数据库表 ${table} 的列或唯一索引与当前版本不兼容`);
+    }
   }
 };
 
@@ -165,7 +106,6 @@ export const initializeDatabase = (connection: DatabaseSync): void => {
     return;
   }
   if (version !== 0) throw new Error('数据库版本记录与结构不一致');
-  assertSchemaSafety(schemaSql);
   connection.exec('BEGIN IMMEDIATE');
   try {
     connection.exec(schemaSql);

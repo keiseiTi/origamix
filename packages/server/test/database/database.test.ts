@@ -48,6 +48,28 @@ describe('ApplicationDatabase', () => {
     database.close();
   });
 
+  it('rejects a current database missing the Agent request deduplication constraint', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'origamix-db-index-'));
+    directories.push(directory);
+    const path = join(directory, 'origamix.db');
+    const database = new ApplicationDatabase(path);
+    database.connection.exec('DROP INDEX idx_agent_runs_client_request');
+    database.close();
+
+    expect(() => new ApplicationDatabase(path)).toThrow('唯一索引');
+    const preserved = new DatabaseSync(path);
+    try {
+      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+      expect(
+        preserved
+          .prepare("SELECT name FROM sqlite_schema WHERE name = 'idx_agent_runs_client_request'")
+          .get(),
+      ).toBeUndefined();
+    } finally {
+      preserved.close();
+    }
+  });
+
   it('rejects a database with an unsupported version without modifying its records', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-invalid-version-'));
     directories.push(directory);

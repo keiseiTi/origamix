@@ -1,5 +1,4 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React from 'react';
 import { Switch as AntdSwitch, type SwitchProps } from 'antd';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 

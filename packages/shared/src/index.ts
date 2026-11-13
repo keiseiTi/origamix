@@ -341,15 +341,12 @@ export {
 } from './version.ts';
 
 export {
-  ApplicationSnapshotSchema,
-  isApplicationSnapshot,
-  ApplicationRenderReportSchema,
-  isApplicationRenderReport,
-} from './transport/application-snapshot.ts';
-export type {
-  ApplicationSnapshot,
-  ApplicationRenderReport,
-} from './transport/application-snapshot.ts';
+  PagePreviewSnapshotSchema,
+  isPagePreviewSnapshot,
+  PagePreviewReportSchema,
+  isPagePreviewReport,
+} from './transport/page-preview.ts';
+export type { PagePreviewSnapshot, PagePreviewReport } from './transport/page-preview.ts';
 export { agentTargetFields, resolveAgentTarget } from './agent/agent-target.ts';
 
 export { ProjectLayoutConfigSchema, isProjectLayoutEnabled } from './project/project-manifest.ts';

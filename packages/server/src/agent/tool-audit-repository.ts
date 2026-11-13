@@ -12,8 +12,8 @@ export interface AgentToolAuditRecord extends ToolAuditEvent {
 export class AgentToolAuditRepository {
   private readonly client: DatabaseClient;
 
-  constructor(database: ApplicationDatabase | DatabaseClient) {
-    this.client = 'orm' in database ? database.orm : database;
+  constructor(database: ApplicationDatabase) {
+    this.client = database.orm;
   }
 
   append(event: ToolAuditEvent): AgentToolAuditRecord {

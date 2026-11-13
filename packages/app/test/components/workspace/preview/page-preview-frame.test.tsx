@@ -7,9 +7,6 @@ const mocks = vi.hoisted(() => ({
   workingState: vi.fn(),
   stack: vi.fn(),
   report: vi.fn(),
-  pages: vi.fn(),
-  config: vi.fn(),
-  layoutWorking: vi.fn(),
 }));
 vi.mock('../../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../../src/services/projects', () => ({ projectsService: mocks }));
@@ -52,10 +49,6 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     .mockResolvedValueOnce(working(2))
     .mockResolvedValue({ ...working(3), workingHash: working(2).workingHash });
   mocks.stack.mockResolvedValue(BUILTIN_PROJECT_STACK);
-  mocks.config.mockResolvedValue({ enabled: false });
-  mocks.pages.mockResolvedValue([
-    { id: 'page_test', projectId: 'project_test', name: 'Test', slug: 'home' },
-  ]);
   mocks.report.mockReturnValue(report.promise);
   const props = {
     projectId: 'project_test',
@@ -80,21 +73,16 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='two' />);
   await waitFor(() => expect(post).toHaveBeenCalled());
   const current = post.mock.calls.at(-1)![0].snapshot;
-  expect(current.pageSchemas.page_test.workingVersion).toBe(2);
+  expect(current.workingVersion).toBe(2);
   await act(async () => first.resolve(working(1)));
-  expect(
-    post.mock.calls.every(
-      ([message]) => message.snapshot?.pageSchemas.page_test.workingVersion !== 1,
-    ),
-  ).toBe(true);
+  expect(post.mock.calls.every(([message]) => message.snapshot?.workingVersion !== 1)).toBe(true);
   const outcome = {
     snapshotId: 'old-preview',
     pageId: 'page_test',
-    pageHash: current.pageSchemas.page_test.hash,
+    pageHash: current.hash,
     reportSequence: 1,
     outcome: 'success',
     diagnostics: [],
-    observedAt: new Date().toISOString(),
   };
   send({ type: 'origamix.preview.outcome', report: outcome });
   expect(mocks.report).not.toHaveBeenCalled();
@@ -125,9 +113,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   const replacement = view.getByTitle('Test 预览') as HTMLIFrameElement;
   const replacementPost = vi.spyOn(replacement.contentWindow!, 'postMessage');
   send({ type: 'origamix.preview.ready' }, replacement);
-  expect(replacementPost.mock.calls.at(-1)![0].snapshot.pageSchemas.page_test.workingVersion).toBe(
-    3,
-  );
+  expect(replacementPost.mock.calls.at(-1)![0].snapshot.workingVersion).toBe(3);
   await act(async () => report.reject(new Error('obsolete report failure')));
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
   mocks.workingState.mockRejectedValueOnce(new Error('page unavailable'));
@@ -142,10 +128,6 @@ it('publishes the loaded snapshot when iframe readiness arrives before React com
   const pending = deferred<ReturnType<typeof working>>();
   mocks.workingState.mockReturnValue(pending.promise);
   mocks.stack.mockResolvedValue(BUILTIN_PROJECT_STACK);
-  mocks.config.mockResolvedValue({ enabled: false });
-  mocks.pages.mockResolvedValue([
-    { id: 'page_test', projectId: 'project_test', name: 'Test', slug: 'home' },
-  ]);
   const view = render(
     <PagePreviewFrame
       active
@@ -176,5 +158,5 @@ it('publishes the loaded snapshot when iframe readiness arrives before React com
     );
   });
   expect(post).toHaveBeenCalledOnce();
-  expect(post.mock.calls[0]![0].snapshot.pageSchemas.page_test.workingVersion).toBe(1);
+  expect(post.mock.calls[0]![0].snapshot.workingVersion).toBe(1);
 });

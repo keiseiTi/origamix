@@ -1,5 +1,4 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React from 'react';
 import type { RuntimeMaterialProps } from '@';
 import { TreeSelect as AntdTreeSelect, type TreeSelectProps } from 'antd';
 

@@ -3,7 +3,6 @@ import { Popover } from '@base-ui/react/popover';
 import Chrome, { ChromeInputType } from '@uiw/react-color-chrome';
 import { cn } from '../lib/utils';
 import { Button } from './button';
-import { Input } from './input';
 
 interface ColorPickerProps {
   value?: string;

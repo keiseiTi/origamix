@@ -65,7 +65,7 @@ describe('DeepSeek capability probe', () => {
       const faux = fauxProvider();
       faux.setResponses([
         async () =>
-          await new Promise((resolve, reject) => {
+          await new Promise((_resolve, reject) => {
             options.signal.addEventListener('abort', () => reject(options.signal.reason), {
               once: true,
             });
@@ -87,7 +87,7 @@ describe('DeepSeek capability probe', () => {
       const faux = fauxProvider();
       faux.setResponses([
         async () =>
-          await new Promise((resolve, reject) => {
+          await new Promise((_resolve, reject) => {
             options.signal.addEventListener('abort', () => reject(options.signal.reason), {
               once: true,
             });

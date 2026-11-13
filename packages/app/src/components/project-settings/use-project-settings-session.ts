@@ -5,9 +5,10 @@ import {
   type ProjectSettingsDraft,
 } from '@origamix/shared';
 import { projectsService } from '@/services/projects';
-import { subscribeBackendStatus } from '@/services/request';
+import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
 import { assistProjectSettings } from '@/services/project-settings-agent';
 import { useWorkspaceStore } from '@/store/workspace';
+import { reconcileProjectSettings } from './reconcile-project-settings';
 
 export interface SettingsChatMessage {
   role: 'user' | 'assistant';
@@ -18,6 +19,9 @@ export interface SettingsChatMessage {
 export const useProjectSettingsSession = (projectId: string) => {
   const [draft, renderDraft] = useState<ProjectSettings>();
   const current = useRef<ProjectSettings | undefined>(undefined);
+  const [baseline, setBaseline] = useState<ProjectSettings>();
+  const [stale, setStale] = useState(false);
+  const [latest, setLatest] = useState<ProjectSettings>();
   const version = useRef(0);
   const mounted = useRef(false);
   const generation = useRef(0);
@@ -54,6 +58,9 @@ export const useProjectSettingsSession = (projectId: string) => {
       .then((next) => {
         if (!controller.signal.aborted) {
           current.current = next;
+          setBaseline(next);
+          setStale(false);
+          setLatest(undefined);
           version.current += 1;
           renderDraft(next);
           setError(undefined);
@@ -90,7 +97,7 @@ export const useProjectSettingsSession = (projectId: string) => {
   }, [projectId, attempt]);
   const save = async () => {
     const snapshot = current.current;
-    if (!snapshot || saving.current || execution.current) return;
+    if (!snapshot || stale || saving.current || execution.current) return;
     const issue = projectShellIssue(snapshot.shell, snapshot.pages);
     if (issue) {
       setError(issue);
@@ -110,6 +117,7 @@ export const useProjectSettingsSession = (projectId: string) => {
       });
       if (!mounted.current || generation.current !== saveGeneration) return;
       current.current = next;
+      setBaseline(next);
       version.current += 1;
       renderDraft(next);
       setSaved(true);
@@ -126,8 +134,10 @@ export const useProjectSettingsSession = (projectId: string) => {
         ),
       );
     } catch (reason) {
-      if (mounted.current && generation.current === saveGeneration)
+      if (mounted.current && generation.current === saveGeneration) {
+        if (reason instanceof ApiRequestError && reason.status === 409) setStale(true);
         setError(reason instanceof Error ? reason.message : '保存失败，输入已保留');
+      }
     } finally {
       if (generation.current === saveGeneration) {
         saving.current = false;
@@ -135,9 +145,50 @@ export const useProjectSettingsSession = (projectId: string) => {
       }
     }
   };
+  const review =
+    latest && draft?.projectId === projectId && baseline
+      ? reconcileProjectSettings(baseline, draft, latest)
+      : undefined;
+  const applyLatest = (next: ProjectSettings, merged: ProjectSettings) => {
+    setBaseline(next);
+    current.current = merged;
+    version.current += 1;
+    renderDraft(merged);
+    setLatest(undefined);
+    setStale(false);
+    setError(projectShellIssue(merged.shell, merged.pages) ?? undefined);
+  };
+  const reviewLatest = async () => {
+    const base = baseline;
+    const edited = current.current;
+    if (!base || !edited || saving.current || execution.current) return;
+    const readGeneration = generation.current;
+    saving.current = true;
+    setBusy(true);
+    try {
+      const next = await projectsService.settings(projectId);
+      if (generation.current !== readGeneration) return;
+      const result = reconcileProjectSettings(base, edited, next);
+      if (result.conflicts.length) setLatest(next);
+      else applyLatest(next, result.draft);
+    } catch (reason) {
+      if (generation.current === readGeneration)
+        setError(reason instanceof Error ? reason.message : '无法读取最新配置，草稿已保留');
+    } finally {
+      if (generation.current === readGeneration) {
+        saving.current = false;
+        setBusy(false);
+      }
+    }
+  };
+  const resolveReview = (keepDraft: boolean) => {
+    if (!latest || !baseline || !current.current || saving.current) return;
+    const result = reconcileProjectSettings(baseline, current.current, latest, keepDraft);
+    applyLatest(latest, result.draft);
+  };
   const send = async (prompt: string): Promise<boolean> => {
     const snapshot = current.current;
-    if (!snapshot || saving.current || execution.current || !prompt.trim()) return false;
+    if (!snapshot || stale || saving.current || execution.current || !prompt.trim()) return false;
     const issue = projectShellIssue(snapshot.shell, snapshot.pages);
     if (issue) {
       setChatError(`请先修正表单：${issue}`);
@@ -231,6 +282,12 @@ export const useProjectSettingsSession = (projectId: string) => {
     error,
     busy,
     saved,
+    stale,
+    reviewLatest,
+    conflicts: review?.conflicts,
+    latest,
+    resolveReview,
+    dismissReview: () => setLatest(undefined),
     save,
     reload: () => setAttempt((value) => value + 1),
     messages,

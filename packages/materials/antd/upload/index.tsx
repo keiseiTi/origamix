@@ -1,5 +1,4 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
-import React from 'react';
 import { Button, Upload as AntdUpload, type UploadProps } from 'antd';
 import { useLayoutEffect, useState } from 'react';
 import type { RuntimeMaterialProps } from '@';

@@ -1,6 +1,5 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
 import { useRuntimeValue } from '../runtime-state';
-import React from 'react';
 import { Drawer as AntdDrawer, type DrawerProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 

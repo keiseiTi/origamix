@@ -55,7 +55,7 @@ pnpm --filter @origamix/shared build
 
 - project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, independent of page Schema; layout (including initialVariant) and routing are required in every project manifest; missing fields are rejected, not defaulted on reads.
 
-- project-shell.ts owns required shell and hash-checked settings. Stable page references, acyclic menu parents and safe logo URLs are validated. Agent/session targets are page-only. application-snapshot.ts transports page Working previews without layout data.
+- project-shell.ts owns required shell and hash-checked settings. Stable page references, acyclic menu parents and safe logo URLs are validated. Agent/session targets are page-only. page-preview.ts transports page Working previews without layout data.
 
 - project-navigation.ts defines read-only page navigation metadata. navigatePage accepts only pageId; no application-state nodes or context namespace. ProjectManifest rejects removed applicationState/access fields through its current strict shape.
 

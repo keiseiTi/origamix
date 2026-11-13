@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, isNull, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
 import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared';
-import type { ApplicationDatabase, DatabaseClient, TransactionResult } from '../database/database';
+import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import {
   agentRuns,
   agentToolAudits,
@@ -36,14 +36,10 @@ const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].map((status
 
 export class ProjectRepository {
   private readonly client: DatabaseClient;
-  private readonly database?: ApplicationDatabase;
-  constructor(database: ApplicationDatabase | DatabaseClient) {
-    this.client = 'orm' in database ? database.orm : database;
-    this.database = 'orm' in database ? database : undefined;
+  constructor(private readonly database: ApplicationDatabase) {
+    this.client = database.orm;
   }
-  private transact<T>(action: (client: DatabaseClient) => TransactionResult<T>): T {
-    return this.database ? this.database.transaction<T>(action) : action(this.client);
-  }
+
   listProjects(): ProjectWithPages[] {
     return this.client
       .select()
@@ -101,7 +97,7 @@ export class ProjectRepository {
     );
   }
   deletePageRecord(projectId: string, pageId: string): boolean {
-    return this.transact((client) => {
+    return this.database.transaction((client) => {
       if (
         !client
           .select({ id: pages.id })
@@ -162,7 +158,7 @@ export class ProjectRepository {
     });
   }
   deleteProjectRecord(projectId: string): boolean {
-    return this.transact((client) => {
+    return this.database.transaction((client) => {
       if (
         !client
           .select({ id: projects.id })
@@ -204,7 +200,7 @@ export class ProjectRepository {
     });
   }
   reconcile(project: ProjectRecord, pageRecords: PageRecord[]): void {
-    this.transact((client) => {
+    this.database.transaction((client) => {
       client
         .insert(projects)
         .values({ ...project, id: undefined, projectId: project.id })

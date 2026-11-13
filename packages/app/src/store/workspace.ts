@@ -187,18 +187,12 @@ let transitionPending = false;
 export const runWorkspaceTransition = async (
   pageId: string,
   action: () => void,
-  includeProject = false,
+  targetOnly = false,
 ): Promise<void> => {
   if (transitionPending) return;
   transitionPending = true;
-  const { activeTabId, openPages } = useWorkspaceStore.getState();
-  const pageIds = new Set([activeTabId, pageId]);
-  const target = openPages.find((tab) => tab.id === pageId);
-  if (includeProject && target) {
-    for (const tab of openPages) {
-      if (tab.projectId === target.projectId) pageIds.add(tab.id);
-    }
-  }
+  const { activeTabId } = useWorkspaceStore.getState();
+  const pageIds = targetOnly ? [pageId] : new Set([activeTabId, pageId]);
   try {
     useWorkspaceStore.setState({ transitionError: null });
     for (const id of pageIds) {

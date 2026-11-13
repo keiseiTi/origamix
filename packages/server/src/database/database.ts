@@ -4,7 +4,7 @@ import { initializeDatabase } from './initialize';
 
 export type DatabaseClient = NodeSQLiteDatabase;
 type TransactionClient = Parameters<Parameters<DatabaseClient['transaction']>[0]>[0];
-export type TransactionResult<T> = T extends Promise<unknown> ? never : T;
+type TransactionResult<T> = T extends Promise<unknown> ? never : T;
 
 export class ApplicationDatabase {
   readonly connection: DatabaseSync;

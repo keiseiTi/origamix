@@ -4,8 +4,6 @@ import {
   type PageRoleState,
   type ProjectSettings,
   type ProjectSettingsUpdate,
-  type ProjectRoutingState,
-  type ProjectRoutingUpdate,
   type ProjectRouting,
   type InitialLayoutVariant,
   type PageRoleId,
@@ -28,10 +26,6 @@ export const projectsService = {
     request('/projects/settings/update', input),
   navigation: (projectId: string): Promise<ProjectNavigationInfo> =>
     request('/projects/navigation/get', { projectId }),
-  routing: (projectId: string): Promise<ProjectRoutingState> =>
-    request('/projects/routing/get', { projectId }),
-  updateRouting: (input: ProjectRoutingUpdate): Promise<ProjectRoutingState> =>
-    request('/projects/routing/update', input),
   pageRoles: (projectId: string): Promise<PageRoleState> =>
     request('/projects/page-roles/get', { projectId }),
   updatePageRoles: async (input: UpdatePageRoles): Promise<PageRoleState> => {

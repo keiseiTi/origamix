@@ -1,6 +1,5 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
 import { useRuntimeValue } from '../runtime-state';
-import React from 'react';
 import { Modal as AntdModal, type ModalProps } from 'antd';
 import type { RuntimeMaterialProps } from '@';
 
