@@ -15,17 +15,18 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+const settings: ProjectSettings = {
+  projectId: 'project_test',
+  name: 'Test',
+  pages: [],
+  manifestHash: 'a'.repeat(64),
+  layout: { enabled: true, initialVariant: 'mix' },
+  routing: { mode: 'browser', basePath: '/' },
+  shell: { title: '', logo: '', standalonePageIds: [] },
+};
+
 // Only the browser can prove that an in-flight proposal cannot replace newer form input or survive unmount.
-it('shares AI/form drafts, rejects late AI results, preserves failed saves and cancels abandoned sessions', async () => {
-  const settings: ProjectSettings = {
-    projectId: 'project_test',
-    name: 'Test',
-    pages: [],
-    manifestHash: 'a'.repeat(64),
-    layout: { enabled: true, initialVariant: 'mix' },
-    routing: { mode: 'browser', basePath: '/' },
-    shell: { title: '', logo: '', standalonePageIds: [] },
-  };
+it('rejects stale AI proposals and cancels abandoned settings sessions', async () => {
   mocks.settings.mockResolvedValue(settings);
   let receive!: (event: ProjectSettingsAgentEvent) => void;
   let finish!: () => void;
@@ -55,21 +56,17 @@ it('shares AI/form drafts, rejects late AI results, preserves failed saves and c
     hook.result.current.setDraft({ ...settings, shell: { ...settings.shell, title: '手工修改' } });
   });
   await act(async () => {
-    try {
-      receive({
-        type: 'completed',
-        projectId: 'project_test',
-        draftVersion: 1,
-        text: 'AI 修改',
-        draft: {
-          shell: { ...settings.shell, title: '旧 AI' },
-          layout: settings.layout,
-          routing: settings.routing,
-        },
-      });
-    } catch {
-      /* The stream adapter propagates receiver errors through its promise. */
-    }
+    receive({
+      type: 'completed',
+      projectId: 'project_test',
+      draftVersion: 1,
+      text: 'AI 修改',
+      draft: {
+        shell: { ...settings.shell, title: '旧 AI' },
+        layout: settings.layout,
+        routing: settings.routing,
+      },
+    });
     finish();
     await pending;
   });
@@ -98,38 +95,6 @@ it('shares AI/form drafts, rejects late AI results, preserves failed saves and c
   });
   expect(hook.result.current.draft?.shell.title).toBe('新 AI');
   expect(mocks.updateSettings).not.toHaveBeenCalled();
-  mocks.updateSettings.mockRejectedValueOnce(new ApiRequestError('保存冲突', 409, 409));
-  await act(async () => {
-    await hook.result.current.save();
-  });
-  expect(hook.result.current.draft?.shell.title).toBe('新 AI');
-  expect(hook.result.current.error).toBe('保存冲突');
-  const latest = {
-    ...settings,
-    manifestHash: 'b'.repeat(64),
-    pages: [{ pageId: 'page_new', name: 'New', slug: 'new' }],
-    shell: { ...settings.shell, title: '其他修改', logo: '/logo.svg' },
-  };
-  mocks.settings.mockResolvedValueOnce(latest);
-  await act(async () => hook.result.current.reviewLatest());
-  expect(hook.result.current.conflicts).toEqual(['标题']);
-  expect(hook.result.current.draft?.shell.title).toBe('新 AI');
-  await act(async () => hook.result.current.save());
-  expect(mocks.updateSettings).toHaveBeenCalledTimes(1);
-  act(() => hook.result.current.resolveReview(true));
-  expect(hook.result.current.draft).toMatchObject({
-    pages: latest.pages,
-    manifestHash: latest.manifestHash,
-    shell: { title: '新 AI', logo: '/logo.svg' },
-  });
-  mocks.updateSettings.mockResolvedValueOnce(hook.result.current.draft);
-  await act(async () => hook.result.current.save());
-  expect(mocks.updateSettings).toHaveBeenLastCalledWith(
-    expect.objectContaining({
-      expectedManifestHash: latest.manifestHash,
-      shell: expect.objectContaining({ title: '新 AI', logo: '/logo.svg' }),
-    }),
-  );
   act(() => {
     pending = hook.result.current.send('再次调整');
   });
@@ -165,4 +130,45 @@ it('shares AI/form drafts, rejects late AI results, preserves failed saves and c
   expect(signal.aborted).toBe(true);
   finish();
   await pending;
+});
+
+it('retains local edits after a settings conflict and explicitly saves against the reviewed manifest', async () => {
+  mocks.settings.mockResolvedValue(settings);
+  const hook = renderHook(() => useProjectSettingsSession(settings.projectId));
+  await act(async () => undefined);
+  act(() => {
+    hook.result.current.setDraft({ ...settings, shell: { ...settings.shell, title: '手工修改' } });
+  });
+  mocks.updateSettings.mockRejectedValueOnce(new ApiRequestError('保存冲突', 409, 409));
+  await act(async () => {
+    await hook.result.current.save();
+  });
+  expect(hook.result.current.draft?.shell.title).toBe('手工修改');
+  expect(hook.result.current.error).toBe('保存冲突');
+  const latest = {
+    ...settings,
+    manifestHash: 'b'.repeat(64),
+    pages: [{ pageId: 'page_new', name: 'New', slug: 'new' }],
+    shell: { ...settings.shell, title: '其他修改', logo: '/logo.svg' },
+  };
+  mocks.settings.mockResolvedValueOnce(latest);
+  await act(async () => hook.result.current.reviewLatest());
+  expect(hook.result.current.conflicts).toEqual(['标题']);
+  expect(hook.result.current.draft?.shell.title).toBe('手工修改');
+  await act(async () => hook.result.current.save());
+  expect(mocks.updateSettings).toHaveBeenCalledTimes(1);
+  act(() => hook.result.current.resolveReview(true));
+  expect(hook.result.current.draft).toMatchObject({
+    pages: latest.pages,
+    manifestHash: latest.manifestHash,
+    shell: { title: '手工修改', logo: '/logo.svg' },
+  });
+  mocks.updateSettings.mockResolvedValueOnce(hook.result.current.draft);
+  await act(async () => hook.result.current.save());
+  expect(mocks.updateSettings).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      expectedManifestHash: latest.manifestHash,
+      shell: expect.objectContaining({ title: '手工修改', logo: '/logo.svg' }),
+    }),
+  );
 });

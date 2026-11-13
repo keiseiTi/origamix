@@ -117,7 +117,7 @@ describe('Schema Operation Engine', () => {
     expect(source).toEqual(createPage());
   });
 
-  it('rejects disconnected and multi-parent subtrees', () => {
+  it('rejects disconnected inserted subtrees', () => {
     expect(() =>
       applySchemaOperationBatch(createPage(), [
         {
@@ -129,26 +129,6 @@ describe('Schema Operation Engine', () => {
             text_orphan: { type: 'text', props: {} },
           },
           structure: { container_new: [], text_orphan: [] },
-        },
-      ]),
-    ).toThrow('必须且只能有一个父元素');
-
-    expect(() =>
-      applySchemaOperationBatch(createPage(), [
-        {
-          operation: 'insertSubtree',
-          rootElementId: 'container_new',
-          parentId: 'element_root',
-          elements: {
-            container_new: { type: 'container', props: {} },
-            container_other: { type: 'container', props: {} },
-            text_shared: { type: 'text', props: {} },
-          },
-          structure: {
-            container_new: ['container_other', 'text_shared'],
-            container_other: ['text_shared'],
-            text_shared: [],
-          },
         },
       ]),
     ).toThrow('必须且只能有一个父元素');

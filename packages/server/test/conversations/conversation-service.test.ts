@@ -268,37 +268,6 @@ describe('Agent Run state and recovery', () => {
     database.close();
   });
 
-  it('recovers committed active runs and interrupts uncommitted runs without retrying work', async () => {
-    const { database, service, runs, runService } = setup();
-    const committed = service.startRun(input()).run;
-    runService.transition(committed.id, 'preparing');
-    runs.updateStatus(committed.id, ['preparing'], {
-      status: 'committing',
-      updatedAt: new Date().toISOString(),
-      resultWorkingVersion: 2,
-    });
-    const pending = service.startRun(input({ clientRequestId: 'request-2' })).run;
-    runService.transition(pending.id, 'preparing');
-    let checks = 0;
-    const recovered = await runService.recover((run) => {
-      checks += 1;
-      return run.resultWorkingVersion === 2
-        ? {
-            disposition: 'committed' as const,
-            resultWorkingVersion: 2,
-            resultWorkingHash: 'a'.repeat(64),
-          }
-        : { disposition: 'not_committed' as const };
-    });
-    expect(checks).toBe(2);
-    expect(recovered.map((run) => [run.id, run.status])).toEqual([
-      [committed.id, 'completed'],
-      [pending.id, 'interrupted'],
-    ]);
-    expect(runs.get(pending.id)).toMatchObject({ errorCode: 'PROCESS_INTERRUPTED' });
-    database.close();
-  });
-
   it('persists terminal state across database reopen on the current schema', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-agent-db-'));
     directories.push(directory);

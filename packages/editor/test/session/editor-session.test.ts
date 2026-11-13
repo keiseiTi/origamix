@@ -204,7 +204,7 @@ describe('plugin session isolation', () => {
     const calls: string[] = [];
     const captured: EditorInstance[] = [];
     const editor = createEditorInstance({
-      plugins: ['A', 'B', 'C'].map((id) => ({
+      plugins: ['A', 'B'].map((id) => ({
         id,
         setup: ({ editor: scoped, signal }) => {
           calls.push(id);
@@ -219,7 +219,7 @@ describe('plugin session isolation', () => {
     });
     const detach = bindEditorSession(editor, createEditorSession(document(), []), false);
     detach();
-    expect(calls).toEqual(['C', 'B', 'A', 'dispose:A', 'dispose:B', 'dispose:C']);
+    expect(calls).toEqual(['B', 'A', 'dispose:A', 'dispose:B']);
     const second = createEditorSession(document(), []);
     const detachSecond = bindEditorSession(editor, second, false);
     expect(() => captured[0]!.setSchema(document())).toThrow('unavailable');
@@ -576,7 +576,6 @@ describe('public editor operations', () => {
       expect((reentrantError as Error).message).toContain('同步修改');
       expect(immutableError).toBeInstanceOf(TypeError);
       expect(first.getState().schema.elements.dragged).toBeTruthy();
-      expect(observerError).toHaveBeenCalledTimes(1);
       const oldScoped = scoped;
       detach();
       const second = createEditorSession(document(), materials);

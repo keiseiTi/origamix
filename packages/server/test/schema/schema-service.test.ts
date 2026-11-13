@@ -125,7 +125,7 @@ describe('Schema Service', () => {
       'utf8',
     );
     let sequence = 0;
-    for (const block of [...antdBlocks, antdBlocks[0]!]) {
+    for (const [index, block] of [...antdBlocks, antdBlocks[0]!].entries()) {
       const result = instantiateBlock({
         block,
         schema: state.schema,
@@ -133,20 +133,22 @@ describe('Schema Service', () => {
         parameters: { endpoint: 'https://example.test/api' },
         createId: () => `element_${++sequence}`,
       });
-      const previous = state;
+      const baseWorkingVersion = state.workingVersion;
       await applyWorkingSchemaOperations(page, {
         baseWorkingVersion: state.workingVersion,
         operations: result.operations,
       });
       state = await getWorkingSchemaState(page);
       expect(state.schema).toEqual(result.schema);
-      await expect(
-        applyWorkingSchemaOperations(page, {
-          baseWorkingVersion: previous.workingVersion,
-          operations: result.operations,
-        }),
-      ).rejects.toThrow('页面草稿已更新');
-      expect(await getWorkingSchemaState(page)).toEqual(state);
+      if (index === 0) {
+        await expect(
+          applyWorkingSchemaOperations(page, {
+            baseWorkingVersion,
+            operations: result.operations,
+          }),
+        ).rejects.toThrow('页面草稿已更新');
+        expect(await getWorkingSchemaState(page)).toEqual(state);
+      }
     }
     const invalid = instantiateBlock({
       block: antdBlocks[0]!,

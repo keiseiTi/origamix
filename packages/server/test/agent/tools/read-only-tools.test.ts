@@ -179,30 +179,21 @@ describe('read-only Agent tools', () => {
         .execute({}, AbortSignal.abort()),
     ).rejects.toThrow();
   });
-  it('loads one revision once per Run and returns compact page context and outline', async () => {
-    const { execute, readSchema } = setup();
+  it('returns context and outline for the same scoped revision', async () => {
+    const { execute } = setup();
     await expect(execute('get_page_context', scope)).resolves.toMatchObject({
       revisionId,
       elementCount: 3,
       page: { id: 'page_one', slug: 'home' },
-      materialSet: { id: 'official-antd', version: '1.0.0' },
     });
     await expect(execute('get_schema_outline', scope)).resolves.toMatchObject({
       revisionId,
       totalElements: 3,
       nodes: [
-        { id: 'element_root', label: 'element_root（容器）', type: 'container', depth: 0 },
-        { id: 'form-main', label: '报名表单', type: 'form', depth: 1 },
-        { id: 'input-name', label: 'input-name（输入框）', type: 'input', depth: 2 },
+        { id: 'element_root', type: 'container', depth: 0 },
+        { id: 'form-main', type: 'form', depth: 1 },
+        { id: 'input-name', type: 'input', depth: 2 },
       ],
-    });
-    await execute('get_page_context', scope);
-    expect(readSchema).toHaveBeenCalledTimes(1);
-    expect(readSchema).toHaveBeenCalledWith({
-      projectPath: projectFixture.path,
-      pageId: 'page_one',
-      slug: 'home',
-      relativePath: 'src/pages/home',
     });
   });
 

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type {
   EditorInstance,
@@ -244,7 +244,7 @@ describe('workspace recovery controls', () => {
     );
   });
 
-  it('keeps retained tab sessions mounted while only the active tab handles shortcuts', async () => {
+  it('saves only the active page once per shortcut', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
     mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 3 });
@@ -257,33 +257,42 @@ describe('workspace recovery controls', () => {
     const view = render(
       <>
         <PageSession {...props} active />
-        <PageSession {...second} />
+        <div data-testid='second-page'>
+          <PageSession {...second} />
+        </div>
       </>,
     );
-    await waitFor(() => {
-      const buttons = screen.getAllByRole('button', { name: '保存版本' });
-      expect(buttons).toHaveLength(2);
-      expect((buttons[0] as HTMLButtonElement).disabled).toBe(false);
-      expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
-    });
-
-    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('button', { name: '保存版本' })
+          .some((button) => !(button as HTMLButtonElement).disabled),
+      ).toBe(true),
+    );
+    await act(async () => fireEvent.keyDown(window, { key: 's', ctrlKey: true }));
     await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2));
-    expect(mocks.saveRevision).not.toHaveBeenCalledWith('project_1', 'page_b', 2);
+    expect(mocks.saveRevision).toHaveBeenCalledOnce();
+    mocks.saveRevision.mockClear();
 
-    view.rerender(
-      <>
-        <PageSession {...props} active={false} />
-        <PageSession {...second} active />
-      </>,
+    await act(async () =>
+      view.rerender(
+        <>
+          <PageSession {...props} active={false} />
+          <div data-testid='second-page'>
+            <PageSession {...second} active />
+          </div>
+        </>,
+      ),
     );
     await waitFor(() => {
-      const buttons = screen.getAllByRole('button', { name: '保存版本' });
-      expect((buttons[1] as HTMLButtonElement).disabled).toBe(false);
+      const save = within(screen.getByTestId('second-page')).getByRole('button', {
+        name: '保存版本',
+      });
+      expect((save as HTMLButtonElement).disabled).toBe(false);
     });
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     await waitFor(() => expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2));
-    expect(mocks.listConversations).toHaveBeenCalledTimes(2);
+    expect(mocks.saveRevision).toHaveBeenCalledOnce();
     // In edit mode the retained hidden chat toolbar must not dispatch a second save.
     await act(async () => useWorkspaceStore.getState().changePageMode('page_b', 'edit'));
     await waitFor(() => expect(screen.getByRole('button', { name: '逻辑' })).toBeTruthy());

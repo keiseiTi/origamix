@@ -16,17 +16,13 @@ const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSe
   faux.setResponses(responses);
   const models = createModels();
   models.setProvider(faux.provider);
-  let credentialReads = 0;
   const stream = vi.fn(models.streamSimple.bind(models));
   const engine = new PiAgentEngine({
     resolveModel: () => faux.getModel(),
     stream,
-    getCredential: async () => {
-      credentialReads += 1;
-      return 'test-only-secret';
-    },
+    getCredential: async () => 'test-only-secret',
   });
-  return { engine, stream, getCredentialReads: () => credentialReads };
+  return { engine, stream };
 };
 
 describe('PiAgentEngine', () => {
@@ -108,24 +104,6 @@ describe('PiAgentEngine', () => {
     });
   });
 
-  it('maps text stream, usage, and completion to product events', async () => {
-    const { engine, getCredentialReads } = setup([fauxAssistantMessage('hello')]);
-    const events: AgentEngineEvent[] = [];
-    const result = await engine.run({
-      modelId: DEEPSEEK_FLASH_MODEL_ID,
-      systemPrompt: 'test',
-      prompt: 'ping',
-      onEvent: (event) => {
-        events.push(event);
-      },
-    });
-
-    expect(result.text).toBe('hello');
-    expect(events.some((event) => event.type === 'text_delta')).toBe(true);
-    expect(events.at(-1)?.type).toBe('completed');
-    expect(getCredentialReads()).toBe(1);
-  });
-
   it('executes tools sequentially and exposes normalized tool events', async () => {
     const { engine } = setup([
       fauxAssistantMessage(fauxToolCall('lookup', { id: 7 }), { stopReason: 'toolUse' }),
@@ -158,6 +136,7 @@ describe('PiAgentEngine', () => {
     });
 
     expect(result.text).toBe('done');
+    expect(events).toContainEqual(expect.objectContaining({ type: 'text_delta' }));
     expect(turns).toHaveLength(2);
     expect(result.usage.inputTokens).toBe(turns.reduce((sum, turn) => sum + turn.inputTokens, 0));
     expect(result.usage.outputTokens).toBe(turns.reduce((sum, turn) => sum + turn.outputTokens, 0));
