@@ -147,6 +147,18 @@ describe('read-only Agent tools', () => {
       formatVersion: SCHEMA_VERSION,
       manifest: JSON.parse(JSON.stringify(getFlowNodeManifest('interfaceRequest'))),
     });
+    const batch = (await readAll('get_capability_manifests', {
+      materials: ['datePicker', 'table'],
+      flowNodes: ['interfaceRequest'],
+    })) as { materials: unknown[]; flowNodes: unknown[] };
+    expect(batch.materials).toEqual(
+      (await loadProjectMaterials(projectFixture.path)).manifest.materials
+        .filter((item) => ['datePicker', 'table'].includes(item.type))
+        .map((item) => JSON.parse(JSON.stringify(item))),
+    );
+    expect(batch.flowNodes).toEqual([
+      JSON.parse(JSON.stringify(getFlowNodeManifest('interfaceRequest'))),
+    ]);
     const material = (await readAll('get_material_manifest', { type: 'datePicker' })) as {
       manifest: { propsSchema: unknown };
     };
@@ -170,6 +182,15 @@ describe('read-only Agent tools', () => {
       statusCode: 422,
     });
     const stale = setup(vi.fn(async () => ({ schema, revisionId, workingVersion: 2 })));
+    await expect(
+      execute('get_capability_manifests', { materials: ['unknown'] }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      execute('get_capability_manifests', { materials: ['table'], pageId: 'foreign' }),
+    ).rejects.toMatchObject({ statusCode: 422 });
+    await expect(
+      stale.execute('get_capability_manifests', { materials: ['table'] }),
+    ).rejects.toMatchObject({ statusCode: 409 });
     await expect(
       stale.execute('get_flow_node_manifest', { type: 'customJS' }),
     ).rejects.toMatchObject({ statusCode: 409 });

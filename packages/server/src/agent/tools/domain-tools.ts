@@ -1,12 +1,10 @@
 import { Type, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
-import { type OrigamixPageSchema, validatePage } from '@origamix/shared';
 
 import { invalid, notFound } from '../../errors';
 import type { ProjectRepository } from '../../projects/project-repository';
 import type { ProductDocsProvider } from '../product-docs-provider';
 import type { RuntimeDiagnosticService } from '../../diagnostics/diagnostic-service';
-import { validateProjectPageAgainstMaterials } from '../../schema/validation/material-validation';
 import type { AgentEngineTool } from '../agent-engine';
 
 const strictObject = <T extends Record<string, TSchema>>(properties: T) =>
@@ -16,7 +14,6 @@ const SearchDocsSchema = strictObject({
   query: Type.String({ minLength: 1, maxLength: 200 }),
   version: Type.Optional(Type.String({ minLength: 1, maxLength: 40 })),
 });
-const ValidateSchema = strictObject({ schema: Type.Unknown() });
 const DiagnosticsSchema = strictObject({});
 
 export interface DomainToolScope {
@@ -75,42 +72,6 @@ export const createDomainAgentTools = (
           dependencies.docs.search({ query: input.query, version: input.version }),
           maxBytes,
         );
-      },
-    },
-    {
-      name: 'validate_page_schema',
-      description: 'Preflight a candidate page Schema. This never authorizes or commits a write.',
-      parameters: ValidateSchema,
-      execute: async (raw, signal) => {
-        if (signal.aborted) throw signal.reason;
-        const input = parse<{ schema: unknown }>(ValidateSchema, raw);
-        assertPage();
-        const structural = validatePage(input.schema);
-        const result = structural.valid
-          ? await validateProjectPageAgainstMaterials(
-              dependencies.projects.getProject(scope.projectId)!.path,
-              input.schema as OrigamixPageSchema,
-            )
-          : {
-              valid: false,
-              errors: [
-                ...structural.errors.map((entry) => ({
-                  code: 'INVALID_PAGE_SCHEMA',
-                  path: entry.instancePath || '/',
-                  message: entry.message ?? 'Schema 结构无效',
-                  elementId: null,
-                  materialType: null,
-                })),
-                ...structural.semanticErrors.map((entry) => ({
-                  code: 'INVALID_PAGE_SCHEMA',
-                  path: entry.path,
-                  message: entry.message,
-                  elementId: null,
-                  materialType: null,
-                })),
-              ],
-            };
-        return bounded(result, maxBytes);
       },
     },
     {

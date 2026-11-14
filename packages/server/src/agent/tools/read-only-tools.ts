@@ -6,6 +6,8 @@ import type { ProjectMaterialReader } from './material-reader';
 import {
   type MaterialManifestCatalog,
   getAgentElementLabel,
+  getFlowNodeManifest,
+  FLOW_NODE_MANIFEST_VERSION,
   type OrigamixPageSchema,
 } from '@origamix/shared';
 
@@ -31,6 +33,15 @@ const SearchMaterialsInputSchema = strictObject({
 });
 const MaterialManifestInputSchema = strictObject({
   type: Type.String({ minLength: 1, maxLength: 80 }),
+  ...exactReadPagination,
+});
+const CapabilityManifestsInputSchema = strictObject({
+  materials: Type.Optional(
+    Type.Array(Type.String({ minLength: 1, maxLength: 80 }), { maxItems: 8, uniqueItems: true }),
+  ),
+  flowNodes: Type.Optional(
+    Type.Array(Type.String({ minLength: 1, maxLength: 80 }), { maxItems: 8, uniqueItems: true }),
+  ),
   ...exactReadPagination,
 });
 
@@ -173,6 +184,41 @@ export const createReadOnlyAgentTools = (
   };
 
   const tools: AgentEngineTool[] = [
+    {
+      name: 'get_capability_manifests',
+      description:
+        '优先批量读取本次需要的组件 materials 和逻辑节点 flowNodes 的完整定义；纯展示请求不读取逻辑节点。每类最多 8 个准确 type，不省略属性/事件/方法。complete=false 时以同一组 types 按 nextOffset 连续读取并拼接 json，直到 null；不要使用未读完的定义。单个类型可用原精确读取工具。',
+      parameters: CapabilityManifestsInputSchema,
+      execute: async (raw, signal) => {
+        const input = assertInput<Static<typeof CapabilityManifestsInputSchema>>(
+          CapabilityManifestsInputSchema,
+          raw,
+        );
+        if (!input.materials?.length && !input.flowNodes?.length)
+          throw invalid('至少指定一个组件或逻辑节点类型');
+        const current = await load({}, signal);
+        const manifests = (input.materials ?? []).map((type) => {
+          const manifest = materialManifest.materials.find((item) => item.type === type);
+          if (!manifest) throw notFound('物料类型不存在于当前 Material Set');
+          return manifest;
+        });
+        const nodes = (input.flowNodes ?? []).map((type) => {
+          const manifest = getFlowNodeManifest(type);
+          if (!manifest) throw notFound('逻辑节点类型不存在');
+          return manifest;
+        });
+        return exactReadResult(
+          {
+            materialSet: materialManifest.materialSet,
+            materials: manifests,
+            flowNodeFormatVersion: FLOW_NODE_MANIFEST_VERSION,
+            flowNodes: nodes,
+          },
+          current.workingVersion,
+          { ...input, maxChars: input.maxChars ?? 24_000 },
+        );
+      },
+    },
     ...(scope.pageId && dependencies.getProjectRoles
       ? [
           {

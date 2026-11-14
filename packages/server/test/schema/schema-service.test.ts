@@ -1,3 +1,4 @@
+import { createValidatePageOperationsTool } from '../../src/agent/tools/validate-page-operations';
 import { instantiateBlock } from '@origamix/shared';
 import { antdBlocks } from '@origamix/materials/antd/manifest';
 import { hashSchema } from '../../src/schema/schema-hash';
@@ -23,6 +24,7 @@ import {
 } from '@origamix/shared';
 import {
   applyWorkingSchemaOperations,
+  validateWorkingSchemaOperations,
   getSchema,
   getWorkingSchemaState,
   initializePageSchema,
@@ -124,6 +126,44 @@ describe('Schema Service', () => {
       join(page.projectPath, 'src/pages/test-page/schema.json'),
       'utf8',
     );
+    const preflight = createValidatePageOperationsTool(
+      {
+        getProject: (id) =>
+          id === 'project_test' ? ({ id, path: page.projectPath, status: 0 } as never) : undefined,
+        getPage: (projectId, pageId) =>
+          projectId === 'project_test' && pageId === page.pageId
+            ? ({
+                id: page.pageId,
+                slug: page.slug,
+                relativePath: 'src/pages/test-page',
+                status: 0,
+              } as never)
+            : undefined,
+      },
+      {
+        runId: 'run_preflight',
+        messageId: 'message_test',
+        projectId: 'project_test',
+        pageId: page.pageId,
+        baseWorkingVersion: state.workingVersion,
+        maxSchemaBytes: 524288,
+        maxOperationBytes: 262144,
+        maxRepairAttempts: 2,
+      },
+    );
+    const preflightInput = {
+      operations: [
+        { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 12 } },
+      ],
+    };
+    await expect(
+      preflight.execute({ ...preflightInput, pageId: 'foreign' }, new AbortController().signal),
+    ).rejects.toMatchObject({ statusCode: 422 });
+    await expect(preflight.execute(preflightInput, new AbortController().signal)).resolves.toEqual({
+      valid: true,
+      workingVersion: state.workingVersion,
+    });
+    expect(await getWorkingSchemaState(page)).toEqual(state);
     let sequence = 0;
     for (const [index, block] of [...antdBlocks, antdBlocks[0]!].entries()) {
       const result = instantiateBlock({
@@ -134,6 +174,15 @@ describe('Schema Service', () => {
         createId: () => `element_${++sequence}`,
       });
       const baseWorkingVersion = state.workingVersion;
+      await validateWorkingSchemaOperations(page, {
+        baseWorkingVersion,
+        operations: result.operations,
+      });
+      expect(await getWorkingSchemaState(page)).toEqual(state);
+      expect(await listRevisionHistory(page)).toEqual(revisions);
+      expect(
+        await readFile(join(page.projectPath, 'src/pages/test-page/schema.json'), 'utf8'),
+      ).toBe(target);
       await applyWorkingSchemaOperations(page, {
         baseWorkingVersion: state.workingVersion,
         operations: result.operations,
@@ -141,6 +190,12 @@ describe('Schema Service', () => {
       state = await getWorkingSchemaState(page);
       expect(state.schema).toEqual(result.schema);
       if (index === 0) {
+        await expect(
+          validateWorkingSchemaOperations(page, {
+            baseWorkingVersion,
+            operations: result.operations,
+          }),
+        ).rejects.toThrow('页面草稿已更新');
         await expect(
           applyWorkingSchemaOperations(page, {
             baseWorkingVersion,
@@ -163,6 +218,12 @@ describe('Schema Service', () => {
       parentId: 'element_root',
       element: { type: 'unknown', props: {} },
     });
+    await expect(
+      validateWorkingSchemaOperations(page, {
+        baseWorkingVersion: state.workingVersion,
+        operations: invalid.operations,
+      }),
+    ).rejects.toThrow();
     await expect(
       applyWorkingSchemaOperations(page, {
         baseWorkingVersion: state.workingVersion,
@@ -497,6 +558,12 @@ describe('Schema Service', () => {
         baseWorkingVersion: (await getWorkingSchemaState(page)).workingVersion,
         schema: { ...current.schema, flows: { ...current.schema.flows, flow_one: candidate } },
       });
+      await expect(
+        validateWorkingSchemaOperations(page, {
+          baseWorkingVersion: visual.workingVersion,
+          operations: [{ operation: 'updateFlow', flowId: 'flow_one', flow: candidate }],
+        }),
+      ).rejects.toThrow();
       // Explicitly submitting the same unfinished flow cannot bypass Agent completion checks.
       await expect(
         applyWorkingSchemaOperations(

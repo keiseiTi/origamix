@@ -1,3 +1,4 @@
+import { resolveAgentRunBudget } from '../../../src/agent/run-budget';
 import { Type } from '@sinclair/typebox';
 import { describe, expect, it } from 'vitest';
 import type { RunBudget } from '@origamix/shared';
@@ -76,6 +77,16 @@ describe('Agent tool policy and budget', () => {
   });
 
   it('enforces model, output, and repair budgets', () => {
+    expect(() => resolveAgentRunBudget('standard', '{"maxModelCalls":0}')).toThrow();
+    expect(() => resolveAgentRunBudget('standard', '{"maxInputTokens":1}')).toThrow();
+    expect(() => resolveAgentRunBudget('unknown')).toThrow();
+    const configured = new RunBudgetController(
+      resolveAgentRunBudget('complex', '{"maxModelCalls":1}'),
+    );
+    configured.beforeRequest(100, 100000, 16000);
+    configured.recordUsage({ inputTokens: 100, outputTokens: 1 });
+    expect(() => configured.beforeRequest(100, 100000, 16000)).toThrow('模型调用次数');
+
     const tracker = new RunBudgetController(budget);
     tracker.consumeModelCall();
     expect(() => tracker.consumeModelCall()).toThrowError(

@@ -16,11 +16,13 @@ import { createHttpServer } from './http/server';
 import { AgentEventBroker } from './agent/event-broker';
 import { RuntimeDiagnosticCache } from './diagnostics/diagnostic-cache';
 import { RuntimeDiagnosticService } from './diagnostics/diagnostic-service';
+import { resolveAgentRunBudget } from './agent/run-budget';
 import { AgentService } from './agent/agent-service';
 import { RunExecutor } from './agent/run-executor';
 import { ContextAssembler } from './agent/context-assembler';
 import { ProductDocsProvider } from './agent/product-docs-provider';
 import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
+import { createValidatePageOperationsTool } from './agent/tools/validate-page-operations';
 import { createDomainAgentTools } from './agent/tools/domain-tools';
 import { createCompletePageRunTool } from './agent/tools/complete-page-run';
 import { createDefaultAgentToolEntries } from './agent/tools/registry';
@@ -44,6 +46,10 @@ export const startServer = async (input: {
   const port = input.port ?? 1029;
   if (!Number.isInteger(port) || port < 0 || port > 65535)
     throw new Error('后端端口必须为 0 到 65535 的整数');
+  const agentBudget = resolveAgentRunBudget(
+    process.env.ORIGAMIX_AGENT_BUDGET_PROFILE,
+    process.env.ORIGAMIX_AGENT_BUDGET_JSON,
+  );
   const database = new ApplicationDatabase(input.databasePath);
   let dispose: (() => Promise<void>) | undefined;
   try {
@@ -141,6 +147,7 @@ export const startServer = async (input: {
               diagnostics: runtimeDiagnostics,
             },
           ),
+          createValidatePageOperationsTool(projects, scope),
           createCompletePageRunTool(
             {
               projects,
@@ -152,6 +159,11 @@ export const startServer = async (input: {
             scope,
           ),
         ]),
+      recordModelUsage: (runId, requestIndex, metrics) => {
+        console.info(
+          JSON.stringify({ event: 'agent.model_usage', runId, requestIndex, ...metrics }),
+        );
+      },
       audit: (event) => {
         toolAudits.append(event);
         const run = runs.get(event.runId);
@@ -171,6 +183,7 @@ export const startServer = async (input: {
       },
     });
     const agentService = new AgentService({
+      budget: agentBudget,
       authorizeStart: (request) => projectTasks.assertContinuation(request),
       conversations: conversationService,
       projects,

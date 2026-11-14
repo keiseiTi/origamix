@@ -1,6 +1,6 @@
 export const FLOW_GENERATION_GUIDE = [
   '一次请求可同时新增组件、全局变量和事件流程，合并为一个完整 operations 数组提交。',
-  '先 get_page_logic_context 核实已有绑定和变量；修改已有事件前 get_event_flow 完整读取流程及全部引用方。需要的节点逐个 get_flow_node_manifest，物料事件、属性、方法按 get_material_manifest 核实。',
+  '仅在需求涉及交互、事件或变量时读取逻辑能力；纯展示不额外编排交互。修改绑定或变量前 get_page_logic_context 核实已有内容；修改已有事件前 get_event_flow 完整读取流程及全部引用方。已知需要的组件与节点优先一次 get_capability_manifests 批量读取；单项补充用 get_flow_node_manifest/get_material_manifest 核实。',
   '精确只读工具返回 complete=true 时 data 完整；否则按 nextOffset 连续读取到 null，确认 Working 版本一致，按 offset 拼接 json 后解析。不能用未读完的分片或 schemaFragment 重建、覆盖已有流程。超出工具预算时说明限制，保留现有内容。',
   '只修改一个事件时优先 setElementEventBinding/removeElementEventBinding，保留其他事件。共享流程只改一个引用方时，复制为新 flowId 并重新绑定；用户明确要求共同修改时才更新共享流程。解绑不自动删除流程。',
   '流程格式为 {startId,nodes}，节点为 {id,type,props,prev,next}；id 与字典键一致，恰好一个 start，无输入边；prev/next 双向一致、无循环，生成的所有节点从 start 可达。条件 true/false 各最多一条，props.condition 的 {value,nextNode} 与 next 一致。不要生成画布坐标或 flowGraph。',

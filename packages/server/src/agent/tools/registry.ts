@@ -69,7 +69,8 @@ const READ_TOOL_NAMES = new Set([
   'get_event_flow',
   'get_page_logic_context',
   'search_product_docs',
-  'validate_page_schema',
+  'validate_page_operations',
+  'get_capability_manifests',
   'get_page_diagnostics',
 ]);
 
@@ -114,14 +115,18 @@ export class RunBudgetController {
 
   constructor(readonly budget: RunBudget) {}
 
-  beforeRequest(inputUpperBound: number, contextWindow: number, providerMaxOutput: number): number {
+  beforeRequest(
+    estimatedInputTokens: number,
+    contextWindow: number,
+    providerMaxOutput: number,
+  ): number {
     this.assertDuration();
     this.inputTokens += this.reservedInput;
     this.reservedInput = 0;
-    if (inputUpperBound > (this.budget.maxRequestInputTokens ?? 128_000))
+    if (estimatedInputTokens > (this.budget.maxRequestInputTokens ?? 128_000))
       this.exceeded('单次输入 Token 预估');
     if (
-      this.inputTokens + this.reservedInput + inputUpperBound >
+      this.inputTokens + this.reservedInput + estimatedInputTokens >
       (this.budget.maxInputTokens ?? 400_000)
     )
       this.exceeded('累计输入 Token');
@@ -130,19 +135,19 @@ export class RunBudgetController {
       this.inputTokens -
       this.reservedInput -
       this.outputTokens -
-      inputUpperBound;
+      estimatedInputTokens;
     const output = Math.floor(
       Math.min(
         this.budget.maxRequestOutputTokens ?? 16_000,
         this.budget.maxOutputTokens - this.outputTokens,
         available,
-        contextWindow - inputUpperBound,
+        contextWindow - estimatedInputTokens,
         providerMaxOutput,
       ),
     );
     if (output < 1) this.exceeded('模型上下文或剩余 Token');
     this.consumeModelCall();
-    this.reservedInput += inputUpperBound;
+    this.reservedInput += estimatedInputTokens;
     return output;
   }
 
@@ -159,6 +164,10 @@ export class RunBudgetController {
     this.assertDuration();
     if (this.modelCalls >= this.budget.maxModelCalls) this.exceeded('模型调用次数');
     this.modelCalls += 1;
+  }
+
+  remainingModelCalls(): number {
+    return Math.max(0, this.budget.maxModelCalls - this.modelCalls);
   }
 
   consumeToolCall(): void {

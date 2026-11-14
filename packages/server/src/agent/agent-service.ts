@@ -23,20 +23,8 @@ import type { ProjectRepository } from '../projects/project-repository';
 import { withProjectActivity } from '../projects/project-activity';
 import { ApiError } from '../errors';
 
-export const DEFAULT_AGENT_RUN_BUDGET: RunBudget = {
-  maxModelCalls: 10,
-  // Logic generation reads both material and node contracts, then reserves room for repair.
-  maxToolCalls: 40,
-  maxOutputTokens: 32_000,
-  maxInputTokens: 400_000,
-  maxTotalTokens: 432_000,
-  maxRequestInputTokens: 128_000,
-  maxRequestOutputTokens: 16_000,
-  maxDurationMs: 180_000,
-  maxSchemaBytes: 512 * 1024,
-  maxOperationBytes: 256 * 1024,
-  maxRepairAttempts: 2,
-};
+export { DEFAULT_AGENT_RUN_BUDGET } from './run-budget';
+import { DEFAULT_AGENT_RUN_BUDGET } from './run-budget';
 
 export interface StartedAgentRun {
   run: AgentRunRecord;
@@ -147,9 +135,9 @@ export class AgentService {
           modelRef,
           runKind: 'page_assistant',
           budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-          promptVersion: '1',
+          promptVersion: '2',
           policyVersion: '1',
-          toolsetVersion: '1',
+          toolsetVersion: '2',
           materialManifestVersion: 'official-antd@1.0.0',
         });
         if (started.created) {

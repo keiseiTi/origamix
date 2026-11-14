@@ -26,6 +26,132 @@ const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSe
 };
 
 describe('PiAgentEngine', () => {
+  it('leaves room for submission and repair after more than ten discovery turns', async () => {
+    const { engine, stream } = setup([
+      ...Array.from({ length: 11 }, () =>
+        fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
+      ),
+      fauxAssistantMessage(fauxToolCall('complete_page_run', { valid: false }), {
+        stopReason: 'toolUse',
+      }),
+      fauxAssistantMessage(fauxToolCall('complete_page_run', { valid: true }), {
+        stopReason: 'toolUse',
+      }),
+    ]);
+    const tracker = new RunBudgetController(DEFAULT_AGENT_RUN_BUDGET);
+    let committed = false;
+    await expect(
+      engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: 'test',
+        prompt: '生成患者表单和表格',
+        budget: tracker,
+        tools: [
+          {
+            name: 'lookup',
+            description: 'read',
+            parameters: Type.Object({}),
+            execute: async () => ({ read: true }),
+          },
+          {
+            name: 'complete_page_run',
+            description: 'submit',
+            parameters: Type.Object({ valid: Type.Boolean() }),
+            execute: async (input) => {
+              if (!(input as { valid: boolean }).valid) throw new Error('请修正参数后重交');
+              committed = true;
+              return { accepted: true };
+            },
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({ budgetTracked: true });
+    expect(committed).toBe(true);
+    expect(stream).toHaveBeenCalledTimes(13);
+    expect(tracker.snapshot().modelCalls).toBe(13);
+    for (const [index, call] of stream.mock.calls.entries()) {
+      const hints = call[1].messages.filter(
+        (message) =>
+          message.role === 'system' &&
+          typeof message.content === 'string' &&
+          message.content.startsWith('本 Run 剩余模型请求'),
+      );
+      expect(hints).toHaveLength(1);
+      expect(hints[0]?.content).toContain(
+        `剩余模型请求 ${DEFAULT_AGENT_RUN_BUDGET.maxModelCalls - index} 次`,
+      );
+    }
+  });
+
+  // The controller's small synthetic inputs cannot catch SDK details being counted
+  // twice and blocking a page edit after otherwise valid material reads.
+  it.each([
+    { resultBytes: 63_000, accepted: true },
+    { resultBytes: 260_000, accepted: false },
+  ])(
+    'enforces input budgets across material reads ($resultBytes bytes)',
+    async ({ resultBytes, accepted }) => {
+      const { engine, stream } = setup([
+        fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
+        fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
+        fauxAssistantMessage(fauxToolCall('complete_page_run', {}), { stopReason: 'toolUse' }),
+      ]);
+      const tracker = new RunBudgetController(DEFAULT_AGENT_RUN_BUDGET);
+      const complete = vi.fn(async () => ({ accepted: true }));
+      const content = '患者姓名，性别，出生日期'
+        .repeat(Math.ceil(resultBytes / 36))
+        .slice(0, Math.floor(resultBytes / 3));
+      const estimates: number[] = [];
+      const pending = engine.run({
+        modelId: DEEPSEEK_FLASH_MODEL_ID,
+        systemPrompt: '生成患者表单和表格，保留完整物料定义。',
+        prompt: '表单和表格包含姓名、性别和出生日期。',
+        budget: {
+          beforeRequest: (size, window, output) => {
+            estimates.push(size);
+            return tracker.beforeRequest(size, window, output);
+          },
+          recordUsage: (usage) => tracker.recordUsage(usage),
+        },
+        tools: [
+          {
+            name: 'lookup',
+            description: 'read material',
+            parameters: Type.Object({}),
+            execute: async () => ({ content }),
+          },
+          {
+            name: 'complete_page_run',
+            description: 'submit page edit',
+            parameters: Type.Object({}),
+            execute: complete,
+          },
+        ],
+      });
+      if (accepted) {
+        await expect(pending).resolves.toMatchObject({ budgetTracked: true });
+        expect(complete).toHaveBeenCalledTimes(1);
+        expect(stream).toHaveBeenCalledTimes(3);
+        expect(estimates[2]).toBeGreaterThan(63_000);
+        expect(estimates[2]).toBeLessThan(128_000);
+        const reads = stream.mock.calls[2]![1].messages.filter(
+          (message) => message.role === 'toolResult',
+        );
+        expect(reads).toHaveLength(2);
+        for (const read of reads) {
+          expect(read.content).toEqual([{ type: 'text', text: JSON.stringify({ content }) }]);
+        }
+      } else {
+        await expect(pending).rejects.toMatchObject({
+          code: 'BUDGET_EXCEEDED',
+          message: '单次输入 Token 预估已超过本次运行预算',
+        });
+        expect(complete).not.toHaveBeenCalled();
+        expect(stream).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+
   it('counts real provider turns and stops before another request when the Run budget is exhausted', async () => {
     const { engine, stream } = setup([
       fauxAssistantMessage(fauxToolCall('lookup', {}), { stopReason: 'toolUse' }),
@@ -38,6 +164,7 @@ describe('PiAgentEngine', () => {
         systemPrompt: 'test',
         prompt: 'read',
         budget: {
+          remainingModelCalls: () => tracker.remainingModelCalls(),
           beforeRequest: (size, window, output) => tracker.beforeRequest(size, window, output),
           recordUsage: (usage) => tracker.recordUsage(usage),
         },
@@ -52,6 +179,9 @@ describe('PiAgentEngine', () => {
       }),
     ).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' });
     expect(stream).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(stream.mock.calls[0]?.[1].messages)).toContain(
+      '已进入提交与修复预留轮次',
+    );
     expect(stream.mock.calls[0]?.[2]).toMatchObject({
       maxRetries: 0,
       maxTokens: expect.any(Number),
@@ -138,6 +268,15 @@ describe('PiAgentEngine', () => {
     expect(result.text).toBe('done');
     expect(events).toContainEqual(expect.objectContaining({ type: 'text_delta' }));
     expect(turns).toHaveLength(2);
+    const metrics = events.filter((event) => event.type === 'model_usage');
+    expect(metrics).toHaveLength(2);
+    expect(metrics[1]?.metrics.toolResultBytes).toBeGreaterThan(0);
+    expect(metrics[0]?.metrics.toolDefinitionBytes).toBeGreaterThan(0);
+    expect(JSON.stringify(metrics)).not.toContain('test-only-secret');
+    expect(JSON.stringify(metrics)).not.toContain('received');
+    expect(metrics.map((event) => event.metrics.inputTokens)).toEqual(
+      turns.map((turn) => turn.inputTokens),
+    );
     expect(result.usage.inputTokens).toBe(turns.reduce((sum, turn) => sum + turn.inputTokens, 0));
     expect(result.usage.outputTokens).toBe(turns.reduce((sum, turn) => sum + turn.outputTokens, 0));
     expect(events.map((event) => event.type)).toEqual(

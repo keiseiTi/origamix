@@ -1,6 +1,9 @@
 import { Agent, type AgentTool } from '@earendil-works/pi-agent-core';
 import type { Model, StreamFunction } from '@earendil-works/pi-ai';
 import type { SimpleStreamOptions } from '@earendil-works/pi-ai';
+import { normalizeContext } from '@earendil-works/pi-ai';
+import { measureInputContext } from './input-token-estimate';
+import { createHash } from 'node:crypto';
 import {
   AgentEngineError,
   getAgentModel,
@@ -130,6 +133,9 @@ export class PiAgentEngine implements AgentEngine {
     let outputCap = 16_000;
     let inputReservation = 0;
     let streamedBytes = 0;
+    let inputMetrics: ReturnType<typeof measureInputContext> | undefined;
+    let requestStartedAt = 0;
+    const seenToolCalls = new Set<string>();
     const onFatal = (error: AgentEngineError) => {
       fatalBudgetError ??= error;
       controller.abort(error);
@@ -153,8 +159,25 @@ export class PiAgentEngine implements AgentEngine {
         try {
           if (fatalBudgetError) throw fatalBudgetError;
           if (controller.signal.aborted) throw new AgentEngineError('CANCELLED', '模型请求已取消');
-          // A conservative byte-based upper bound includes system/tool schemas and all accumulated messages.
-          inputReservation = Buffer.byteLength(JSON.stringify(context), 'utf8') + 2048;
+          const remainingCalls = request.budget?.remainingModelCalls?.();
+          // Inject a fresh hint for this request only, without accumulating stale
+          // countdowns in the conversation or discarding exact tool read results.
+          const requestContext =
+            remainingCalls === undefined
+              ? context
+              : normalizeContext({
+                  ...context,
+                  messages: [
+                    ...context.messages,
+                    {
+                      role: 'system',
+                      content: `本 Run 剩余模型请求 ${remainingCalls} 次（包含当前响应），不是工具调用次数。独立且参数已知的只读工具请在同一响应中一起调用；分页或依赖前次结果的读取仍须等待结果。复用已读能力，不重复读取相同内容。至少预留 3 次模型请求用于终态提交及校验修复。${remainingCalls <= 3 ? '已进入提交与修复预留轮次：优先使用已核实的信息完成终态提交，避免无关读取和重复预检。' : ''}缺少必要信息时使用终态工具澄清，不得猜测字段或跳过校验，也不得在终态提交成功前声称修改完成。`,
+                      timestamp: Date.now(),
+                    },
+                  ],
+                });
+          inputMetrics = measureInputContext(requestContext);
+          inputReservation = inputMetrics.estimatedInputTokens;
           outputCap =
             request.budget?.beforeRequest(
               inputReservation,
@@ -162,7 +185,8 @@ export class PiAgentEngine implements AgentEngine {
               currentModel.maxTokens,
             ) ?? Math.min(16_000, currentModel.maxTokens);
           streamedBytes = 0;
-          return this.options.stream(currentModel, context, {
+          requestStartedAt = Date.now();
+          return this.options.stream(currentModel, requestContext, {
             ...options,
             signal: controller.signal,
             maxRetries: 0,
@@ -244,6 +268,31 @@ export class PiAgentEngine implements AgentEngine {
             usage.inputTokens += turnUsage.inputTokens;
             usage.outputTokens += turnUsage.outputTokens;
             usage.totalTokens += turnUsage.totalTokens;
+            const calls = event.message.content.filter((entry) => entry.type === 'toolCall');
+            let repeatedToolCalls = 0;
+            for (const call of calls) {
+              const key = createHash('sha256')
+                .update(JSON.stringify([call.name, call.arguments]))
+                .digest('hex');
+              if (seenToolCalls.has(key)) repeatedToolCalls += 1;
+              seenToolCalls.add(key);
+            }
+            if (inputMetrics)
+              await emit({
+                type: 'model_usage',
+                metrics: {
+                  ...inputMetrics,
+                  inputTokens: turnUsage.inputTokens,
+                  outputTokens: turnUsage.outputTokens,
+                  cacheReadTokens: piUsage.cacheRead,
+                  cacheWriteTokens: piUsage.cacheWrite,
+                  inputUsageEstimated: !(piUsage.input + piUsage.cacheRead + piUsage.cacheWrite),
+                  outputUsageEstimated: !piUsage.output,
+                  durationMs: Date.now() - requestStartedAt,
+                  toolCalls: calls.length,
+                  repeatedToolCalls,
+                },
+              });
             request.budget?.recordUsage(turnUsage);
             if (
               Buffer.byteLength(JSON.stringify(event.message.content), 'utf8') >

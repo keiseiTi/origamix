@@ -304,6 +304,67 @@ export const updateWorkingSchema = async (
   });
 };
 
+interface WorkingOperationInput {
+  baseWorkingVersion: number;
+  operations: readonly SchemaOperation[];
+}
+
+const prepareWorkingOperations = async (
+  page: SchemaPageRef,
+  current: WorkingSchemaFile,
+  input: WorkingOperationInput,
+  requireExecutableFlows: boolean,
+): Promise<OrigamixPageSchema> => {
+  let candidate: OrigamixPageSchema;
+  try {
+    candidate = applySchemaOperationBatch(current.schema, input.operations).schema;
+  } catch (error) {
+    if (error instanceof SchemaOperationError)
+      throw new SchemaValidationError({
+        code: error.code,
+        path: error.path ?? `/operations/${error.operationIndex}`,
+        message: error.message,
+        ...(error.path ? {} : { operationIndex: error.operationIndex }),
+      });
+    throw error;
+  }
+  // Agent completion must produce executable changes, while unrelated editor drafts survive.
+  const executableFlowIds = requireExecutableFlows
+    ? new Set(
+        input.operations.flatMap((operation) =>
+          operation.operation === 'addFlow' ||
+          operation.operation === 'updateFlow' ||
+          operation.operation === 'setElementEventBinding'
+            ? [operation.flowId]
+            : [],
+        ),
+      )
+    : undefined;
+  if (executableFlowIds) {
+    const bindingKey = (binding: OrigamixPageSchema['bindElements'][number]): string =>
+      JSON.stringify([binding.id, binding.event, binding.flowId]);
+    const previousBindings = new Set(current.schema.bindElements.map(bindingKey));
+    for (const binding of candidate.bindElements)
+      if (!previousBindings.has(bindingKey(binding))) executableFlowIds.add(binding.flowId);
+  }
+  await validateWritableSchema(page, candidate, executableFlowIds);
+  return candidate;
+};
+
+/** Same candidate validation as Agent commit, with no candidate/receipt/Revision write. */
+export const validateWorkingSchemaOperations = async (
+  page: SchemaPageRef,
+  input: WorkingOperationInput,
+  validateCandidate?: WorkingDraftWriteOptions['validateCandidate'],
+): Promise<void> =>
+  withSchemaPageQueue(page, async () => {
+    const current = await getSchemaUnlocked(page);
+    if (current.workingVersion !== input.baseWorkingVersion)
+      throw conflict('页面草稿已更新，请重新加载后再提交');
+    const candidate = await prepareWorkingOperations(page, current, input, true);
+    await validateCandidate?.(candidate);
+  });
+
 export const applyWorkingSchemaOperations = async (
   page: SchemaPageRef,
   input: {
@@ -316,39 +377,12 @@ export const applyWorkingSchemaOperations = async (
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== input.baseWorkingVersion)
       throw conflict('页面草稿已更新，请重新加载后再提交');
-    let candidate: OrigamixPageSchema;
-    try {
-      candidate = applySchemaOperationBatch(current.schema, input.operations).schema;
-    } catch (error) {
-      if (error instanceof SchemaOperationError)
-        throw new SchemaValidationError({
-          code: error.code,
-          path: error.path ?? `/operations/${error.operationIndex}`,
-          message: error.message,
-          ...(error.path ? {} : { operationIndex: error.operationIndex }),
-        });
-      throw error;
-    }
-    // Agent completion must produce executable changes, while unrelated editor drafts survive.
-    const executableFlowIds = options.agentCommit
-      ? new Set(
-          input.operations.flatMap((operation) =>
-            operation.operation === 'addFlow' ||
-            operation.operation === 'updateFlow' ||
-            operation.operation === 'setElementEventBinding'
-              ? [operation.flowId]
-              : [],
-          ),
-        )
-      : undefined;
-    if (executableFlowIds) {
-      const bindingKey = (binding: OrigamixPageSchema['bindElements'][number]): string =>
-        JSON.stringify([binding.id, binding.event, binding.flowId]);
-      const previousBindings = new Set(current.schema.bindElements.map(bindingKey));
-      for (const binding of candidate.bindElements)
-        if (!previousBindings.has(bindingKey(binding))) executableFlowIds.add(binding.flowId);
-    }
-    await validateWritableSchema(page, candidate, executableFlowIds);
+    const candidate = await prepareWorkingOperations(
+      page,
+      current,
+      input,
+      Boolean(options.agentCommit),
+    );
     await options.validateCandidate?.(candidate);
     await options.beforeWrite?.();
     return writeWorkingDraft(page, current, candidate, options);

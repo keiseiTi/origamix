@@ -1,3 +1,4 @@
+import type { AgentModelUsageMetrics } from './agent-engine';
 import { agentTarget } from './agent-target';
 import type { MessageContent, PageAgentOutcome } from '@origamix/shared';
 import type { AgentRunRepository } from './run-repository';
@@ -109,6 +110,7 @@ export interface RunExecutorDependencies {
     maxOperationBytes?: number;
     maxRepairAttempts: number;
   }) => RegisteredAgentTool[];
+  recordModelUsage?: (runId: string, requestIndex: number, metrics: AgentModelUsageMetrics) => void;
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
 }
 
@@ -163,6 +165,7 @@ export class RunExecutor {
     let terminalFailure: string | undefined;
     let lastTerminalFailure: string | undefined;
     let previousSubmission: unknown;
+    let modelRequestIndex = 0;
     const registry = new AgentToolRegistry();
     try {
       for (const entry of this.dependencies.createTools({
@@ -198,7 +201,8 @@ export class RunExecutor {
         currentRequest: message,
         expectedWorkingVersion: input.baseWorkingVersion,
       });
-      let prompt = message;
+      const { systemPolicy, currentRequest, ...contextData } = assembled;
+      let prompt = currentRequest;
       let missingTerminalRepairUsed = false;
       while (!terminalOutcome) {
         tracker.assertDuration();
@@ -209,16 +213,25 @@ export class RunExecutor {
         terminalFailure = undefined;
         const result = await this.dependencies.engine.run({
           budget: {
+            remainingModelCalls: () => tracker.remainingModelCalls(),
             beforeRequest: (size, window, output) => tracker.beforeRequest(size, window, output),
             recordUsage: (usage) => tracker.recordUsage(usage),
           },
           modelId: started.run.modelRef,
-          systemPrompt: `${assembled.systemPolicy}\n本 Run 工具总预算 ${input.budget.maxToolCalls} 次，当前剩余 ${Math.max(0, input.budget.maxToolCalls - tracker.snapshot().toolCalls)} 次，包含读取、预检、提交和修复。复用已读能力，不重复读取同一 Manifest；至少预留 2 次用于 ${terminalToolName} 和修复。预检不能代替终态提交。\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(assembled)}</ORIGAMIX_CONTEXT>`,
+          systemPrompt: `${systemPolicy}\n本 Run 工具总预算 ${input.budget.maxToolCalls} 次，当前剩余 ${Math.max(0, input.budget.maxToolCalls - tracker.snapshot().toolCalls)} 次，包含读取、预检、提交和修复。复用已读能力，不重复读取同一 Manifest；至少预留 2 次用于 ${terminalToolName} 和修复。预检不能代替终态提交。\n\n<ORIGAMIX_CONTEXT>${JSON.stringify(contextData)}</ORIGAMIX_CONTEXT>`,
           prompt,
           tools,
           signal: controller.signal,
           timeoutMs: remainingDurationMs,
           onEvent: async (event) => {
+            if (event.type === 'model_usage') {
+              modelRequestIndex += 1;
+              try {
+                this.dependencies.recordModelUsage?.(runId, modelRequestIndex, event.metrics);
+              } catch {
+                // Diagnostics must not interrupt a page edit or expose logger errors.
+              }
+            }
             await this.handleEngineEvent(runId, event);
             if (event.type === 'tool_start' && event.toolName === terminalToolName) {
               const json = JSON.stringify(event.input);

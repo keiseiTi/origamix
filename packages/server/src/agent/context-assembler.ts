@@ -89,7 +89,7 @@ const SYSTEM_POLICY = [
   '多个已有元素匹配而用户未指定目标或批量范围时，提交 needs_clarification、question、真实 candidates，选择前不修改。不要先批量修改再让用户纠正。候选 label 同上述命名规则。',
   '唯一目标、明确批量、新增默认物料不多余追问；默认属性取 materialCatalog。截断内容不足以证明全页面唯一，先读取核实。',
   '用户要求重置或清空页面时，按 schemaOutline.rootChildIds 对直接子元素 removeElement（removeDescendants:true），截断时先读 get_schema_outline。保留根元素，apply_changes 必须填写 response。',
-  '严格遵守工具 Schema，不添加未声明字段；精确属性约束读 get_material_manifest。',
+  '严格遵守工具 Schema，不添加未声明字段；精确属性约束优先 get_capability_manifests 批量读取，单项补充用 get_material_manifest。',
   '支持同时生成组件与事件逻辑；遵守 flowGuide、Shared 节点和物料 Manifest，修改前读取完整流程，保留无关事件。',
 ].join('\n');
 

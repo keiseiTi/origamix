@@ -109,11 +109,32 @@ export class AgentToolValidationError extends Error {
 }
 
 export type AgentEngineEvent =
+  | { type: 'model_usage'; metrics: AgentModelUsageMetrics }
   | { type: 'text_delta'; delta: string }
   | { type: 'tool_start'; toolCallId: string; toolName: string; input: unknown }
   | { type: 'tool_end'; toolCallId: string; toolName: string; result: unknown; isError: boolean }
   | { type: 'completed'; text: string; usage: AgentEngineUsage }
   | { type: 'failed'; error: AgentEngineError };
+
+/** Numeric request diagnostics only: never includes prompt, arguments or provider errors. */
+export interface AgentModelUsageMetrics {
+  estimatedInputTokens: number;
+  inputBytes: number;
+  systemBytes: number;
+  toolDefinitionBytes: number;
+  userBytes: number;
+  assistantBytes: number;
+  toolResultBytes: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  inputUsageEstimated: boolean;
+  outputUsageEstimated: boolean;
+  durationMs: number;
+  toolCalls: number;
+  repeatedToolCalls: number;
+}
 
 export interface AgentEngineUsage {
   inputTokens: number;
@@ -123,8 +144,9 @@ export interface AgentEngineUsage {
 
 export interface AgentEngineRequest {
   budget?: {
+    remainingModelCalls?: () => number;
     beforeRequest: (
-      inputUpperBound: number,
+      estimatedInputTokens: number,
       contextWindow: number,
       providerMaxOutput: number,
     ) => number;
