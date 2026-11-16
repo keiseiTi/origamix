@@ -2,6 +2,7 @@ import { instantiateBlock, type BlockDefinition } from '@origamix/shared';
 import { nanoid } from 'nanoid';
 import { Type, type Static, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
+import { createAgentElementIds, type AgentElementIds } from './element-ids';
 import type { ProjectMaterialReader } from './material-reader';
 import {
   type MaterialManifestCatalog,
@@ -135,6 +136,7 @@ const elementSummary = (
 export const createReadOnlyAgentTools = (
   scope: ReadOnlyToolScope,
   dependencies: ReadOnlyToolDependencies,
+  elementIds: AgentElementIds = createAgentElementIds(),
 ): AgentEngineTool[] => {
   const cache = new Map<string, Promise<unknown>>();
   let blocks: readonly BlockDefinition[] = [];
@@ -183,7 +185,38 @@ export const createReadOnlyAgentTools = (
     }
   };
 
+  const allocationInput = strictObject({
+    materialTypes: Type.Array(Type.String({ minLength: 1, maxLength: 80 }), {
+      minItems: 1,
+      maxItems: 200,
+    }),
+  });
   const tools: AgentEngineTool[] = [
+    ...(scope.pageId
+      ? [
+          {
+            name: 'allocate_element_ids',
+            description:
+              '为新增物料批量生成元素 ID。按计划的新增顺序提供准确 materialTypes，可重复类型。将同序返回的 elementIds 原样用于新增操作以及父子关系、事件和流程引用。',
+            parameters: allocationInput,
+            execute: async (raw: unknown, signal: AbortSignal) => {
+              const { materialTypes } = assertInput<Static<typeof allocationInput>>(
+                allocationInput,
+                raw,
+              );
+              const current = await load({}, signal);
+              const knownTypes = new Set(materialManifest.materials.map(({ type }) => type));
+              if (materialTypes.some((type) => !knownTypes.has(type)))
+                throw invalid('物料类型不存在于当前 Material Set');
+              return {
+                elementIds: materialTypes.map((type) =>
+                  elementIds.allocate(type, (id) => Object.hasOwn(current.schema.elements, id)),
+                ),
+              };
+            },
+          },
+        ]
+      : []),
     {
       name: 'get_capability_manifests',
       description:
@@ -277,6 +310,7 @@ export const createReadOnlyAgentTools = (
                 parentId: input.parentId,
                 parameters: input.parameters ?? {},
                 createId: () => `element-${nanoid()}`,
+                createElementId: elementIds.allocate,
               });
               return {
                 rootId: result.rootId,

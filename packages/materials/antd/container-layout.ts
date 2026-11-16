@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 
 export interface ContainerLayoutProps {
   layoutMode?: 'normal' | 'absolute';
-  display?: 'flow' | 'flex';
+  display?: 'flow' | 'flex' | 'grid';
   flexDirection?: 'row' | 'column';
   gap?: number;
   flexWrap?: 'nowrap' | 'wrap';

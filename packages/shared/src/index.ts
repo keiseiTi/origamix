@@ -1,3 +1,4 @@
+export { createElementId } from './page/element-id.ts';
 export { equalJson } from './json.ts';
 export { compileJsonSchema } from './json-schema.ts';
 export {

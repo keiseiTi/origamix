@@ -1,3 +1,4 @@
+import { createAgentElementIds, type AgentElementIds } from './element-ids';
 import type { ProjectProposal, ProjectRoleOperation } from '@origamix/shared';
 import type { ProjectMaterialReader } from './material-reader';
 import { nanoid } from 'nanoid';
@@ -76,6 +77,7 @@ const terminalResponse = (input: CompletePageRunInput): string =>
 export const createCompletePageRunTool = (
   dependencies: CompletePageRunToolDependencies,
   scope: CompletePageRunToolScope,
+  elementIds: AgentElementIds = createAgentElementIds(),
 ): AgentEngineTool => {
   let rejectedWrite = false;
   const terminalToolName = 'complete_page_run';
@@ -245,6 +247,7 @@ export const createCompletePageRunTool = (
       let result: { workingVersion: number; workingHash: string };
       try {
         assertNotCancelled(signal);
+        elementIds.validate(operations);
         result = await applyWorkingSchemaOperations(
           {
             projectPath: project.path,

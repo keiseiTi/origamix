@@ -468,10 +468,14 @@ export const containerManifest = withMaterialManifestDefaults({
   role: 'layout',
   acceptsChildren: true,
   usage: '用作页面区域或多个物料的父级容器。',
-  constraints: ['固定高度仅在 heightConfig 为 fixed 时使用。'],
+  constraints: [
+    '固定高度仅在 heightConfig 为 fixed 时使用。',
+    '普通定位下，display 为 grid 时按 gridColumns 为直接子元素分列。',
+  ],
   defaultProps: {
     heightConfig: 'fixed',
     height: 200,
+    gridColumns: '2',
   },
   propsSchema: {
     type: 'object',
@@ -484,7 +488,7 @@ export const containerManifest = withMaterialManifestDefaults({
       },
       display: {
         type: 'string',
-        enum: ['flow', 'flex'],
+        enum: ['flow', 'flex', 'grid'],
         title: '布局方式',
       },
       flexDirection: {
@@ -515,6 +519,12 @@ export const containerManifest = withMaterialManifestDefaults({
       padding: {
         type: 'number',
         title: '内边距（px）',
+      },
+      gridColumns: {
+        type: 'string',
+        enum: ['2', '3', '4', '6'],
+        title: '栅格列数',
+        default: '2',
       },
       heightConfig: {
         type: 'string',
@@ -1032,6 +1042,7 @@ export const formManifest = withMaterialManifestDefaults({
     labelAlign: 'right',
     colon: true,
     preserve: true,
+    gridColumns: 'none',
     labelWrap: false,
     scrollToFirstError: false,
   },
@@ -1039,6 +1050,12 @@ export const formManifest = withMaterialManifestDefaults({
     type: 'object',
     additionalProperties: false,
     properties: {
+      gridColumns: {
+        type: 'string',
+        enum: ['none', '2', '3', '4', '6'],
+        title: '字段栅格列数',
+        default: 'none',
+      },
       layout: {
         type: 'string',
         enum: ['horizontal', 'vertical', 'inline'],

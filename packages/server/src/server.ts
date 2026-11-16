@@ -1,3 +1,4 @@
+import { createAgentElementIds } from './agent/tools/element-ids';
 import { ProjectSettingsAgentService } from './agent/project-settings-agent-service';
 import { ProjectTaskService } from './agent/project-task-service';
 import { agentTarget } from './agent/agent-target';
@@ -124,8 +125,9 @@ export const startServer = async (input: {
       runService,
       context,
       engine,
-      createTools: (scope) =>
-        createDefaultAgentToolEntries([
+      createTools: (scope) => {
+        const elementIds = createAgentElementIds();
+        return createDefaultAgentToolEntries([
           ...createReadOnlyAgentTools(
             {
               runId: scope.runId,
@@ -138,6 +140,7 @@ export const startServer = async (input: {
               loadMaterials: loadProjectMaterials,
               getProjectRoles: projectService.getPageRoles,
             },
+            elementIds,
           ),
           ...createDomainAgentTools(
             { projectId: scope.projectId, pageId: scope.pageId },
@@ -147,7 +150,7 @@ export const startServer = async (input: {
               diagnostics: runtimeDiagnostics,
             },
           ),
-          createValidatePageOperationsTool(projects, scope),
+          createValidatePageOperationsTool(projects, scope, elementIds),
           createCompletePageRunTool(
             {
               projects,
@@ -157,8 +160,10 @@ export const startServer = async (input: {
               loadMaterials: loadProjectMaterials,
             },
             scope,
+            elementIds,
           ),
-        ]),
+        ]);
+      },
       recordModelUsage: (runId, requestIndex, metrics) => {
         console.info(
           JSON.stringify({ event: 'agent.model_usage', runId, requestIndex, ...metrics }),

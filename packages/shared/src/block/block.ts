@@ -34,6 +34,7 @@ export const instantiateBlock = (input: {
   index?: number;
   parameters: Record<string, string>;
   createId: () => string;
+  createElementId: (type: string, isTaken: (id: string) => boolean) => string;
 }): { schema: OrigamixPageSchema; operations: SchemaOperation[]; rootId: string } => {
   const { block, schema, parentId } = input;
   if (!Check(BlockDefinitionSchema, block) || !isPageSchema(block.schema) || !isPageSchema(schema))
@@ -80,13 +81,18 @@ export const instantiateBlock = (input: {
     ...Object.values(schema.flows).flatMap((flow) => Object.keys(flow.nodes)),
     ...schema.context.globalVariables.map((variable) => variable.name),
   ]);
-  const fresh = () => {
-    const id = input.createId();
+  const reserve = (id: string) => {
     if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || used.has(id)) throw new Error('组合模块标识冲突');
     used.add(id);
     return id;
   };
-  const elements = new Map(Object.keys(fragment.elements).map((id) => [id, fresh()]));
+  const fresh = () => reserve(input.createId());
+  const elements = new Map(
+    Object.entries(fragment.elements).map(([id, { type }]) => [
+      id,
+      reserve(input.createElementId(type, (candidate) => used.has(candidate))),
+    ]),
+  );
   const flows = new Map(Object.keys(fragment.flows).map((id) => [id, fresh()]));
   const variables = new Map(
     fragment.context.globalVariables.map((variable) => [variable.name, fresh()]),
@@ -141,10 +147,9 @@ export const instantiateBlock = (input: {
     ]),
   );
   const structure = Object.fromEntries(
-    Object.keys(fragment.elements).map((id) => [
-      mapElement(id),
-      (fragment.layout.structure[id] ?? []).map(mapElement),
-    ]),
+    Object.entries(fragment.layout.structure)
+      .filter(([, children]) => children.length > 0)
+      .map(([id, children]) => [mapElement(id), children.map(mapElement)]),
   );
   const expandedFlows = Object.fromEntries(
     Object.entries(fragment.flows).map(([id, flow]) => {

@@ -1,3 +1,4 @@
+import { createEditorElementId } from '../../schema/create-editor-element-id';
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
 import {
@@ -41,6 +42,7 @@ const BlockItem = ({ block }: { block: BlockDefinition }) => {
         schema,
         parentId,
         createId: () => `element-${nanoid()}`,
+        createElementId: createEditorElementId,
       });
       setSchema(result.schema, { source: 'panel' });
       setOpen(false);

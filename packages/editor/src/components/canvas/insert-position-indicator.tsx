@@ -1,6 +1,7 @@
 import { useEditorCore } from '../../session/editor-context';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { getGridCell } from './layout-axis';
 
 export const InsertPositionIndicator = (): React.JSX.Element | null => {
   const canvasRoot = useEditorCore((state) => state.canvasRoot);
@@ -14,8 +15,9 @@ export const InsertPositionIndicator = (): React.JSX.Element | null => {
       return;
     }
 
-    const selector = `[data-element-id="${CSS.escape(insertPosition.id)}"]`;
-    setRect(canvasRoot?.querySelector(selector)?.getBoundingClientRect() ?? null);
+    const selector = `[data-origamix-layout][data-element-id="${CSS.escape(insertPosition.id)}"]`;
+    const frame = canvasRoot?.querySelector(selector);
+    setRect((getGridCell(frame) ?? frame)?.getBoundingClientRect() ?? null);
   }, [insertPosition, canvasRoot]);
 
   useEffect(() => {

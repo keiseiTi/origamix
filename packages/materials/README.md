@@ -101,7 +101,7 @@ Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manife
 
 归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。
 
-布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。详见[物料与画布布局方案](src/layout-properties.ts)。
+布局默认占位由 Manifest.layout 声明，子元素能力由 acceptsChildren 声明；布局不是容器能力。公共 layout 前缀属性由 Runtime 的共享布局节点消费，页面和普通容器支持流式与横向/纵向弹性排列。普通容器还可在“布局方式”中选用栅格布局，表单可在“字段栅格列数”中启用栅格。两者均使用 Ant Design 的 Row 和 Col，将直接子元素按顺序排入 2、3、4 或 6 个等宽列，满列后自动换行。表单的标签与控件布局独立配置。详见[物料与画布布局方案](src/layout-properties.ts)。
 
 表格列配置在属性面板中以简表展示列名、字段和删除操作；点击“配置列”打开弹窗，编辑列名、字段、宽度、对齐、固定和超出省略，并支持上移、下移、删除与添加列。弹窗确认后一次更新，取消不提交；已有列的其他合法字段保持原值。
 

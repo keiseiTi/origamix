@@ -140,7 +140,6 @@ const executeOperation = (
     if (schema.elements[operation.elementId])
       fail('ELEMENT_ALREADY_EXISTS', `元素已经存在：${operation.elementId}`, operationIndex);
     schema.elements[operation.elementId] = structuredClone(operation.element);
-    schema.layout.structure[operation.elementId] = [];
     insertChild(schema, operation.parentId, operation.elementId, operation.index, operationIndex);
     return `新增元素 ${operation.elementId}`;
   }
@@ -162,7 +161,8 @@ const executeOperation = (
     );
     for (const elementId of subtreeIds) {
       schema.elements[elementId] = structuredClone(operation.elements[elementId]!);
-      schema.layout.structure[elementId] = [...(operation.structure[elementId] ?? [])];
+      const children = operation.structure[elementId];
+      if (children?.length) schema.layout.structure[elementId] = [...children];
     }
     insertChild(
       schema,

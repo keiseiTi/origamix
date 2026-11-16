@@ -1,3 +1,4 @@
+import { createAgentElementIds } from '../../src/agent/tools/element-ids';
 import { loadProjectMaterials } from '../../src/projects/project-materials';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -59,6 +60,9 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     const conversationRecords = new ConversationRepository(database);
     const conversations = new ConversationService(database, projects, conversationRecords, runs);
     const events = new AgentEventBroker();
+    const elementIds = createAgentElementIds();
+    const buttonId = elementIds.allocate('button');
+    expect(buttonId).toMatch(/^button_[A-Za-z0-9_-]{8}$/);
     const flow: PageFlow = {
       startId: 'start',
       nodes: {
@@ -68,7 +72,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
           type: 'visibleElement',
           prev: ['start'],
           next: [],
-          props: { elementIds: ['button_agent'], value: { type: 'boolean', value: false } },
+          props: { elementIds: [buttonId], value: { type: 'boolean', value: false } },
         },
       },
     };
@@ -76,14 +80,14 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 16 } },
       {
         operation: 'addElement',
-        elementId: 'button_agent',
+        elementId: buttonId,
         element: { type: 'button', props: { text: '隐藏' } },
         parentId: 'element_root',
       },
       { operation: 'addFlow', flowId: 'flow_agent', flow },
       {
         operation: 'setElementEventBinding',
-        elementId: 'button_agent',
+        elementId: buttonId,
         event: 'onClick',
         flowId: 'flow_agent',
       },
@@ -127,10 +131,12 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
               workingVersion: scope.baseWorkingVersion,
             },
             { projects, loadMaterials: loadProjectMaterials },
+            elementIds,
           ),
           createCompletePageRunTool(
             { projects, runs, runService, loadMaterials: loadProjectMaterials },
             { ...scope, maxSchemaBytes: 256 * 1024 },
+            elementIds,
           ),
         ]),
     });
@@ -182,7 +188,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     expect(edited.revisionId).toBe(before.revisionId);
     expect(edited.schema.flows.flow_agent).toEqual(flow);
     expect(edited.schema.bindElements).toEqual([
-      { id: 'button_agent', event: 'onClick', flowId: 'flow_agent' },
+      { id: buttonId, event: 'onClick', flowId: 'flow_agent' },
     ]);
     expect((await getWorkingSchemaState(pageRef)).workingVersion).toBe(
       request.baseWorkingVersion + 1,

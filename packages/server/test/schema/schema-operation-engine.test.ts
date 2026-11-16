@@ -61,6 +61,7 @@ describe('Schema Operation Engine', () => {
       'element_section',
     ]);
     expect(result.schema.layout.structure.element_section).toEqual(['text_help']);
+    expect(result.schema.layout.structure).not.toHaveProperty('text_help');
     expect(result.schema.elements.button_submit.props).toEqual({
       children: '提交订单',
       type: 'primary',

@@ -151,6 +151,24 @@ describe('Schema Service', () => {
         maxRepairAttempts: 2,
       },
     );
+    await expect(
+      preflight.execute(
+        {
+          operations: [
+            {
+              operation: 'addElement',
+              elementId: 'text_abcdefgh',
+              parentId: state.schema.layout.root,
+              element: { type: 'text', props: { text: '未分配' } },
+            },
+          ],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      valid: false,
+      errors: [{ code: 'UNALLOCATED_ELEMENT_ID', operationIndex: 0 }],
+    });
     const preflightInput = {
       operations: [
         { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 12 } },
@@ -172,6 +190,7 @@ describe('Schema Service', () => {
         parentId: 'element_root',
         parameters: { endpoint: 'https://example.test/api' },
         createId: () => `element_${++sequence}`,
+        createElementId: (type) => `${type}_${String(++sequence).padStart(8, '0')}`,
       });
       const baseWorkingVersion = state.workingVersion;
       await validateWorkingSchemaOperations(page, {
@@ -211,6 +230,7 @@ describe('Schema Service', () => {
       parentId: 'element_root',
       parameters: { endpoint: 'https://example.test/api' },
       createId: () => `element_${++sequence}`,
+      createElementId: (type) => `${type}_${String(++sequence).padStart(8, '0')}`,
     });
     invalid.operations.push({
       operation: 'addElement',

@@ -1,4 +1,4 @@
-import { containerLayoutConfigs } from '../container-layout-panel';
+import { getContainerLayoutConfigs } from '../container-layout-panel';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const BasicPageMaterial = defineMaterial({
@@ -19,7 +19,7 @@ const BasicPageMaterial = defineMaterial({
       {
         title: '属性',
         configs: [
-          ...containerLayoutConfigs.filter((config) => config.field !== 'layoutMode'),
+          ...getContainerLayoutConfigs().filter((config) => config.field !== 'layoutMode'),
           { field: 'margin', hidden: true, schema: { type: 'number' }, uiType: 'input' },
         ],
       },

@@ -1,4 +1,5 @@
 import { getContainerStyle, type ContainerLayoutProps } from '../container-layout';
+import { MaterialGrid, type GridColumns } from '../grid-layout';
 import React from 'react';
 import type { RuntimeMaterialProps as MaterialComponentProps } from '@';
 
@@ -9,6 +10,7 @@ export interface IProps extends MaterialComponentProps, ContainerLayoutProps {
   padding?: number | string;
   heightConfig?: 'fixed' | 'auto';
   height?: number | string;
+  gridColumns?: GridColumns;
 }
 
 // Ref remains available to component consumers; Editor targets the shared layout frame.
@@ -27,6 +29,7 @@ export const Container = (props: IProps) => {
     om_readonly,
     layoutMode,
     display,
+    gridColumns = '2',
     flexDirection,
     gap,
     flexWrap,
@@ -58,7 +61,13 @@ export const Container = (props: IProps) => {
 
   return (
     <div ref={ref} style={style} {...rest}>
-      {children || om_dropPlaceholder}
+      {display === 'grid' && layoutMode !== 'absolute' ? (
+        <MaterialGrid columns={gridColumns} placeholder={om_dropPlaceholder}>
+          {children}
+        </MaterialGrid>
+      ) : (
+        (children ?? om_dropPlaceholder)
+      )}
     </div>
   );
 };

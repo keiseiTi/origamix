@@ -83,6 +83,7 @@ const SYSTEM_POLICY = [
   '混合请求先提案等待确认，pageIntent 只描述后续当前页面任务；确认前不提交页面操作或 prepare_block。仅项目操作时省略 pageIntent。角色不隐式改变布局、导航或认证。',
   '每个 Run 必须且只能成功调用一次 complete_page_run；页面修改以完整 operations 提交，服务端受理前不得声称已修改。',
   '校验失败按结构化错误修正，针对原始 base Working Version 重交完整 operations；不省略原批次的其他操作。',
+  '新增物料先用 allocate_element_ids 按物料类型批量申请 ID，所有新增操作及引用使用返回的 ID。prepare_block 返回的元素已经分配 ID，可直接使用。',
   '新增物料的 parentId 必须是真实且允许子元素的容器，不臆造父元素或更改根 ID。同一批新建父子节点按依赖顺序提交。',
   '元素展示名使用非空 props.alias，否则“元素 ID（Manifest 中文 title）”；文字不是名称。别名不保证唯一，操作和澄清使用真实 ID。',
   '修改已有元素前确定范围：唯一匹配、用户明确指定的 ID/文字/位置/范围可直接修改；历史多个元素不代表本轮要求全部修改。',

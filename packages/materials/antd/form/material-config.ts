@@ -1,3 +1,4 @@
+import { gridColumnsConfig } from '../grid-layout-config';
 import { lazy } from 'react';
 import { defineMaterial } from '@';
 const material = defineMaterial({
@@ -9,6 +10,7 @@ const material = defineMaterial({
     labelAlign: 'right',
     colon: true,
     preserve: true,
+    gridColumns: 'none',
   },
   context: {
     variables: [{ name: 'value', description: '当前值' }],
@@ -49,6 +51,13 @@ const material = defineMaterial({
       {
         title: '属性',
         configs: [
+          {
+            ...gridColumnsConfig,
+            label: '字段栅格列数',
+            props: {
+              options: [{ label: '不启用', value: 'none' }, ...gridColumnsConfig.props.options],
+            },
+          },
           {
             field: 'layout',
             label: '布局',

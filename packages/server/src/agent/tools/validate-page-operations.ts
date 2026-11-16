@@ -1,3 +1,4 @@
+import { createAgentElementIds, type AgentElementIds } from './element-ids';
 import { SchemaOperationSchema, type SchemaOperation } from '@origamix/shared';
 import { Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
@@ -18,6 +19,7 @@ const parameters = Type.Object(
 export const createValidatePageOperationsTool = (
   projects: Pick<ProjectRepository, 'getProject' | 'getPage'>,
   scope: CompletePageRunToolScope,
+  elementIds: AgentElementIds = createAgentElementIds(),
 ): AgentEngineTool => ({
   name: 'validate_page_operations',
   description:
@@ -37,6 +39,7 @@ export const createValidatePageOperationsTool = (
     if (!project || project.status !== 0 || !page || page.status !== 0)
       throw notFound('页面不存在或不属于当前项目');
     try {
+      elementIds.validate(operations);
       await validateWorkingSchemaOperations(
         {
           projectPath: project.path,

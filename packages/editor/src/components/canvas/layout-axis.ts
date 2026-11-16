@@ -2,6 +2,11 @@ import { getMaterialDisplay, type OrigamixPageSchema } from '@origamix/shared';
 import type { Material } from '../../interfaces/material';
 import { SchemaUtils } from '../../schema/schema-utils';
 
+export const getGridCell = (frame: Element | null | undefined): HTMLElement | undefined => {
+  const cell = frame?.parentElement;
+  return cell?.hasAttribute('data-origamix-grid-cell') ? cell : undefined;
+};
+
 /** Parent layout owns ordering; flow falls back to each item's declared occupancy. */
 export const getInsertionAxis = (
   schema: OrigamixPageSchema,
@@ -10,6 +15,11 @@ export const getInsertionAxis = (
   canvasRoot: HTMLElement | null,
   dragged?: { material: Material; props: Record<string, unknown> },
 ): 'horizontal' | 'vertical' => {
+  const targetFrame = canvasRoot?.querySelector(
+    `[data-origamix-layout][data-element-id="${CSS.escape(targetId)}"]`,
+  );
+  if (getGridCell(targetFrame)) return 'horizontal';
+
   const parentId = SchemaUtils.getParents(schema, targetId)[0];
   const parent = parentId ? schema.elements[parentId] : undefined;
   if (parentId) {

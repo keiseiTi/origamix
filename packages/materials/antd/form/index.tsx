@@ -1,4 +1,5 @@
 import type { MaterialEventProps } from '../../src/runtime-material';
+import { MaterialGrid, type GridColumns } from '../grid-layout';
 import { FormRuntimeContext } from '../runtime-state';
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Form as AntdForm, theme, type FormProps } from 'antd';
@@ -9,6 +10,7 @@ interface FormContentProps
     MaterialEventProps<FormProps, 'onValuesChange' | 'onFinish' | 'onFinishFailed'>,
     MaterialComponentProps {
   children?: React.ReactNode;
+  gridColumns?: GridColumns | 'none';
   labelColVal?: number;
   wrapperColVal?: number;
   value?: Record<string, unknown>;
@@ -21,6 +23,7 @@ export interface IProps extends FormContentProps {
 const FormContent = (props: FormContentProps) => {
   const {
     children,
+    gridColumns,
     labelColVal,
     wrapperColVal,
     value,
@@ -123,7 +126,13 @@ const FormContent = (props: FormContentProps) => {
           ...restProps.style,
         }}
       >
-        {children ?? om_dropPlaceholder}
+        {gridColumns && gridColumns !== 'none' ? (
+          <MaterialGrid columns={gridColumns} placeholder={om_dropPlaceholder}>
+            {children}
+          </MaterialGrid>
+        ) : (
+          (children ?? om_dropPlaceholder)
+        )}
       </AntdForm>
     </FormRuntimeContext.Provider>
   );

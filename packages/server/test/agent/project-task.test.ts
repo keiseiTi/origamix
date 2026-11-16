@@ -1,3 +1,5 @@
+import { createAgentElementIds } from '../../src/agent/tools/element-ids';
+import { createReadOnlyAgentTools } from '../../src/agent/tools/read-only-tools';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -60,8 +62,15 @@ it('persists project proposals, stops cancellation/conflicts, and resumes exactl
     const engine = new FakeAgentEngine(async (request) => {
       const tool = request.tools!.find((item) => item.name === 'complete_page_run')!;
       const continued = request.prompt.includes('本轮只执行以下当前页面任务');
+      let titleId: string | undefined;
       if (continued) {
         pageCalls++;
+        const allocate = request.tools!.find((item) => item.name === 'allocate_element_ids')!;
+        const result = (await allocate.execute({ materialTypes: ['text'] }, request.signal!)) as {
+          elementIds: [string];
+        };
+        [titleId] = result.elementIds;
+        expect(titleId).toMatch(/^text_[A-Za-z0-9_-]{8}$/);
         expect((await projectService.getPageRoles(project.id)).roles.assignments.login).toBe(
           page.id,
         );
@@ -73,7 +82,7 @@ it('persists project proposals, stops cancellation/conflicts, and resumes exactl
             operations: [
               {
                 operation: 'addElement',
-                elementId: 'login_title',
+                elementId: titleId,
                 parentId: before.schema.layout.root,
                 element: { type: 'text', props: { text: '登录' } },
               },
@@ -115,8 +124,19 @@ it('persists project proposals, stops cancellation/conflicts, and resumes exactl
         {},
         projectService.getPageRoles,
       ),
-      createTools: (scope) =>
-        createDefaultAgentToolEntries([
+      createTools: (scope) => {
+        const elementIds = createAgentElementIds();
+        return createDefaultAgentToolEntries([
+          ...createReadOnlyAgentTools(
+            {
+              runId: scope.runId,
+              projectId: scope.projectId,
+              pageId: scope.pageId,
+              workingVersion: scope.baseWorkingVersion,
+            },
+            { projects, loadMaterials: loadProjectMaterials },
+            elementIds,
+          ),
           createCompletePageRunTool(
             {
               projects,
@@ -126,8 +146,10 @@ it('persists project proposals, stops cancellation/conflicts, and resumes exactl
               prepareProject: (...args) => tasks.prepare(...args),
             },
             scope,
+            elementIds,
           ),
-        ]),
+        ]);
+      },
     });
     service = new AgentService({
       projects,

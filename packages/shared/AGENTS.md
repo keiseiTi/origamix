@@ -2,6 +2,8 @@
 
 Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 
+- New element IDs use `createElementId` to generate `materialType + "_" + nanoid(8)`. Existing IDs remain valid and stable. Block expansion uses the same generator for elements and keeps caller-owned IDs for flows, flow nodes and variables.
+
 ## Ownership and entry points
 
 - `src/index.ts` is the sole public entry. Organize its explicit exports by domain; domain directories do not create package subpaths or secondary barrels.
@@ -23,6 +25,7 @@ Applies to `packages/shared/`. Read the [root guide](../../AGENTS.md) first.
 - Preserve stable IDs, schemaVersion, operation discrimination, Working-version concurrency and error/result semantics. Keep persisted format versions explicit and validation strict.
 - Keep the HTTP result envelope in `src/transport/api-result.ts` synchronized with every producer and consumer; `data` is always present, and failures never place error metadata inside it.
 - `isPageSchema` interprets the canonical PageSchema and reuses semantic checks without code generation for CSP-restricted design frames; HTTP validation retains detailed Ajv errors. Keep these paths on the same schema and semantic rules.
+- New leaf elements may omit their key in `layout.structure`. Readers treat missing child lists as empty and continue to accept explicit empty lists.
 - Separate shape validation from semantic checks such as root existence, layout references and cycles. Never weaken validators to accept invalid fixtures/model responses.
 - Review all App/Server/Desktop producers and consumers when changing exports. Keep preview contracts read-only and separate from workbench APIs.
 - Consumers import only `@origamix/shared`. `src/index.ts` explicitly lists public value and type exports; internal modules import each other directly, never through the root barrel. Workspace and published exports both resolve compiled `dist`; `build` emits the single ESM entry and declarations to `dist`; keep workspace and published root exports synchronized and independently consumable. Relative source imports include `.ts` for internal Node 24 source tooling; the base TypeScript config rewrites extensions when emitting. Ajv instances and individual compiled validators initialize on first use and are cached; importing the root must not compile validators.

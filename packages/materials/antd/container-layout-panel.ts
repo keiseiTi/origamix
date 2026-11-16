@@ -1,6 +1,6 @@
 import type { AttributeConfig } from '../src/material';
 
-export const containerLayoutConfigs: AttributeConfig[] = [
+export const getContainerLayoutConfigs = (supportsGrid = false): AttributeConfig[] => [
   {
     field: 'layoutMode',
     label: '容器定位模式',
@@ -20,6 +20,7 @@ export const containerLayoutConfigs: AttributeConfig[] = [
       options: [
         { label: '流式布局', value: 'flow' },
         { label: '弹性布局', value: 'flex' },
+        ...(supportsGrid ? [{ label: '栅格布局', value: 'grid' }] : []),
       ],
     },
   },

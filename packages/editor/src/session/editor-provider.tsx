@@ -1,3 +1,4 @@
+import { createEditorElementId } from '../schema/create-editor-element-id';
 import { nanoid } from 'nanoid';
 import type { EditorPlugin } from '../interfaces/plugin';
 import { Toaster, createToastManager } from '@origamix/ui';
@@ -8,6 +9,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  getClientRect,
   pointerWithin,
   rectIntersection,
   type DragOverEvent,
@@ -18,10 +20,17 @@ import { instantiateBlock, type OrigamixPageSchema } from '@origamix/shared';
 import type { Material } from '../interfaces/material';
 import { createEditorSession, type DragElement, type EditorEnvironment } from './editor-store';
 import { EditorSessionContext } from './editor-context';
-import { getInsertionAxis } from '../components/canvas/layout-axis';
+import { getGridCell, getInsertionAxis } from '../components/canvas/layout-axis';
 import { useBindEditor } from './use-bind-editor';
 import { type EditorInstance, type EditorSaveOptions } from '../interfaces/editor-instance';
 import { SchemaUtils } from '../schema/schema-utils';
+
+const DROP_MEASURING = {
+  droppable: {
+    measure: (frame: HTMLElement) =>
+      getClientRect(getGridCell(frame) ?? frame, { ignoreTransform: true }),
+  },
+};
 
 const EMPTY_BLOCKS: NonNullable<EditorProviderProps['blocks']> = [];
 const EMPTY_ROOT_TYPES: readonly string[] = [];
@@ -212,6 +221,7 @@ export const EditorProvider = ({
         {editor && <EditorBinding editor={editor} readOnly={readOnly} save={save} />}
         <DndContext
           sensors={sensors}
+          measuring={DROP_MEASURING}
           collisionDetection={collision}
           onDragStart={(event) => {
             store.getState().setDragElement(event.active.data.current as DragElement);
@@ -259,6 +269,7 @@ export const EditorProvider = ({
                   return;
                 }
               }
+              if (moving && drag.id === hit.target.id) return;
               const material = moving ? drag.material : drag;
               const parentId = hit.position
                 ? SchemaUtils.getParents(state.schema, hit.target.id)[0]
@@ -284,6 +295,7 @@ export const EditorProvider = ({
                   parentId: parentId!,
                   index,
                   createId: () => `element-${nanoid()}`,
+                  createElementId: createEditorElementId,
                 });
                 if (parent.props.layoutMode === 'absolute') {
                   const id = result.rootId;
@@ -308,7 +320,9 @@ export const EditorProvider = ({
                   })
                 : (() => {
                     const element = {
-                      id: `${material.type}-${nanoid()}`,
+                      id: createEditorElementId(material.type, (id) =>
+                        Object.hasOwn(state.schema.elements, id),
+                      ),
                       type: material.type,
                       props: structuredClone(material.defaultProps ?? {}),
                     };

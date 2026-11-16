@@ -2,6 +2,8 @@
 
 Applies to `packages/server/`. Read the [root guide](../../AGENTS.md) first.
 
+- Page Agent Runs allocate new element IDs through `allocate_element_ids` or `prepare_block`. Preflight and terminal submission verify the same Run-scoped allocations against the material type before passing the batch to Working.
+
 ## Ownership and entry points
 
 - [README.md](README.md): onboarding, domain map, request flows and verification guide.

@@ -2,6 +2,8 @@
 
 Applies to `packages/editor/`. Read the [root guide](../../AGENTS.md) first.
 
+- Palette drag, plugin insertion, and composition blocks use Shared `createElementId` for new material IDs.
+
 ## Ownership
 
 - `src/index.ts` exports the unified Editor; `src/editor.tsx` composes the shared EditorProvider; `useCreateEditor` owns retained view preferences and guarded public commands, `useEditorContext` reads the stable instance, and `useEditorSelector` subscribes to public state; `src/components/` groups the editor layout, canvas, navigation/attribute panels, flow view and editing tools by feature. Feature entry components live in `index.tsx`; local Hooks and pure helpers stay beside their consumers. App owns Agent lifecycle and maps clarification state to the generic target-selection contract.
@@ -37,7 +39,7 @@ UI verification must exercise actual visual/flow switching, event selection, his
 
 - `src/prototype/canvas-prototype.tsx` is the public surface of the isolation feasibility experiment. The adjacent CanvasPrototypeSession owns the sandboxed iframe and MessageChannel host; mountCanvasPrototypeFrame owns frame initialization and command handling, with registration injected by the caller. The experimental protocol stays internal here until a production migration moves the full contract to Shared. It exposes only restricted commands and snapshots, never Engine. It reuses CanvasEditor, independent session history and Schema editing tools, without HTTP, persistence or production replacement behavior. Keep the experiment permission-isolated from the production Editor; verify native hit testing and movement through actual interaction.
 
-- Layout ownership and rollout are documented in [material layout](../materials/src/layout-properties.ts). Material.acceptsChildren comes from Manifest; default occupancy comes from Material.layout. Never reintroduce isContainer/isBlock or design-only layout wrappers. Selection refs/events attach to the shared Runtime layout node; candidate decorations use portals. Parent layout determines insertion axis.
+- Layout ownership and rollout are documented in [material layout](../materials/src/layout-properties.ts). Material.acceptsChildren comes from Manifest; default occupancy comes from Material.layout. Never reintroduce isContainer/isBlock or design-only layout wrappers. Selection refs/events attach to the shared Runtime layout node; candidate decorations use portals. Parent layout determines insertion axis. A layout cell marked with `data-origamix-grid-cell` provides the drop hit area and horizontal insertion indicator for its direct Runtime frame. Selection still uses the Runtime frame.
 
 - Overlay materials declare editorConfig.presentation as overlay. Session openOverlayIds is transient: selecting an overlay or descendant reveals its ancestor path; closing never changes Schema, history or business events. Overlay insertion/movement targets the Schema root; Ant Design getContainer mounts into its Runtime layout frame, which is positioned relative. Content frames retain selection/drop geometry, and masks stay within the page.
 
