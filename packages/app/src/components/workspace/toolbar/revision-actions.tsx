@@ -21,6 +21,7 @@ interface RevisionActionsProps {
   onReloadFromProject: () => Promise<void>;
   applyStatus: ApplyStatus;
   canApply: boolean;
+  databaseProject?: boolean;
   canSaveVersion: boolean;
   canReload: boolean;
   onErrorChange: (error: string | null) => void;
@@ -35,6 +36,7 @@ export const RevisionActions = ({
   onReloadFromProject,
   applyStatus,
   canApply,
+  databaseProject = false,
   canSaveVersion,
   canReload,
   onErrorChange,
@@ -110,7 +112,9 @@ export const RevisionActions = ({
             : applyStatus === 'loading'
               ? '检查状态…'
               : applyStatus === 'in_sync'
-                ? '与项目一致'
+                ? databaseProject
+                  ? '版本已保存'
+                  : '与项目一致'
                 : applyStatus === 'saved_pending_apply'
                   ? '版本已保存 · 待应用'
                   : applyStatus === 'external_change'
@@ -137,22 +141,24 @@ export const RevisionActions = ({
         </TooltipTrigger>
         <TooltipContent side='bottom'>把当前草稿保存为可恢复的历史版本</TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              size='sm'
-              variant='secondary'
-              className='px-2 text-xs'
-              disabled={previewOpening || savingVersion || saveBusy || applying || !canApply}
-              onClick={() => void apply()}
-            />
-          }
-        >
-          {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
-        </TooltipTrigger>
-        <TooltipContent side='bottom'>把当前已保存内容写入真实项目</TooltipContent>
-      </Tooltip>
+      {!databaseProject && (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size='sm'
+                variant='secondary'
+                className='px-2 text-xs'
+                disabled={previewOpening || savingVersion || saveBusy || applying || !canApply}
+                onClick={() => void apply()}
+              />
+            }
+          >
+            {applying ? '应用中…' : applyStatus === 'result_pending' ? '重试应用' : '应用到项目'}
+          </TooltipTrigger>
+          <TooltipContent side='bottom'>把当前已保存内容写入真实项目</TooltipContent>
+        </Tooltip>
+      )}
       {applyStatus === 'external_change' && canReload && (
         <Tooltip>
           <TooltipTrigger

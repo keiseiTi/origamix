@@ -12,6 +12,7 @@ app.setPath('userData', state);
 process.on('exit', () => rmSync(state, { recursive: true, force: true }));
 const url = new URL(process.argv[2]);
 const password = process.argv[3];
+const projectId = process.argv[4];
 if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1')
   throw new Error('Expected the local Web integration server');
 
@@ -34,6 +35,29 @@ app
     });
     await window.loadURL(url.origin);
     if (password) await login(window);
+    if (projectId) {
+      await waitFor(() =>
+        window.webContents.executeJavaScript(`(() => {
+          const create = document.querySelector('button[aria-label="新建项目"]');
+          if (!create || create.disabled) return false;
+          create.click();
+          return true;
+        })()`),
+      );
+      await waitFor(() =>
+        window.webContents.executeJavaScript(
+          `Boolean(document.querySelector('[role="dialog"] #projectCode'))`,
+        ),
+      );
+      const directoryVisible = await window.webContents.executeJavaScript(
+        `Boolean(document.querySelector('[role="dialog"] #directory')?.getClientRects().length)`,
+      );
+      if (directoryVisible)
+        throw new Error('Database project creation asked for a local directory');
+      await window.webContents
+        .executeJavaScript(`[...document.querySelectorAll('[role="dialog"] button')]
+        .find((button) => button.textContent.trim() === '取消').click()`);
+    }
     await window.webContents.executeJavaScript(`(async () => {
     const baseUrl = location.origin + '/api/v1';
     const request = async (path, body = {}) => {
@@ -44,11 +68,38 @@ app
       if (!result.success) throw new Error(result.message || 'Web smoke request failed');
       return result.data;
     };
-    const [project] = await request('/projects/list');
+    const projects = await request('/projects/list');
+    const project = ${projectId ? `projects.find((item) => item.id === ${JSON.stringify(projectId)})` : 'projects[0]'};
     await (${seedPreviewPage.toString()})(request, project.id, baseUrl);
   })()`);
     await window.loadURL(password ? new URL('/workspace/direct/', url).href : url.origin);
     await verifyPreview(window.webContents);
+    if (projectId) {
+      await window.webContents.executeJavaScript(
+        `document.querySelector('button[aria-label="退出预览"]').click()`,
+      );
+      await waitFor(() =>
+        window.webContents.executeJavaScript(`(() => {
+          const edit = document.querySelector('button[aria-label="编辑"]');
+          if (!edit || !edit.getClientRects().length) return false;
+          edit.click();
+          return true;
+        })()`),
+      );
+      await waitFor(() =>
+        window.webContents.executeJavaScript(`(() => {
+          const save = [...document.querySelectorAll('button')].find((button) =>
+            button.getClientRects().length && !button.disabled && button.textContent.trim() === '保存版本',
+          );
+          if (!save) return false;
+          save.click();
+          return true;
+        })()`),
+      );
+      await waitFor(() =>
+        window.webContents.executeJavaScript(`document.body.innerText.includes('版本已保存')`),
+      );
+    }
     if (password) {
       await window.webContents.session.cookies.remove(url.origin, 'origamix-loopback-session');
       const checkSession = () =>

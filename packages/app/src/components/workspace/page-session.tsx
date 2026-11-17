@@ -1,3 +1,4 @@
+import { usesDatabaseProjects } from '@/services/projects';
 import { useCallback, useEffect, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
@@ -69,12 +70,14 @@ const PageSessionContent = ({
     })),
   );
   const available = true;
+  const databaseProject = usesDatabaseProjects();
   const theme = usePreferencesStore((state) => state.theme);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
   const { pageApply, agent, capabilities, schemaRefreshKey } = usePageSession({
     projectId,
     pageId: page.id,
     available,
+    databaseProject,
     active,
     editorRef,
   });
@@ -114,6 +117,7 @@ const PageSessionContent = ({
     onRestoreRevision: pageApply.restoreRevision,
     applyStatus: available ? pageApply.applyStatus : ('disabled' as const),
     canApply: capabilities.canApply,
+    databaseProject,
     canSaveVersion: capabilities.canSaveVersion,
     canReload: capabilities.canReload,
     canRestore: capabilities.canEdit,
@@ -141,6 +145,9 @@ const PageSessionContent = ({
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
           session={agent}
+          unavailableReason={
+            databaseProject ? '当前 Web 项目可使用页面编辑器，Agent 功能尚未接入。' : undefined
+          }
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
         />

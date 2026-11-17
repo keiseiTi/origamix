@@ -1,3 +1,4 @@
+import { usesDatabaseProjects } from '@/services/projects';
 import {
   Button,
   Dialog,
@@ -69,9 +70,14 @@ export const LifecycleModal = ({
           {deleting ? (
             <>
               <p className='text-sm text-zinc-700 dark:text-zinc-300'>
-                确定删除“{target?.name}”吗？相关桌面端记录将被删除，且无法恢复。
+                {usesDatabaseProjects()
+                  ? `确定删除“${target?.name}”及其编辑记录吗？此操作无法恢复。`
+                  : `确定删除“${target?.name}”吗？相关桌面端记录将被删除，且无法恢复。`}
               </p>
-              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+              <p
+                hidden={usesDatabaseProjects()}
+                className='text-xs text-zinc-400 dark:text-zinc-500'
+              >
                 不会删除磁盘中的实际{project ? '项目' : '页面'}文件。
               </p>
             </>
@@ -85,7 +91,10 @@ export const LifecycleModal = ({
                 autoFocus
                 required
               />
-              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+              <p
+                hidden={usesDatabaseProjects()}
+                className='text-xs text-zinc-400 dark:text-zinc-500'
+              >
                 不会修改磁盘中的{project ? '项目文件夹' : '页面路径'}。
               </p>
             </Field>

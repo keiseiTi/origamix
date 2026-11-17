@@ -12,12 +12,12 @@ import { invalid } from '../errors';
 import { hashSchema } from './schema-hash';
 import {
   WORKING_SCHEMA_FILE_VERSION,
-  type WorkingSchemaStore,
   type WorkingSchemaPageRef,
+  type SchemaStorage,
   type RevisionSnapshot,
   type CommitJournal,
   type WorkingSchemaFile,
-} from './working-schema-store';
+} from './schema-storage';
 
 export type SchemaWriteStage = 'prepared' | 'revision' | 'schema';
 export interface RevisionCommitOptions {
@@ -87,7 +87,7 @@ const workingAtSnapshot = (
 
 /** Internal commit/recovery protocol; callers must hold the page queue. */
 export class RevisionCommit {
-  constructor(private readonly store: WorkingSchemaStore) {}
+  constructor(private readonly store: SchemaStorage) {}
 
   async commit(
     page: WorkingSchemaPageRef,

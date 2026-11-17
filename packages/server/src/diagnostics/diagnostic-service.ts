@@ -25,7 +25,7 @@ export const redactRuntimeMessage = (message: string): string => {
 
 export class RuntimeDiagnosticService {
   constructor(
-    private readonly projects: ProjectRepository,
+    private readonly projects: Pick<ProjectRepository, 'getProject' | 'getPage'> | undefined,
     private readonly diagnostics: RuntimeDiagnosticCache,
     private readonly getCurrentWorking: (
       projectId: string,
@@ -97,7 +97,11 @@ export class RuntimeDiagnosticService {
   }
 
   private assertPage(projectId: string, pageId: string): void {
-    if (!this.projects.getProject(projectId) || !this.projects.getPage(projectId, pageId))
+    // A transactional page resolver checks both IDs when no Desktop index is used.
+    if (
+      this.projects &&
+      (!this.projects.getProject(projectId) || !this.projects.getPage(projectId, pageId))
+    )
       throw notFound('页面不存在');
   }
 }

@@ -23,6 +23,7 @@ const lint = (file: string, code: string) =>
 for (const [file, code] of [
   ['http/new-route.ts', "import { writeFile } from 'node:fs/promises';"],
   ['http/new-route.ts', "const fs = import('node:fs');"],
+  ['http/new-route.ts', "import { createPool } from 'mysql2/promise';"],
   ['http/new-route.ts', "export * from '../schema/target-schema-store';"],
   ['http/new-route.ts', "import { writer } from '../schema/../infrastructure/atomic-file.ts';"],
   ['http/new-route.ts', "import { ProjectSourceService } from '../projects/project-source';"],

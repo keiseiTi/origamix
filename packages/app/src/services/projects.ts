@@ -19,6 +19,10 @@ import {
 import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
+export const usesDatabaseProjects = () =>
+  typeof document !== 'undefined' &&
+  document.querySelector('meta[name="origamix-project-storage"][content="mysql"]') !== null;
+
 export const projectsService = {
   settings: (projectId: string): Promise<ProjectSettings> =>
     request('/projects/settings/get', { projectId }),
@@ -45,7 +49,7 @@ export const projectsService = {
     name: string;
     code: string;
     pageDirectory: string;
-    directoryGrantId: string;
+    directoryGrantId?: string;
   }): Promise<ProjectRecord> => request<ProjectRecord>('/projects/create', input),
   open: (input: {
     name?: string;

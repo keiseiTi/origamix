@@ -9,6 +9,7 @@ import {
   BUILTIN_PROJECT_STACK,
   validateResolvedProjectStack,
   type ProjectStack,
+  type ProjectManifest,
   resolveProjectStack,
 } from '@origamix/shared';
 
@@ -36,9 +37,7 @@ export const getProjectMaterials = (stack: ProjectStack) => {
 
 export const builtinProjectMaterials = getProjectMaterials(BUILTIN_PROJECT_STACK);
 
-export const loadProjectMaterials = async (projectPath: string) => {
-  const store = new ProjectManifestStore();
-  const manifest = await store.readManifest(projectPath);
+export const getManifestMaterials = (manifest: ProjectManifest) => {
   const materials = getProjectMaterials(resolveProjectStack(manifest));
   const navigation =
     manifest.runtime === 'origamix'
@@ -46,3 +45,6 @@ export const loadProjectMaterials = async (projectPath: string) => {
       : undefined;
   return { ...materials, navigation, validation: { ...materials.validation, navigation } };
 };
+
+export const loadProjectMaterials = async (projectPath: string) =>
+  getManifestMaterials(await new ProjectManifestStore().readManifest(projectPath));

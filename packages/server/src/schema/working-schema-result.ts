@@ -1,4 +1,4 @@
-import type { WorkingSchemaFile } from './working-schema-store';
+import type { WorkingSchemaFile } from './schema-storage';
 import type { WorkingSchemaReadResult } from './schema-contracts';
 
 export const workingResult = (working: WorkingSchemaFile): WorkingSchemaReadResult => ({

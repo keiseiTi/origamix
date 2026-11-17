@@ -2,59 +2,15 @@ import { writeJsonAtomically } from '../infrastructure/atomic-file';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { metadataPath } from './metadata-path';
-import type { ChangeSource, OrigamixPageSchema } from '@origamix/shared';
 
-export interface WorkingSchemaPageRef {
-  projectPath: string;
-  pageId: string;
-  slug: string;
-  relativePath?: string;
-}
-
-export const WORKING_SCHEMA_FILE_VERSION = 1;
-
-export interface WorkingSchemaFile {
-  version: typeof WORKING_SCHEMA_FILE_VERSION;
-  pageId: string;
-  workingVersion: number;
-  workingHash: string;
-  lastSavedRevisionId: string;
-  savedSchemaHash: string;
-  baselineHash: string;
-  updatedAt: string;
-  schema: OrigamixPageSchema;
-}
-
-export interface RevisionSnapshot {
-  revisionId: string;
-  parentRevisionId: string | null;
-  source: ChangeSource;
-  createdAt: string;
-  schemaHash: string;
-  schema: OrigamixPageSchema;
-}
-
-export interface CommitJournal {
-  version: 1;
-  pageId: string;
-  previousRevisionId: string | null;
-  targetRevisionId: string;
-  createdAt: string;
-}
-
-export interface AgentWorkingCommitReceipt {
-  version: 1;
-  state: 'prepared' | 'committed';
-  runId: string;
-  projectId: string;
-  pageId: string;
-  baseWorkingVersion: number;
-  resultWorkingVersion: number;
-  resultWorkingHash: string;
-  operationDigest: string;
-  preparedAt: string;
-  committedAt?: string;
-}
+import type {
+  AgentWorkingCommitReceipt,
+  CommitJournal,
+  RevisionSnapshot,
+  SchemaStorage,
+  WorkingSchemaFile,
+  WorkingSchemaPageRef,
+} from './schema-storage';
 
 const readJson = async <T>(path: string): Promise<T> => {
   return JSON.parse(await readFile(path, 'utf8')) as T;
@@ -69,7 +25,7 @@ const readJsonIfPresent = async <T>(path: string): Promise<T | undefined> => {
   }
 };
 
-export class WorkingSchemaStore {
+export class WorkingSchemaStore implements SchemaStorage {
   private async writeJson(path: string, value: unknown): Promise<void> {
     await mkdir(dirname(path), { recursive: true });
     await writeJsonAtomically(path, value);

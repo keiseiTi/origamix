@@ -35,8 +35,9 @@ const RestoreRevisionBodySchema = Type.Object(
 
 export const registerSchemaRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   const resolvePage = (projectId: string, pageId: string) => {
-    const page = input.projects.getPage(projectId, pageId);
-    const project = input.projects.getProject(projectId);
+    if (input.resolveSchemaPage) return input.resolveSchemaPage(projectId, pageId);
+    const page = input.projects.getPage?.(projectId, pageId);
+    const project = input.projects.getProject?.(projectId);
     if (!page || !project) throw notFound('页面不存在');
     return {
       projectPath: project.path,

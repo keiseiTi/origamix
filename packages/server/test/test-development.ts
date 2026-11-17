@@ -90,7 +90,10 @@ try {
     '--strictPort',
   ]);
   const api = 'http://127.0.0.1:5189/api/v1/health';
-  const first = await waitFor(async () => (await (await fetch(api)).json()).data.serviceInstanceId);
+  const fetchWebHealth = () => fetch(api, { headers: { 'Sec-Fetch-Site': 'same-origin' } });
+  const first = await waitFor(
+    async () => (await (await fetchWebHealth()).json()).data.serviceInstanceId,
+  );
   // Exercise relocated business modules, not only the unchanged runtime entry.
   const schemaService = join(serverRoot, 'src/schema/schema-service.ts');
   await writeFile(
@@ -98,22 +101,23 @@ try {
     `${await readFile(schemaService, 'utf8')}\nconsole.info('dev-smoke-recompiled');\n`,
   );
   await waitFor(async () => {
-    const next = (await (await fetch(api)).json()).data.serviceInstanceId;
+    const next = (await (await fetchWebHealth()).json()).data.serviceInstanceId;
     return next !== first && output.includes('dev-smoke-recompiled');
   });
   // A Shared source change must rebuild its inlined consumers before host replacement.
-  const beforeLibraryChange = (await (await fetch(api)).json()).data.serviceInstanceId;
+  const beforeLibraryChange = (await (await fetchWebHealth()).json()).data.serviceInstanceId;
   const sharedSource = join(root, 'packages/shared/src/version.ts');
   await writeFile(
     sharedSource,
     `${await readFile(sharedSource, 'utf8')}\n// dependency rebuild smoke\n`,
   );
   await waitFor(
-    async () => (await (await fetch(api)).json()).data.serviceInstanceId !== beforeLibraryChange,
+    async () =>
+      (await (await fetchWebHealth()).json()).data.serviceInstanceId !== beforeLibraryChange,
   );
   await stopChild(child);
   child = undefined;
-  await assert.rejects(fetch(api));
+  await assert.rejects(fetchWebHealth());
   // Standalone Server uses the same watch/restart lifecycle.
   start(join(serverRoot, 'scripts/dev.ts'), serverRoot);
   const url = await waitFor(

@@ -1,3 +1,4 @@
+import { usesDatabaseProjects } from '@/services/projects';
 import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, LogOut, Settings, User } from 'lucide-react';
@@ -34,6 +35,7 @@ export const Sidebar = ({
 }: SidebarProps): React.JSX.Element => {
   const isTemporary = usePreferencesStore((state) => state.sidebarCollapsed);
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
+  const canCreateProject = supportsNativeProjectDirectories || usesDatabaseProjects();
   const userProfile = usePreferencesStore((state) => state.userProfile);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageForm, setPageForm] = useState<{ projectId: string; page?: PageItem } | null>(null);
@@ -108,10 +110,8 @@ export const Sidebar = ({
           variant='ghost'
           className='mt-2 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
           onClick={openProjectModal}
-          disabled={!supportsNativeProjectDirectories}
-          aria-label={
-            supportsNativeProjectDirectories ? '新建项目' : '新建项目；浏览器端下载与导入尚未接入'
-          }
+          disabled={!canCreateProject}
+          aria-label={canCreateProject ? '新建项目' : '新建项目；浏览器端下载与导入尚未接入'}
         >
           <FolderPlus size={15} />
           新建项目

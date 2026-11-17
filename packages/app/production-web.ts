@@ -125,34 +125,41 @@ interface WebHostOptions {
   templateDirectory: string;
   projectPath?: string;
   modelKey?: string;
+  mysqlUrl?: string;
 }
 
 export const startProductionWeb = async (options: WebHostOptions) => {
-  const { origin } = options;
+  const { origin, mysqlUrl } = options;
+  if (mysqlUrl && options.projectPath)
+    throw new Error('MySQL Web 项目通过工作台创建，请移除 ORIGAMIX_WEB_PROJECT_DIR');
   const index = (await readFile(join(options.rendererDirectory, 'index.html'), 'utf8')).replace(
     '<head>',
-    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey)}">`,
+    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey && !mysqlUrl)}"><meta name="origamix-project-storage" content="${mysqlUrl ? 'mysql' : 'local'}">`,
   );
   const preview = await readFile(join(options.rendererDirectory, 'preview.html'));
   await mkdir(options.stateDirectory, { recursive: true });
   const staging = await mkdtemp(join(options.stateDirectory, 'template-'));
   const sessions = createWebSessions(options.password, origin.protocol === 'https:');
-  let backend: Awaited<ReturnType<typeof startServer>> | undefined;
+  let backend: { port: number; close: () => Promise<void> } | undefined;
 
   try {
     const templateDownload = await loadWebTemplate(options.templateDirectory, staging);
     const token = nanoid(48);
     const serviceInstanceId = nanoid();
-    backend = await startServer({
-      port: 0,
-      databasePath: join(options.stateDirectory, 'origamix.db'),
-      templatePath: staging,
-      templateDownload,
-      desktopToken: token,
-      serviceInstanceId,
-      projectPath: options.projectPath,
-      getModelCredential: async () => options.modelKey,
-    });
+    const credentials = { desktopToken: token, serviceInstanceId, templateDownload };
+    if (mysqlUrl) {
+      const { startMysqlWebServer } = await import('@origamix/server/web-runtime');
+      backend = await startMysqlWebServer({ ...credentials, mysqlUrl });
+    } else {
+      backend = await startServer({
+        ...credentials,
+        port: 0,
+        databasePath: join(options.stateDirectory, 'origamix.db'),
+        templatePath: staging,
+        projectPath: options.projectPath,
+        getModelCredential: async () => options.modelKey,
+      });
+    }
     const target = { port: backend.port, token, serviceInstanceId };
     const handle = async (request: IncomingMessage, response: ServerResponse) => {
       response.setHeader('Cache-Control', 'no-store');

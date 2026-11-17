@@ -27,6 +27,7 @@ export const usePageSession = ({
   active = true,
   kind = 'page',
   available = true,
+  databaseProject = false,
   editorRef,
 }: {
   projectId: string;
@@ -34,6 +35,7 @@ export const usePageSession = ({
   active?: boolean;
   kind?: 'page';
   available?: boolean;
+  databaseProject?: boolean;
   editorRef: RefObject<EditorHandle | null>;
 }) => {
   const [refresh, setRefresh] = useState<{ pageId: string; key: string } | null>(null);
@@ -49,11 +51,12 @@ export const usePageSession = ({
     pageId,
     schemaRefreshKey,
     active: active && available,
+    databaseProject,
     kind,
     editorRef,
     onSchemaCommitted,
   });
-  const agent = useAgentChat(projectId, pageId, available, kind);
+  const agent = useAgentChat(projectId, pageId, available && !databaseProject, kind);
   const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
 
   useEffect(() => {

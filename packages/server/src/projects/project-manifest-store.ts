@@ -14,6 +14,24 @@ import {
 
 import { conflict, invalid, notFound } from '../errors';
 
+type ProjectManifestInput = Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'> & {
+  code: string;
+  runtime?: ProjectManifest['runtime'];
+  layout?: ProjectManifest['layout'];
+  routing?: ProjectManifest['routing'];
+};
+
+export const createProjectManifest = (input: ProjectManifestInput): ProjectManifest => ({
+  ...input,
+  runtime: input.runtime ?? 'external',
+  framework: BUILTIN_PROJECT_STACK.framework,
+  materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
+  pages: [],
+  shell: defaultProjectShell(),
+  layout: input.layout ?? { enabled: false, initialVariant: 'mix' },
+  routing: input.routing ?? { mode: 'browser', basePath: '/' },
+});
+
 export class ProjectManifestStore {
   async writeManifest(
     projectPath: string,
@@ -34,25 +52,8 @@ export class ProjectManifestStore {
     );
   }
 
-  async initializeManifest(
-    projectPath: string,
-    input: Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'> & {
-      code: string;
-      runtime?: ProjectManifest['runtime'];
-      layout?: ProjectManifest['layout'];
-      routing?: ProjectManifest['routing'];
-    },
-  ): Promise<void> {
-    await this.writeManifest(projectPath, {
-      ...input,
-      runtime: input.runtime ?? 'external',
-      framework: BUILTIN_PROJECT_STACK.framework,
-      materialSet: { ...BUILTIN_PROJECT_STACK.materialSet },
-      pages: [],
-      shell: defaultProjectShell(),
-      layout: input.layout ?? { enabled: false, initialVariant: 'mix' },
-      routing: input.routing ?? { mode: 'browser', basePath: '/' },
-    });
+  async initializeManifest(projectPath: string, input: ProjectManifestInput): Promise<void> {
+    await this.writeManifest(projectPath, createProjectManifest(input));
   }
 
   async readSource(projectPath: string): Promise<string> {

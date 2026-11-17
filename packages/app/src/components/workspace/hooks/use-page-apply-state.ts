@@ -20,6 +20,7 @@ export const usePageApplyState = ({
   pageId,
   schemaRefreshKey,
   active = true,
+  databaseProject = false,
   editorRef,
   onSchemaCommitted,
 }: {
@@ -27,6 +28,7 @@ export const usePageApplyState = ({
   pageId?: string;
   schemaRefreshKey: string;
   active?: boolean;
+  databaseProject?: boolean;
   kind?: SessionKind;
   editorRef: RefObject<EditorHandle | null>;
   onSchemaCommitted: (pageId: string, revisionId: string) => void;
@@ -68,12 +70,17 @@ export const usePageApplyState = ({
       setApplyStatus(value);
     };
     try {
+      if (databaseProject) {
+        const working = await service.workingState(projectId, pageId);
+        publish(working.workingHash === working.savedSchemaHash ? 'in_sync' : 'draft_unsaved');
+        return;
+      }
       const state = await service.applyState(projectId, pageId);
       publish(state.status);
     } catch {
       publish('error');
     }
-  }, [pageId, projectId, setApplyStatus, service]);
+  }, [databaseProject, pageId, projectId, setApplyStatus, service]);
 
   useEffect(() => {
     if (!active) return;

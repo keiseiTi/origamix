@@ -38,6 +38,7 @@ const host = await startProductionWeb({
   projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR
     ? resolve(process.env.ORIGAMIX_WEB_PROJECT_DIR)
     : undefined,
+  mysqlUrl: process.env.ORIGAMIX_WEB_MYSQL_URL?.trim() || undefined,
   modelKey: process.env.DEEPSEEK_API_KEY?.trim() || undefined,
 });
 console.info(`Origamix Web: ${origin.origin} (127.0.0.1:${host.port})`);

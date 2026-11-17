@@ -18,7 +18,7 @@ pnpm dev:web   # 浏览器开发宿主
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
+Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。配置 `ORIGAMIX_WEB_MYSQL_URL` 后可在浏览器创建数据库项目、编辑页面和保存版本。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 
@@ -40,17 +40,17 @@ Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 
 
 项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd/runtime` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。复杂属性使用物料自带的结构化编辑器；普通字段和协议由同一物料定义生成。
 
-| 包                                        | 唯一职责                                        | 对外接口                              |
-| ----------------------------------------- | ----------------------------------------------- | ------------------------------------- |
-| [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装 | 命名 IPC 桥与桌面程序                 |
-| [App](packages/app/README.md)             | 工作台交互、HTTP 客户端和窗口内状态             | Renderer 构建产物                     |
-| [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                    | 根入口、`styles.css`                  |
-| [Editor](packages/editor/README.md)       | 画布、FlowEditor、通用编辑组件与契约            | 根入口、`styles.css`                  |
-| [Server](packages/server/README.md)       | 业务用例、授权后的项目文件和 SQLite             | HTTP；宿主启动、模板及工具出口        |
-| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                            | 单一根入口                            |
-| [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                  | 运行注册表、编辑分组、纯数据 Manifest |
-| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                          | `@origamix/runtime`                   |
-| [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                        | 可复制的源码与配置                    |
+| 包                                        | 唯一职责                                         | 对外接口                              |
+| ----------------------------------------- | ------------------------------------------------ | ------------------------------------- |
+| [Desktop](apps/desktop/README.md)         | 本机能力、窗口、凭据、Server 生命周期及应用组装  | 命名 IPC 桥与桌面程序                 |
+| [App](packages/app/README.md)             | 工作台交互、HTTP 客户端和窗口内状态              | Renderer 构建产物                     |
+| [UI](packages/ui/README.md)               | 共用基础控件、工具与主题基础                     | 根入口、`styles.css`                  |
+| [Editor](packages/editor/README.md)       | 画布、FlowEditor、通用编辑组件与契约             | 根入口、`styles.css`                  |
+| [Server](packages/server/README.md)       | 业务用例、授权项目文件、桌面 SQLite 和 Web MySQL | HTTP；宿主启动、模板及工具出口        |
+| [Shared](packages/shared/README.md)       | 平台无关契约和纯校验                             | 单一根入口                            |
+| [Materials](packages/materials/README.md) | 页面物料、编辑器配置和物料清单                   | 运行注册表、编辑分组、纯数据 Manifest |
+| [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                           | `@origamix/runtime`                   |
+| [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                         | 可复制的源码与配置                    |
 
 自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
 

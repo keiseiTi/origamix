@@ -14,11 +14,43 @@ export interface TemplateDownload {
   sha256: string;
 }
 
+type Awaitable<T> = T | Promise<T>;
+type ProjectQueries = Pick<ProjectRepository, 'getProject' | 'getPage'>;
+type TreeQueries = {
+  [K in 'listProjects' | 'listPages']: (
+    ...args: Parameters<ProjectRepository[K]>
+  ) => Awaitable<ReturnType<ProjectRepository[K]>>;
+};
+type ProjectCommands = Pick<
+  ProjectService,
+  | 'getSettings'
+  | 'updateSettings'
+  | 'getNavigation'
+  | 'getRouting'
+  | 'updateRouting'
+  | 'getPageRoles'
+  | 'updatePageRoles'
+  | 'getStack'
+  | 'renameProject'
+  | 'deleteProject'
+  | 'createPage'
+  | 'renamePage'
+  | 'duplicatePage'
+  | 'deletePage'
+>;
+
 export interface HttpServerInput {
   desktopToken: string;
   serviceInstanceId: string;
-  projects: Pick<ProjectRepository, 'getProject' | 'getPage' | 'listProjects' | 'listPages'>;
-  projectService: ProjectService;
+  projects: TreeQueries & Partial<ProjectQueries>;
+  projectService: ProjectCommands & Partial<Pick<ProjectService, 'createProject' | 'openProject'>>;
+  createDatabaseProject?: (
+    input: import('../projects/mysql-project-service').CreateDatabaseProject,
+  ) => Promise<import('@origamix/shared').ProjectRecord>;
+  resolveSchemaPage?: (
+    projectId: string,
+    pageId: string,
+  ) => import('../schema/schema-contracts').SchemaPageRef;
   settingsAgent?: import('../agent/project-settings-agent-service').ProjectSettingsAgentService;
   projectTasks?: Pick<import('../agent/project-task-service').ProjectTaskService, 'get' | 'decide'>;
   projectApplyService?: ProjectApplyService;

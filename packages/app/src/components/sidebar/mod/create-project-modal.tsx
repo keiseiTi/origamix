@@ -18,7 +18,7 @@ import {
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import { useWorkspaceStore } from '@/store/workspace';
-import { projectsService } from '@/services/projects';
+import { projectsService, usesDatabaseProjects } from '@/services/projects';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -29,6 +29,7 @@ export const CreateProjectModal = ({
   isOpen,
   onClose,
 }: CreateProjectModalProps): React.JSX.Element => {
+  const databaseProject = usesDatabaseProjects();
   const setProjects = useWorkspaceStore((state) => state.setProjects);
   const [layoutEnabled, setLayoutEnabled] = useState(false);
   const [name, setName] = useState('');
@@ -59,7 +60,12 @@ export const CreateProjectModal = ({
   };
 
   const createProject = async (): Promise<void> => {
-    if (!name.trim() || !code.trim() || !pageDirectory.trim() || !directoryGrantId) {
+    if (
+      !name.trim() ||
+      !code.trim() ||
+      !pageDirectory.trim() ||
+      (!databaseProject && !directoryGrantId)
+    ) {
       return setError('请填写所有必填项。');
     }
     setIsSubmitting(true);
@@ -69,12 +75,18 @@ export const CreateProjectModal = ({
         name: name.trim(),
         code: code.trim(),
         pageDirectory: pageDirectory.trim(),
-        directoryGrantId,
+        ...(databaseProject ? {} : { directoryGrantId }),
         layoutEnabled,
       });
       setProjects((current) => [
         ...current,
-        { id: project.id, name: project.name, path: project.path, pages: [] },
+        {
+          id: project.id,
+          name: project.name,
+          path: project.path,
+          ...(databaseProject ? { runtime: 'origamix' as const, layoutEnabled } : {}),
+          pages: [],
+        },
       ]);
       close();
     } catch (reason) {
@@ -152,7 +164,7 @@ export const CreateProjectModal = ({
               />
             </div>
           </Field>
-          <Field>
+          <Field hidden={databaseProject}>
             <div className='flex items-center gap-1.5'>
               <FieldLabel htmlFor='directory'>生成地址</FieldLabel>
               <Tooltip>
@@ -180,7 +192,7 @@ export const CreateProjectModal = ({
               value={directory}
               readOnly
               placeholder='选择目录'
-              required
+              required={!databaseProject}
             />
           </Field>
           <Field orientation='horizontal'>

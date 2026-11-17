@@ -5,6 +5,7 @@ export const options = {
   tsconfig: `${root}tsconfig.json`,
   entry: {
     server: `${root}src/hosts/utility-process.ts`,
+    'web-runtime': `${root}src/hosts/mysql-web-server.ts`,
     runtime: `${root}src/server.ts`,
     tooling: `${root}src/tooling.ts`,
     template: `${root}src/templates/copy-template.ts`,

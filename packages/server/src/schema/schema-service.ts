@@ -21,33 +21,43 @@ import {
   type RevisionHistory,
 } from '@origamix/shared';
 
-import { conflict, invalid } from '../errors';
+import { conflict, invalid, notFound } from '../errors';
 import {
   WORKING_SCHEMA_FILE_VERSION,
-  WorkingSchemaStore,
   type AgentWorkingCommitReceipt,
   type WorkingSchemaFile,
-} from './working-schema-store';
+} from './schema-storage';
+import { WorkingSchemaStore } from './working-schema-store';
 import { applySchemaOperationBatch, SchemaOperationError } from './schema-operation-engine';
 
 // One process-wide page queue is shared by reads, Working writes, revisions and Apply.
 const pageQueue = new KeyedQueue();
-const store = new WorkingSchemaStore();
-const commits = new RevisionCommit(store);
+const fileStore = new WorkingSchemaStore();
+const fileCommits = new RevisionCommit(fileStore);
+const storeFor = (page: SchemaPageRef) => page.persistence?.store ?? fileStore;
+const commitsFor = (page: SchemaPageRef) =>
+  page.persistence ? new RevisionCommit(page.persistence.store) : fileCommits;
 
-const withSchemaPageQueue = <T>(page: SchemaPageRef, action: () => Promise<T>): Promise<T> =>
-  withProjectActivity(page.projectPath, () =>
+const withSchemaPageQueue = <T>(
+  page: SchemaPageRef,
+  action: (page: SchemaPageRef) => Promise<T>,
+): Promise<T> => {
+  if (page.withPersistence)
+    return page.withPersistence((persistence) => action({ ...page, persistence }));
+  if (page.persistence) return action(page);
+  return withProjectActivity(page.projectPath, () =>
     pageQueue.run(`${page.projectPath}\0${page.pageId}`, async () => {
       await assertPageNotDeleting(page.projectPath, page.pageId);
-      return action();
+      return action(page);
     }),
   );
+};
 
 export const listRevisionHistory = async (page: SchemaPageRef): Promise<RevisionHistory> => {
-  return withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
+  return withSchemaPageQueue(page, async (page) => {
+    await commitsFor(page).recover(page);
     const working = await getSchemaUnlocked(page);
-    const snapshots = await store.listRevisions(page);
+    const snapshots = await storeFor(page).listRevisions(page);
     for (const snapshot of snapshots) validateSnapshot(snapshot);
     return {
       revisions: snapshots
@@ -59,17 +69,19 @@ export const listRevisionHistory = async (page: SchemaPageRef): Promise<Revision
           createdAt: snapshot.createdAt,
           schemaHash: snapshot.schemaHash,
           isCurrent: snapshot.revisionId === working.lastSavedRevisionId,
-          isApplied: snapshot.schemaHash === working.baselineHash,
+          isApplied: !page.persistence && snapshot.schemaHash === working.baselineHash,
         })),
     };
   });
 };
 
 export const discardInitializedPageSchema = (page: SchemaPageRef): Promise<void> =>
-  pageQueue.run(`${page.projectPath}\0${page.pageId}`, () => store.removePage(page));
+  page.persistence || page.withPersistence
+    ? withSchemaPageQueue(page, (page) => storeFor(page).removePage(page))
+    : pageQueue.run(`${page.projectPath}\0${page.pageId}`, () => fileStore.removePage(page));
 
 const readWorking = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
-  const working = await store.readWorking(page);
+  const working = await storeFor(page).readWorking(page);
   if (
     working.version !== WORKING_SCHEMA_FILE_VERSION ||
     working.pageId !== page.pageId ||
@@ -88,11 +100,11 @@ export const initializePageSchema = async (
   schema: OrigamixPageSchema,
   options: SchemaWriteOptions = {},
 ): Promise<string> => {
-  return withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
+  return withSchemaPageQueue(page, async (page) => {
+    await commitsFor(page).recover(page);
     await validateWritableSchema(page, schema);
     return (
-      await commits.commit(
+      await commitsFor(page).commit(
         page,
         createRevisionSnapshot(schema, { kind: 'user', actorId: 'system' }, null),
         options,
@@ -102,14 +114,15 @@ export const initializePageSchema = async (
 };
 
 const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile> => {
-  await new ProjectManifestStore().requireEditable(page.projectPath);
-  await commits.recover(page);
-  if (!(await store.readWorkingIfPresent(page))) {
+  if (!page.persistence) await new ProjectManifestStore().requireEditable(page.projectPath);
+  await commitsFor(page).recover(page);
+  if (!(await storeFor(page).readWorkingIfPresent(page))) {
+    if (page.persistence) throw notFound('页面工作副本不存在');
     // Import the original checkpoint lazily. Preserve its hash as the target baseline.
     const original = await readTargetSchema(page);
     const candidate = requireCompatibleSchema(original);
     await validateWritableSchema(page, candidate);
-    await commits.commit(
+    await commitsFor(page).commit(
       page,
       createRevisionSnapshot(original, { kind: 'user', actorId: 'system' }, null),
       {},
@@ -120,7 +133,7 @@ const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile
   return working;
 };
 export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const { schema, lastSavedRevisionId } = await getSchemaUnlocked(page);
     return { schema, revisionId: lastSavedRevisionId };
   });
@@ -129,7 +142,7 @@ export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> 
 export const getWorkingSchemaState = async (
   page: SchemaPageRef,
 ): Promise<WorkingSchemaReadResult & { schemaHash: string }> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     return {
       schema: current.schema,
@@ -148,11 +161,11 @@ export const updateWorkingBaseline = async (
   expectedWorkingVersion: number,
   baselineHash: string,
 ): Promise<void> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== expectedWorkingVersion)
       throw conflict('页面草稿已更新，请重新应用');
-    await store.writeWorking(page, { ...current, baselineHash });
+    await storeFor(page).writeWorking(page, { ...current, baselineHash });
   });
 };
 
@@ -164,7 +177,7 @@ export const applyWorkingSchemaOperation = async <T>(
     current: WorkingSchemaReadResult & { schemaHash: string },
   ) => Promise<{ result: T; baselineHash: string }>,
 ): Promise<T> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (
       current.lastSavedRevisionId !== expectedRevisionId ||
@@ -182,7 +195,7 @@ export const applyWorkingSchemaOperation = async <T>(
       baselineHash: current.baselineHash,
       schemaHash: current.workingHash,
     });
-    await store.writeWorking(page, {
+    await storeFor(page).writeWorking(page, {
       ...current,
       baselineHash: completed.baselineHash,
     });
@@ -194,12 +207,12 @@ export const reloadWorkingSchemaFromTarget = async (
   page: SchemaPageRef,
   schema: OrigamixPageSchema,
 ): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
+  return withSchemaPageQueue(page, async (page) => {
+    await commitsFor(page).recover(page);
     const candidate = requireCompatibleSchema(schema);
     await validateWritableSchema(page, candidate);
     const current = await getSchemaUnlocked(page);
-    const updated = await commits.commit(
+    const updated = await commitsFor(page).commit(
       page,
       createRevisionSnapshot(
         schema,
@@ -209,7 +222,7 @@ export const reloadWorkingSchemaFromTarget = async (
       {},
     );
     const working = await readWorking(page);
-    await store.writeWorking(page, {
+    await storeFor(page).writeWorking(page, {
       ...working,
       baselineHash: hashSchema(schema),
     });
@@ -221,9 +234,9 @@ export const hasValidRevision = async (
   page: SchemaPageRef,
   revisionId: string,
 ): Promise<boolean> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     try {
-      const snapshot = await store.readRevision(page, revisionId);
+      const snapshot = await storeFor(page).readRevision(page, revisionId);
       validateSnapshot(snapshot);
       return snapshot.revisionId === revisionId;
     } catch {
@@ -264,13 +277,13 @@ const writeWorkingDraft = async (
       operationDigest: options.agentCommit.operationDigest,
       preparedAt: new Date().toISOString(),
     };
-    await store.writeAgentCommit(page, receipt);
+    await storeFor(page).writeAgentCommit(page, receipt);
     await options.afterWorkingStage?.('receipt_prepared');
   }
-  if (updated !== current) await store.writeWorking(page, updated);
+  if (updated !== current) await storeFor(page).writeWorking(page, updated);
   await options.afterWorkingStage?.('working');
   if (receipt) {
-    await store.writeAgentCommit(page, {
+    await storeFor(page).writeAgentCommit(page, {
       ...receipt,
       state: 'committed',
       committedAt: new Date().toISOString(),
@@ -284,7 +297,7 @@ export const getAgentWorkingCommitReceipt = async (
   page: SchemaPageRef,
   runId: string,
 ): Promise<AgentWorkingCommitReceipt | undefined> =>
-  withSchemaPageQueue(page, () => store.readAgentCommit(page, runId));
+  withSchemaPageQueue(page, (page) => storeFor(page).readAgentCommit(page, runId));
 
 export const updateWorkingSchema = async (
   page: SchemaPageRef,
@@ -294,7 +307,7 @@ export const updateWorkingSchema = async (
   },
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== input.baseWorkingVersion)
       throw conflict('页面草稿已更新，请重新加载后再提交');
@@ -357,7 +370,7 @@ export const validateWorkingSchemaOperations = async (
   input: WorkingOperationInput,
   validateCandidate?: WorkingDraftWriteOptions['validateCandidate'],
 ): Promise<void> =>
-  withSchemaPageQueue(page, async () => {
+  withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== input.baseWorkingVersion)
       throw conflict('页面草稿已更新，请重新加载后再提交');
@@ -373,7 +386,7 @@ export const applyWorkingSchemaOperations = async (
   },
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== input.baseWorkingVersion)
       throw conflict('页面草稿已更新，请重新加载后再提交');
@@ -394,13 +407,13 @@ export const saveWorkingRevision = async (
   expectedWorkingVersion: number,
   options: SchemaWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== expectedWorkingVersion)
       throw conflict('页面草稿已更新，请重新保存');
     if (current.workingHash === current.savedSchemaHash) return workingResult(current);
     await options.beforeWrite?.();
-    await commits.commit(
+    await commitsFor(page).commit(
       page,
       createRevisionSnapshot(current.schema, { kind: 'user' }, current.lastSavedRevisionId),
       options,
@@ -416,11 +429,11 @@ export const restoreRevisionToWorking = async (
   revisionId: string,
   expectedWorkingVersion: number,
 ): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
+  return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== expectedWorkingVersion)
       throw conflict('页面草稿已更新，请重新恢复');
-    const snapshot = await store.readRevision(page, revisionId);
+    const snapshot = await storeFor(page).readRevision(page, revisionId);
     validateSnapshot(snapshot);
     if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
     const candidate = requireCompatibleSchema(snapshot.schema);
@@ -432,9 +445,9 @@ export const getSchemaRevision = async (
   page: SchemaPageRef,
   revisionId: string,
 ): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
-    const snapshot = await store.readRevision(page, revisionId);
+  return withSchemaPageQueue(page, async (page) => {
+    await commitsFor(page).recover(page);
+    const snapshot = await storeFor(page).readRevision(page, revisionId);
     validateSnapshot(snapshot);
     if (snapshot.revisionId !== revisionId) throw invalid('页面 Revision 快照不匹配');
     return { schema: snapshot.schema, revisionId: snapshot.revisionId };
@@ -445,7 +458,7 @@ export const getSchemaRevision = async (
 export const getRetainedWorkingSchemaState = (
   page: SchemaPageRef,
 ): Promise<WorkingSchemaReadResult> =>
-  withSchemaPageQueue(page, async () => {
-    await commits.recover(page);
+  withSchemaPageQueue(page, async (page) => {
+    await commitsFor(page).recover(page);
     return workingResult(await readWorking(page));
   });

@@ -1,4 +1,4 @@
-import type { Static } from '@sinclair/typebox';
+import { Type, type Static } from '@sinclair/typebox';
 import {
   ProjectSettingsUpdateSchema,
   UpdatePageRolesSchema,
@@ -18,6 +18,10 @@ import {
   withProjectScope,
 } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
+
+const CreateDatabaseProjectSchema = Type.Omit(CreateProjectSchema, ['directoryGrantId'], {
+  additionalProperties: false,
+});
 
 const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
 const DeleteProjectBodySchema = withProjectScope(DeleteDesktopRecordSchema);
@@ -88,21 +92,34 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
       input.projectService.getStack(request.body.projectId),
     ),
   );
-  server.post(
-    '/api/v1/projects/create',
-    { schema: { body: CreateProjectSchema } },
-    route<Static<typeof CreateProjectSchema>>(
-      (request) => input.projectService.createProject(request.body),
-      201,
-    ),
-  );
-  server.post(
-    '/api/v1/projects/open',
-    { schema: { body: OpenProjectSchema } },
-    route<Static<typeof OpenProjectSchema>>((request) =>
-      input.projectService.openProject(request.body),
-    ),
-  );
+  if (input.createDatabaseProject) {
+    const createDatabaseProject = input.createDatabaseProject;
+    server.post(
+      '/api/v1/projects/create',
+      { schema: { body: CreateDatabaseProjectSchema } },
+      route<Static<typeof CreateDatabaseProjectSchema>>(
+        ({ body }) => createDatabaseProject(body),
+        201,
+      ),
+    );
+  } else {
+    const { projectService } = input;
+    if (projectService.createProject && projectService.openProject) {
+      server.post(
+        '/api/v1/projects/create',
+        { schema: { body: CreateProjectSchema } },
+        route<Static<typeof CreateProjectSchema>>(
+          ({ body }) => projectService.createProject!(body),
+          201,
+        ),
+      );
+      server.post(
+        '/api/v1/projects/open',
+        { schema: { body: OpenProjectSchema } },
+        route<Static<typeof OpenProjectSchema>>(({ body }) => projectService.openProject!(body)),
+      );
+    }
+  }
   server.post(
     '/api/v1/projects/rename',
     { schema: { body: RenameProjectBodySchema } },

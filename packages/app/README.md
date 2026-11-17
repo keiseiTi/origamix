@@ -74,14 +74,23 @@ pnpm start:web
 | `ORIGAMIX_WEB_PORT`        | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
 | `ORIGAMIX_WEB_ORIGIN`      | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
 | `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根目录的 `.origamix-web/production/`。                                                  |
-| `ORIGAMIX_WEB_PROJECT_DIR` | 可选，经部署者授权的现有项目目录。                                                                        |
-| `DEEPSEEK_API_KEY`         | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
+| `ORIGAMIX_WEB_PROJECT_DIR` | 本地文件模式可选，经部署者授权的现有项目目录。                                                            |
+| `ORIGAMIX_WEB_MYSQL_URL`   | MySQL 模式的专用数据库连接地址，仅由 Web 宿主读取。勿与 `ORIGAMIX_WEB_PROJECT_DIR` 同时设置。             |
+| `DEEPSEEK_API_KEY`         | 本地文件模式可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                        |
 
-远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。备份时一并保留数据目录和受管理项目目录。
+远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。备份时保存 MySQL 数据库，或一并保存本地文件模式的数据目录和受管理项目目录。
 
 打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
 
-当前部署模型是单用户自托管。项目沿用 SQLite 和宿主授权的目录。账号级项目隔离、MySQL 和浏览器目录初始化属于后续阶段。
+当前部署模型是单用户自托管。设置 MySQL 地址后，在网页登录并创建项目和页面即可使用编辑器、预览和版本历史，无需授权本机目录。未设置 MySQL 地址时，原有文件模式仍使用 SQLite 和宿主授权的目录。
+
+### 使用本机 MySQL
+
+先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。随后执行 `pnpm start:web`。
+
+首次启动自动初始化 Web 表。MySQL 模式保存项目、页面、配置、Working 和 Revision。该模式的 Agent、浏览器目录初始化和项目级写出留待后续。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
+
+用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。
 
 根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
 

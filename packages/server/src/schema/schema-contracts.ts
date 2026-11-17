@@ -1,6 +1,6 @@
-import type { OrigamixPageSchema } from '@origamix/shared';
+import type { OrigamixPageSchema, ProjectManifest } from '@origamix/shared';
 import type { RevisionCommitOptions } from './revision-commit';
-import type { WorkingSchemaPageRef } from './working-schema-store';
+import type { WorkingSchemaPageRef, SchemaStorage } from './schema-storage';
 
 export interface SchemaWriteOptions extends RevisionCommitOptions {
   /** Re-check cancellation or authority after queueing, before the first durable write. */
@@ -18,7 +18,15 @@ export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'befo
   /** Test hook for deterministic interruption at a durable Agent write boundary. */
   afterWorkingStage?: (stage: WorkingDraftWriteStage) => void | Promise<void>;
 }
-export type SchemaPageRef = WorkingSchemaPageRef;
+export interface SchemaPersistence {
+  store: SchemaStorage;
+  manifest: ProjectManifest;
+}
+
+export interface SchemaPageRef extends WorkingSchemaPageRef {
+  persistence?: SchemaPersistence;
+  withPersistence?<T>(action: (persistence: SchemaPersistence) => Promise<T>): Promise<T>;
+}
 export interface SchemaReadResult {
   schema: OrigamixPageSchema;
   revisionId: string;

@@ -41,6 +41,7 @@ export interface PageToolbarProps {
   onRestoreRevision: (revisionId: string) => Promise<void>;
   applyStatus: ApplyStatus;
   canApply: boolean;
+  databaseProject?: boolean;
   canSaveVersion: boolean;
   canReload: boolean;
   canRestore: boolean;
@@ -63,6 +64,7 @@ export const PageToolbarShell = ({
   onRestoreRevision,
   applyStatus,
   canApply,
+  databaseProject,
   canSaveVersion,
   canReload,
   canRestore,
@@ -137,6 +139,7 @@ export const PageToolbarShell = ({
             onReloadFromProject={onReloadFromProject}
             applyStatus={applyStatus}
             canApply={canApply}
+            databaseProject={databaseProject}
             canSaveVersion={canSaveVersion}
             canReload={canReload}
             onErrorChange={setError}

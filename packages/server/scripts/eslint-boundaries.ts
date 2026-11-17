@@ -25,6 +25,7 @@ const owners = new Map([
   ['schema/revision-commit', ['schema/schema-service']],
   ['schema/working-schema-store', ['schema/schema-service', 'schema/revision-commit']],
   ['schema/target-schema-store', ['schema/project-apply-service']],
+  ['schema/mysql-schema-store', ['projects/mysql-project-service']],
   [
     'infrastructure/atomic-file',
     [
@@ -88,7 +89,7 @@ export const serverBoundaries: Rule.RuleModule = {
       const thinBoundary = file.startsWith('http/') || file.startsWith('agent/tools/');
       if (
         thinBoundary &&
-        /^(?:node:)?(?:fs(?:\/|$)|sqlite$|child_process$|module$)|^drizzle-orm(?:\/|$)|^better-sqlite3$/.test(
+        /^(?:node:)?(?:fs(?:\/|$)|sqlite$|child_process$|module$)|^drizzle-orm(?:\/|$)|^better-sqlite3$|^mysql2(?:\/|$)/.test(
           specifier,
         )
       ) {
@@ -129,7 +130,8 @@ export const serverBoundaries: Rule.RuleModule = {
         report(node, 'Production modules cannot import testing helpers or tests.');
       if (
         business.test(file) &&
-        (target.startsWith('http/') || ['server', 'hosts/utility-process'].includes(target))
+        (target.startsWith('http/') ||
+          ['server', 'hosts/utility-process', 'hosts/mysql-web-server'].includes(target))
       ) {
         report(node, 'Business modules cannot depend on HTTP or host startup.');
       }
@@ -137,7 +139,7 @@ export const serverBoundaries: Rule.RuleModule = {
         /^(database|infrastructure)\//.test(file) &&
         (business.test(target) ||
           target.startsWith('http/') ||
-          ['server', 'hosts/utility-process'].includes(target))
+          ['server', 'hosts/utility-process', 'hosts/mysql-web-server'].includes(target))
       ) {
         report(node, 'Database and infrastructure cannot depend on business or transport modules.');
       }

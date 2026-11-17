@@ -1,6 +1,10 @@
 import { validatePage, type OrigamixPageSchema } from '@origamix/shared';
 import { ApiError } from '../../errors';
-import { validateProjectPageAgainstMaterials } from './material-validation';
+import { getManifestMaterials } from '../../projects/project-materials';
+import {
+  validatePageAgainstMaterials,
+  validateProjectPageAgainstMaterials,
+} from './material-validation';
 import type { SchemaPageRef } from '../schema-contracts';
 
 export interface SchemaValidationIssue {
@@ -35,12 +39,20 @@ export const validateWritableSchema = async (
       message: validationMessage(structural),
     });
   }
-  const material = await validateProjectPageAgainstMaterials(
-    page.projectPath,
-    schema,
-    undefined,
-    executableFlowIds,
-  );
+  const persistedMaterials = page.persistence && getManifestMaterials(page.persistence.manifest);
+  const material = persistedMaterials
+    ? validatePageAgainstMaterials(
+        schema,
+        [persistedMaterials.manifest.materialSet],
+        persistedMaterials.validation,
+        executableFlowIds,
+      )
+    : await validateProjectPageAgainstMaterials(
+        page.projectPath,
+        schema,
+        undefined,
+        executableFlowIds,
+      );
   if (!material.valid) {
     const first = material.errors[0]!;
     throw new SchemaValidationError({ code: first.code, path: first.path, message: first.message });

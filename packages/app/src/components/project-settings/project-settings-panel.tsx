@@ -1,3 +1,4 @@
+import { usesDatabaseProjects } from '@/services/projects';
 import { nanoid } from 'nanoid';
 import { useProjectSettingsSession } from './use-project-settings-session';
 import { ProjectSettingsChat } from './project-settings-chat';
@@ -166,7 +167,9 @@ export const ProjectSettingsPanel = ({
   const session = useProjectSettingsSession(projectId);
   const { draft, setDraft, error, busy, saved, save } = session;
   const [selectedPage, setSelectedPage] = useState('');
-  const [mode, setMode] = useState<'assistant' | 'form'>('assistant');
+  const [mode, setMode] = useState<'assistant' | 'form'>(() =>
+    usesDatabaseProjects() ? 'form' : 'assistant',
+  );
   const menu = draft?.shell.navigation ?? [];
   const updateMenu = (next: ProjectMenuItem[]) =>
     setDraft((current) => current && { ...current, shell: { ...current.shell, navigation: next } });
@@ -315,7 +318,9 @@ export const ProjectSettingsPanel = ({
             className='min-h-0 min-w-0 gap-3'
           >
             <TabsList aria-label='布局配置方式'>
-              <TabsTrigger value='assistant'>AI 助手</TabsTrigger>
+              <TabsTrigger value='assistant' disabled={usesDatabaseProjects()}>
+                AI 助手
+              </TabsTrigger>
               <TabsTrigger value='form'>表单配置</TabsTrigger>
             </TabsList>
             <TabsContent

@@ -2,7 +2,9 @@
 
 Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Schema 编辑与应用、会话和 Agent 执行。HTTP 只监听 `127.0.0.1`，目录授权和模型凭据由宿主提供。
 
-项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；清单由文件拥有，SQLite 不存第二份。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
+项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；桌面清单由文件拥有，SQLite 不存第二份。数据库 Web 项目使用 MySQL 中的配置和页面记录组装清单。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
+
+Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。
 
 ## 代码组织
 
