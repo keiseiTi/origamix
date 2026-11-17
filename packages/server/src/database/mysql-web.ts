@@ -1,6 +1,6 @@
 import { createPool, type Pool, type PoolConnection, type RowDataPacket } from 'mysql2/promise';
 
-const version = 1;
+const version = 2;
 const tables = [
   `CREATE TABLE IF NOT EXISTS origamix_web_projects (
     id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
@@ -30,6 +30,40 @@ const tables = [
     request_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     digest CHAR(64) CHARACTER SET ascii NOT NULL,
     PRIMARY KEY (project_id, request_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_agent_runs (
+    id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    project_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    page_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    client_request_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    status VARCHAR(24) CHARACTER SET ascii NOT NULL,
+    document JSON NOT NULL,
+    UNIQUE KEY page_request (project_id, page_id, client_request_id),
+    KEY run_status (status)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_conversations (
+    id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    project_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    page_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    updated_at VARCHAR(24) NOT NULL,
+    document JSON NOT NULL,
+    KEY page_history (project_id, page_id, updated_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_messages (
+    id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    conversation_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    run_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    role VARCHAR(12) CHARACTER SET ascii NOT NULL,
+    sequence_no INT UNSIGNED NOT NULL,
+    document JSON NOT NULL,
+    UNIQUE KEY conversation_sequence (conversation_id, sequence_no),
+    UNIQUE KEY run_role (run_id, role)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_tool_audits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    run_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    document JSON NOT NULL,
+    KEY by_run (run_id, id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
@@ -61,12 +95,13 @@ export const openWebDatabase = async (uri: string): Promise<Pool> => {
     const [rows] = await pool.query<(RowDataPacket & { version: number })[]>(
       'SELECT version FROM origamix_web_version WHERE id = 1',
     );
-    if (rows.length && rows[0].version !== version)
+    if (rows.length && ![1, version].includes(rows[0].version))
       throw new Error('Web MySQL 数据库版本不受当前应用支持');
     for (const sql of tables) await pool.query(sql);
-    await pool.execute('INSERT IGNORE INTO origamix_web_version (id, version) VALUES (1, ?)', [
-      version,
-    ]);
+    await pool.execute(
+      'INSERT INTO origamix_web_version (id, version) VALUES (1, ?) ON DUPLICATE KEY UPDATE version = GREATEST(version, ?)',
+      [version, version],
+    );
   } catch (error) {
     await pool.end();
     throw databaseStartupError(error);

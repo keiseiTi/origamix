@@ -56,7 +56,7 @@ export const usePageSession = ({
     editorRef,
     onSchemaCommitted,
   });
-  const agent = useAgentChat(projectId, pageId, available && !databaseProject, kind);
+  const agent = useAgentChat(projectId, pageId, available, kind);
   const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
 
   useEffect(() => {

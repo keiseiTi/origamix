@@ -12,7 +12,7 @@ import {
   type OrigamixPageSchema,
 } from '@origamix/shared';
 
-import type { ProjectRepository } from '../../projects/project-repository';
+import type { AgentProjects, AgentSchemaPage } from '../persistence';
 import { conflict, invalid, notFound } from '../../errors';
 import { getWorkingSchemaState } from '../../schema/schema-service';
 import { type SchemaPageRef } from '../../schema/schema-contracts';
@@ -62,7 +62,8 @@ type ReadState = { schema: OrigamixPageSchema; revisionId: string | null; workin
 export interface ReadOnlyToolDependencies {
   getProjectRoles?: (projectId: string) => Promise<import('@origamix/shared').PageRoleState>;
   loadMaterials: ProjectMaterialReader;
-  projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
+  projects: AgentProjects;
+  resolvePage?: AgentSchemaPage;
   readSchema?: (page: SchemaPageRef) => Promise<ReadState>;
 }
 
@@ -150,22 +151,24 @@ export const createReadOnlyAgentTools = (
 
   const load = async (_input: PageScopeInput, signal: AbortSignal): Promise<ReadState> => {
     assertNotAborted(signal);
-    const project = dependencies.projects.getProject(scope.projectId);
+    const project = await dependencies.projects.getProject(scope.projectId);
     if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
     const page = scope.pageId
-      ? dependencies.projects.getPage(scope.projectId, scope.pageId)
+      ? await dependencies.projects.getPage(scope.projectId, scope.pageId)
       : undefined;
     if (scope.pageId && (!page || page.status !== 0)) throw notFound('页面不存在或不属于该项目');
     const materials = await dependencies.loadMaterials(project.path);
     materialManifest = materials.manifest;
     blocks = materials.blocks ?? [];
     agentCatalog = materials.agentCatalog;
-    schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)({
-      projectPath: project.path,
-      pageId: page!.id,
-      slug: page!.slug,
-      relativePath: page!.relativePath,
-    });
+    schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)(
+      dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
+        projectPath: project.path,
+        pageId: page!.id,
+        slug: page!.slug,
+        relativePath: page!.relativePath,
+      },
+    );
     const current = await schemaPromise;
     assertNotAborted(signal);
     if (current.workingVersion !== scope.workingVersion) throw conflict('页面草稿已变化');
@@ -337,7 +340,7 @@ export const createReadOnlyAgentTools = (
         return cached('page-context', async () => {
           const { schema, revisionId } = await load(input, signal);
           const page = scope.pageId
-            ? dependencies.projects.getPage(scope.projectId, scope.pageId)!
+            ? await dependencies.projects.getPage(scope.projectId, scope.pageId)!
             : undefined;
           const materialTypes = Object.values(schema.elements).map(({ type }) => type);
           return boundedResult({

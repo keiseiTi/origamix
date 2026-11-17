@@ -13,9 +13,8 @@ import {
   getAgentElementLabel,
 } from '@origamix/shared';
 
-import type { AgentRunRepository } from '../run-repository';
 import type { AgentRunService } from '../run-service';
-import type { ProjectRepository } from '../../projects/project-repository';
+import type { AgentProjects, AgentRunStore, AgentSchemaPage } from '../persistence';
 import { ApiError, conflict, invalid, notFound } from '../../errors';
 import { applyWorkingSchemaOperations, getWorkingSchemaState } from '../../schema/schema-service';
 import { SchemaValidationError } from '../../schema/validation/schema-validation';
@@ -40,8 +39,9 @@ export interface CompletePageRunToolDependencies {
     pageIntent?: string,
   ) => Promise<ProjectProposal>;
   loadMaterials: ProjectMaterialReader;
-  projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
-  runs: Pick<AgentRunRepository, 'get'>;
+  projects: AgentProjects;
+  resolvePage?: AgentSchemaPage;
+  runs: Pick<AgentRunStore, 'get'>;
   runService: AgentRunService;
 }
 
@@ -126,7 +126,7 @@ export const createCompletePageRunTool = (
           '本轮页面写入尚未成功，必须修正并提交 apply_changes，不能报告无需修改或只回答',
         );
       }
-      const run = dependencies.runs.get(scope.runId);
+      const run = await dependencies.runs.get(scope.runId);
       if (!run) throw notFound('Agent Run 不存在');
       if (
         run.projectId !== scope.projectId ||
@@ -147,18 +147,20 @@ export const createCompletePageRunTool = (
         if (!scope.pageId || !dependencies.prepareProject) throw invalid('当前目标不支持项目操作');
         if (
           run.retryOfRunId &&
-          dependencies.runs.get(run.retryOfRunId)?.outcome === 'needs_project_confirmation'
+          (await dependencies.runs.get(run.retryOfRunId))?.outcome === 'needs_project_confirmation'
         )
           throw invalid('已确认的页面阶段不能再次提出项目操作');
-        const project = dependencies.projects.getProject(scope.projectId);
-        const page = dependencies.projects.getPage(scope.projectId, scope.pageId);
+        const project = await dependencies.projects.getProject(scope.projectId);
+        const page = await dependencies.projects.getPage(scope.projectId, scope.pageId);
         if (!project || !page) throw notFound('页面不属于当前项目');
-        const working = await getWorkingSchemaState({
-          projectPath: project.path,
-          pageId: page.id,
-          slug: page.slug,
-          relativePath: page.relativePath,
-        });
+        const working = await getWorkingSchemaState(
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
+            projectPath: project.path,
+            pageId: page.id,
+            slug: page.slug,
+            relativePath: page.relativePath,
+          },
+        );
         if (working.workingVersion !== scope.baseWorkingVersion)
           throw conflict('页面草稿已变化，不能发布项目提案');
         const proposal = await dependencies.prepareProject(
@@ -168,7 +170,7 @@ export const createCompletePageRunTool = (
           input.pageIntent,
         );
         assertNotCancelled(signal);
-        dependencies.runService.transition(scope.runId, 'deciding', {
+        await dependencies.runService.transition(scope.runId, 'deciding', {
           outcome: 'needs_project_confirmation',
           outcomeJson: proposal,
         });
@@ -189,20 +191,22 @@ export const createCompletePageRunTool = (
       ) {
         throw new AgentEngineError('BUDGET_EXCEEDED', 'Operation List 大小已超过本次运行预算');
       }
-      const project = dependencies.projects.getProject(scope.projectId);
+      const project = await dependencies.projects.getProject(scope.projectId);
       const page = scope.pageId
-        ? dependencies.projects.getPage(scope.projectId, scope.pageId)
+        ? await dependencies.projects.getPage(scope.projectId, scope.pageId)
         : undefined;
       if (!project || (scope.pageId && !page)) throw notFound('目标不存在或不属于当前项目');
       const materials = await dependencies.loadMaterials(project.path);
       let candidates: ClarificationCandidate[] | undefined;
       if (input.outcome === 'needs_clarification' && input.candidates?.length) {
-        const working = await getWorkingSchemaState({
-          projectPath: project.path,
-          pageId: page!.id,
-          slug: page!.slug,
-          relativePath: page!.relativePath,
-        });
+        const working = await getWorkingSchemaState(
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
+            projectPath: project.path,
+            pageId: page!.id,
+            slug: page!.slug,
+            relativePath: page!.relativePath,
+          },
+        );
         if (working.workingVersion !== scope.baseWorkingVersion) {
           throw conflict('页面版本已变化，无法发布当前澄清选项');
         }
@@ -233,7 +237,7 @@ export const createCompletePageRunTool = (
               ...(candidates ? { candidates } : {}),
             }
           : input;
-      dependencies.runService.transition(scope.runId, 'deciding', {
+      await dependencies.runService.transition(scope.runId, 'deciding', {
         outcomeJson,
         ...(!operations ? { outcome } : {}),
         ...(operations ? { operationCount: operations.length, operationDigest: digest } : {}),
@@ -243,13 +247,13 @@ export const createCompletePageRunTool = (
         return { accepted: true, outcome, response } satisfies CompletePageRunResult;
       }
 
-      dependencies.runService.transition(scope.runId, 'validating');
+      await dependencies.runService.transition(scope.runId, 'validating');
       let result: { workingVersion: number; workingHash: string };
       try {
         assertNotCancelled(signal);
         elementIds.validate(operations);
         result = await applyWorkingSchemaOperations(
-          {
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
             projectPath: project.path,
             pageId: page!.id,
             slug: page!.slug,
@@ -272,7 +276,7 @@ export const createCompletePageRunTool = (
       } catch (error) {
         if (error instanceof AgentEngineError && error.code === 'BUDGET_EXCEEDED') throw error;
         rejectedWrite = true;
-        const current = dependencies.runs.get(scope.runId);
+        const current = await dependencies.runs.get(scope.runId);
         const isWorkingConflict = error instanceof ApiError && error.statusCode === 409;
         const isCancelled = signal.aborted;
         if (
@@ -281,7 +285,7 @@ export const createCompletePageRunTool = (
           !isWorkingConflict &&
           !isCancelled
         ) {
-          dependencies.runService.transition(scope.runId, 'repairing', {
+          await dependencies.runService.transition(scope.runId, 'repairing', {
             repairAttempts: current.repairAttempts + 1,
           });
         }
@@ -302,7 +306,8 @@ export const createCompletePageRunTool = (
         if (error instanceof SchemaValidationError) {
           const canRepair =
             !isCancelled &&
-            (dependencies.runs.get(scope.runId)?.repairAttempts ?? 0) <= scope.maxRepairAttempts;
+            ((await dependencies.runs.get(scope.runId))?.repairAttempts ?? 0) <=
+              scope.maxRepairAttempts;
           const flowId = error.issue.path.startsWith('/flows/')
             ? error.issue.path.split('/')[2]!.replaceAll('~1', '/').replaceAll('~0', '~')
             : undefined;
@@ -342,12 +347,12 @@ export const createCompletePageRunTool = (
           instruction: '停止修改并恢复页面状态，不能自动重放本次批次。',
         });
       }
-      dependencies.runService.recordWorkingCommit(
+      await dependencies.runService.recordWorkingCommit(
         scope.runId,
         result.workingVersion,
         result.workingHash,
       );
-      dependencies.runService.transition(scope.runId, 'committing', { outcome, outcomeJson });
+      await dependencies.runService.transition(scope.runId, 'committing', { outcome, outcomeJson });
       return {
         accepted: true,
         outcome,

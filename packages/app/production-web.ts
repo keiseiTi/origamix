@@ -134,7 +134,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
     throw new Error('MySQL Web 项目通过工作台创建，请移除 ORIGAMIX_WEB_PROJECT_DIR');
   const index = (await readFile(join(options.rendererDirectory, 'index.html'), 'utf8')).replace(
     '<head>',
-    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey && !mysqlUrl)}"><meta name="origamix-project-storage" content="${mysqlUrl ? 'mysql' : 'local'}">`,
+    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey)}"><meta name="origamix-project-storage" content="${mysqlUrl ? 'mysql' : 'local'}">`,
   );
   const preview = await readFile(join(options.rendererDirectory, 'preview.html'));
   await mkdir(options.stateDirectory, { recursive: true });
@@ -149,7 +149,11 @@ export const startProductionWeb = async (options: WebHostOptions) => {
     const credentials = { desktopToken: token, serviceInstanceId, templateDownload };
     if (mysqlUrl) {
       const { startMysqlWebServer } = await import('@origamix/server/web-runtime');
-      backend = await startMysqlWebServer({ ...credentials, mysqlUrl });
+      backend = await startMysqlWebServer({
+        ...credentials,
+        mysqlUrl,
+        getModelCredential: async () => options.modelKey,
+      });
     } else {
       backend = await startServer({
         ...credentials,

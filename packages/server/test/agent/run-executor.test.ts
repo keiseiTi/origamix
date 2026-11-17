@@ -78,20 +78,20 @@ const setup = (
           execute: async (raw) => {
             const input = raw as { outcome?: string; response?: string };
             const run = runs.listActive()[0]!;
-            runService.transition(run.id, 'deciding', {
+            await runService.transition(run.id, 'deciding', {
               outcome: input.outcome === 'apply_changes' ? 'changed' : 'answered_only',
               outcomeJson: raw,
             });
             if (input.outcome === 'apply_changes') {
-              runService.transition(run.id, 'validating');
+              await runService.transition(run.id, 'validating');
               if (input.response === 'invalid') {
-                runService.transition(run.id, 'repairing', {
+                await runService.transition(run.id, 'repairing', {
                   repairAttempts: run.repairAttempts + 1,
                 });
                 throw new Error('第 19 个 Operation 的 size 属性无效');
               }
-              runService.recordWorkingCommit(run.id, 2, 'hash_result');
-              runService.transition(run.id, 'committing');
+              await runService.recordWorkingCommit(run.id, 2, 'hash_result');
+              await runService.transition(run.id, 'committing');
             }
             return {
               accepted: true,
@@ -336,8 +336,8 @@ describe('Agent execution through AgentService', () => {
           input: { outcome: 'apply_changes', operations: [] },
         });
         const run = fixture.runs.listActive()[0]!;
-        fixture.runService.transition(run.id, 'deciding');
-        fixture.runService.transition(run.id, 'validating');
+        await fixture.runService.transition(run.id, 'deciding');
+        await fixture.runService.transition(run.id, 'validating');
         await request.onEvent?.({
           type: 'tool_end',
           toolName: 'complete_page_run',
@@ -420,7 +420,9 @@ describe('Agent execution through AgentService', () => {
     const fixture = setup(async (request) => {
       await complete(request, { outcome: 'apply_changes', response: '页面已提交。' });
       const active = fixture.runs.listActive()[0]!;
-      expect(fixture.service.cancel(active.id, 'cancel-after-commit').status).toBe('committing');
+      expect((await fixture.service.cancel(active.id, 'cancel-after-commit')).status).toBe(
+        'committing',
+      );
       return { text: '', usage };
     });
     const result = await fixture.run(fixture.input('修改并尝试取消'));
@@ -607,9 +609,9 @@ describe('Agent startup ownership', () => {
         toolsetVersion: '1',
         materialManifestVersion: '1',
       });
-      fixture.runService.transition(source.run.id, 'preparing');
-      fixture.runService.transition(source.run.id, 'reasoning');
-      fixture.runService.transition(source.run.id, 'deciding', {
+      await fixture.runService.transition(source.run.id, 'preparing');
+      await fixture.runService.transition(source.run.id, 'reasoning');
+      await fixture.runService.transition(source.run.id, 'deciding', {
         outcome: 'needs_clarification',
         outcomeJson: {
           clarificationId: 'clarification_one',
@@ -618,7 +620,7 @@ describe('Agent startup ownership', () => {
           candidates: [{ elementId: 'button_target', label: '提交按钮' }],
         },
       });
-      fixture.runService.transition(source.run.id, 'completed');
+      await fixture.runService.transition(source.run.id, 'completed');
       const followUp = {
         ...fixture.input('选择提交按钮', 'clarification-follow-up'),
         conversationId: source.conversation.id,
@@ -742,7 +744,7 @@ describe('Agent startup ownership', () => {
     const fixture = setup(async () => ({ text: 'unexpected', usage }));
     const execute = fixture.executor.execute.bind(fixture.executor);
     vi.spyOn(fixture.executor, 'execute').mockImplementationOnce(async (...args) => {
-      fixture.service.cancel(args[0].run.id, 'cancel-queued');
+      await fixture.service.cancel(args[0].run.id, 'cancel-queued');
       return execute(...args);
     });
     try {

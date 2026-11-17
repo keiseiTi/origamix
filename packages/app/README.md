@@ -76,7 +76,7 @@ pnpm start:web
 | `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根目录的 `.origamix-web/production/`。                                                  |
 | `ORIGAMIX_WEB_PROJECT_DIR` | 本地文件模式可选，经部署者授权的现有项目目录。                                                            |
 | `ORIGAMIX_WEB_MYSQL_URL`   | MySQL 模式的专用数据库连接地址，仅由 Web 宿主读取。勿与 `ORIGAMIX_WEB_PROJECT_DIR` 同时设置。             |
-| `DEEPSEEK_API_KEY`         | 本地文件模式可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                        |
+| `DEEPSEEK_API_KEY`         | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
 
 远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。备份时保存 MySQL 数据库，或一并保存本地文件模式的数据目录和受管理项目目录。
 
@@ -88,9 +88,9 @@ pnpm start:web
 
 先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。随后执行 `pnpm start:web`。
 
-首次启动自动初始化 Web 表。MySQL 模式保存项目、页面、配置、Working 和 Revision。该模式的 Agent、浏览器目录初始化和项目级写出留待后续。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
+首次启动自动初始化 Web 表，并为原有 MySQL 项目库增加 Agent 所需的表。MySQL 模式持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。浏览器目录初始化、项目级写出和布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
 
-用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。
+用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。运行 `pnpm test:agent:mysql` 使用确定性模型验证过期写入冲突与中断恢复。
 
 根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
 

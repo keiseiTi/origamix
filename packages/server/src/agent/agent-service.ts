@@ -8,7 +8,7 @@ import {
 
 import type { AgentEventBroker } from './event-broker';
 import type { RunExecutor, RunResult } from './run-executor';
-import type { AgentRunRepository, AgentRunRecord } from './run-repository';
+import type { AgentRunRecord } from './run-repository';
 import type { AgentRunService } from './run-service';
 import type {
   ConversationService,
@@ -19,7 +19,7 @@ import { getAgentModel, DEEPSEEK_FLASH_MODEL_ID } from './agent-engine';
 import { conflict, notFound } from '../errors';
 import { progressPayload } from './progress';
 import { redactAgentMessage } from './safe-error';
-import type { ProjectRepository } from '../projects/project-repository';
+import type { AgentConversations, AgentProjects, AgentRunStore } from './persistence';
 import { withProjectActivity } from '../projects/project-activity';
 import { ApiError } from '../errors';
 
@@ -36,6 +36,7 @@ export interface StartedAgentRun {
 
 export class AgentService {
   private readonly starts = new KeyedQueue();
+  private readonly admission = new KeyedQueue();
   private readonly executing = new Map<string, Promise<RunResult>>();
   private readonly starting = new Set<Promise<StartedAgentRun>>();
   private closing = false;
@@ -44,8 +45,8 @@ export class AgentService {
   constructor(
     private readonly dependencies: {
       authorizeStart?: (request: CreateAgentRunRequest) => Promise<void>;
-      conversations: ConversationService;
-      runs: AgentRunRepository;
+      conversations: AgentConversations;
+      runs: AgentRunStore;
       runService: AgentRunService;
       events: AgentEventBroker;
       executor: RunExecutor;
@@ -58,28 +59,28 @@ export class AgentService {
       modelRef?: string;
       getModelRef?: () => string | Promise<string>;
       budget?: RunBudget;
-      projects: Pick<ProjectRepository, 'getProject'>;
+      projects: Pick<AgentProjects, 'getProject'>;
       maxConcurrentRuns?: number;
     },
   ) {}
 
   async start(request: CreateAgentRunRequest): Promise<StartedAgentRun> {
     if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
-    const project = this.dependencies.projects.getProject(request.projectId);
+    const project = await this.dependencies.projects.getProject(request.projectId);
     if (!project) throw notFound('项目不存在');
     const target = requireAgentTarget(request);
     const admit = () =>
       this.starts.run(`${request.projectId}\0${target.kind}\0${request.pageId ?? ''}`, async () => {
         this.assertOpen();
         await this.dependencies.authorizeStart?.(request);
-        const duplicate = this.dependencies.runs.findByClientRequest(
+        const duplicate = await this.dependencies.runs.findByClientRequest(
           request.projectId,
           request.pageId,
           request.clientRequestId,
         );
         if (duplicate) {
           // Reuse the durable configuration, but still validate request identity/content.
-          const started = this.dependencies.conversations.startRun({
+          const started = await this.dependencies.conversations.startRun({
             ...request,
             ...this.runConfiguration(duplicate),
           });
@@ -91,7 +92,7 @@ export class AgentService {
           throw conflict('页面版本已变化，请刷新后重试');
         }
         if (request.clarification) {
-          const source = this.dependencies.runs.get(request.clarification.runId);
+          const source = await this.dependencies.runs.get(request.clarification.runId);
           const clarification = source?.outcomeJson as ClarificationResult | undefined;
           const candidate = clarification?.candidates?.find(
             (item) => item.elementId === request.clarification?.selectedElementId,
@@ -123,22 +124,27 @@ export class AgentService {
           : (this.dependencies.modelRef ?? DEEPSEEK_FLASH_MODEL_ID);
         this.assertOpen();
         if (this.dependencies.getModelRef) getAgentModel(modelRef);
-        const active = this.dependencies.runs.listActive();
-        if (
-          active.some((run) => run.projectId === request.projectId && run.pageId === request.pageId)
-        )
-          throw conflict('当前页面已有 Agent 正在运行，请等待完成或先取消');
-        if (active.length >= (this.dependencies.maxConcurrentRuns ?? 4))
-          throw new ApiError('Agent 并发已达上限，请等待其他页面完成', 429);
-        const started = this.dependencies.conversations.startRun({
-          ...request,
-          modelRef,
-          runKind: 'page_assistant',
-          budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
-          promptVersion: '2',
-          policyVersion: '1',
-          toolsetVersion: '2',
-          materialManifestVersion: 'official-antd@1.0.0',
+        const started = await this.admission.run('active-runs', async () => {
+          this.assertOpen();
+          const active = await this.dependencies.runs.listActive();
+          if (
+            active.some(
+              (run) => run.projectId === request.projectId && run.pageId === request.pageId,
+            )
+          )
+            throw conflict('当前页面已有 Agent 正在运行，请等待完成或先取消');
+          if (active.length >= (this.dependencies.maxConcurrentRuns ?? 4))
+            throw new ApiError('Agent 并发已达上限，请等待其他页面完成', 429);
+          return this.dependencies.conversations.startRun({
+            ...request,
+            modelRef,
+            runKind: 'page_assistant',
+            budget: this.dependencies.budget ?? DEFAULT_AGENT_RUN_BUDGET,
+            promptVersion: '2',
+            policyVersion: '1',
+            toolsetVersion: '2',
+            materialManifestVersion: 'official-antd@1.0.0',
+          });
         });
         if (started.created) {
           this.dependencies.events.publish({
@@ -176,7 +182,7 @@ export class AgentService {
     if (this.shutdownPromise) return this.shutdownPromise;
     let timer: ReturnType<typeof setTimeout>;
     const drain = async () => {
-      for (const runId of this.executing.keys()) this.cancel(runId, 'server-shutdown');
+      for (const runId of this.executing.keys()) await this.cancel(runId, 'server-shutdown');
       await Promise.allSettled([...this.starting]);
       await Promise.allSettled([...this.executing.values()]);
     };
@@ -197,12 +203,12 @@ export class AgentService {
     if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
   }
 
-  get(runId: string): AgentRunRecord {
-    return this.dependencies.runService.get(runId);
+  async get(runId: string): Promise<AgentRunRecord> {
+    return await this.dependencies.runService.get(runId);
   }
 
-  cancel(runId: string, requestId: string): AgentRunRecord {
-    const run = this.dependencies.runService.cancel(runId);
+  async cancel(runId: string, requestId: string): Promise<AgentRunRecord> {
+    const run = await this.dependencies.runService.cancel(runId);
     this.dependencies.executor.cancel(runId);
     const progress = progressPayload(run.status);
     if (progress)
@@ -226,13 +232,13 @@ export class AgentService {
       result = await this.dependencies.executor.execute(started, message);
     } catch {
       // A rejected setup must settle durable state as well as notify subscribers.
-      const current = this.dependencies.runService.get(started.run.id);
+      const current = await this.dependencies.runService.get(started.run.id);
       if (!['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status)) {
-        this.dependencies.runService.transition(current.id, 'failed', {
+        await this.dependencies.runService.transition(current.id, 'failed', {
           errorCode: 'INTERNAL_ERROR',
           errorMessage: 'Agent 运行失败，请重试。',
         });
-        this.dependencies.conversations.failAssistant(
+        await this.dependencies.conversations.failAssistant(
           current.id,
           {
             version: '1',
@@ -241,7 +247,7 @@ export class AgentService {
           'AGENT_FAILED',
         );
       }
-      const settled = this.dependencies.runService.get(current.id);
+      const settled = await this.dependencies.runService.get(current.id);
       result = {
         runId: settled.id,
         status: settled.status as RunResult['status'],
@@ -251,7 +257,7 @@ export class AgentService {
           : {}),
       };
     }
-    const settled = this.dependencies.runService.get(result.runId);
+    const settled = await this.dependencies.runService.get(result.runId);
     if (settled.resultWorkingVersion) {
       this.dependencies.events.publish({
         type: 'working.committed',

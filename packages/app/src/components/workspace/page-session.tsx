@@ -145,9 +145,6 @@ const PageSessionContent = ({
           draft={draft}
           onDraftChange={(value) => setPageDraft(page.id, value)}
           session={agent}
-          unavailableReason={
-            databaseProject ? '当前 Web 项目可使用页面编辑器，Agent 功能尚未接入。' : undefined
-          }
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
         />

@@ -19,7 +19,7 @@ import {
   type OrigamixPageSchema,
 } from '@origamix/shared';
 import { inWebTransaction } from '../database/mysql-web';
-import { conflict, invalid, notFound } from '../errors';
+import { ApiError, conflict, invalid, notFound } from '../errors';
 import { hashJson } from '../infrastructure/json-hash';
 import { MysqlSchemaStore } from '../schema/mysql-schema-store';
 import type { SchemaPageRef } from '../schema/schema-contracts';
@@ -159,9 +159,11 @@ export class MysqlProjectService {
       project: WebProject,
       connection: PoolConnection,
     ) => T | Promise<T>,
+    agentAdmission = false,
   ): Promise<T> {
     return inWebTransaction(this.pool, async (connection) => {
       const repository = new MysqlProjectRepository(connection);
+      if (agentAdmission) await repository.lockAgentAdmission();
       const row = await repository.lockProject(projectId);
       if (!row) throw notFound('项目不存在');
       return action(
@@ -171,6 +173,44 @@ export class MysqlProjectService {
       );
     });
   }
+
+  withAgentPage<T>(
+    projectId: string,
+    pageId: string,
+    action: (sql: PoolConnection, page: SchemaPageRef) => Promise<T>,
+  ): Promise<T> {
+    return this.withProject(
+      projectId,
+      (_repository, project, connection) =>
+        action(connection, pageRef(connection, project, findPage(project, pageId))),
+      true,
+    );
+  }
+
+  agentProjects = {
+    getProject: async (projectId: string) =>
+      await this.readOptionalProject(projectId, ({ row, manifest }) => ({
+        ...toProject(row, manifest),
+        path: projectId,
+      })),
+    getPage: async (projectId: string, pageId: string) =>
+      await this.readOptionalProject(projectId, (project) => {
+        const page = project.pages.find(({ id }) => id === pageId);
+        return page ? toPage(page, project.manifest) : undefined;
+      }),
+  };
+
+  private async readOptionalProject<T>(projectId: string, read: (project: WebProject) => T) {
+    try {
+      return await this.withProject(projectId, (_repository, project) => read(project));
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) return undefined;
+      throw error;
+    }
+  }
+
+  readManifest = (projectId: string) =>
+    this.withProject(projectId, (_repository, project) => project.manifest);
 
   async listProjects() {
     return inWebTransaction(this.pool, async (connection) => {
@@ -338,6 +378,8 @@ export class MysqlProjectService {
       if (!equalJson(next, manifest)) {
         if (hashJson(manifest) !== input.expectedManifestHash)
           throw conflict('项目配置已变化，请重新读取');
+        if (!(await repository.assertNoActiveRuns(input.projectId)))
+          throw conflict('请先停止项目 Agent 再保存项目设置');
         await writeConfiguration(repository, next);
       }
       return getSettings({ ...project, manifest: next });
@@ -411,6 +453,8 @@ export class MysqlProjectService {
   deletePage = (projectId: string, pageId: string) =>
     this.withProject(projectId, async (repository, project, connection) => {
       const page = findPage(project, pageId);
+      if (!(await repository.assertNoActiveRuns(projectId, pageId)))
+        throw conflict('请先停止页面 Agent');
       const { manifest } = project;
       const next = {
         ...manifest,
@@ -431,9 +475,14 @@ export class MysqlProjectService {
         throw conflict('请先移除布局与路由中的页面引用');
       await writeConfiguration(repository, next);
       await discardInitializedPageSchema(pageRef(connection, project, page));
+      await repository.deleteAgentRecords(projectId, pageId);
       await repository.deletePage(projectId, pageId);
     });
 
   deleteProject = (projectId: string) =>
-    this.withProject(projectId, (repository) => repository.deleteProject(projectId));
+    this.withProject(projectId, async (repository) => {
+      if (!(await repository.assertNoActiveRuns(projectId))) throw conflict('请先停止项目 Agent');
+      await repository.deleteAgentRecords(projectId);
+      await repository.deleteProject(projectId);
+    });
 }

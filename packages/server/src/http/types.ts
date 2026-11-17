@@ -3,7 +3,7 @@ import type { ProjectRepository } from '../projects/project-repository';
 import type { ProjectService } from '../projects/project-service';
 import type { ProjectApplyService } from '../schema/project-apply-service';
 import type { RuntimeDiagnosticService } from '../diagnostics/diagnostic-service';
-import type { ConversationService } from '../conversations/conversation-service';
+import type { AgentConversations } from '../agent/persistence';
 import type { AgentRunService } from '../agent/run-service';
 import type { AgentEventBroker } from '../agent/event-broker';
 import type { AgentService } from '../agent/agent-service';
@@ -57,7 +57,7 @@ export interface HttpServerInput {
   allowedOrigins?: readonly string[];
   templateDownload?: TemplateDownload;
   agent?: {
-    conversations: Pick<ConversationService, 'list' | 'history'>;
+    conversations: Pick<AgentConversations, 'list' | 'history'>;
     runs: Pick<AgentRunService, 'get'>;
     events: AgentEventBroker;
     service: Pick<AgentService, 'start' | 'cancel'>;

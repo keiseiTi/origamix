@@ -299,6 +299,14 @@ export const getAgentWorkingCommitReceipt = async (
 ): Promise<AgentWorkingCommitReceipt | undefined> =>
   withSchemaPageQueue(page, (page) => storeFor(page).readAgentCommit(page, runId));
 
+export const getAgentWorkingCommitEvidence = (page: SchemaPageRef, runId: string) =>
+  withSchemaPageQueue(page, async (page) => {
+    const receipt = await storeFor(page).readAgentCommit(page, runId);
+    if (!receipt) return undefined;
+    await commitsFor(page).recover(page);
+    return { receipt, working: await readWorking(page) };
+  });
+
 export const updateWorkingSchema = async (
   page: SchemaPageRef,
   input: {

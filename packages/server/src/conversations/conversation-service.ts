@@ -1,6 +1,12 @@
 import { requireAgentTarget } from '../agent/agent-target';
 import { nanoid } from 'nanoid';
-import type { AgentRunKind, MessageContent, RunBudget, AgentTarget } from '@origamix/shared';
+import {
+  equalJson,
+  type AgentRunKind,
+  type MessageContent,
+  type RunBudget,
+  type AgentTarget,
+} from '@origamix/shared';
 import type { ApplicationDatabase } from '../database/database';
 import { conflict, notFound } from '../errors';
 import { AgentRunRepository, type AgentRunRecord } from '../agent/run-repository';
@@ -31,6 +37,56 @@ export interface StartConversationRunInput {
 
 const now = (): string => new Date().toISOString();
 const id = (prefix: string): string => `${prefix}_${nanoid()}`;
+
+export const createQueuedRun = (
+  input: StartConversationRunInput,
+  runId: string,
+  conversationId: string,
+  messageId: string,
+  timestamp: string,
+): AgentRunRecord => ({
+  id: runId,
+  projectId: input.projectId,
+  pageId: requireAgentTarget(input).pageId,
+  conversationId: conversationId,
+  userMessageId: messageId,
+  clientRequestId: input.clientRequestId,
+  baseWorkingVersion: input.baseWorkingVersion,
+  modelRef: input.modelRef,
+  runKind: input.runKind,
+  status: 'queued',
+  budget: input.budget,
+  promptVersion: input.promptVersion,
+  policyVersion: input.policyVersion,
+  toolsetVersion: input.toolsetVersion,
+  materialManifestVersion: input.materialManifestVersion,
+  ...(input.retryOfRunId ? { retryOfRunId: input.retryOfRunId } : {}),
+  inputTokens: 0,
+  outputTokens: 0,
+  modelCalls: 0,
+  toolCalls: 0,
+  repairAttempts: 0,
+  recoveredCommit: false,
+  createdAt: timestamp,
+  updatedAt: timestamp,
+});
+export const assertMatchingRunRequest: (
+  run: AgentRunRecord,
+  input: StartConversationRunInput,
+  storedMessage: StoredMessage | undefined,
+) => asserts storedMessage is StoredMessage = (run, input, storedMessage) => {
+  if (
+    run.baseWorkingVersion !== input.baseWorkingVersion ||
+    run.conversationId !== (input.conversationId ?? run.conversationId) ||
+    run.modelRef !== input.modelRef ||
+    run.runKind !== input.runKind ||
+    run.retryOfRunId !== input.retryOfRunId ||
+    !storedMessage ||
+    !equalJson(storedMessage.content, input.content)
+  ) {
+    throw conflict('clientRequestId 已用于不同请求');
+  }
+};
 
 export class ConversationService {
   constructor(
@@ -136,32 +192,7 @@ export class ConversationService {
       updatedAt: timestamp,
       status: 'completed',
     });
-    const run: AgentRunRecord = {
-      id: runId,
-      projectId: input.projectId,
-      pageId: requireAgentTarget(input).pageId,
-      conversationId: conversation.id,
-      userMessageId: message.messageId,
-      clientRequestId: input.clientRequestId,
-      baseWorkingVersion: input.baseWorkingVersion,
-      modelRef: input.modelRef,
-      runKind: input.runKind,
-      status: 'queued',
-      budget: input.budget,
-      promptVersion: input.promptVersion,
-      policyVersion: input.policyVersion,
-      toolsetVersion: input.toolsetVersion,
-      materialManifestVersion: input.materialManifestVersion,
-      ...(input.retryOfRunId ? { retryOfRunId: input.retryOfRunId } : {}),
-      inputTokens: 0,
-      outputTokens: 0,
-      modelCalls: 0,
-      toolCalls: 0,
-      repairAttempts: 0,
-      recoveredCommit: false,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
+    const run = createQueuedRun(input, runId, conversation.id, message.messageId, timestamp);
 
     runs.create(run);
     conversations.bindMessageRun(message.messageId, runId);
@@ -253,17 +284,7 @@ export class ConversationService {
     conversations = this.conversations,
   ) {
     const storedMessage = conversations.getMessage(run.userMessageId);
-    if (
-      run.baseWorkingVersion !== input.baseWorkingVersion ||
-      run.conversationId !== (input.conversationId ?? run.conversationId) ||
-      run.modelRef !== input.modelRef ||
-      run.runKind !== input.runKind ||
-      run.retryOfRunId !== input.retryOfRunId ||
-      !storedMessage ||
-      JSON.stringify(storedMessage.content) !== JSON.stringify(input.content)
-    ) {
-      throw conflict('clientRequestId 已用于不同请求');
-    }
+    assertMatchingRunRequest(run, input, storedMessage);
     const conversation = this.requireConversation(
       run.conversationId,
       input.projectId,

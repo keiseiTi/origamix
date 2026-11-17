@@ -1,11 +1,12 @@
-import type { AgentRunRepository } from './run-repository';
-import type { ProjectRepository } from '../projects/project-repository';
-import type { ConversationService } from '../conversations/conversation-service';
+import type {
+  AgentRunStore,
+  AgentConversations,
+  AgentProjects,
+  AgentSchemaPage,
+} from './persistence';
+import { ApiError } from '../errors';
 import { AgentRunService } from './run-service';
-import {
-  getAgentWorkingCommitReceipt,
-  getRetainedWorkingSchemaState,
-} from '../schema/schema-service';
+import { getAgentWorkingCommitEvidence } from '../schema/schema-service';
 
 const responseFromOutcome = (value: unknown): string | undefined => {
   if (!value || typeof value !== 'object') return undefined;
@@ -18,37 +19,45 @@ const responseFromOutcome = (value: unknown): string | undefined => {
  * committed Schema state and never resumes a provider request.
  */
 export const recoverAgentRunsOnStartup = async (
-  runs: AgentRunRepository,
-  projects: ProjectRepository,
-  conversations: ConversationService,
+  runs: AgentRunStore,
+  projects: AgentProjects,
+  conversations: Pick<AgentConversations, 'finishAssistant' | 'failAssistant'>,
+  resolvePage?: AgentSchemaPage,
 ): Promise<void> => {
   const service = new AgentRunService(runs);
   const recovered = await service.recover(async (run) => {
-    const project = projects.getProject(run.projectId);
-    const page = run.pageId ? projects.getPage(run.projectId, run.pageId) : undefined;
+    const project = await projects.getProject(run.projectId);
+    const page = run.pageId ? await projects.getPage(run.projectId, run.pageId) : undefined;
     if (!project || !page) return { disposition: 'not_committed' } as const;
     try {
-      const pageRef = {
+      const pageRef = resolvePage?.(run.projectId, run.pageId) ?? {
         projectPath: project.path,
         pageId: page!.id,
         slug: page!.slug,
         relativePath: page!.relativePath,
       };
-      const receipt = await getAgentWorkingCommitReceipt(pageRef, run.id);
-      if (!receipt) return { disposition: 'not_committed' } as const;
+      const evidence = await getAgentWorkingCommitEvidence(pageRef, run.id);
+      if (!evidence) return { disposition: 'not_committed' } as const;
+      const { receipt, working } = evidence;
       if (
+        receipt.version !== 1 ||
         receipt.runId !== run.id ||
         receipt.projectId !== run.projectId ||
         receipt.pageId !== run.pageId ||
         receipt.baseWorkingVersion !== run.baseWorkingVersion ||
+        !run.operationDigest ||
         receipt.operationDigest !== run.operationDigest
       ) {
         return { disposition: 'conflict' } as const;
       }
-      const working = await getRetainedWorkingSchemaState(pageRef);
       if (
-        working.workingVersion === receipt.resultWorkingVersion &&
-        working.workingHash === receipt.resultWorkingHash
+        (working.workingVersion === receipt.resultWorkingVersion &&
+          working.workingHash === receipt.resultWorkingHash) ||
+        // MySQL commits the receipt and Working in the same transaction. A later explicit
+        // canvas edit cannot invalidate the evidence of this already committed mutation.
+        (pageRef.withPersistence &&
+          receipt.state === 'committed' &&
+          working.workingVersion > receipt.resultWorkingVersion)
       ) {
         return {
           disposition: 'committed',
@@ -60,13 +69,14 @@ export const recoverAgentRunsOnStartup = async (
         return { disposition: 'not_committed' } as const;
       }
       return { disposition: 'conflict' } as const;
-    } catch {
+    } catch (error) {
+      if (resolvePage && !(error instanceof ApiError)) throw error;
       return { disposition: 'conflict' } as const;
     }
   });
   for (const run of recovered) {
     if (run.status === 'completed') {
-      conversations.finishAssistant(run.id, {
+      await conversations.finishAssistant(run.id, {
         version: '1',
         blocks: [
           {
@@ -76,7 +86,7 @@ export const recoverAgentRunsOnStartup = async (
         ],
       });
     } else {
-      conversations.failAssistant(
+      await conversations.failAssistant(
         run.id,
         {
           version: '1',

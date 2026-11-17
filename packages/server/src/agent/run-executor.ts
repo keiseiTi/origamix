@@ -1,8 +1,12 @@
 import type { AgentModelUsageMetrics } from './agent-engine';
 import { agentTarget } from './agent-target';
 import type { MessageContent, PageAgentOutcome } from '@origamix/shared';
-import type { AgentRunRepository } from './run-repository';
-import type { ProjectRepository } from '../projects/project-repository';
+import type {
+  AgentConversations,
+  AgentProjects,
+  AgentRunStore,
+  AgentSchemaPage,
+} from './persistence';
 import type { AgentRunService } from './run-service';
 import type { ConversationService } from '../conversations/conversation-service';
 import { AgentEngineError, type AgentEngine, type AgentEngineEvent } from './agent-engine';
@@ -94,9 +98,10 @@ export interface RunResult {
 }
 
 export interface RunExecutorDependencies {
-  projects: ProjectRepository;
-  runs: AgentRunRepository;
-  conversations: ConversationService;
+  projects: AgentProjects;
+  resolvePage?: AgentSchemaPage;
+  runs: AgentRunStore;
+  conversations: AgentConversations;
   runService: AgentRunService;
   context: ContextAssembler;
   engine: AgentEngine;
@@ -124,17 +129,17 @@ export class RunExecutor {
     message: string,
   ): Promise<RunResult> {
     const input = started.run;
-    const project = this.dependencies.projects.getProject(input.projectId);
+    const project = await this.dependencies.projects.getProject(input.projectId);
     const page = input.pageId
-      ? this.dependencies.projects.getPage(input.projectId, input.pageId)
+      ? await this.dependencies.projects.getPage(input.projectId, input.pageId)
       : undefined;
     if (!project || (input.pageId && !page)) throw new Error('目标不存在或不属于当前项目');
     const terminalToolName = 'complete_page_run';
     const runId = started.run.id;
-    const currentBeforeStart = this.dependencies.runs.get(runId);
+    const currentBeforeStart = await this.dependencies.runs.get(runId);
     if (currentBeforeStart?.status === 'cancelling') {
-      this.dependencies.runService.transition(runId, 'cancelled');
-      this.dependencies.conversations.failAssistant(
+      await this.dependencies.runService.transition(runId, 'cancelled');
+      await this.dependencies.conversations.failAssistant(
         runId,
         textContent('本次请求已取消。'),
         'CANCELLED',
@@ -151,7 +156,7 @@ export class RunExecutor {
           : {}),
       };
     }
-    this.dependencies.runService.transition(runId, 'preparing');
+    await this.dependencies.runService.transition(runId, 'preparing');
     const controller = new AbortController();
     this.active.set(runId, controller);
     const tracker = new RunBudgetController(started.run.budget);
@@ -184,12 +189,12 @@ export class RunExecutor {
       };
       const tools = registry.toolsForRun({ runId, budget: tracker, audit });
 
-      this.dependencies.runService.transition(runId, 'reasoning');
+      await this.dependencies.runService.transition(runId, 'reasoning');
       const assembled = await this.dependencies.context.assemble({
         target: agentTarget(input.projectId, input.pageId),
         ...(page
           ? {
-              page: {
+              page: this.dependencies.resolvePage?.(input.projectId, page.id) ?? {
                 projectPath: project.path,
                 pageId: page.id,
                 slug: page.slug,
@@ -266,7 +271,7 @@ export class RunExecutor {
         }
         // Tool callbacks are transport evidence; the persisted terminal decision is
         // authoritative if a provider adapter delivers its completion event late.
-        const persisted = this.dependencies.runs.get(runId);
+        const persisted = await this.dependencies.runs.get(runId);
         const persistedTerminalAccepted =
           persisted?.status === 'deciding' ||
           persisted?.status === 'committing' ||
@@ -278,7 +283,7 @@ export class RunExecutor {
         }
         if (terminalOutcome) break;
 
-        const current = this.dependencies.runs.get(runId);
+        const current = await this.dependencies.runs.get(runId);
         if (current?.status === 'repairing') {
           if (current.repairAttempts > started.run.budget.maxRepairAttempts) {
             throw new AgentEngineError(
@@ -331,19 +336,19 @@ export class RunExecutor {
         missingTerminalRepairUsed = true;
         prompt = `协议修复：你必须调用 ${terminalToolName} 提交一个结构化终态。不要输出自由文本作为最终答案，也不要省略终态工具。`;
       }
-      this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
-      const current = this.dependencies.runs.get(runId);
+      await this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
+      const current = await this.dependencies.runs.get(runId);
       if (resultWorkingVersion) {
         const resultPatch = { resultWorkingVersion };
         if (current?.status === 'cancelling') {
-          this.dependencies.runService.transition(runId, 'completed', resultPatch);
+          await this.dependencies.runService.transition(runId, 'completed', resultPatch);
         } else {
-          this.dependencies.runService.transition(runId, 'completed', resultPatch);
+          await this.dependencies.runService.transition(runId, 'completed', resultPatch);
         }
       } else {
-        this.dependencies.runService.transition(runId, 'completed');
+        await this.dependencies.runService.transition(runId, 'completed');
       }
-      this.persistMetrics(runId, tracker);
+      await this.persistMetrics(runId, tracker);
       return {
         runId,
         status: 'completed',
@@ -354,13 +359,13 @@ export class RunExecutor {
     } catch (caught) {
       const error =
         controller.signal.reason instanceof AgentEngineError ? controller.signal.reason : caught;
-      const current = this.dependencies.runs.get(runId);
+      const current = await this.dependencies.runs.get(runId);
       const committedWorkingVersion = current?.resultWorkingVersion ?? resultWorkingVersion;
       const persistedResponse = persistedTerminalResponse(current?.outcomeJson);
       if (current?.status === 'deciding' && current.outcome && assistantText) {
-        this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
-        this.dependencies.runService.transition(runId, 'completed');
-        this.persistMetrics(runId, tracker);
+        await this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
+        await this.dependencies.runService.transition(runId, 'completed');
+        await this.persistMetrics(runId, tracker);
         return {
           runId,
           status: 'completed',
@@ -373,14 +378,14 @@ export class RunExecutor {
         current &&
         !['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status)
       ) {
-        this.dependencies.conversations.finishAssistant(
+        await this.dependencies.conversations.finishAssistant(
           runId,
           textContent(assistantText || persistedResponse || '页面草稿已完成修改。'),
         );
-        this.dependencies.runService.transition(runId, 'completed', {
+        await this.dependencies.runService.transition(runId, 'completed', {
           resultWorkingVersion: committedWorkingVersion,
         });
-        this.persistMetrics(runId, tracker);
+        await this.persistMetrics(runId, tracker);
         return {
           runId,
           status: 'completed',
@@ -397,12 +402,12 @@ export class RunExecutor {
           )) ||
         (error instanceof AgentEngineError && error.code === 'CANCELLED');
       if (cancelled && current?.status === 'cancelling') {
-        this.dependencies.runService.transition(runId, 'cancelled');
+        await this.dependencies.runService.transition(runId, 'cancelled');
       } else if (
         current &&
         !['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status)
       ) {
-        this.dependencies.runService.transition(runId, 'failed', {
+        await this.dependencies.runService.transition(runId, 'failed', {
           errorCode: error instanceof AgentEngineError ? error.code : 'INTERNAL_ERROR',
           errorMessage:
             error instanceof AgentEngineError
@@ -414,12 +419,12 @@ export class RunExecutor {
         error instanceof AgentEngineError
           ? redactAgentMessage(error.message)
           : 'Agent 运行失败，请重试。';
-      this.dependencies.conversations.failAssistant(
+      await this.dependencies.conversations.failAssistant(
         runId,
         textContent(cancelled ? '本次请求已取消。' : `本次请求未完成：${safeFailure}`),
         cancelled ? 'CANCELLED' : 'AGENT_FAILED',
       );
-      this.persistMetrics(runId, tracker);
+      await this.persistMetrics(runId, tracker);
       return {
         runId,
         status: cancelled ? 'cancelled' : 'failed',
@@ -436,25 +441,25 @@ export class RunExecutor {
   }
 
   private async handleEngineEvent(runId: string, event: AgentEngineEvent): Promise<void> {
-    if (event.type === 'tool_start') this.transitionIf(runId, 'reasoning', 'reading');
+    if (event.type === 'tool_start') await this.transitionIf(runId, 'reasoning', 'reading');
     if (event.type === 'tool_end' && !['complete_page_run'].includes(event.toolName)) {
-      this.transitionIf(runId, 'reading', 'reasoning');
+      await this.transitionIf(runId, 'reading', 'reasoning');
     }
   }
 
-  private transitionIf(
+  private async transitionIf(
     runId: string,
     expected: string,
     target: Parameters<AgentRunService['transition']>[1],
-  ): void {
-    if (this.dependencies.runs.get(runId)?.status === expected) {
-      this.dependencies.runService.transition(runId, target);
+  ): Promise<void> {
+    if ((await this.dependencies.runs.get(runId))?.status === expected) {
+      await this.dependencies.runService.transition(runId, target);
     }
   }
 
-  private persistMetrics(runId: string, tracker: RunBudgetController): void {
+  private async persistMetrics(runId: string, tracker: RunBudgetController): Promise<void> {
     const metrics = tracker.snapshot();
-    this.dependencies.runs.updateMetrics(runId, {
+    await this.dependencies.runs.updateMetrics(runId, {
       inputTokens: metrics.inputTokens,
       outputTokens: metrics.outputTokens,
       modelCalls: metrics.modelCalls,

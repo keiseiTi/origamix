@@ -126,7 +126,7 @@ describe('Agent HTTP API', () => {
         payload,
       });
       const { runId } = created.json().data;
-      fixture.runService.transition(runId, 'failed', {
+      await fixture.runService.transition(runId, 'failed', {
         errorCode: 'TIMEOUT',
         errorMessage: '模型请求超时',
       });

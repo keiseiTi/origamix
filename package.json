@@ -26,6 +26,7 @@
     "release:version": "tsx scripts/release-version.ts",
     "pack:npm": "pnpm build:libs && pnpm --filter @origamix/shared --filter @origamix/runtime --filter @origamix/materials run pack:npm",
     "test:template": "pnpm build:libs && pnpm --filter @origamix/server build && pnpm --filter @origamix/server test:template",
+    "test:agent:mysql": "pnpm build:libs && pnpm --filter @origamix/server test:agent:mysql",
     "test:web:mysql": "pnpm build:web && pnpm --filter @origamix/app test:web:mysql",
     "test:web": "pnpm build:web && pnpm --filter @origamix/app test:web",
     "test:desktop": "pnpm build && pnpm --filter @origamix/desktop test:main",

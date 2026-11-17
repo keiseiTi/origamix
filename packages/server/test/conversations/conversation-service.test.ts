@@ -236,35 +236,39 @@ describe('Conversation persistence', () => {
 });
 
 describe('Agent Run state and recovery', () => {
-  it('accepts legal transitions and rejects rollback or page completion without revision', () => {
+  it('accepts legal transitions and rejects rollback or page completion without revision', async () => {
     const { database, service, runService } = setup();
     const { run } = service.startRun(input());
-    expect(runService.transition(run.id, 'preparing').status).toBe('preparing');
-    expect(runService.transition(run.id, 'reasoning').status).toBe('reasoning');
-    expect(() => runService.transition(run.id, 'queued')).toThrow('不能');
-    expect(runService.transition(run.id, 'deciding').status).toBe('deciding');
-    expect(runService.transition(run.id, 'validating').status).toBe('validating');
-    expect(runService.transition(run.id, 'committing').status).toBe('committing');
+    expect((await runService.transition(run.id, 'preparing')).status).toBe('preparing');
+    expect((await runService.transition(run.id, 'reasoning')).status).toBe('reasoning');
+    await expect(runService.transition(run.id, 'queued')).rejects.toThrow('不能');
+    expect((await runService.transition(run.id, 'deciding')).status).toBe('deciding');
+    expect((await runService.transition(run.id, 'validating')).status).toBe('validating');
+    expect((await runService.transition(run.id, 'committing')).status).toBe('committing');
     expect(
-      runService.transition(run.id, 'completed', {
-        resultWorkingVersion: 2,
-      }).status,
+      (
+        await runService.transition(run.id, 'completed', {
+          resultWorkingVersion: 2,
+        })
+      ).status,
     ).toBe('completed');
-    expect(runService.cancel(run.id).status).toBe('completed');
+    expect((await runService.cancel(run.id)).status).toBe('completed');
     database.close();
   });
 
-  it('makes repeated cancellation idempotent and lets a committed terminal result win', () => {
+  it('makes repeated cancellation idempotent and lets a committed terminal result win', async () => {
     const { database, service, runService } = setup();
     const { run } = service.startRun(input());
-    expect(runService.cancel(run.id).status).toBe('cancelling');
-    expect(runService.cancel(run.id).status).toBe('cancelling');
+    expect((await runService.cancel(run.id)).status).toBe('cancelling');
+    expect((await runService.cancel(run.id)).status).toBe('cancelling');
     expect(
-      runService.transition(run.id, 'completed', {
-        resultWorkingVersion: 2,
-      }).status,
+      (
+        await runService.transition(run.id, 'completed', {
+          resultWorkingVersion: 2,
+        })
+      ).status,
     ).toBe('completed');
-    expect(runService.cancel(run.id).status).toBe('completed');
+    expect((await runService.cancel(run.id)).status).toBe('completed');
     database.close();
   });
 
@@ -274,8 +278,8 @@ describe('Agent Run state and recovery', () => {
     const path = join(directory, 'app.db');
     const first = setup(path);
     const run = first.service.startRun(input()).run;
-    first.runService.transition(run.id, 'preparing');
-    first.runService.transition(run.id, 'failed', {
+    await first.runService.transition(run.id, 'preparing');
+    await first.runService.transition(run.id, 'failed', {
       errorCode: 'PROVIDER_ERROR',
       errorMessage: '模型不可用 token=private-value',
     });

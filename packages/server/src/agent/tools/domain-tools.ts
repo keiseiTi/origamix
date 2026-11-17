@@ -2,7 +2,7 @@ import { Type, type TSchema } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 
 import { invalid, notFound } from '../../errors';
-import type { ProjectRepository } from '../../projects/project-repository';
+import type { AgentProjects } from '../persistence';
 import type { ProductDocsProvider } from '../product-docs-provider';
 import type { RuntimeDiagnosticService } from '../../diagnostics/diagnostic-service';
 import type { AgentEngineTool } from '../agent-engine';
@@ -22,7 +22,7 @@ export interface DomainToolScope {
 }
 
 export interface DomainToolDependencies {
-  projects: Pick<ProjectRepository, 'getProject' | 'getPage'>;
+  projects: AgentProjects;
   docs: Pick<ProductDocsProvider, 'search'>;
   diagnostics: Pick<RuntimeDiagnosticService, 'getState'>;
   maxResultBytes?: number;
@@ -50,10 +50,11 @@ export const createDomainAgentTools = (
   dependencies: DomainToolDependencies,
 ): AgentEngineTool[] => {
   const maxBytes = dependencies.maxResultBytes ?? 32 * 1024;
-  const assertPage = (): void => {
+  const assertPage = async (): Promise<void> => {
     if (
-      !dependencies.projects.getProject(scope.projectId) ||
-      (scope.pageId !== undefined && !dependencies.projects.getPage(scope.projectId, scope.pageId!))
+      !(await dependencies.projects.getProject(scope.projectId)) ||
+      (scope.pageId !== undefined &&
+        !(await dependencies.projects.getPage(scope.projectId, scope.pageId!)))
     ) {
       throw notFound('页面不存在或不属于当前项目');
     }
@@ -67,7 +68,7 @@ export const createDomainAgentTools = (
       execute: async (raw, signal) => {
         if (signal.aborted) throw signal.reason;
         const input = parse<{ query: string; version?: string }>(SearchDocsSchema, raw);
-        assertPage();
+        await assertPage();
         return bounded(
           dependencies.docs.search({ query: input.query, version: input.version }),
           maxBytes,

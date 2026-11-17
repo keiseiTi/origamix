@@ -88,11 +88,11 @@ const startApplyingRun = async (
     materialManifestVersion: 'official-antd@1.0.0',
   });
   const service = new AgentRunService(fixture.runs);
-  service.transition(started.run.id, 'preparing');
-  service.transition(started.run.id, 'reasoning');
-  service.transition(started.run.id, 'reading');
+  await service.transition(started.run.id, 'preparing');
+  await service.transition(started.run.id, 'reasoning');
+  await service.transition(started.run.id, 'reading');
   if (!submit) return { run: started.run, current, operationDigest };
-  service.transition(started.run.id, 'deciding', {
+  await service.transition(started.run.id, 'deciding', {
     outcomeJson: {
       outcome: 'apply_changes',
       operations: [],
@@ -101,7 +101,7 @@ const startApplyingRun = async (
     operationCount: 1,
     operationDigest,
   });
-  service.transition(started.run.id, 'validating');
+  await service.transition(started.run.id, 'validating');
   return { run: started.run, current, operationDigest };
 };
 

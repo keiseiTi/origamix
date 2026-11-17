@@ -3,7 +3,7 @@ import { SchemaOperationSchema, type SchemaOperation } from '@origamix/shared';
 import { Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import { AgentEngineError, type AgentEngineTool } from '../agent-engine';
-import type { ProjectRepository } from '../../projects/project-repository';
+import type { AgentProjects, AgentSchemaPage } from '../persistence';
 import { invalid, notFound } from '../../errors';
 import { validateWorkingSchemaOperations } from '../../schema/schema-service';
 import { SchemaValidationError } from '../../schema/validation/schema-validation';
@@ -17,9 +17,10 @@ const parameters = Type.Object(
 );
 
 export const createValidatePageOperationsTool = (
-  projects: Pick<ProjectRepository, 'getProject' | 'getPage'>,
+  projects: AgentProjects,
   scope: CompletePageRunToolScope,
   elementIds: AgentElementIds = createAgentElementIds(),
+  resolvePage?: AgentSchemaPage,
 ): AgentEngineTool => ({
   name: 'validate_page_operations',
   description:
@@ -34,14 +35,14 @@ export const createValidatePageOperationsTool = (
       (scope.maxOperationBytes ?? scope.maxSchemaBytes)
     )
       throw new AgentEngineError('BUDGET_EXCEEDED', 'Operation List 大小已超过本次运行预算');
-    const project = projects.getProject(scope.projectId);
-    const page = scope.pageId ? projects.getPage(scope.projectId, scope.pageId) : undefined;
+    const project = await projects.getProject(scope.projectId);
+    const page = scope.pageId ? await projects.getPage(scope.projectId, scope.pageId) : undefined;
     if (!project || project.status !== 0 || !page || page.status !== 0)
       throw notFound('页面不存在或不属于当前项目');
     try {
       elementIds.validate(operations);
       await validateWorkingSchemaOperations(
-        {
+        resolvePage?.(scope.projectId, page.id) ?? {
           projectPath: project.path,
           pageId: page.id,
           slug: page.slug,

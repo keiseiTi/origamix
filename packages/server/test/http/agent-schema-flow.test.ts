@@ -197,6 +197,33 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     const revisions = join(project.path, '.origamix', 'revisions', page.id);
     expect(await readdir(revisions)).toHaveLength(1);
 
+    const staleAgent = await server.inject({
+      method: 'POST',
+      url: '/api/v1/agent/runs/create',
+      headers,
+      payload: { ...request, clientRequestId: 'stale-agent-edit' },
+    });
+    expect(staleAgent.statusCode).toBe(409);
+    const staleCanvas = await server.inject({
+      method: 'POST',
+      url: '/api/v1/pages/working-operations/apply',
+      headers,
+      payload: {
+        projectId: project.id,
+        pageId: page.id,
+        baseWorkingVersion: request.baseWorkingVersion,
+        operations: [
+          {
+            operation: 'updateElementProps',
+            elementId: edited.schema.layout.root,
+            set: { height: 32 },
+          },
+        ],
+      },
+    });
+    expect(staleCanvas.statusCode).toBe(409);
+    expect((await getWorkingSchemaState(pageRef)).schema).toEqual(edited.schema);
+
     const working = await getWorkingSchemaState(pageRef);
     const checkpoint = await server.inject({
       method: 'POST',

@@ -78,8 +78,8 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     const prefix = '/agent';
     const ScopeSchema = PageScopeSchema;
     const scopePageId = (body: { projectId: string; pageId?: string }) => body.pageId;
-    const requireOwnedRun = (projectId: string, runId: string): AgentRunRecord => {
-      const run = agent.runs.get(runId);
+    const requireOwnedRun = async (projectId: string, runId: string): Promise<AgentRunRecord> => {
+      const run = await agent.runs.get(runId);
       if (run.projectId !== projectId || !run.pageId) throw notFound('Agent Run 不存在');
       return run;
     };
@@ -107,46 +107,46 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     server.post(
       `/api/v1${prefix}/conversations/list`,
       { schema: { body: ScopeSchema } },
-      route<{ projectId: string; pageId?: string }>((request) => ({
+      route<{ projectId: string; pageId?: string }>(async (request) => ({
         version: '1',
-        conversations: agent.conversations
-          .list(request.body.projectId, scopePageId(request.body))
-          .map((item) => ({
-            version: '1',
-            conversationId: item.id,
-            projectId: item.projectId,
-            ...(item.pageId ? { pageId: item.pageId } : {}),
-            target: agentTargetFields(item.projectId, item.pageId).target,
-            title: item.title,
-            status: item.status === 'archived' ? ('archived' as const) : ('active' as const),
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-          })),
+        conversations: (
+          await agent.conversations.list(request.body.projectId, scopePageId(request.body))
+        ).map((item) => ({
+          version: '1',
+          conversationId: item.id,
+          projectId: item.projectId,
+          ...(item.pageId ? { pageId: item.pageId } : {}),
+          target: agentTargetFields(item.projectId, item.pageId).target,
+          title: item.title,
+          status: item.status === 'archived' ? ('archived' as const) : ('active' as const),
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        })),
       })),
     );
     server.post(
       `/api/v1${prefix}/messages/list`,
       { schema: { body: MessageListBodySchema } },
       route<{ projectId: string; pageId?: string; conversationId: string; afterSequence?: number }>(
-        (request) => ({
+        async (request) => ({
           version: '1',
-          messages: agent.conversations
-            .history(
+          messages: (
+            await agent.conversations.history(
               request.body.projectId,
               scopePageId(request.body),
               request.body.conversationId,
               request.body.afterSequence ?? -1,
             )
-            .map((message) => ({
-              version: message.version,
-              messageId: message.messageId,
-              conversationId: message.conversationId,
-              ...(message.runId ? { runId: message.runId } : {}),
-              role: message.role,
-              content: message.content,
-              sequence: message.sequence,
-              createdAt: message.createdAt,
-            })),
+          ).map((message) => ({
+            version: message.version,
+            messageId: message.messageId,
+            conversationId: message.conversationId,
+            ...(message.runId ? { runId: message.runId } : {}),
+            role: message.role,
+            content: message.content,
+            sequence: message.sequence,
+            createdAt: message.createdAt,
+          })),
         }),
       ),
     );
@@ -172,17 +172,17 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     server.post(
       `/api/v1${prefix}/runs/get`,
       { schema: { body: RunScopeSchema } },
-      route<Static<typeof RunScopeSchema>>((request) => ({
+      route<Static<typeof RunScopeSchema>>(async (request) => ({
         version: '1',
-        run: publicRun(requireOwnedRun(request.body.projectId, request.body.runId)),
+        run: publicRun(await requireOwnedRun(request.body.projectId, request.body.runId)),
       })),
     );
     server.post(
       `/api/v1${prefix}/runs/cancel`,
       { schema: { body: CancelRunBodySchema } },
-      route<Static<typeof CancelRunBodySchema>>((request) => {
-        const run = requireOwnedRun(request.body.projectId, request.body.runId);
-        const cancelled = agent.service.cancel(run.id, request.body.requestId);
+      route<Static<typeof CancelRunBodySchema>>(async (request) => {
+        const run = await requireOwnedRun(request.body.projectId, request.body.runId);
+        const cancelled = await agent.service.cancel(run.id, request.body.requestId);
         return {
           version: '1',
           runId: run.id,
@@ -198,7 +198,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       `/api/v1/projects/:projectId${prefix}/runs/:runId/events`,
       async (request, reply) => {
         const { projectId, runId } = request.params as { projectId: string; runId: string };
-        const durable = requireOwnedRun(projectId, runId);
+        const durable = await requireOwnedRun(projectId, runId);
         if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
         const cursor = Number(
           request.headers['last-event-id'] ??

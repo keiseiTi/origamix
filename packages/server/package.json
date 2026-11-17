@@ -34,6 +34,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm check:database-schema && pnpm test:architecture && vitest run --exclude test/eslint-boundaries.test.ts",
     "test:architecture": "node --import tsx --test test/eslint-boundaries.test.ts",
+    "test:agent:mysql": "tsx test/test-mysql-agent.ts",
     "test:template": "tsx test/test-template.ts",
     "test:dev": "tsx test/test-development.ts",
     "gate:agent": "tsx scripts/gate-agent.ts",

@@ -16,8 +16,15 @@ export interface ContextSchemaReader {
 }
 
 export interface ContextHistoryProvider {
-  listMessages(conversationId: string, afterSequence?: number, limit?: number): StoredMessage[];
-  listRecentMessages?(conversationId: string, limit?: number): StoredMessage[];
+  listMessages(
+    conversationId: string,
+    afterSequence?: number,
+    limit?: number,
+  ): StoredMessage[] | Promise<StoredMessage[]>;
+  listRecentMessages?(
+    conversationId: string,
+    limit?: number,
+  ): StoredMessage[] | Promise<StoredMessage[]>;
 }
 
 export interface ContextBudget {
@@ -208,6 +215,8 @@ export class ContextAssembler {
     private readonly readProjectRoles?: (
       projectId: string,
     ) => Promise<import('@origamix/shared').PageRoleState>,
+    private readonly loadMaterials = loadProjectMaterials,
+    private readonly supportsProjectProposals = true,
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     if (this.budget.maxChars < 2_000) throw new Error('Context maxChars 不能小于 2000');
@@ -225,8 +234,8 @@ export class ContextAssembler {
     }
 
     const historyResult = recentHistory(
-      this.historyProvider.listRecentMessages?.(input.conversationId, 500) ??
-        this.historyProvider.listMessages(input.conversationId, -1, 500),
+      await (this.historyProvider.listRecentMessages?.(input.conversationId, 500) ??
+        this.historyProvider.listMessages(input.conversationId, -1, 500)),
       this.budget,
     );
     const schema = cap(JSON.stringify(current.schema), this.budget.maxSchemaChars);
@@ -244,7 +253,7 @@ export class ContextAssembler {
       docsTruncated = true;
     }
 
-    const materials = await loadProjectMaterials(input.page!.projectPath);
+    const materials = await this.loadMaterials(input.page!.projectPath);
     const roleState =
       input.target?.kind === 'page'
         ? await this.readProjectRoles?.(input.target.projectId)
@@ -261,7 +270,12 @@ export class ContextAssembler {
       currentWorkingVersion: current.workingVersion,
       ...(projectRole !== undefined ? { projectRole } : {}),
       ...(input.target ? { target: input.target } : {}),
-      systemPolicy: SYSTEM_POLICY,
+      systemPolicy: this.supportsProjectProposals
+        ? SYSTEM_POLICY
+        : SYSTEM_POLICY.split('\n')
+            .filter((line) => !line.startsWith('项目角色修改') && !line.startsWith('混合请求'))
+            .concat('当前工作区的页面 Agent 只处理页面任务，项目角色可在项目设置中修改。')
+            .join('\n'),
       currentRequest: input.currentRequest,
       history: historyResult.selected,
       ...(summary ? { summarySlot: summary.value } : {}),

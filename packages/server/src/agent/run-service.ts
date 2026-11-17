@@ -1,6 +1,7 @@
 import type { AgentRunStatus, PageAgentOutcome } from '@origamix/shared';
 import { conflict, notFound } from '../errors';
-import { AgentRunRepository, type AgentRunRecord } from './run-repository';
+import type { AgentRunRecord } from './run-repository';
+import type { AgentRunStore } from './persistence';
 import { redactAgentMessage } from './safe-error';
 
 const terminal = new Set<AgentRunStatus>(['completed', 'failed', 'cancelled', 'interrupted']);
@@ -44,17 +45,17 @@ const redactSafeMessage = (message: string | undefined): string | undefined => {
 export class AgentRunService {
   private transitionListener?: (run: AgentRunRecord) => void;
 
-  constructor(private readonly runs: AgentRunRepository) {}
+  constructor(private readonly runs: AgentRunStore) {}
 
   setTransitionListener(listener: (run: AgentRunRecord) => void): void {
     this.transitionListener = listener;
   }
 
-  get(runId: string): AgentRunRecord {
+  async get(runId: string): Promise<AgentRunRecord> {
     return this.require(runId);
   }
 
-  transition(
+  async transition(
     runId: string,
     status: AgentRunStatus,
     patch: {
@@ -71,14 +72,14 @@ export class AgentRunService {
       failureStage?: string;
       recoveredCommit?: boolean;
     } = {},
-  ): AgentRunRecord {
-    const current = this.require(runId);
+  ): Promise<AgentRunRecord> {
+    const current = await this.require(runId);
     if (current.status === status && terminal.has(status)) return current;
     if (!canTransitionAgentRun(current.status, status)) {
       throw conflict(`Agent Run 不能从 ${current.status} 转换到 ${status}`);
     }
     const timestamp = new Date().toISOString();
-    const changed = this.runs.updateStatus(runId, [current.status], {
+    const changed = await this.runs.updateStatus(runId, [current.status], {
       status,
       updatedAt: timestamp,
       ...(terminal.has(status) ? { finishedAt: timestamp } : {}),
@@ -87,21 +88,21 @@ export class AgentRunService {
       ...(patch.errorMessage ? { errorMessage: redactSafeMessage(patch.errorMessage) } : {}),
     });
     if (!changed) {
-      const raced = this.require(runId);
+      const raced = await this.require(runId);
       if (raced.status === status && terminal.has(status)) return raced;
       throw conflict(`Agent Run 状态已从 ${current.status} 变化`);
     }
-    const next = this.require(runId);
+    const next = await this.require(runId);
     this.transitionListener?.(next);
     return next;
   }
 
-  recordWorkingCommit(
+  async recordWorkingCommit(
     runId: string,
     resultWorkingVersion: number,
     resultWorkingHash: string,
-  ): AgentRunRecord {
-    const current = this.require(runId);
+  ): Promise<AgentRunRecord> {
+    const current = await this.require(runId);
     if (
       current.resultWorkingVersion === resultWorkingVersion &&
       current.resultWorkingHash === resultWorkingHash
@@ -109,7 +110,7 @@ export class AgentRunService {
       return current;
     if (terminal.has(current.status))
       throw conflict('已结束的 Agent Run 不能记录新的 Working 版本');
-    const changed = this.runs.updateStatus(runId, [current.status], {
+    const changed = await this.runs.updateStatus(runId, [current.status], {
       status: current.status,
       resultWorkingVersion,
       resultWorkingHash,
@@ -119,32 +120,32 @@ export class AgentRunService {
     return this.require(runId);
   }
 
-  cancel(runId: string): AgentRunRecord {
-    const current = this.require(runId);
+  async cancel(runId: string): Promise<AgentRunRecord> {
+    const current = await this.require(runId);
     if (current.status === 'cancelled' || current.status === 'cancelling') return current;
     // `committing` means the Working replacement has crossed its durable commit point.
     // Cancellation can no longer truthfully report an unmodified page.
     if (current.status === 'committing') return current;
     if (terminal.has(current.status)) return current;
-    const changed = this.runs.updateStatus(runId, [current.status], {
+    const changed = await this.runs.updateStatus(runId, [current.status], {
       status: 'cancelling',
       updatedAt: new Date().toISOString(),
     });
     if (changed) {
-      const next = this.require(runId);
+      const next = await this.require(runId);
       this.transitionListener?.(next);
       return next;
     }
-    const raced = this.require(runId);
+    const raced = await this.require(runId);
     if (terminal.has(raced.status) || raced.status === 'cancelling') return raced;
     throw conflict(`Agent Run 状态已从 ${current.status} 变化`);
   }
 
-  findByClientRequest(
+  async findByClientRequest(
     projectId: string,
     pageId: string,
     clientRequestId: string,
-  ): AgentRunRecord | undefined {
+  ): Promise<AgentRunRecord | undefined> {
     return this.runs.findByClientRequest(projectId, pageId, clientRequestId);
   }
 
@@ -160,11 +161,11 @@ export class AgentRunService {
         >,
   ): Promise<AgentRunRecord[]> {
     const recovered: AgentRunRecord[] = [];
-    for (const run of this.runs.listActive()) {
+    for (const run of await this.runs.listActive()) {
       const inspection = await inspectCommit(run);
       if (inspection.disposition === 'committed') {
         const timestamp = new Date().toISOString();
-        this.runs.updateStatus(run.id, active, {
+        await this.runs.updateStatus(run.id, active, {
           status: 'completed',
           updatedAt: timestamp,
           finishedAt: timestamp,
@@ -175,7 +176,7 @@ export class AgentRunService {
         });
       } else if (inspection.disposition === 'conflict') {
         const timestamp = new Date().toISOString();
-        this.runs.updateStatus(run.id, active, {
+        await this.runs.updateStatus(run.id, active, {
           status: 'failed',
           updatedAt: timestamp,
           finishedAt: timestamp,
@@ -185,7 +186,7 @@ export class AgentRunService {
         });
       } else {
         const timestamp = new Date().toISOString();
-        this.runs.updateStatus(run.id, active, {
+        await this.runs.updateStatus(run.id, active, {
           status: 'interrupted',
           updatedAt: timestamp,
           finishedAt: timestamp,
@@ -194,13 +195,13 @@ export class AgentRunService {
           failureStage: run.status,
         });
       }
-      recovered.push(this.require(run.id));
+      recovered.push(await this.require(run.id));
     }
     return recovered;
   }
 
-  private require(id: string): AgentRunRecord {
-    const run = this.runs.get(id);
+  private async require(id: string): Promise<AgentRunRecord> {
+    const run = await this.runs.get(id);
     if (!run) throw notFound('Agent Run 不存在');
     return run;
   }
