@@ -37,4 +37,4 @@ Runtime／Materials 源码变化会更新开发宿主准备的模板版本配置
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
 
-项目布局由清单 `layout.enabled` 控制，读取固定的 `src/origamix-layout/schema.json`。页面与布局通过 Outlet 组合，不合并节点表；`.origamix/` 不参与运行。此阶段不迁移旧项目外壳，更多说明见[Layout 契约与接口](/architecture/layout)。
+`src/application.tsx` 根据清单中的 `shell` 和 `layout` 装配 Template 自带的应用外壳。全局布局开启时，`shell.standalonePageIds` 中的页面仍独立渲染。路由读取 `routing`，页面读取各自的目标 Schema。详见[项目布局契约](/architecture/layout)。

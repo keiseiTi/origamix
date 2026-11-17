@@ -19,7 +19,7 @@ description: Server：本地后端的职责、使用与开发说明
 
 ## 版本与恢复
 
-Server 打开页面时校验 Schema 与物料契约，打开项目时校验项目清单。SQLite 初始化使用当前表结构，并校验已存在数据库的存储版本与表结构。页面会话和 Run 按项目及页面归属保存。
+Server 打开页面时校验 Schema 与物料契约，打开项目时校验项目清单。SQLite 初始化创建版本 1 的新库，或严格校验已有数据库的版本和表结构。当前没有迁移流程。页面会话和 Run 按项目及页面归属保存。
 
 ## 开发与验证
 
@@ -39,6 +39,6 @@ pnpm --filter @origamix/server build
 
 返回[整体架构](/architecture/index)。
 
-## 布局服务
+## 项目设置
 
-`src/layout/` 管理项目唯一布局的 Working、Revision 和恢复证据；显式布局 Apply 仍由既有目标写入服务负责。布局 Agent 共用执行器，绑定项目 target 和起始 Working 版本，不创建伪造页面记录。接口、权限与数据结构见[Layout 契约与接口](/architecture/layout)。
+`ProjectService.getSettings` 和 `updateSettings` 管理项目清单的 `shell`、`layout`、`routing`，保存时校验页面引用和清单哈希。`ProjectSettingsAgentService` 只返回配置草稿建议。详见[项目布局契约](/architecture/layout)。
