@@ -37,6 +37,7 @@ export const startServer = async (input: {
   port?: number;
   databasePath: string;
   templatePath: string;
+  templateDownload?: import('./http/types').TemplateDownload;
   desktopToken: string;
   serviceInstanceId: string;
   projectPath?: string;

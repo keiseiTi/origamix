@@ -1,3 +1,4 @@
+import { observeWebSession } from './web-session';
 import { notifyPageRolesChanged } from './page-role-events';
 type SessionKind = 'page';
 import type {
@@ -191,7 +192,8 @@ export const subscribeAgentEvents = (
       },
     );
     if (!active()) return;
-    if (response.status === 401 && !refresh) return connect(true, epoch);
+    observeWebSession(response);
+    if (response.status === 401 && current.token && !refresh) return connect(true, epoch);
     if (!response.ok || !response.body) throw new Error(`事件流连接失败（${response.status}）`);
     options.onOpen?.();
     const reader = response.body.getReader();

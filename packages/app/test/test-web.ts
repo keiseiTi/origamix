@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { cp, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'vite';
+import { strFromU8, unzipSync } from 'fflate';
+import { startProductionWeb } from '../production-web.ts';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
 process.env.ORIGAMIX_SERVER_PORT = '0';
@@ -18,10 +21,13 @@ process.env.ORIGAMIX_WEB_PROJECT_DIR = project;
 delete process.env.DEEPSEEK_API_KEY;
 delete process.env.ORIGAMIX_DESKTOP;
 let server;
+let production: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
 try {
   await mkdir(project);
   for (const name of ['origamix.project.json', 'package.json', 'src'])
     await cp(join(root, '../template', name), join(project, name), { recursive: true });
+  const productionProject = join(directory, 'production-project');
+  await cp(project, productionProject, { recursive: true });
   server = await createServer({
     root,
     configFile: `${root}vite.config.ts`,
@@ -33,6 +39,32 @@ try {
   const initial = await fetch(url, { headers: sameOrigin });
   assert.equal(initial.status, 200);
   assert.equal((await initial.json()).success, true);
+  const { version } = JSON.parse(await readFile(join(project, 'package.json'), 'utf8'));
+  const templateUrl = new URL(`/api/v1/templates/${version}/download`, url);
+  const template = await fetch(templateUrl, { headers: sameOrigin });
+  assert.equal(template.status, 200);
+  assert.equal(template.headers.get('content-type'), 'application/zip');
+  assert.equal(
+    template.headers.get('content-disposition'),
+    `attachment; filename="origamix-template-${version}.zip"`,
+  );
+  const archive = Buffer.from(await template.arrayBuffer());
+  assert.equal(
+    template.headers.get('x-template-sha256'),
+    createHash('sha256').update(archive).digest('hex'),
+  );
+  const files = unzipSync(archive);
+  assert.ok(files['origamix.project.json']);
+  assert.ok(files['index.html']);
+  assert.ok(files['.gitignore']);
+  const manifest = JSON.parse(strFromU8(files['package.json']));
+  assert.equal(manifest.version, version);
+  assert.equal(manifest.dependencies['@origamix/runtime'], version);
+  assert.equal(manifest.dependencies['@origamix/materials'], version);
+  const missing = await fetch(new URL('/api/v1/templates/0.0.0-missing/download', url), {
+    headers: sameOrigin,
+  });
+  assert.equal(missing.status, 404);
   const untrustedHeaders: Record<string, string>[] = [
     { ...sameOrigin, Origin: 'https://example.com' },
     { ...sameOrigin, Origin: 'null' },
@@ -43,6 +75,7 @@ try {
   for (const headers of untrustedHeaders) {
     const response = await fetch(url, { headers });
     assert.equal(response.status, 403);
+    assert.equal((await fetch(templateUrl, { headers })).status, 403);
   }
   const result = await promisify(execFile)(
     'pnpm',
@@ -51,9 +84,100 @@ try {
   );
   process.stdout.write(result.stdout);
   console.info(
-    'Web test passed: authenticated API proxy, untrusted origins and preview isolation.',
+    'Web test passed: authenticated API proxy, template download, untrusted origins and preview isolation.',
   );
+  const origin = new URL('http://127.0.0.1:5189');
+  const password = 'origamix-web-test-password';
+  production = await startProductionWeb({
+    origin,
+    password,
+    host: '127.0.0.1',
+    port: 5189,
+    stateDirectory: join(directory, 'production'),
+    rendererDirectory: join(root, 'dist'),
+    templateDirectory: join(root, '../../dist/web-template'),
+    projectPath: productionProject,
+  });
+  const health = new URL('/api/v1/health', origin);
+  const productionTemplate = new URL(templateUrl.pathname, origin);
+  assert.equal((await fetch(health)).status, 401);
+  assert.equal((await fetch(productionTemplate)).status, 401);
+  const login = new URL('/auth/login', origin);
+  const body = new URLSearchParams({ password });
+  assert.equal((await fetch(login, { method: 'POST', body })).status, 403);
+  const authenticated = await fetch(login, {
+    method: 'POST',
+    body,
+    headers: { Origin: origin.origin },
+    redirect: 'manual',
+  });
+  assert.equal(authenticated.status, 303);
+  const issued = authenticated.headers.get('set-cookie');
+  assert.ok(issued);
+  assert.match(issued, /HttpOnly; SameSite=Strict/);
+  const cookie = issued.split(';')[0];
+  const headers = { cookie, ...sameOrigin };
+  assert.equal((await fetch(health, { headers })).status, 200);
+  assert.equal((await fetch(productionTemplate, { headers })).status, 200);
+  assert.equal((await fetch(health, { headers: { ...headers, Origin: 'null' } })).status, 403);
+  assert.equal(
+    (await fetch(new URL('/api/v1/projects/invalid/agent/runs/invalid/events', origin))).status,
+    401,
+  );
+  const productionRequest = async (path: string, data = {}) => {
+    const response = await fetch(new URL(`/api/v1${path}`, origin), {
+      method: 'POST',
+      headers: { ...headers, Origin: origin.origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    assert.ok(response.ok && result.success, JSON.stringify(result));
+    return result.data;
+  };
+  const [registered] = await productionRequest('/projects/list');
+  const page = await productionRequest('/pages/create', {
+    projectId: registered.id,
+    name: 'Agent transport',
+    slug: 'agent-transport',
+  });
+  const { workingVersion } = await productionRequest('/pages/working-state/get', {
+    projectId: registered.id,
+    pageId: page.id,
+  });
+  const { runId } = await productionRequest('/agent/runs/create', {
+    version: '1',
+    projectId: registered.id,
+    pageId: page.id,
+    clientRequestId: 'request_web_agent_sse',
+    baseWorkingVersion: workingVersion,
+    content: { version: '1', blocks: [{ type: 'text', text: 'Add a button' }] },
+  });
+  const stream = await fetch(
+    new URL(`/api/v1/projects/${registered.id}/agent/runs/${runId}/events`, origin),
+    {
+      headers: { ...headers, Accept: 'text/event-stream' },
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  assert.equal(stream.status, 200);
+  assert.match(stream.headers.get('content-type') ?? '', /text\/event-stream/);
+  assert.equal(stream.headers.get('x-accel-buffering'), 'no');
+  assert.match(await stream.text(), /event: run\.failed/);
+  const logout = await fetch(new URL('/auth/logout', origin), {
+    method: 'POST',
+    headers: { ...headers, Origin: origin.origin },
+  });
+  assert.equal(logout.status, 204);
+  assert.equal((await fetch(health, { headers })).status, 401);
+  const browser = await promisify(execFile)(
+    'pnpm',
+    ['--filter', '@origamix/desktop', 'test:main', '--web', origin.origin, password],
+    { cwd: join(root, '../..'), timeout: 45000 },
+  );
+  process.stdout.write(browser.stdout);
+  console.info('Production Web test passed: session boundary, template, workbench and preview.');
 } finally {
+  await production?.close();
   await server?.close();
   await rm(directory, { recursive: true, force: true });
 }

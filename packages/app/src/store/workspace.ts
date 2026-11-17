@@ -54,6 +54,8 @@ interface WorkspaceState extends WorkspaceSession {
 }
 
 const storageKey = 'origamix:view-session';
+
+export const clearWorkspaceSession = () => sessionStorage.removeItem(storageKey);
 const emptySession: WorkspaceSession = {
   activeTabId: null,
   openPages: [],

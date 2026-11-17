@@ -1,3 +1,4 @@
+import { hasProductionWebModel, isProductionWeb } from '@/services/web-session';
 import { useEffect } from 'react';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -11,6 +12,11 @@ export const useAppPreferences = (): void => {
   }, [theme]);
 
   useEffect(() => {
+    if (isProductionWeb()) {
+      usePreferencesStore.getState().setHasModelApiKey(hasProductionWebModel());
+      return;
+    }
+
     window.api?.settings
       ?.getProfile?.()
       .then(usePreferencesStore.getState().setUserProfile)

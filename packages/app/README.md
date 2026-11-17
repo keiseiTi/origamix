@@ -51,7 +51,39 @@ pnpm --filter @origamix/app test:web
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepseek-flash` 或 `deepseek-v4-pro`。环境变量配置见 [dev-server.ts](dev-server.ts)，桌面模型配置见 [Desktop README](../../apps/desktop/README.md)。生产浏览器接入和模板下载/导入尚未实现，`build:web` 的静态产物不自带本地后端。
+Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepseek-flash` 或 `deepseek-v4-pro`。环境变量配置见 [dev-server.ts](dev-server.ts)，桌面模型配置见 [Desktop README](../../apps/desktop/README.md)。
+
+## Web 模板交付
+
+`pnpm dev:web` 使用当前仓库的 Template 源码准备独立项目 ZIP。工作台同源请求 `GET /api/v1/templates/<version>/download` 可下载当前模板，响应包含 `Content-Disposition` 和 `X-Template-SHA256`。其中 `<version>` 为 Template 的 package.json 版本，其他版本返回 404。下载请求沿用开发代理的来源校验。
+
+`pnpm build:web` 构建工作台到 `packages/app/dist/`，另在仓库根目录的 `dist/web-template/` 输出版本化 ZIP 和 `manifest.json`。正式 Web 宿主启动时校验 ZIP，并通过同一个下载接口提供给已登录用户。解压后的模板从 npm 安装固定版本的 Origamix 依赖。对外交付前运行 `pnpm release:registry` 确认这些版本可安装。
+
+## 部署正式 Web 宿主
+
+从仓库根目录构建并运行。启动前通过部署环境注入访问密码，再执行启动命令。
+
+```sh
+pnpm build:web
+pnpm start:web
+```
+
+| 变量                       | 用途                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ORIGAMIX_WEB_PASSWORD`    | 必填。单用户实例的访问密码，有效长度至少 16 字符，上限 512 字符。                                         |
+| `ORIGAMIX_WEB_PORT`        | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
+| `ORIGAMIX_WEB_ORIGIN`      | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
+| `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根目录的 `.origamix-web/production/`。                                                  |
+| `ORIGAMIX_WEB_PROJECT_DIR` | 可选，经部署者授权的现有项目目录。                                                                        |
+| `DEEPSEEK_API_KEY`         | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
+
+远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。备份时一并保留数据目录和受管理项目目录。
+
+打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
+
+当前部署模型是单用户自托管。项目沿用 SQLite 和宿主授权的目录。账号级项目隔离、MySQL 和浏览器目录初始化属于后续阶段。
+
+根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
 
 ## 页面操作与状态
 
@@ -97,7 +129,7 @@ ORIGAMIX_WEB_STATE_DIR=/absolute/path/to/development-state
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/authorized-project
 ```
 
-Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默认 ORIGAMIX_DESKTOP=0。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；不会把整个环境对象或 VITE_* 配置注入前端。浏览器的开发代理仍使用原有 DEV 边界，不新增生产远程连接能力。
+Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默认 ORIGAMIX_DESKTOP=0。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；不会把整个环境对象或 VITE_* 配置注入前端。正式 Web 宿主使用单独的启动入口和会话。
 
 这些文件不保存凭据。Web 开发模型密钥仍通过进程环境 DEEPSEEK_API_KEY 注入，仅在后端凭据回调使用；不得写入 VITE_*、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
 

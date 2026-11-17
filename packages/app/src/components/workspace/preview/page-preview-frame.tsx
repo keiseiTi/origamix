@@ -60,7 +60,7 @@ export const PagePreviewFrame = ({
     [projectId, pageId],
   );
   const previewUrl = useMemo(() => {
-    const url = new URL('preview.html', window.location.href);
+    const url = new URL('preview.html', document.baseURI);
     url.search = new URLSearchParams({ projectId, pageId }).toString();
     return url.toString();
   }, [pageId, projectId]);

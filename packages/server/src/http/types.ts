@@ -8,6 +8,12 @@ import type { AgentRunService } from '../agent/run-service';
 import type { AgentEventBroker } from '../agent/event-broker';
 import type { AgentService } from '../agent/agent-service';
 
+export interface TemplateDownload {
+  version: string;
+  body: Buffer;
+  sha256: string;
+}
+
 export interface HttpServerInput {
   desktopToken: string;
   serviceInstanceId: string;
@@ -17,6 +23,7 @@ export interface HttpServerInput {
   projectTasks?: Pick<import('../agent/project-task-service').ProjectTaskService, 'get' | 'decide'>;
   projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];
+  templateDownload?: TemplateDownload;
   agent?: {
     conversations: Pick<ConversationService, 'list' | 'history'>;
     runs: Pick<AgentRunService, 'get'>;

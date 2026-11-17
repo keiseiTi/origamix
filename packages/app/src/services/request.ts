@@ -1,3 +1,4 @@
+import { isProductionWeb, observeWebSession } from './web-session';
 import { isApiResultEnvelope, type BackendStatus } from '@origamix/shared';
 
 export interface ApiConnection {
@@ -83,8 +84,8 @@ export const getApiConnection = async (forceRefresh = false): Promise<ApiConnect
   const load = async (): Promise<ApiConnection> => {
     let next = await window.api?.backend?.getConnection?.();
     if (generation !== connectionGeneration) throw new BackendConnectionChangedError();
-    if (!next && import.meta.env.DEV) {
-      // Only the Vite host authenticates the same-origin browser proxy.
+    if (!next && (import.meta.env.DEV || isProductionWeb())) {
+      // The Web host authenticates the same-origin browser proxy.
       next = { baseUrl: '/api/v1', token: '', serviceInstanceId: '' };
     }
     if (!next) throw new Error('当前环境不支持本地服务，请在桌面应用中打开。');
@@ -150,6 +151,7 @@ export const request = async <T>(
       response = await fetchWithConnection(refreshed, path, body);
     }
   }
+  observeWebSession(response);
   const result = await response.json();
   if (generation !== connectionGeneration || !backendAvailable)
     throw new BackendConnectionChangedError();
@@ -184,6 +186,7 @@ export const requestStream = async (
     signal.throwIfAborted();
   };
   assertCurrent();
+  observeWebSession(response);
   if (!response.ok) {
     const result: unknown = await response.json();
     assertCurrent();

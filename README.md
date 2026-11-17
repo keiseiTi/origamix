@@ -18,7 +18,7 @@ pnpm dev:web   # 浏览器开发宿主
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Web 开发代理会在宿主侧附加认证信息。当前仓库未提供完整的生产远程部署和浏览器模板下载/导入功能，不应把开发代理当成这些功能的实现。
+Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 
@@ -72,7 +72,7 @@ pnpm build
 | 命令                 | 产物/用途                                                |
 | -------------------- | -------------------------------------------------------- |
 | `pnpm build:libs`    | Shared、Runtime、Materials 必需构建产物                  |
-| `pnpm build:web`     | 上述依赖及 App 的静态资源                                |
+| `pnpm build:web`     | Web 宿主所需的后端、工作台静态资源和版本化项目模板 ZIP   |
 | `pnpm build`         | 库 → Server → App → Desktop 编译和资源组装，不制作安装包 |
 | `pnpm package:dir`   | 构建后生成 macOS arm64 应用目录，使用本地 ad-hoc 签名    |
 | `pnpm package:mac`   | 四项检查后制作 macOS arm64 DMG 和 ZIP 本地试用包         |

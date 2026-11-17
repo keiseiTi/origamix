@@ -105,6 +105,29 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
     code: 200,
     data: { serviceInstanceId: input.serviceInstanceId },
   }));
+  const template = input.templateDownload;
+  if (template)
+    server.get<{ Params: { version: string } }>(
+      '/api/v1/templates/:version/download',
+      async (request, reply) => {
+        if (request.params.version !== template.version)
+          return reply.code(404).send({
+            success: false,
+            code: 404,
+            data: null,
+            message: '模板版本不存在',
+          });
+        return reply
+          .type('application/zip')
+          .header(
+            'Content-Disposition',
+            `attachment; filename="origamix-template-${template.version}.zip"`,
+          )
+          .header('Cache-Control', 'private, no-store')
+          .header('X-Template-SHA256', template.sha256)
+          .send(template.body);
+      },
+    );
   const context = { server, input, route };
   registerProjectSettingsAgentRoutes({ server, input, route });
   registerProjectRoutes(context);

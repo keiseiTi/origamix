@@ -1,9 +1,9 @@
 import { loadAppConfig } from './config.ts';
 import { nanoid } from 'nanoid';
 import { mkdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
+import { prepareWebTemplate } from './template-download.ts';
 
 const apiPrefix = '/api/v1';
 
@@ -16,16 +16,10 @@ export const localWebServer = (): Plugin => {
       const config = loadAppConfig();
       if (config.desktop || process.env.VITEST) return;
       const { startServer } = await import('@origamix/server/runtime');
-      const { prepareTemplateArtifact } = await import('@origamix/server/template-artifact');
       const stateDir = config.stateDir;
       await mkdir(stateDir, { recursive: true });
       const templatePath = resolve(stateDir, 'template');
-      await prepareTemplateArtifact({
-        sourceTemplate: fileURLToPath(new URL('../template', import.meta.url)),
-        targetTemplate: templatePath,
-        runtimePackage: fileURLToPath(new URL('../runtime', import.meta.url)),
-        materialsPackage: fileURLToPath(new URL('../materials', import.meta.url)),
-      });
+      const templateDownload = await prepareWebTemplate(templatePath);
       const token = nanoid(48);
       const serviceInstanceId = nanoid();
       const port = vite.config.server.port ?? config.port;
@@ -34,6 +28,7 @@ export const localWebServer = (): Plugin => {
         port: config.serverPort,
         databasePath: resolve(stateDir, 'origamix.db'),
         templatePath,
+        templateDownload,
         desktopToken: token,
         serviceInstanceId,
         allowedOrigins: [...hosts].map((host) => `http://${host}`),

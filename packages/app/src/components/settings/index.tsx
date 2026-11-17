@@ -1,3 +1,4 @@
+import { hasProductionWebModel, isProductionWeb } from '@/services/web-session';
 import {
   Badge,
   Button,
@@ -71,6 +72,7 @@ export const SettingsPage = ({
       setHasModelApiKey: state.setHasModelApiKey,
     })),
   );
+  const productionWeb = isProductionWeb();
   const [apiKey, setApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState<ModelSettings['model']>('deepseek-flash');
   const [userName, setUserName] = useState(userProfile.name);
@@ -97,6 +99,7 @@ export const SettingsPage = ({
   }, [initialSection]);
 
   useEffect(() => {
+    if (productionWeb) return;
     let active = true;
     Promise.resolve(window.api?.settings?.getModel?.())
       .then((settings) => {
@@ -113,7 +116,7 @@ export const SettingsPage = ({
     return () => {
       active = false;
     };
-  }, [setHasModelApiKey]);
+  }, [productionWeb, setHasModelApiKey]);
 
   const save = async (): Promise<void> => {
     setIsSaving(true);
@@ -191,7 +194,7 @@ export const SettingsPage = ({
       <div ref={scrollContainerRef} className='min-h-0 flex-1 overflow-auto'>
         <div className='mx-auto w-full max-w-3xl px-8 py-9'>
           <p className='mt-0 mb-8 text-sm text-zinc-500 dark:text-zinc-400'>应用外观与模型连接</p>
-          <section className='mb-10'>
+          <section className='mb-10' hidden={productionWeb}>
             <div className='mb-4'>
               <h2 className='m-0 text-base font-semibold'>用户设置</h2>
               <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
@@ -299,7 +302,19 @@ export const SettingsPage = ({
             </RadioGroup>
           </section>
 
-          <section ref={modelSectionRef}>
+          {productionWeb && (
+            <section ref={modelSectionRef}>
+              <h2 className='mb-4 text-base font-semibold'>模型设置</h2>
+              <Card className='gap-2 p-4'>
+                <p className='text-sm font-medium'>DeepSeek Flash</p>
+                <p className='text-xs text-zinc-500 dark:text-zinc-400'>
+                  {hasProductionWebModel() ? '已配置 API Key。' : '尚未配置 API Key。'}
+                  由部署者在 Web 宿主配置 DEEPSEEK_API_KEY。
+                </p>
+              </Card>
+            </section>
+          )}
+          <section ref={productionWeb ? undefined : modelSectionRef} hidden={productionWeb}>
             <div className='mb-4 flex items-start justify-between gap-4'>
               <div>
                 <h2 className='m-0 text-base font-semibold'>模型设置</h2>

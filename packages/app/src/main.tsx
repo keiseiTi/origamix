@@ -6,7 +6,9 @@ import './main.css';
 
 // Desktop loads the built document through file://; hash routes preserve that file path.
 const createRouter = window.location.protocol === 'file:' ? createHashRouter : createBrowserRouter;
-const router = createRouter([{ path: '/', element: <App /> }]);
+const router = createRouter([
+  { path: window.location.protocol === 'file:' ? '/' : '*', element: <App /> },
+]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

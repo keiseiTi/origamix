@@ -1,3 +1,4 @@
+import { WebSessionNotice } from '@/components/web-session-notice';
 import { watchBackendConnection } from '@/services/request';
 import { Toaster, TooltipProvider } from '@origamix/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -47,6 +48,7 @@ const App = (): React.JSX.Element => {
   return (
     <Toaster>
       <TooltipProvider>
+        <WebSessionNotice />
         <AppLayout
           sidebar={
             <SidebarNavigation

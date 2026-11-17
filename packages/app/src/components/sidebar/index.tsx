@@ -1,6 +1,6 @@
 import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';
-import { FolderOpen, FolderPlus, Settings, User } from 'lucide-react';
+import { FolderOpen, FolderPlus, LogOut, Settings, User } from 'lucide-react';
 import { useState } from 'react';
 import { PageFormModal } from './mod/page-form-modal';
 import { CreateProjectModal } from './mod/create-project-modal';
@@ -8,7 +8,8 @@ import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import { ProjectNavigation } from './project-navigation';
 import { usePreferencesStore } from '@/store/preferences';
-import { type PageItem } from '@/store/workspace';
+import { clearWorkspaceSession, type PageItem } from '@/store/workspace';
+import { isProductionWeb } from '@/services/web-session';
 import { useProjectActions } from '@/hooks/use-project-actions';
 import { isMacDesktop } from '@/utils';
 
@@ -38,6 +39,7 @@ export const Sidebar = ({
   const [pageForm, setPageForm] = useState<{ projectId: string; page?: PageItem } | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const projectActions = useProjectActions({
     flushEditor,
     onPageAdded: onPageCreated,
@@ -61,6 +63,21 @@ export const Sidebar = ({
   const openSettingsModal = (): void => {
     keepSidebarOpen();
     onOpenSettings();
+  };
+
+  const signOut = async () => {
+    setIsSigningOut(true);
+    setActionError(null);
+    try {
+      await flushEditor();
+      const response = await fetch('/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('退出登录失败，请重试');
+      clearWorkspaceSession();
+      window.location.replace('/auth/login');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '退出登录失败，请重试');
+      setIsSigningOut(false);
+    }
   };
 
   return (
@@ -135,20 +152,35 @@ export const Sidebar = ({
             } else setLifecycleTarget(target);
           }}
         />
-        <Button
-          variant='ghost'
-          className='mt-auto h-10 w-full justify-start gap-2.5 px-2 text-zinc-600 hover:bg-white hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
-          onClick={openSettingsModal}
-        >
-          <span
-            className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-white shadow-sm'
-            style={{ backgroundColor: userProfile.iconBackground }}
+        <div className='mt-auto flex items-center gap-1'>
+          <Button
+            variant='ghost'
+            className='h-10 w-full justify-start gap-2.5 px-2 text-zinc-600 hover:bg-white hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'
+            onClick={openSettingsModal}
           >
-            <User size={17} />
-          </span>
-          <span className='min-w-0 flex-1 truncate text-left'>{userProfile.name}</span>
-          <Settings size={14} className='text-zinc-400' />
-        </Button>
+            <span
+              className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-white shadow-sm'
+              style={{ backgroundColor: userProfile.iconBackground }}
+            >
+              <User size={17} />
+            </span>
+            <span className='min-w-0 flex-1 truncate text-left'>{userProfile.name}</span>
+            <Settings size={14} className='text-zinc-400' />
+          </Button>
+          {isProductionWeb() && (
+            <Button
+              variant='ghost'
+              size='icon'
+              className='shrink-0'
+              aria-label='退出登录'
+              title='退出登录'
+              disabled={isSigningOut}
+              onClick={() => void signOut()}
+            >
+              <LogOut size={16} />
+            </Button>
+          )}
+        </div>
       </aside>
       {projectActions.pendingInitialization && (
         <OpenProjectModal
