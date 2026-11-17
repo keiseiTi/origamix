@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+@source '../../../materials/antd';
+@source '../../../materials/components';
+@import '@origamix/ui/styles.css';

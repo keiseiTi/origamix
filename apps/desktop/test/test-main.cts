@@ -44,15 +44,8 @@ app.on('will-quit', () => {
   );
 });
 
-const waitFor = async <T,>(check: () => T | Promise<T>) => {
-  const deadline = Date.now() + 10000;
-  while (Date.now() < deadline) {
-    const result = await check();
-    if (result) return result;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error('Window did not reach the expected state');
-};
+const { waitFor, seedPreviewPage, verifyPreview } =
+  require('./preview-isolation.cts') as typeof import('./preview-isolation.cts');
 
 require(resolve(__dirname, '../dist/main/index.cjs'));
 app
@@ -89,14 +82,8 @@ app
     };
     const grant = await window.api.dialog.chooseProjectParent();
     const project = await request('/projects/create', { directoryGrantId: grant.directoryGrantId, name: 'Smoke Project', code: 'smoke-project', pageDirectory: 'pages', layoutEnabled: true });
-    await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
-    const pages = await request('/pages/list', { projectId: project.id });
-    const working = await request('/pages/working-state/get', { projectId: project.id, pageId: pages[0].id });
-    await request('/pages/working-operations/apply', { projectId: project.id, pageId: pages[0].id, baseWorkingVersion: working.workingVersion, operations: [{
-      operation: 'addElement', elementId: 'preview_button', parentId: 'element_root',
-      element: { type: 'button', props: { text: 'Desktop preview verified' } }
-    }] });
-    return { path: project.path, projectId: project.id, pageId: pages[0].id, serviceInstanceId: connection.serviceInstanceId };
+    const page = await request('/pages/create', { projectId: project.id, name: 'Home', slug: 'home' });
+    return { path: project.path, projectId: project.id, pageId: page.id, serviceInstanceId: connection.serviceInstanceId };
   })()`);
     assert.equal(result.path, join(projects, 'smoke-project'));
     assert.ok(existsSync(join(result.path, 'origamix.project.json')));
@@ -118,16 +105,25 @@ app
     );
     const recoveredProjects = await main.webContents.executeJavaScript(`(async () => {
       const connection = await window.api.backend.getConnection();
-      const response = await fetch(connection.baseUrl + '/projects/list', { method: 'POST', body: JSON.stringify({}), headers: {
-        Authorization: 'Bearer ' + connection.token,
-        'X-Origamix-Service': connection.serviceInstanceId,
-        'Content-Type': 'application/json'
-      }});
-      return response.json();
+      const request = async (path, body = {}) => {
+        const response = await fetch(connection.baseUrl + path, {
+          method: 'POST', body: JSON.stringify(body), headers: {
+            Authorization: 'Bearer ' + connection.token,
+            'X-Origamix-Service': connection.serviceInstanceId,
+            'Content-Type': 'application/json'
+          },
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Desktop smoke request failed');
+        return result.data;
+      };
+      const projects = await request('/projects/list');
+      await (${seedPreviewPage.toString()})(request, ${JSON.stringify(result.projectId)},
+        connection.baseUrl, ${JSON.stringify(result.pageId)});
+      return projects;
     })()`);
-    assert.equal(recoveredProjects.success, true);
     assert.equal(
-      recoveredProjects.data.some((project: { id: string }) => project.id === result.projectId),
+      recoveredProjects.some((project: { id: string }) => project.id === result.projectId),
       true,
     );
     main.reload();
@@ -138,44 +134,7 @@ app
           `document.body.innerText.includes('Smoke Project') && document.body.innerText.includes('Home')`,
         ),
     );
-    await main.webContents.executeJavaScript(`(async () => {
-      const page = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Home');
-      page?.click();
-    })()`);
-    await waitFor(() =>
-      main.webContents.executeJavaScript(
-        `Boolean(document.querySelector('button[aria-label="预览"]'))`,
-      ),
-    );
-    await main.webContents.executeJavaScript(
-      `document.querySelector('button[aria-label="预览"]')?.click()`,
-    );
-    try {
-      await waitFor(() =>
-        main.webContents.executeJavaScript(`(() => {
-          const frame = document.querySelector('iframe[title="Home 预览"]');
-          return Boolean(frame?.contentDocument?.body.innerText.includes('Desktop preview verified'));
-        })()`),
-      );
-    } catch (error) {
-      console.error(
-        'Preview state:',
-        await main.webContents.executeJavaScript(`({
-        host: document.body.innerText.slice(0, 1500),
-        frames: [...document.querySelectorAll('iframe')].map(frame => ({
-          src: frame.src, text: frame.contentDocument?.body.innerText.slice(0, 1500)
-        }))
-      })`),
-      );
-      throw error;
-    }
-    assert.equal(
-      await main.webContents.executeJavaScript(`(() => {
-        const frame = document.querySelector('iframe[title="Home 预览"]');
-        return typeof frame?.contentWindow?.api;
-      })()`),
-      'undefined',
-    );
+    await verifyPreview(main.webContents);
     assert.equal(
       await main.webContents.executeJavaScript('typeof window.api.projectPreview'),
       'undefined',

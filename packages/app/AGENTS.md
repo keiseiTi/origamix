@@ -21,7 +21,7 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 
 ## Runtime boundaries
 
-- Workbench routes use browser paths over HTTP and hash routes for Desktop `file:` documents. Build iframe URLs from the current document in file mode, preserving the compiled index path; never use the opaque file origin as a URL base. The real Desktop smoke checks actual iframe material rendering and the absence of a bridge.
+- Workbench routes use browser paths over HTTP and hash routes for Desktop `file:` documents. Resolve `preview.html` beside the workbench document, including Desktop's packaged Renderer directory. `preview-document.ts` emits the preview's script and styles inside that document so its opaque origin can boot under both HTTP and `file:`. Vite rebuilds the document after source edits and asks retained preview frames to reload.
 
 - `src/materials/` owns the literal built-in import allowlist and async editor registration. Resolve stack through `projectsService.stack`, load editor materials only in editing mode, and keep module caches keyed by material-set identity/version. Material loaders accept only the material-set reference and verify the loaded module identity/version; stack compatibility belongs to the project-service boundary. Rejected loads must remain retryable; a previous project's completion must not install a registration into the current project. Delay Working-session readiness until the material registration mounts. Preview receives the resolved stack only in host snapshots and loads runtime separately without credentials or HTTP.
 
@@ -44,12 +44,12 @@ Applies to `packages/app/`. Read the [root guide](../../AGENTS.md) first.
 - Structured clarification choices remain bound to their source Run and base Working version. Expired choices are disabled and Canvas markers removed; selection requests carry the clarification identity and selected Element ID for Server revalidation.
 - Retain one Apply request ID for the same page Revision and Working version until the result is known; an ambiguous transport failure must not turn an explicit retry into a different logical operation. Apply is available only for a clean, explicitly saved Revision.
 - Renderer transports cache backend authority only as a convenience. After a desktop Server restart, refresh it through the named connection bridge; never replay an ambiguous failed mutation automatically, and recover Agent views from durable Run/Message/Schema state.
-- Preview data access stays in the trusted workbench and sends application snapshots via postMessage to a sandboxed iframe. Never expose Desktop credentials or a broad bridge to the iframe. Rendering errors must remain visible without corrupting the editing session.
+- Preview data access stays in the trusted workbench. The iframe allows scripts and has an opaque origin. The workbench accepts readiness only from the current iframe with origin `null`, matching project/page identity and a transferred MessagePort. Send snapshots only through that port and close it when replacing the iframe. The file-mode child uses wildcard targetOrigin only for readiness (including the port) and render reports because a file parent cannot be named as a target origin. Web uses the workbench URL's exact origin. Rendering errors must remain visible without corrupting the editing session.
 - Preview entry flushes only the target page. Preview snapshots come from that page’s Working-state read and the project stack and carry Working version/hash and a preview ID. Returning to preview reuses the iframe when the Working version, hash and material stack match. Explicit refresh always opens a new iframe with the latest snapshot. Filter outcomes against the current identity and a monotonic report sequence, and ignore late reads and diagnostic completions. Protocol changes update Shared and Server together.
 
 ## Interaction contract
 
-- `index.html` opts the workbench/preview document into `origamix-ui`; shared palette and foundation styles come from `@origamix/ui/styles.css`. App keeps status colors, scrollbar, layout and theme preference. Keep UI primitives and their generator aliases in the UI package rather than recreating `src/components/ui/`.
+- The workbench and generated preview documents opt into `origamix-ui`; shared palette and foundation styles come from `@origamix/ui/styles.css`. App keeps status colors, scrollbar, layout and theme preference. Keep UI primitives and their generator aliases in the UI package rather than recreating `src/components/ui/`.
 
 - Use the shared shadcn/ui components through `@origamix/ui`, backed by Base UI, with Tailwind and Lucide under root rules. Feature code uses the generated shadcn APIs directly and must not import Base UI primitives or add compatibility APIs for replaced component libraries.
 - `src/main.css` explicitly includes Materials' Ant Design source in Tailwind scanning. Keep this source declaration when adding package-owned canvas classes; workbench input controls are owned by UI; `@origamix/ui/styles.css` scans its own sources.
@@ -74,7 +74,7 @@ pnpm --filter @origamix/app build
 
 - App automation is limited to browser-owned core-flow risks that Server cannot prove: stale page responses, failed-save draft retention, stable retry identity, recovery and transition blocking. Prefer extending an existing workflow scenario. Do not add tests for presentation components, layout, ordinary request forwarding or component composition.
 - Add a new App scenario only for a distinct uncovered workflow risk, and record why existing workflow coverage cannot express it. Keep new tests under `test/` mirroring their source area.
-- Web host/proxy changes: `pnpm --filter @origamix/app test:web`. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
+- Web host/proxy changes: `pnpm --filter @origamix/app test:web`. This opens a Chromium session through the Desktop test launcher and executes a page expression against the real Web proxy. The proxy accepts the workbench origin and rejects cross-origin browser requests before injecting credentials. Supervisor/rebuild changes: also `pnpm --filter @origamix/server test:dev`.
 - Use `pnpm dev:web` for browser interaction checks. Directory pickers, settings and independent windows need `pnpm dev` and Desktop smoke checks, not only browser screenshots.
 - Run root gates before handoff and report both-theme interaction evidence. Existing unit/smoke tests are not complete visual coverage.
 

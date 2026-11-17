@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import type { Plugin } from 'vite';
 
+const apiPrefix = '/api/v1';
+
 // Development-only host integration. No secret is injected into client bundles.
 export const localWebServer = (): Plugin => {
   return {
@@ -40,12 +42,13 @@ export const localWebServer = (): Plugin => {
           provider === 'deepseek' ? process.env.DEEPSEEK_API_KEY?.trim() : undefined,
       });
       vite.middlewares.use((request, response, next) => {
-        if (!/^\/api\/v1(?:\/|$)/.test(request.url ?? '')) return next();
+        if (!request.url?.startsWith(apiPrefix)) return next();
         const origin = request.headers.origin;
+        const fetchSite = request.headers['sec-fetch-site'];
         if (
           !hosts.has(request.headers.host ?? '') ||
           (origin && ![...hosts].some((host) => origin === `http://${host}`)) ||
-          request.headers['sec-fetch-site'] === 'cross-site'
+          fetchSite !== 'same-origin'
         ) {
           response.writeHead(403).end('Untrusted local API request');
           return;
@@ -53,7 +56,7 @@ export const localWebServer = (): Plugin => {
         next();
       });
       vite.config.server.proxy ??= {};
-      vite.config.server.proxy['/api/v1'] = {
+      vite.config.server.proxy[apiPrefix] = {
         target: `http://127.0.0.1:${backend.port}`,
         configure(proxy) {
           proxy.on('proxyReq', (request) => {

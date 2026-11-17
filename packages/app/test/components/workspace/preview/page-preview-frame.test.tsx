@@ -59,12 +59,15 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   };
   const view = render(<PagePreviewFrame {...props} active />);
   const frame = view.getByTitle('Test 预览') as HTMLIFrameElement;
-  const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
-  const send = (data: Record<string, unknown>, target = frame) =>
+  const post = vi.fn();
+  const port = { postMessage: post, close: vi.fn() } as unknown as MessagePort;
+  const send = (data: Record<string, unknown>, target = frame, targetPort = port) =>
     fireEvent(
       window,
       new MessageEvent('message', {
         source: target.contentWindow,
+        origin: 'null',
+        ports: data.type === 'origamix.preview.ready' ? [targetPort] : [],
         data: { projectId: props.projectId, pageId: props.pageId, ...data },
       }),
     );
@@ -111,8 +114,12 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='three' theme='dark' />);
   await waitFor(() => expect(view.getByTitle('Test 预览')).not.toBe(frame));
   const replacement = view.getByTitle('Test 预览') as HTMLIFrameElement;
-  const replacementPost = vi.spyOn(replacement.contentWindow!, 'postMessage');
-  send({ type: 'origamix.preview.ready' }, replacement);
+  const replacementPost = vi.fn();
+  const replacementPort = {
+    postMessage: replacementPost,
+    close: vi.fn(),
+  } as unknown as MessagePort;
+  send({ type: 'origamix.preview.ready' }, replacement, replacementPort);
   expect(replacementPost.mock.calls.at(-1)![0].snapshot.workingVersion).toBe(3);
   await act(async () => report.reject(new Error('obsolete report failure')));
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
@@ -139,7 +146,8 @@ it('publishes the loaded snapshot when iframe readiness arrives before React com
     />,
   );
   const frame = view.getByTitle('Test 预览') as HTMLIFrameElement;
-  const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => undefined);
+  const post = vi.fn();
+  const port = { postMessage: post, close: vi.fn() } as unknown as MessagePort;
   await waitFor(() => expect(mocks.workingState).toHaveBeenCalledOnce());
   await act(async () => {
     pending.resolve(working(1));
@@ -149,6 +157,8 @@ it('publishes the loaded snapshot when iframe readiness arrives before React com
       window,
       new MessageEvent('message', {
         source: frame.contentWindow,
+        origin: 'null',
+        ports: [port],
         data: {
           type: 'origamix.preview.ready',
           projectId: 'project_test',

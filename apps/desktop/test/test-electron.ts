@@ -11,8 +11,13 @@ const env: NodeJS.ProcessEnv = { ...process.env, ORIGAMIX_SERVER_PORT: '0' };
 env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ''} --require=${JSON.stringify(require.resolve('tsx/cjs'))}`;
 delete env.ELECTRON_RUN_AS_NODE;
 const resources = process.argv[2] === '--resources';
-const script = resources ? './test-resources.cts' : './test-main.cts';
-const args = process.argv.slice(resources ? 3 : 2);
+const web = process.argv[2] === '--web';
+const script = resources
+  ? './test-resources.cts'
+  : web
+    ? './test-web-preview.cts'
+    : './test-main.cts';
+const args = process.argv.slice(resources || web ? 3 : 2);
 const result = spawnSync(
   electron as unknown as string,
   [fileURLToPath(new URL(script, import.meta.url)), ...args],

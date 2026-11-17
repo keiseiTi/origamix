@@ -42,7 +42,15 @@ export const PagePreviewFrame = ({
   const currentSnapshot = useRef<PagePreviewSnapshot | null>(null);
   const reportSequence = useRef(0);
   const observedAt = useRef(0);
-  const ready = useRef(false);
+  const snapshotPort = useRef<MessagePort | null>(null);
+
+  const attachFrame = useCallback((frame: HTMLIFrameElement | null) => {
+    if (frame !== iframeRef.current) {
+      snapshotPort.current?.close();
+      snapshotPort.current = null;
+    }
+    iframeRef.current = frame;
+  }, []);
 
   useEffect(
     () => () => {
@@ -52,35 +60,19 @@ export const PagePreviewFrame = ({
     [projectId, pageId],
   );
   const previewUrl = useMemo(() => {
-    const url = new URL(window.location.href);
-    const search = new URLSearchParams({ projectId, pageId }).toString();
-    if (url.protocol === 'file:') {
-      url.search = '';
-      url.hash = `/preview?${search}`;
-    } else {
-      url.pathname = '/preview';
-      url.search = search;
-      url.hash = '';
-    }
+    const url = new URL('preview.html', window.location.href);
+    url.search = new URLSearchParams({ projectId, pageId }).toString();
     return url.toString();
   }, [pageId, projectId]);
 
-  useEffect(() => {
-    ready.current = false;
-  }, [previewUrl]);
-
   const publishSnapshot = useCallback(
     (next: PagePreviewSnapshot): void => {
-      if (ready.current)
-        iframeRef.current?.contentWindow?.postMessage(
-          {
-            type: 'origamix.preview.snapshot',
-            projectId,
-            pageId,
-            snapshot: next,
-          } satisfies HostToPreviewMessage,
-          '*',
-        );
+      snapshotPort.current?.postMessage({
+        type: 'origamix.preview.snapshot',
+        projectId,
+        pageId,
+        snapshot: next,
+      } satisfies HostToPreviewMessage);
     },
     [pageId, projectId],
   );
@@ -94,7 +86,8 @@ export const PagePreviewFrame = ({
       if (hasRetainedSnapshot) {
         // Ignore messages from the old frame while React mounts its replacement.
         iframeRef.current = null;
-        ready.current = false;
+        snapshotPort.current?.close();
+        snapshotPort.current = null;
         setFrameKey(next.snapshotId);
       } else {
         publishSnapshot(next);
@@ -102,6 +95,17 @@ export const PagePreviewFrame = ({
     },
     [publishSnapshot],
   );
+
+  useEffect(() => {
+    const hot = import.meta.hot;
+    if (!hot) return;
+    const reload = () => {
+      const retained = currentSnapshot.current;
+      if (retained) replaceSnapshot({ ...retained, snapshotId: nanoid() });
+    };
+    hot.on('origamix:preview-updated', reload);
+    return () => hot.off?.('origamix:preview-updated', reload);
+  }, [replaceSnapshot]);
 
   const readSnapshot = useCallback(
     async (apply: (next: PagePreviewSnapshot) => void): Promise<void> => {
@@ -194,22 +198,20 @@ export const PagePreviewFrame = ({
   useEffect(() => {
     const receive = (event: MessageEvent): void => {
       const frameWindow = iframeRef.current?.contentWindow;
-      if (!frameWindow || event.source !== frameWindow || !isPreviewToHostMessage(event.data))
+      if (
+        !frameWindow ||
+        event.source !== frameWindow ||
+        event.origin !== 'null' ||
+        !isPreviewToHostMessage(event.data)
+      )
         return;
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.ready') {
-        const wasReady = ready.current;
-        ready.current = true;
-        // Read completion can precede React's commit. Read the same authority
-        // used by report validation so readiness never misses that snapshot.
+        if (snapshotPort.current || event.ports.length !== 1) return;
+        snapshotPort.current = event.ports[0];
         const retained = currentSnapshot.current;
-        if (retained) {
-          const next = wasReady ? { ...retained, snapshotId: nanoid() } : retained;
-          currentSnapshot.current = next;
-          reportSequence.current = 0;
-          publishSnapshot(next);
-        }
-      } else {
+        if (retained) publishSnapshot(retained);
+      } else if (snapshotPort.current) {
         void reportRender(event.data.report);
       }
     };
@@ -240,10 +242,10 @@ export const PagePreviewFrame = ({
     <div className='relative size-full bg-white dark:bg-zinc-950'>
       <iframe
         key={frameKey}
-        ref={iframeRef}
+        ref={attachFrame}
         title={`${pageName} 预览`}
         className='size-full border-0 bg-white dark:bg-zinc-950'
-        sandbox='allow-same-origin allow-scripts'
+        sandbox='allow-scripts'
         src={previewUrl}
       />
       <Button

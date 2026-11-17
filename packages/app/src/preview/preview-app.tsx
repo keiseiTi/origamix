@@ -2,23 +2,24 @@ import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
 import { type PagePreviewSnapshot } from '@origamix/shared';
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router';
 import { isHostToPreviewMessage, type PreviewToHostMessage } from './protocol';
 
 const postToHost = (message: PreviewToHostMessage): void => {
-  window.parent.postMessage(message, '*');
+  const target = location.protocol === 'file:' ? '*' : location.origin;
+  window.parent.postMessage(message, target);
 };
 
 export const PreviewApp = (): React.JSX.Element => {
-  const [params] = useSearchParams();
+  const params = new URLSearchParams(window.location.search);
   const projectId = params.get('projectId') ?? '';
   const pageId = params.get('pageId') ?? '';
   const [snapshot, setSnapshot] = useState<PagePreviewSnapshot | null>(null);
   const reportSequence = useRef(0);
   useEffect(() => {
     if (!projectId || !pageId) return;
-    const receive = (event: MessageEvent): void => {
-      if (event.source !== window.parent || !isHostToPreviewMessage(event.data)) return;
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (event: MessageEvent): void => {
+      if (!isHostToPreviewMessage(event.data)) return;
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       const next = event.data.snapshot;
       setSnapshot((current) =>
@@ -27,9 +28,11 @@ export const PreviewApp = (): React.JSX.Element => {
       document.documentElement.dataset.theme = event.data.snapshot.theme;
       document.documentElement.classList.toggle('dark', event.data.snapshot.theme === 'dark');
     };
-    window.addEventListener('message', receive);
-    postToHost({ type: 'origamix.preview.ready', projectId, pageId });
-    return () => window.removeEventListener('message', receive);
+    const target = location.protocol === 'file:' ? '*' : location.origin;
+    window.parent.postMessage({ type: 'origamix.preview.ready', projectId, pageId }, target, [
+      channel.port2,
+    ]);
+    return () => channel.port1.close();
   }, [pageId, projectId]);
 
   if (!projectId || !pageId)

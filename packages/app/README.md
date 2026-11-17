@@ -30,7 +30,7 @@ pnpm build:web
 pnpm --filter @origamix/app test:web
 ```
 
-`dev:web` 先编译并启动本地 Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认 `.origamix-web/` 数据位置。认证信息不注入浏览器配置。
+`dev:web` 先编译并启动本地 Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认 `.origamix-web/` 数据位置。代理只为同源浏览器请求注入认证信息，并要求 `Sec-Fetch-Site: same-origin`。`test:web` 使用 Electron 提供 Chromium 图形会话，运行临时项目验证预览隔离。
 
 浏览器开发模式没有原生目录选择器和凭据存储。Desktop 通过 Shared 中的命名桥提供这些能力。修改可见界面需实际验证亮暗主题；修改开发进程管理还需 Server `test:dev`。
 

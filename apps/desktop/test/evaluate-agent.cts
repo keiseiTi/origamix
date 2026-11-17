@@ -295,23 +295,22 @@ const runAgent = async (
 };
 
 const exercise = async (
-  contents: import('electron').WebContents,
-  documentExpression: string,
+  frame: import('electron').WebFrameMain,
   item: QualityCase,
   button: string,
 ) => {
   const requirements = { visible: item.visible, placeholders: item.placeholders };
   await waitFor(() =>
-    contents.executeJavaScript(`(() => {
-    const doc = ${documentExpression};
+    frame.executeJavaScript(`(() => {
+    const doc = document;
     const requirements = ${JSON.stringify(requirements)};
     return Boolean(doc && requirements.visible.every(text => doc.body.innerText.includes(text)) &&
       requirements.placeholders.every(text => [...doc.querySelectorAll('input')].some(input => input.placeholder === text)) &&
       [...doc.querySelectorAll('button')].some(node => node.textContent.trim() === ${JSON.stringify(button)}));
   })()`),
   );
-  const action = await contents.executeJavaScript(`(() => {
-    const doc = ${documentExpression};
+  const action = (await frame.executeJavaScript(`(() => {
+    const doc = document;
     const target = [...doc.querySelectorAll('button')].find(node => node.textContent.trim() === ${JSON.stringify(button)});
     const initialRect = target.getBoundingClientRect();
     // Match a normal browser click: reveal controls in legitimate scroll containers first.
@@ -325,16 +324,21 @@ const exercise = async (
     target.click();
     return { ok: true, scrolled: initialRect.x !== rect.x || initialRect.y !== rect.y,
       rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } };
-  })()`);
+  })()`)) as
+    | { ok: true; scrolled: boolean; rect: { x: number; y: number; width: number; height: number } }
+    | {
+        ok: false;
+        code: string;
+        rect: { x: number; y: number; width: number; height: number };
+        hitTag: string | null;
+      };
   if (!action.ok) {
     const error = new Error(action.code);
     Object.assign(error, { renderEvidence: action });
     throw error;
   }
   await waitFor(() =>
-    contents.executeJavaScript(
-      `(${documentExpression})?.body.innerText.includes(${JSON.stringify(item.afterClick)})`,
-    ),
+    frame.executeJavaScript(`document.body.innerText.includes(${JSON.stringify(item.afterClick)})`),
   );
   return action;
 };
@@ -354,7 +358,6 @@ const checkPreview = async (item: QualityCase, record: CaseRecord, button: strin
     await waitFor(() => evaluate(`Boolean(${previewButton})`));
     await evaluate(`(${previewButton}).click()`);
     const frameElement = `document.querySelector('iframe[title=${JSON.stringify(`${item.name} 预览`)}]')`;
-    const frame = `${frameElement}?.contentDocument`;
     const filename = `${item.id}-preview-${theme}.png`;
     let passed = false;
     let interaction;
@@ -368,9 +371,13 @@ const checkPreview = async (item: QualityCase, record: CaseRecord, button: strin
         20_000,
         'PREVIEW_NOT_VISIBLE',
       );
-      interaction = await exercise(main.webContents, frame, item, button);
+      const previewUrl = await evaluate(`${frameElement}.src`);
+      const frame = await waitFor(() =>
+        main.webContents.mainFrame.frames.find((candidate) => candidate.url === previewUrl),
+      );
+      interaction = await exercise(frame, item, button);
       assert.equal(
-        await evaluate(`typeof (${frame})?.defaultView?.api`),
+        await frame.executeJavaScript('typeof window.api'),
         'undefined',
         'PREVIEW_HAS_BRIDGE',
       );
@@ -675,8 +682,7 @@ app
         ownedWindows.push(window);
         await window.loadURL(`${serverUrl}/${item.id}`);
         const interaction = await exercise(
-          window.webContents,
-          'document',
+          window.webContents.mainFrame,
           item,
           item.finalButton ?? item.button,
         );

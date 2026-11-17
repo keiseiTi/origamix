@@ -7,6 +7,8 @@ const { existsSync, mkdtempSync, rmSync, readFileSync } =
   require('node:fs') as typeof import('node:fs');
 const { join, resolve } = require('node:path') as typeof import('node:path');
 const { tmpdir } = require('node:os') as typeof import('node:os');
+const { seedPreviewPage, verifyPreview } =
+  require('./preview-isolation.cts') as typeof import('./preview-isolation.cts');
 const { nanoid } = require('nanoid') as typeof import('nanoid');
 
 const state = mkdtempSync(join(tmpdir(), 'origamix-electron-smoke-'));
@@ -21,11 +23,8 @@ assert.equal(
 const templatePackage = JSON.parse(
   readFileSync(join(resources, 'template', 'package.json'), 'utf8'),
 );
-const templateVersion = JSON.parse(
-  readFileSync(join(resources, 'template', 'origamix.project.json'), 'utf8'),
-).version;
 for (const name of ['runtime', 'materials'])
-  assert.equal(templatePackage.dependencies[`@origamix/${name}`], templateVersion);
+  assert.equal(templatePackage.dependencies[`@origamix/${name}`], templatePackage.version);
 assert.equal(existsSync(join(resources, 'template', 'vendor')), false);
 const desktopDist = join(resources, 'app.asar', 'dist');
 assert.ok(existsSync(join(desktopDist, '.env')), 'Missing packaged environment defaults');
@@ -45,7 +44,7 @@ const finish = (error?: unknown) => {
   if (error) console.error(error);
   else
     console.info(
-      'Electron smoke passed: file:// renderer, packaged assets, preload IPC and SQLite backend.',
+      'Electron smoke passed: file:// renderer, packaged assets, preview isolation, preload IPC and SQLite backend.',
     );
   app.exit(error ? 1 : 0);
 };
@@ -88,13 +87,37 @@ app
             sandbox: true,
           },
         });
+        backend?.postMessage({ kind: 'grant', grantId: 'package_smoke_grant', path: state });
+        await window.loadFile(renderer);
+        await window.webContents.executeJavaScript(`(async () => {
+          const connection = await window.api.backend.getConnection();
+          const request = async (path, body = {}) => {
+            const response = await fetch(connection.baseUrl + path, {
+              method: 'POST',
+              headers: { Authorization: 'Bearer ' + connection.token,
+                'X-Origamix-Service': connection.serviceInstanceId, 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || 'Packaged resource request failed');
+            return result.data;
+          };
+          const project = await request('/projects/create', {
+            directoryGrantId: 'package_smoke_grant', name: 'Smoke Project',
+            code: 'smoke-project', pageDirectory: 'pages', layoutEnabled: true,
+          });
+          await (${seedPreviewPage.toString()})(request, project.id, connection.baseUrl);
+        })()`);
         await window.loadFile(renderer);
         const deadline = Date.now() + 10000;
         while (Date.now() < deadline) {
           const ready = await window.webContents.executeJavaScript(
             `Boolean(document.querySelector('main') && !document.querySelector('[aria-label="恢复工作区"]'))`,
           );
-          if (ready) return finish();
+          if (ready) {
+            await verifyPreview(window.webContents);
+            return finish();
+          }
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
         throw new Error(await window.webContents.executeJavaScript('document.body.innerText'));

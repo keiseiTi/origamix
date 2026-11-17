@@ -2,6 +2,7 @@ import { loadAppConfig } from './config.ts';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { previewDocument } from './preview-document.ts';
 import { localWebServer } from './dev-server.ts';
 
 export default defineConfig(() => {
@@ -9,7 +10,7 @@ export default defineConfig(() => {
   return {
     base: './',
     envDir: false as const,
-    plugins: [tailwindcss(), react(), localWebServer()],
+    plugins: [tailwindcss(), react(), previewDocument(), localWebServer()],
     server: {
       host: config.host,
       port: config.port,
