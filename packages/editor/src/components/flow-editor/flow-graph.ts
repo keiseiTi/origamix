@@ -1,6 +1,9 @@
 import type LogicFlow from '@logicflow/core';
-import type { PageFlow as Flow, OrigamixPageSchema as Schema } from '@origamix/shared';
-import { getNodeDefinition } from './nodes/node-catalog';
+import {
+  validateFlowSemantics,
+  type PageFlow as Flow,
+  type OrigamixPageSchema as Schema,
+} from '@origamix/shared';
 
 export interface EventTarget {
   elementId: string;
@@ -101,15 +104,17 @@ export const readGraph = (schema: Schema, target: EventTarget): EventGraph => {
   };
 };
 
-// Engine traverses recursively: reject cycles before committing a graph.
+// Convert canvas data first, then check the executable graph with the shared rules.
 export const toFlow = (graph: EventGraph): Flow => {
   const start = graph.nodes.find((node) => node.type === 'start');
-  if (!start || graph.nodes.filter((node) => node.type === 'start').length !== 1)
-    throw new Error('流程必须保留一个开始节点');
+  if (new Set(graph.nodes.map((node) => node.id)).size !== graph.nodes.length)
+    throw new Error('流程节点 ID 不能重复');
   const nodes: Flow['nodes'] = Object.fromEntries(
     graph.nodes.map((node) => {
       // LogicFlow adds presentation dimensions to properties; keep them only in flowGraph.
-      const { width: _width, height: _height, ...properties } = node.properties ?? {};
+      const properties = { ...node.properties };
+      delete properties.width;
+      delete properties.height;
       return [
         node.id,
         {
@@ -126,11 +131,10 @@ export const toFlow = (graph: EventGraph): Flow => {
     if (node.type === 'condition') node.props = { ...node.props, condition: [] };
   }
   for (const edge of graph.edges) {
-    const source = nodes[edge.sourceNodeId];
-    const target = nodes[edge.targetNodeId];
-    if (!source || !target) throw new Error('连线指向了不存在的节点');
-    if (getNodeDefinition(target.type)?.connections.acceptsInput === false)
-      throw new Error('开始节点不能有输入连线');
+    if (!Object.hasOwn(nodes, edge.sourceNodeId) || !Object.hasOwn(nodes, edge.targetNodeId))
+      throw new Error('连线指向了不存在的节点');
+    const source = nodes[edge.sourceNodeId]!;
+    const target = nodes[edge.targetNodeId]!;
     if (source.type === 'condition') {
       const branches = source.props.condition as { value: boolean; nextNode: string }[];
       const branch =
@@ -144,23 +148,24 @@ export const toFlow = (graph: EventGraph): Flow => {
               : 'true');
       if (branch !== 'true' && branch !== 'false') throw new Error('条件连线必须属于真或假分支');
       const value = branch === 'true';
-      if (branches.length >= 2 || branches.some((item) => item.value === value))
-        throw new Error('条件节点的真、假分支各只能连接一个节点');
       branches.push({ value, nextNode: target.id });
     }
     source.next.push(target.id);
     target.prev.push(source.id);
   }
-  const visited = new Set<string>();
-  const visiting = new Set<string>();
-  const visit = (id: string): void => {
-    if (visiting.has(id)) throw new Error('事件流程不能包含循环连线');
-    if (visited.has(id)) return;
-    visiting.add(id);
-    nodes[id]!.next.forEach(visit);
-    visiting.delete(id);
-    visited.add(id);
-  };
-  Object.keys(nodes).forEach(visit);
-  return { startId: start.id, nodes };
+  const flow = { startId: start?.id ?? '', nodes };
+  const [issue] = validateFlowSemantics(flow, '');
+  if (issue) {
+    const messages: Record<typeof issue.code, string> = {
+      INVALID_FLOW_START: issue.path.endsWith('/prev')
+        ? '开始节点不能有输入连线'
+        : '流程必须保留一个开始节点',
+      INVALID_FLOW_NODE: '流程节点 ID 无效',
+      INVALID_FLOW_EDGE: '流程连线无效',
+      FLOW_CYCLE: '事件流程不能包含循环连线',
+      INVALID_FLOW_BRANCH: '条件节点的真、假分支各只能连接一个节点',
+    };
+    throw new Error(messages[issue.code]);
+  }
+  return flow;
 };

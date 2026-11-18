@@ -1,5 +1,4 @@
 import type { PageFlow } from './flow-schema.ts';
-import { isFlowNodeProps } from './flow-node-manifest.ts';
 
 export interface FlowSemanticError {
   code:
@@ -44,12 +43,22 @@ export const validateFlowSemantics = (flow: PageFlow, path: string): FlowSemanti
         report('INVALID_FLOW_EDGE', `${at}/next`, `Edge references missing node ${next}`);
       else incoming.get(next)?.push(id);
     }
-    if (node.type === 'condition' && isFlowNodeProps('condition', node.props)) {
-      const branches = node.props.condition ?? [];
-      const destinations = branches.map((branch) => branch.nextNode).sort();
+    if (node.type === 'condition') {
+      const branches = node.props.condition === undefined ? [] : node.props.condition;
       if (
+        !Array.isArray(branches) ||
+        branches.some(
+          (branch: unknown) =>
+            !branch ||
+            typeof branch !== 'object' ||
+            !('value' in branch) ||
+            typeof branch.value !== 'boolean' ||
+            !('nextNode' in branch) ||
+            typeof branch.nextNode !== 'string',
+        ) ||
         new Set(branches.map((branch) => branch.value)).size !== branches.length ||
-        JSON.stringify(destinations) !== JSON.stringify([...node.next].sort())
+        JSON.stringify(branches.map((branch) => branch.nextNode).sort()) !==
+          JSON.stringify([...node.next].sort())
       )
         report(
           'INVALID_FLOW_BRANCH',

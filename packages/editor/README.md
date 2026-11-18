@@ -33,7 +33,7 @@ import { Editor, CodeEditor, createEditorTransaction, type EditorHandle } from '
 import '@origamix/editor/styles.css';
 ```
 
-包内仍按模块维护并使用相对路径，不提供历史子路径出口。FlowEditor 的动态加载边界保持在包内。
+包内仍按模块维护并使用相对路径，不提供历史子路径出口。FlowEditor 的动态加载边界保持在包内。LogicFlow 图转换后通过 Shared 校验流程结构。画布拖放由 [CanvasDragContext](src/components/canvas/canvas-drag-context.tsx) 负责，使用当前 EditorProvider 会话。CodeEditor 首次挂载时加载 Monaco，历史查看、Schema 和流程函数编辑共用这个加载入口。
 
 ## 宿主装配
 

@@ -169,6 +169,7 @@ export {
   PageFlowNodeSchema,
   ElementEventBindingSchema,
 } from './flow/flow-schema.ts';
+export { validateFlowSemantics, type FlowSemanticError } from './flow/flow-validation.ts';
 export type { PageFlow, PageFlowNode, ElementEventBinding } from './flow/flow-schema.ts';
 
 export { HyperValueSchema, FunctionValueSchema, isHyperValue } from './flow/hyper-value.ts';

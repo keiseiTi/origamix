@@ -1,10 +1,5 @@
-import { useEffect, useEffectEvent, useRef } from 'react';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
-import 'monaco-editor/esm/vs/language/json/monaco.contribution.js';
-import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js';
-import { configureMonacoWorkers } from './monaco-workers';
-import { cn } from '@origamix/ui';
-import { useEditorTheme } from '../../session/editor-environment';
+import { useEffect, useState } from 'react';
+import { Button, Spinner, cn } from '@origamix/ui';
 import type { EditorTheme } from '../../interfaces/editor';
 
 export interface CodeEditorProps {
@@ -18,77 +13,66 @@ export interface CodeEditorProps {
   ariaLabel?: string;
 }
 
-export const CodeEditor = ({
-  theme: themeOverride,
-  value = '',
-  onChange,
-  className,
-  placeholder,
-  language = 'json',
-  readOnly = false,
-  ariaLabel = '代码编辑器',
-}: CodeEditorProps): React.JSX.Element => {
-  const inheritedTheme = useEditorTheme();
-  const theme = themeOverride ?? inheritedTheme;
-  const container = useRef<HTMLDivElement>(null);
-  const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const syncingValue = useRef(false);
-  const notifyChange = useEffectEvent((nextValue: string) => onChange?.(nextValue));
+type MonacoView = (typeof import('./monaco-editor'))['MonacoEditor'];
+let pending: Promise<MonacoView> | undefined;
 
+const loadMonaco = (): Promise<MonacoView> => {
+  pending ??= import('./monaco-editor')
+    .then(({ MonacoEditor }) => MonacoEditor)
+    .catch((error: unknown) => {
+      pending = undefined;
+      throw error;
+    });
+  return pending;
+};
+
+export const CodeEditor = (props: CodeEditorProps): React.JSX.Element => {
+  const [View, setView] = useState<MonacoView | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!container.current) return;
-    configureMonacoWorkers();
-    const model = monaco.editor.createModel('', 'json');
-    const instance = monaco.editor.create(container.current, {
-      model,
-      automaticLayout: true,
-      minimap: { enabled: false },
-      fontSize: 12,
-      scrollBeyondLastLine: false,
-      tabSize: 2,
-      wordWrap: 'on',
-      padding: { top: 12, bottom: 12 },
-    });
-    editor.current = instance;
-    const subscription = instance.onDidChangeModelContent(() => {
-      if (!syncingValue.current) notifyChange(instance.getValue());
-    });
+    let active = true;
+    void loadMonaco().then(
+      (view) => {
+        if (active) setView(() => view);
+      },
+      () => {
+        if (active) setFailed(true);
+      },
+    );
     return () => {
-      subscription.dispose();
-      instance.dispose();
-      model.dispose();
-      editor.current = null;
+      active = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const instance = editor.current;
-    if (!instance || instance.getValue() === value) return;
-    syncingValue.current = true;
-    try {
-      instance.setValue(value);
-    } finally {
-      syncingValue.current = false;
-    }
-  }, [value]);
-
-  useEffect(() => {
-    const model = editor.current?.getModel();
-    if (model) monaco.editor.setModelLanguage(model, language);
-  }, [language]);
-
-  useEffect(() => {
-    editor.current?.updateOptions({ readOnly, domReadOnly: readOnly, ariaLabel, placeholder });
-  }, [readOnly, ariaLabel, placeholder]);
-
-  useEffect(() => {
-    monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
-  }, [theme]);
-
+  }, [attempt]);
+  if (View) return <View {...props} />;
   return (
     <div
-      className={cn('h-100 min-h-0 min-w-0 w-full overflow-hidden', className)}
-      ref={container}
-    />
+      className={cn(
+        'grid h-100 min-h-0 min-w-0 w-full place-content-center gap-2 overflow-hidden p-2 text-center text-xs',
+        props.className,
+      )}
+    >
+      {failed ? (
+        <>
+          <p role='alert' className='text-destructive'>
+            代码编辑器加载失败，请重试。
+          </p>
+          <Button
+            size='sm'
+            variant='outline'
+            onClick={() => {
+              setFailed(false);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            重试加载
+          </Button>
+        </>
+      ) : (
+        <div role='status'>
+          <Spinner aria-label='加载代码编辑器' />
+        </div>
+      )}
+    </div>
   );
 };

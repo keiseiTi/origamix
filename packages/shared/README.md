@@ -67,7 +67,7 @@ ID 和版本需来自当前页面读取结果。该 HTTP 请求使用 `ApplyWork
 
 Working 的 `workingVersion` 用于并发校验，`workingHash` 表示草稿内容，`revisionId` 指向当前保存检查点；Working 可以在同一 Revision 下继续变化。Revision 是不可变快照，不会因普通编辑产生。Apply 还需 `expectedRevisionId`、`expectedWorkingVersion` 和稳定的 `clientRequestId`。
 
-Shared 校验结构、根节点、布局引用/循环，以及流程的开始节点、节点身份、双向连线一致性、循环、条件分支和事件绑定唯一性。Server 另行验证物料属性、授权、页面归属和当前 Working 版本。通过 Shared 校验不代表请求具备写入权限或一定能应用。
+Shared 校验结构、根节点、布局引用/循环，以及流程的开始节点、节点身份、双向连线一致性、循环、条件分支和事件绑定唯一性。`validateFlowSemantics(flow, path)` 为已转换的流程图返回结构错误，允许草稿中的未连接节点。Server 另行验证物料属性、授权、页面归属和当前 Working 版本。通过 Shared 校验不代表请求具备写入权限或一定能应用。
 
 `PageFlowSchema` / `PageFlow`、`PageFlowNodeSchema` / `PageFlowNode` 和 `ElementEventBindingSchema` / `ElementEventBinding` 定义当前引擎使用的流程与事件绑定格式；节点参数仍由唯一的逻辑节点 Manifest 定义。流程和节点 ID 不接受空字符串或保留对象键。当前格式校验不会迁移、补全或重写已有无效数据。
 
