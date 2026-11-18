@@ -12,6 +12,9 @@ import {
   type ProjectRoutingUpdate,
   type ProjectSettingsUpdate,
   type ProjectManifest,
+  type ProjectExportSnapshot,
+  type ProjectSyncSnapshot,
+  type ProjectSyncReceipt,
   type ProjectRecord,
   type PageRecord,
   type PageRoleId,
@@ -26,10 +29,13 @@ import type { SchemaPageRef } from '../schema/schema-contracts';
 import {
   discardInitializedPageSchema,
   getSchema,
+  getWorkingSchemaState,
   initializePageSchema,
 } from '../schema/schema-service';
 import { createInitialPageSchema } from './initial-page-schema';
 import { normalizePageDirectory } from './page-directory';
+import { MysqlSyncRepository } from './mysql-sync-repository';
+import { buildProjectSnapshot } from './project-sync-snapshot';
 import { createProjectManifest } from './project-manifest-store';
 
 import { MysqlProjectRepository, type ProjectRow, type PageRow } from './mysql-project-repository';
@@ -211,6 +217,70 @@ export class MysqlProjectService {
 
   readManifest = (projectId: string) =>
     this.withProject(projectId, (_repository, project) => project.manifest);
+
+  private snapshot(
+    project: WebProject,
+    connection: PoolConnection,
+    template: ProjectExportSnapshot['template'],
+  ) {
+    return buildProjectSnapshot(project.manifest, template, (id) =>
+      getWorkingSchemaState(pageRef(connection, project, findPage(project, id))),
+    );
+  }
+
+  syncIdentity = (projectId: string) =>
+    this.withProject(projectId, (_repository, { row }) => ({ code: row.code }));
+
+  exportProject = (projectId: string, template: ProjectExportSnapshot['template']) =>
+    this.withProject(projectId, (_repository, project, connection) =>
+      this.snapshot(project, connection, template),
+    );
+
+  prepareSync = (
+    projectId: string,
+    targetId: string,
+    template: ProjectExportSnapshot['template'],
+  ) =>
+    this.withProject(
+      projectId,
+      async (_repository, project, connection): Promise<ProjectSyncSnapshot> => {
+        const targets = new MysqlSyncRepository(connection, projectId);
+        const current = await targets.get(targetId);
+        if (current.pending) return current.pending;
+        const snapshot = await this.snapshot(project, connection, template);
+        const previous = current.baseline ?? {};
+        const paths = new Set(snapshot.files.map(({ path }) => path));
+        const pending: ProjectSyncSnapshot = {
+          ...snapshot,
+          id: `sync_${nanoid()}`,
+          bootstrap: !current.baseline,
+          previous,
+          removals: Object.entries(previous)
+            .filter(([path]) => !paths.has(path))
+            .map(([path, sha256]) => ({ path, sha256 })),
+        };
+        await targets.prepare(targetId, pending);
+        return pending;
+      },
+    );
+
+  finishSync = (projectId: string, targetId: string, snapshotId: string) =>
+    this.withProject(
+      projectId,
+      async (_repository, _project, connection): Promise<ProjectSyncReceipt> => {
+        const targets = new MysqlSyncRepository(connection, projectId);
+        const completed = await targets.getReceipt(targetId, snapshotId);
+        if (completed) return completed;
+        const current = await targets.get(targetId);
+        if (current.pending?.id !== snapshotId) throw conflict('同步快照已变化，请重新读取');
+        const baseline = Object.fromEntries(
+          current.pending.files.map(({ path, sha256 }) => [path, sha256]),
+        );
+        const receipt = { snapshotId, completedAt: new Date().toISOString() };
+        await targets.finish(targetId, baseline, receipt);
+        return receipt;
+      },
+    );
 
   async listProjects() {
     return inWebTransaction(this.pool, async (connection) => {

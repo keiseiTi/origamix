@@ -1,3 +1,4 @@
+import type { ProjectSyncSnapshot, ProjectSyncReceipt } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
@@ -138,6 +139,9 @@ try {
     saved,
   );
 
+  const target = { projectId, targetId: 'target_integration_fixture' };
+  const pending = await post<ProjectSyncSnapshot>('/projects/sync/prepare', target);
+  assert.ok(pending.files.some(({ path }) => path === 'src/pages/editing/schema.json'));
   const draft = await post<Working>(
     '/pages/working-operations/apply',
     update(425, saved.workingVersion),
@@ -157,6 +161,16 @@ try {
     ...draft,
     schemaHash: draft.workingHash,
   });
+  await post('/projects/sync/prepare', { projectId, targetId: 'target_unsaved_fixture_test' }, 409);
+  assert.deepEqual(await post<ProjectSyncSnapshot>('/projects/sync/prepare', target), pending);
+  const receipt = await post<ProjectSyncReceipt>('/projects/sync/finish', {
+    ...target,
+    snapshotId: pending.id,
+  });
+  assert.deepEqual(
+    await post<ProjectSyncReceipt>('/projects/sync/finish', { ...target, snapshotId: pending.id }),
+    receipt,
+  );
   const report = await post<{ disposition: string }>('/pages/runtime-reports/report', {
     ...scope,
     version: '1',
@@ -189,14 +203,26 @@ try {
   assert.equal(restored.revisionId, saved.revisionId);
   assert.equal(restored.workingHash, initial.workingHash);
 
+  await post('/pages/revisions/save', {
+    ...scope,
+    expectedWorkingVersion: restored.workingVersion,
+  });
+  const newer = await post<ProjectSyncSnapshot>('/projects/sync/prepare', target);
+  assert.notEqual(newer.id, pending.id);
+  assert.equal(newer.bootstrap, false);
+  await post('/projects/sync/finish', { ...target, snapshotId: newer.id });
+  assert.deepEqual(
+    await post<ProjectSyncReceipt>('/projects/sync/finish', { ...target, snapshotId: pending.id }),
+    receipt,
+  );
   const browser = await promisify(execFile)(
     'pnpm',
     ['--filter', '@origamix/desktop', 'test:main', '--web', origin.origin, password, projectId],
-    { cwd: join(root, '../..'), timeout: 45000 },
+    { cwd: join(root, '../..'), timeout: 75000 },
   );
   process.stdout.write(browser.stdout);
   console.info(
-    'MySQL Web test passed: project/page creation, versioned editing, restart recovery and Chromium preview.',
+    'MySQL Web test passed: project/page creation, versioned editing, restart recovery, Chromium preview and local directory sync.',
   );
 } finally {
   try {

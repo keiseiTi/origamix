@@ -6,18 +6,20 @@ import {
   DropdownMenuTrigger,
 } from '@origamix/ui';
 
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, FolderSync, Pencil, Trash2 } from 'lucide-react';
 
 interface SidebarActionMenuProps {
   label: string;
   onRename: () => void;
   onDelete: () => void;
+  onSync?: () => void;
 }
 
 export const SidebarActionMenu = ({
   label,
   onRename,
   onDelete,
+  onSync,
 }: SidebarActionMenuProps): React.JSX.Element => {
   return (
     <DropdownMenu>
@@ -38,6 +40,12 @@ export const SidebarActionMenu = ({
           <Pencil />
           编辑
         </DropdownMenuItem>
+        {onSync && (
+          <DropdownMenuItem onClick={onSync}>
+            <FolderSync />
+            同步到本地
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem variant='destructive' onClick={onDelete}>
           <Trash2 />
           删除

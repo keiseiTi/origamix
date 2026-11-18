@@ -111,7 +111,7 @@ const verifyPreview = async (contents: WebContents): Promise<void> => {
   );
   const checkTheme = async (theme: 'light' | 'dark') => {
     await waitFor(() =>
-      preview.executeJavaScript(`document.documentElement.dataset.theme === ${JSON.stringify(theme)} &&
+      preview.executeJavaScript(`document.documentElement?.dataset.theme === ${JSON.stringify(theme)} &&
         Boolean(document.querySelector('button'))`),
     );
     await preview.executeJavaScript('document.querySelector("button").click()');

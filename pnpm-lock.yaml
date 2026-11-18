@@ -93,6 +93,9 @@ importers:
       '@origamix/ui':
         specifier: workspace:*
         version: link:../ui
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       lucide-react:
         specifier: ^1.34.0
         version: 1.39.0(react@19.2.8)
@@ -136,9 +139,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.0
         version: 6.1.1(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
-      fflate:
-        specifier: 0.8.2
-        version: 0.8.2
       happy-dom:
         specifier: ^20.14.3
         version: 20.14.3

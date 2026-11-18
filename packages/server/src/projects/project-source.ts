@@ -9,7 +9,7 @@ const pageComponentName = (slug: string): string => {
   return `Page${slug.replace(/(^|-)([a-z0-9])/g, (_, __, character: string) => character.toUpperCase())}`;
 };
 
-const pageComponentSource = (slug: string, stack: ProjectStack): string => {
+export const pageComponentSource = (slug: string, stack: ProjectStack): string => {
   validateResolvedProjectStack(stack);
   // Explicit built-in module paths; project files never choose executable imports.
   const runtimeEntry = '@origamix/runtime';

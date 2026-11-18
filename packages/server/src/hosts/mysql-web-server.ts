@@ -163,10 +163,24 @@ export const startMysqlWebServer = async (input: {
       getCurrentState: (projectId, pageId) => getWorking(projectId, pageId!),
     });
     await recoverAgentRunsOnStartup(runs, agentProjects, conversations, resolvePage);
+    const template = input.templateDownload && {
+      version: input.templateDownload.version,
+      sha256: input.templateDownload.sha256,
+    };
     server = createHttpServer({
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,
       templateDownload: input.templateDownload,
+      ...(template
+        ? {
+            projectSync: {
+              identity: projects.syncIdentity,
+              prepare: (projectId, targetId) => projects.prepareSync(projectId, targetId, template),
+              finish: projects.finishSync,
+              export: (projectId) => projects.exportProject(projectId, template),
+            },
+          }
+        : {}),
       allowedOrigins: [],
       projects,
       projectService: projects,

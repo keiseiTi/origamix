@@ -433,3 +433,11 @@ export type {
   ProjectSettingsAgentRequest,
   ProjectSettingsAgentEvent,
 } from './project/project-settings-agent.ts';
+
+export type {
+  ProjectExportSnapshot,
+  ProjectSyncFile,
+  ProjectSyncRemoval,
+  ProjectSyncSnapshot,
+  ProjectSyncReceipt,
+} from './project/project-sync.ts';

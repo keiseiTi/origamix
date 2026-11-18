@@ -1,4 +1,5 @@
 import { usesDatabaseProjects } from '@/services/projects';
+import { ProjectSyncDialog } from './mod/project-sync-dialog';
 import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, LogOut, Settings, User } from 'lucide-react';
@@ -9,7 +10,7 @@ import { OpenProjectModal } from './mod/open-project-modal';
 import { LifecycleModal, type LifecycleTarget } from './mod/lifecycle-modal';
 import { ProjectNavigation } from './project-navigation';
 import { usePreferencesStore } from '@/store/preferences';
-import { clearWorkspaceSession, type PageItem } from '@/store/workspace';
+import { clearWorkspaceSession, type PageItem, type ProjectItem } from '@/store/workspace';
 import { isProductionWeb } from '@/services/web-session';
 import { useProjectActions } from '@/hooks/use-project-actions';
 import { isMacDesktop } from '@/utils';
@@ -37,6 +38,7 @@ export const Sidebar = ({
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
   const canCreateProject = supportsNativeProjectDirectories || usesDatabaseProjects();
   const userProfile = usePreferencesStore((state) => state.userProfile);
+  const [syncProject, setSyncProject] = useState<ProjectItem | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageForm, setPageForm] = useState<{ projectId: string; page?: PageItem } | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
@@ -130,7 +132,7 @@ export const Sidebar = ({
           }}
           disabled={!supportsNativeProjectDirectories}
           aria-label={
-            supportsNativeProjectDirectories ? '打开项目' : '打开项目；浏览器不能直接访问本机目录'
+            supportsNativeProjectDirectories ? '打开项目' : '打开项目；从左侧列表选择已有项目'
           }
         >
           <FolderOpen size={15} />
@@ -142,6 +144,14 @@ export const Sidebar = ({
         <ProjectNavigation
           onCreatePage={openPageModal}
           onSelectPage={onSelectPage}
+          onSync={
+            usesDatabaseProjects()
+              ? (project) => {
+                  keepSidebarOpen();
+                  setSyncProject(project);
+                }
+              : undefined
+          }
           onLifecycle={(target) => {
             if (target.kind === 'rename-page') {
               keepSidebarOpen();
@@ -182,6 +192,14 @@ export const Sidebar = ({
           )}
         </div>
       </aside>
+      {syncProject && (
+        <ProjectSyncDialog
+          projectId={syncProject.id}
+          name={syncProject.name}
+          flushEditor={flushEditor}
+          onClose={() => setSyncProject(null)}
+        />
+      )}
       {projectActions.pendingInitialization && (
         <OpenProjectModal
           key={projectActions.pendingInitialization.directoryGrantId}

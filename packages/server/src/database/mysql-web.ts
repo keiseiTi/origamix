@@ -1,6 +1,6 @@
 import { createPool, type Pool, type PoolConnection, type RowDataPacket } from 'mysql2/promise';
 
-const version = 2;
+const version = 3;
 const tables = [
   `CREATE TABLE IF NOT EXISTS origamix_web_projects (
     id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
@@ -65,6 +65,20 @@ const tables = [
     document JSON NOT NULL,
     KEY by_run (run_id, id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_sync_targets (
+    project_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    target_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    baseline JSON,
+    pending JSON,
+    PRIMARY KEY (project_id, target_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS origamix_web_sync_receipts (
+    project_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    target_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    snapshot_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    completed_at VARCHAR(24) NOT NULL,
+    PRIMARY KEY (project_id, target_id, snapshot_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 const databaseStartupError = (error: unknown): unknown => {
@@ -95,7 +109,7 @@ export const openWebDatabase = async (uri: string): Promise<Pool> => {
     const [rows] = await pool.query<(RowDataPacket & { version: number })[]>(
       'SELECT version FROM origamix_web_version WHERE id = 1',
     );
-    if (rows.length && ![1, version].includes(rows[0].version))
+    if (rows.length && ![1, 2, version].includes(rows[0].version))
       throw new Error('Web MySQL 数据库版本不受当前应用支持');
     for (const sql of tables) await pool.query(sql);
     await pool.execute(

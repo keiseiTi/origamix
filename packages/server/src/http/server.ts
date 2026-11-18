@@ -1,3 +1,4 @@
+import { registerProjectSyncRoutes } from './project-sync-routes';
 import { registerProjectSettingsAgentRoutes } from './project-settings-agent-routes';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { nanoid } from 'nanoid';
@@ -131,6 +132,7 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   const context = { server, input, route };
   registerProjectSettingsAgentRoutes({ server, input, route });
   registerProjectRoutes(context);
+  registerProjectSyncRoutes(context);
   registerSchemaRoutes(context);
   registerApplyRoutes(context);
   registerRuntimeRoutes(context);

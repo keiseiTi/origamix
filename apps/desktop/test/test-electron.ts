@@ -24,7 +24,7 @@ const result = spawnSync(
   {
     env,
     stdio: 'inherit',
-    timeout: 40000,
+    timeout: web && args[2] ? 70000 : 40000,
   },
 );
 if (result.error) throw result.error;

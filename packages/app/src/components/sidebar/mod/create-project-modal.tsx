@@ -1,5 +1,6 @@
 import {
   Button,
+  toast,
   Dialog,
   DialogClose,
   DialogContent,
@@ -18,6 +19,12 @@ import {
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import { useWorkspaceStore } from '@/store/workspace';
+import {
+  pickProjectParent,
+  supportsProjectDirectory,
+  type ProjectDirectory,
+} from '@/services/project-directory';
+import { bindProjectParent, syncProjectToDirectory } from '@/services/project-sync';
 import { projectsService, usesDatabaseProjects } from '@/services/projects';
 
 interface CreateProjectModalProps {
@@ -34,6 +41,7 @@ export const CreateProjectModal = ({
   const [layoutEnabled, setLayoutEnabled] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [webParent, setWebParent] = useState<ProjectDirectory>();
   const [directory, setDirectory] = useState('');
   const [pageDirectory, setPageDirectory] = useState('pages');
   const [directoryGrantId, setDirectoryGrantId] = useState('');
@@ -45,6 +53,7 @@ export const CreateProjectModal = ({
     setLayoutEnabled(false);
     setCode('');
     setDirectory('');
+    setWebParent(undefined);
     setPageDirectory('pages');
     setDirectoryGrantId('');
     setError(null);
@@ -89,6 +98,19 @@ export const CreateProjectModal = ({
         },
       ]);
       close();
+      if (webParent) {
+        try {
+          await bindProjectParent(project.id, webParent);
+          await syncProjectToDirectory(project.id);
+          toast.add({ title: '项目已生成到本地', type: 'success' });
+        } catch (reason) {
+          toast.add({
+            title: '网页项目已创建，本地初始化失败',
+            description: `${reason instanceof Error ? reason.message : '无法写入目录'} 可从项目菜单重试同步。`,
+            type: 'error',
+          });
+        }
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '项目创建失败');
     } finally {
@@ -195,6 +217,26 @@ export const CreateProjectModal = ({
               required={!databaseProject}
             />
           </Field>
+          {databaseProject && supportsProjectDirectory() && (
+            <Field>
+              <FieldLabel htmlFor='web-project-directory'>本机父目录（可选）</FieldLabel>
+              <Button
+                id='web-project-directory'
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  void pickProjectParent()
+                    .then(setWebParent)
+                    .catch((reason: unknown) => {
+                      if (!(reason instanceof DOMException && reason.name === 'AbortError'))
+                        setError(reason instanceof Error ? reason.message : '无法选择本机目录');
+                    });
+                }}
+              >
+                {webParent?.name ?? '选择父目录'}
+              </Button>
+            </Field>
+          )}
           <Field orientation='horizontal'>
             <Switch
               id='create-layout-enabled'

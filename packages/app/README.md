@@ -88,11 +88,24 @@ pnpm start:web
 
 先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。随后执行 `pnpm start:web`。
 
-首次启动自动初始化 Web 表，并为原有 MySQL 项目库增加 Agent 所需的表。MySQL 模式持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。浏览器目录初始化、项目级写出和布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
+首次启动自动初始化 Web 表，并为原有 MySQL 项目库增加 Agent 所需的表。MySQL 模式持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。数据库项目可以生成并同步到用户授权的本机目录。布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
 
 用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。运行 `pnpm test:agent:mysql` 使用确定性模型验证过期写入冲突与中断恢复。
 
 根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
+
+## Web 项目目录和同步
+
+MySQL 模式下，新建项目可以选择「本机父目录」。Web 宿主提供模板 ZIP，浏览器校验后写到父目录下的项目标识子目录。保留父目录为空也可在网页编辑、预览和保存版本。
+
+从左侧项目「⋯」打开「同步到本地」。桌面 Chrome 或 Edge 在 HTTPS 或本机回环地址下可以授权并写入目录。浏览器将目录句柄保存到 IndexedDB，授权失效后可点击「重新授权」。更换浏览器后，重新选择含同一项目子目录的父目录即可恢复绑定。没有目录写入能力的浏览器可以使用「下载项目 ZIP」。[浏览器目录授权说明](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access/)
+
+- 新同步使用同一时点的已保存页面版本和项目配置。有未保存的页面时，界面会列出页面并等待保存。输出包括项目根目录的 `origamix.project.json`，以及配置的 `src/<页面目录>/<页面标识>/` 下的 `schema.json` 和生成的 `index.tsx`。模板只在初始化时写入。
+- 遇到本地修改时，同步会指出冲突文件。可以恢复上次同步内容，也可以切换到另一个空目录。删除页面只移除上次同步生成且内容仍匹配的文件，同目录中的用户文件会保留。
+- 写入中断后，从同一项目菜单重试会继续同一份快照。刷新页面后也可继续。全部文件验证通过后才记录回执。旧快照完成后，新的已保存内容可发起下一次同步。
+- 不能一次性替换整批本机文件。中断期间本机目录可能含一部分新内容。网页里的 Working、Revision 和 Agent 流程可以继续使用。
+
+`pnpm test:web:mysql` 在 Chromium 中以浏览器私有文件系统替代系统目录选择器，覆盖模板初始化、写入中断后刷新续传、本地冲突、删除页面时保留用户文件与 ZIP 导出。
 
 ## 页面操作与状态
 

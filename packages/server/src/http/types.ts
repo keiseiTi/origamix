@@ -1,3 +1,8 @@
+import type {
+  ProjectExportSnapshot,
+  ProjectSyncReceipt,
+  ProjectSyncSnapshot,
+} from '@origamix/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ProjectService } from '../projects/project-service';
@@ -56,6 +61,12 @@ export interface HttpServerInput {
   projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];
   templateDownload?: TemplateDownload;
+  projectSync?: {
+    identity(projectId: string): Promise<{ code: string }>;
+    prepare(projectId: string, targetId: string): Promise<ProjectSyncSnapshot>;
+    finish(projectId: string, targetId: string, snapshotId: string): Promise<ProjectSyncReceipt>;
+    export(projectId: string): Promise<ProjectExportSnapshot>;
+  };
   agent?: {
     conversations: Pick<AgentConversations, 'list' | 'history'>;
     runs: Pick<AgentRunService, 'get'>;

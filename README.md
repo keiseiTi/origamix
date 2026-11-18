@@ -18,7 +18,7 @@ pnpm dev:web   # 浏览器开发宿主
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。配置 `ORIGAMIX_WEB_MYSQL_URL` 后可在浏览器创建数据库项目、编辑页面和保存版本。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
+Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。配置 `ORIGAMIX_WEB_MYSQL_URL` 后可在浏览器创建数据库项目、编辑和保存版本，并通过项目菜单将模板与页面同步到授权目录。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 

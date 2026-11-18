@@ -7,6 +7,8 @@ const { tmpdir } = require('node:os') as typeof import('node:os');
 const { seedPreviewPage, verifyPreview, waitFor } =
   require('./preview-isolation.cts') as typeof import('./preview-isolation.cts');
 
+const { verifyProjectSync } = require('./project-sync.cts') as typeof import('./project-sync.cts');
+
 const state = mkdtempSync(join(tmpdir(), 'origamix-web-preview-'));
 app.setPath('userData', state);
 process.on('exit', () => rmSync(state, { recursive: true, force: true }));
@@ -100,6 +102,7 @@ app
         window.webContents.executeJavaScript(`document.body.innerText.includes('版本已保存')`),
       );
     }
+    if (projectId) await verifyProjectSync(window.webContents, projectId);
     if (password) {
       await window.webContents.session.cookies.remove(url.origin, 'origamix-loopback-session');
       const checkSession = () =>
