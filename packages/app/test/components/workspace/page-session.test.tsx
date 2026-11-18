@@ -128,9 +128,15 @@ vi.mock('../../../src/components/editor/index', () => ({
 }));
 import { PageSession } from '../../../src/components/workspace/page-session';
 
+const confirmedEditor = (pageId: string) => ({
+  current: {
+    flush: async () => {},
+    getConfirmedWorking: () => ({ scope: { projectId: 'project_1', pageId }, workingVersion: 2 }),
+  },
+});
 const props = {
   pageId: 'page_a',
-  editorRef: { current: null },
+  editorRef: confirmedEditor('page_a'),
 };
 describe('workspace recovery controls', () => {
   beforeEach(() => {
@@ -252,7 +258,7 @@ describe('workspace recovery controls', () => {
       ...props,
       active: false,
       pageId: 'page_b',
-      editorRef: { current: null },
+      editorRef: confirmedEditor('page_b'),
     };
     const view = render(
       <>

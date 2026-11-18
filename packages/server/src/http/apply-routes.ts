@@ -1,9 +1,11 @@
 import type { Static } from '@sinclair/typebox';
-import { ApplyPageSchema } from '@origamix/shared';
+import { ApplyPageSchema, ReloadFromProjectSchema } from '@origamix/shared';
 import { PageScopeSchema, withPageScope } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
 const ApplyBodySchema = withPageScope(ApplyPageSchema);
+
+const ReloadBodySchema = withPageScope(ReloadFromProjectSchema);
 
 export const registerApplyRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   if (!input.projectApplyService) return;
@@ -25,9 +27,9 @@ export const registerApplyRoutes = ({ server, input, route }: RouteRegistrationC
   );
   server.post(
     '/api/v1/pages/reload-from-project',
-    { schema: { body: PageScopeSchema } },
-    route<Static<typeof PageScopeSchema>>((request) =>
-      projectApply.reloadFromProject(request.body.projectId, request.body.pageId),
+    { schema: { body: ReloadBodySchema } },
+    route<Static<typeof ReloadBodySchema>>(({ body }) =>
+      projectApply.reloadFromProject(body.projectId, body.pageId, body),
     ),
   );
 };

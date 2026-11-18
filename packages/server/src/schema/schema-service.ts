@@ -19,6 +19,7 @@ import {
   type OrigamixPageSchema,
   type SchemaOperation,
   type RevisionHistory,
+  type ReloadFromProjectRequest,
 } from '@origamix/shared';
 
 import { conflict, invalid, notFound } from '../errors';
@@ -205,13 +206,18 @@ export const applyWorkingSchemaOperation = async <T>(
 
 export const reloadWorkingSchemaFromTarget = async (
   page: SchemaPageRef,
-  schema: OrigamixPageSchema,
+  expected: ReloadFromProjectRequest,
+  readTarget: () => Promise<OrigamixPageSchema>,
 ): Promise<SchemaReadResult> => {
   return withSchemaPageQueue(page, async (page) => {
-    await commitsFor(page).recover(page);
+    const current = await getSchemaUnlocked(page);
+    if (current.workingVersion !== expected.expectedWorkingVersion)
+      throw conflict('页面草稿已更新，请刷新状态后重新确认');
+    const schema = await readTarget();
+    if (hashSchema(schema) !== expected.expectedTargetHash)
+      throw conflict('项目文件已变化，请刷新状态后重新确认');
     const candidate = requireCompatibleSchema(schema);
     await validateWritableSchema(page, candidate);
-    const current = await getSchemaUnlocked(page);
     const updated = await commitsFor(page).commit(
       page,
       createRevisionSnapshot(

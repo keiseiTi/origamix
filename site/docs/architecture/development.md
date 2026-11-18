@@ -54,9 +54,22 @@ Desktop、App 和独立 Server 各自在包目录维护 `.env`，可选个人覆
 ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
 ```
 
-把示例路径替换为已有项目的绝对路径。浏览器没有原生目录选择器，宿主环境变量提供目录授权。默认开发数据在 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。Key 不通过前端环境变量传递。根启动命令先构建库；独立 Web／Server 开发期间修改 Shared、Runtime 或 Materials 后，需重新构建库（`pnpm build:libs`），必要时重启宿主。Desktop 的源码自动重建流程不等同于独立 Web 开发流程。
+把示例路径替换为已有项目的绝对路径。文件模式由宿主提供目录授权。默认开发数据在 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。独立 Web 开发启动器监听 Shared、Runtime、Materials 和 Server 的源码，构建成功后重启宿主。
+
+### 正式 Web 宿主
+
+通过部署环境设置 `ORIGAMIX_WEB_PASSWORD`（16 至 512 个字符），再从仓库根目录执行：
+
+```sh
+pnpm build:web
+pnpm start:web
+```
+
+默认访问地址为 `http://127.0.0.1:9685`。文件模式可用 `ORIGAMIX_WEB_PROJECT_DIR` 指定授权目录。数据库模式使用 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 库，两种配置互斥。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
 
 ## 仓库检查
+
+完整检查运行 `pnpm check`。需要单独排查某一步时，可使用下面的入口。
 
 ```sh
 pnpm lint
@@ -71,8 +84,8 @@ pnpm build
 
 | 根命令               | 用途                                                    |
 | -------------------- | ------------------------------------------------------- |
-| `pnpm build:libs`    | 构建 UI、Shared、Editor、Runtime、Materials             |
-| `pnpm build:web`     | 构建库和 App 静态资源                                   |
+| `pnpm build:libs`    | 构建 Shared、Runtime、Materials                         |
+| `pnpm build:web`     | 构建库、Server、App 静态资源和模板 ZIP                  |
 | `pnpm build`         | 库 → Server → App → Desktop 编译与资源组装              |
 | `pnpm pack:npm`      | 构建 Shared、Runtime、Materials 的本地 npm 归档，不发布 |
 | `pnpm package:dir`   | 构建 macOS arm64 应用目录                               |

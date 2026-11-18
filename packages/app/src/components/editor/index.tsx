@@ -61,9 +61,10 @@ export const PageEditor = ({
     ref,
     () => ({
       flush: session.flush,
+      getConfirmedWorking: session.getConfirmedWorking,
       acknowledgeWorking: session.acknowledgeWorking,
     }),
-    [session.flush, session.acknowledgeWorking],
+    [session.flush, session.acknowledgeWorking, session.getConfirmedWorking],
   );
   // Keep host recovery alive without mounting canvas portals in chat or preview.
   if (!visible) return null;

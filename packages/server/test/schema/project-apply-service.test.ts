@@ -289,10 +289,37 @@ describe('ProjectApplyService', () => {
     external.elements.element_root!.props = { padding: 36 };
     await writeFile(target, JSON.stringify(external));
 
-    expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
-      'external_change',
-    );
-    const reloaded = await fixture.apply.reloadFromProject(fixture.project.id, fixture.page.id);
+    const scope = {
+      projectPath: fixture.project.path,
+      pageId: fixture.page.id,
+      slug: fixture.page.slug,
+    };
+    const observed = await fixture.apply.getState(fixture.project.id, fixture.page.id);
+    expect(observed.status).toBe('external_change');
+    const expected = {
+      expectedWorkingVersion: observed.workingVersion,
+      expectedTargetHash: observed.targetSchemaHash,
+    };
+    const reload = (input: typeof expected) =>
+      fixture.apply.reloadFromProject(fixture.project.id, fixture.page.id, input);
+    const draftSchema = structuredClone(current.schema);
+    draftSchema.elements.element_root!.props = { padding: 24 };
+    const draft = await updateWorkingSchema(scope, {
+      baseWorkingVersion: observed.workingVersion,
+      schema: draftSchema,
+    });
+    const retained = await getWorkingSchemaState(scope);
+    await expect(reload(expected)).rejects.toThrow('草稿已更新');
+    const confirmed = { ...expected, expectedWorkingVersion: draft.workingVersion };
+    await writeFile(target, JSON.stringify(current.schema));
+    await expect(reload(confirmed)).rejects.toThrow('项目文件已变化');
+    expect(await getWorkingSchemaState(scope)).toEqual(retained);
+    const revisions = join(fixture.project.path, '.origamix', 'revisions', fixture.page.id);
+    expect(await readdir(revisions)).toHaveLength(1);
+    await writeFile(target, JSON.stringify(external));
+    const reloaded = await reload(confirmed);
+    await expect(reload(confirmed)).rejects.toThrow('草稿已更新');
+    expect(await readdir(revisions)).toHaveLength(2);
     expect(reloaded.schema).toEqual(external);
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
       'in_sync',

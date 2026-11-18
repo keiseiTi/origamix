@@ -1,6 +1,6 @@
 // Origamix application shell 1.0.0
 import { useSyncExternalStore, useMemo, useCallback } from 'react';
-import { Outlet, useLocation, useNavigate, useHref } from 'react-router';
+import { Outlet, useMatches, useNavigate, useHref } from 'react-router';
 import { readProjectShell, PageNavigationProvider } from '@origamix/runtime';
 import { RuntimeProvider } from '@origamix/materials/antd/runtime';
 import manifest from '../origamix.project.json';
@@ -17,7 +17,7 @@ const readTheme = (): 'light' | 'dark' =>
 const readServerTheme = (): 'light' | 'dark' => 'light';
 const shell = readProjectShell(manifest);
 const Application = (): React.JSX.Element => {
-  const location = useLocation(),
+  const matches = useMatches(),
     navigate = useNavigate(),
     mode = useSyncExternalStore(subscribeTheme, readTheme, readServerTheme);
   const rootHref = useHref('/').replace(/\/?$/, '/');
@@ -25,10 +25,8 @@ const Application = (): React.JSX.Element => {
     () => projectPages.map((page) => ({ ...page, href: `${rootHref}${page.path.slice(1)}` })),
     [rootHref],
   );
-  const currentPageId =
-    pages.find((page) => page.path === (location.pathname.replace(/\/+$/, '') || '/'))?.pageId ??
-    shell.notFoundPageId ??
-    '';
+  const matchedPageId = matches.at(-1)?.handle;
+  const currentPageId = typeof matchedPageId === 'string' ? matchedPageId : '';
   const go = useCallback(
     (id: string) => {
       const page = pages.find((page) => page.pageId === id);

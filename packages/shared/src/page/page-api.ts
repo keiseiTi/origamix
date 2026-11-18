@@ -41,6 +41,12 @@ export const RestoreWorkingRevisionSchema = Type.Object(
 
 const SchemaHashSchema = Type.String({ pattern: '^[a-f0-9]{64}$' });
 
+export const ReloadFromProjectSchema = Type.Object({
+  expectedWorkingVersion: Type.Integer({ minimum: 1 }),
+  expectedTargetHash: SchemaHashSchema,
+});
+export type ReloadFromProjectRequest = Static<typeof ReloadFromProjectSchema>;
+
 export const WorkingSchemaStateSchema = Type.Object(
   {
     schema: PageSchema,

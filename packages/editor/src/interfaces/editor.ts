@@ -43,6 +43,7 @@ export type CommitEditorTransaction = (
 
 export type EditorHandle = Readonly<{
   flush: () => Promise<void>;
+  getConfirmedWorking?: () => Pick<EditorWorkingState, 'scope' | 'workingVersion'> | null;
   /** Acknowledge a host-confirmed version of the same Schema without replacing the draft. */
   acknowledgeWorking?: (working: EditorWorkingState) => void;
 }>;

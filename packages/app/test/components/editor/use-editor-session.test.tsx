@@ -97,38 +97,48 @@ describe('useEditorSession', () => {
 
   // App owns this queue: Server cannot prove that a rejected UI flush retains
   // its local candidate or that typing avoids replaying an ambiguous write.
-  it('retains a rejected draft, blocks automatic replay and allows an explicit flush', async () => {
-    const next = structuredClone(schema);
-    next.elements.element_root!.props = { padding: 32 };
-    schemaMocks.applyWorkingOperations
-      .mockRejectedValueOnce(new Error('连接中断'))
-      .mockResolvedValueOnce({ schema: next, revisionId: 'revision_saved', workingVersion: 5 });
-    const hook = renderHook(() => useEditorSession('project_one', 'page_one', false));
-    await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
-    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
-    vi.useFakeTimers();
-    const first = structuredClone(schema);
-    first.elements.element_root!.props = { padding: 24 };
-    act(() => hook.result.current.onChange(first));
-    await act(async () => {
-      await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
-    });
-    expect(hook.result.current.error).toBe('连接中断');
-    act(() => hook.result.current.onChange(next, { immediate: true }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledTimes(1);
-    await act(async () => hook.result.current.flush());
-    expect(schemaMocks.applyWorkingOperations).toHaveBeenLastCalledWith(
-      'project_one',
-      'page_one',
-      4,
-      [{ operation: 'updateElementProps', elementId: 'element_root', set: { padding: 32 } }],
-    );
-    expect(hook.result.current.error).toBeNull();
-    expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    'recovers a lost response while retaining later edits (server committed: %s)',
+    async (committed) => {
+      const next = structuredClone(schema);
+      next.elements.element_root!.props = { padding: 32 };
+      schemaMocks.applyWorkingOperations
+        .mockRejectedValueOnce(new Error('连接中断'))
+        .mockResolvedValueOnce({
+          schema: next,
+          revisionId: 'revision_saved',
+          workingVersion: committed ? 6 : 5,
+        });
+      const hook = renderHook(() => useEditorSession('project_one', 'page_one', false));
+      await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
+      await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+      vi.useFakeTimers();
+      const first = structuredClone(schema);
+      first.elements.element_root!.props = { padding: 24 };
+      act(() => hook.result.current.onChange(first));
+      await act(async () => {
+        await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
+      });
+      expect(hook.result.current.error).toBe('连接中断');
+      if (committed) {
+        schemaMocks.workingState.mockResolvedValue({ schema: first, workingVersion: 5 });
+      }
+      act(() => hook.result.current.onChange(next, { immediate: true }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+      expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledTimes(1);
+      await act(async () => hook.result.current.flush());
+      expect(schemaMocks.applyWorkingOperations).toHaveBeenLastCalledWith(
+        'project_one',
+        'page_one',
+        committed ? 5 : 4,
+        [{ operation: 'updateElementProps', elementId: 'element_root', set: { padding: 32 } }],
+      );
+      expect(hook.result.current.error).toBeNull();
+      expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
+    },
+  );
 
   // Only the browser owns external refresh sequencing and local draft retention.
   it('reloads external Working updates without replacing a rejected local draft', async () => {
@@ -162,6 +172,20 @@ describe('useEditorSession', () => {
     expect(hook.result.current.snapshot?.schema).toEqual(draft);
     expect(hook.result.current.error).toBeTruthy();
     expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledTimes(1);
+
+    const confirm = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('confirm', confirm);
+    try {
+      act(() => hook.result.current.retryLoad());
+      await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+      expect(hook.result.current.snapshot?.schema).toEqual(draft);
+      confirm.mockReturnValue(true);
+      act(() => hook.result.current.retryLoad());
+      await waitFor(() => expect(hook.result.current.error).toBeNull());
+      expect(hook.result.current.snapshot?.schema).toEqual(updated);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   // The extracted view may be rebound to another page while HTTP is pending.

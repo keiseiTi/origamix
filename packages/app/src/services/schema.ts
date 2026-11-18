@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import {
   type OrigamixPageSchema,
+  type ReloadFromProjectRequest,
   type SchemaOperation,
   isApplyPageResult,
   isPageApplyState,
@@ -80,8 +81,12 @@ export const schemaService = {
     }),
   applyState: (projectId: string, pageId: string): Promise<PageApplyState> =>
     request<PageApplyState>('/pages/apply-state/get', { projectId, pageId }, isPageApplyState),
-  reloadFromProject: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>('/pages/reload-from-project', { projectId, pageId }),
+  reloadFromProject: (
+    projectId: string,
+    pageId: string,
+    expected: ReloadFromProjectRequest,
+  ): Promise<SchemaResult> =>
+    request<SchemaResult>('/pages/reload-from-project', { projectId, pageId, ...expected }),
   apply: (
     projectId: string,
     pageId: string,

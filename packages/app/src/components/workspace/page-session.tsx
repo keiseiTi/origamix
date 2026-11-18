@@ -69,14 +69,12 @@ const PageSessionContent = ({
       setPageDraft: state.setPageDraft,
     })),
   );
-  const available = true;
   const databaseProject = usesDatabaseProjects();
   const theme = usePreferencesStore((state) => state.theme);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
   const { pageApply, agent, capabilities, schemaRefreshKey } = usePageSession({
     projectId,
     pageId: page.id,
-    available,
     databaseProject,
     active,
     editorRef,
@@ -115,7 +113,7 @@ const PageSessionContent = ({
     onApply: pageApply.applyPage,
     onReloadFromProject: pageApply.reloadFromProject,
     onRestoreRevision: pageApply.restoreRevision,
-    applyStatus: available ? pageApply.applyStatus : ('disabled' as const),
+    applyStatus: pageApply.applyStatus,
     canApply: capabilities.canApply,
     databaseProject,
     canSaveVersion: capabilities.canSaveVersion,

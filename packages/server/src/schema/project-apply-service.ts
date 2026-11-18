@@ -8,6 +8,7 @@ import { dirname } from 'node:path';
 import { metadataPath } from './metadata-path';
 import {
   type ApplyPageResult,
+  type ReloadFromProjectRequest,
   type PageApplyState,
   type OrigamixPageSchema,
 } from '@origamix/shared';
@@ -117,11 +118,10 @@ export class ProjectApplyService {
     });
   }
 
-  async reloadFromProject(projectId: string, pageId: string) {
-    return this.withOwnedPage(projectId, pageId, async (page) => {
-      const target = await this.readTarget(page);
-      return reloadWorkingSchemaFromTarget(page, target);
-    });
+  async reloadFromProject(projectId: string, pageId: string, expected: ReloadFromProjectRequest) {
+    return this.withOwnedPage(projectId, pageId, (page) =>
+      reloadWorkingSchemaFromTarget(page, expected, () => this.readTarget(page)),
+    );
   }
 
   async apply(

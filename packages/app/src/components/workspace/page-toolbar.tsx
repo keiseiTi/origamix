@@ -101,10 +101,7 @@ export const PageToolbarShell = ({
               <TableOfContents size={16} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align='start'>
-              <DropdownMenuItem
-                disabled={applyStatus === 'disabled'}
-                onClick={() => setHistoryOpen(true)}
-              >
+              <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
                 <History /> Schema 历史管理
               </DropdownMenuItem>
               {onOpenEditorTool && (

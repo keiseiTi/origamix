@@ -29,7 +29,7 @@ const deferred = <T,>() => {
 };
 
 const editorRef = {
-  current: { flush: vi.fn().mockResolvedValue(undefined) },
+  current: { getConfirmedWorking: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) },
 } as unknown as RefObject<EditorHandle | null>;
 
 describe('usePageApplyState', () => {
@@ -71,7 +71,11 @@ describe('usePageApplyState', () => {
   });
 
   it('does not publish a reload result after leaving its page', async () => {
-    schemaMocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    schemaMocks.applyState.mockResolvedValue({
+      status: 'external_change',
+      workingVersion: 2,
+      targetSchemaHash: 'hash',
+    });
     const reload = deferred<{ revisionId: string }>();
     schemaMocks.reloadFromProject.mockReturnValue(reload.promise);
     const onSchemaCommitted = vi.fn();
@@ -87,7 +91,12 @@ describe('usePageApplyState', () => {
       { initialProps: { pageId: 'page_a' } },
     );
 
+    await act(async () => vi.advanceTimersByTime(0));
     const request = result.current.reloadFromProject();
+    expect(schemaMocks.reloadFromProject).toHaveBeenCalledWith('project_1', 'page_a', {
+      expectedWorkingVersion: 2,
+      expectedTargetHash: 'hash',
+    });
     rerender({ pageId: 'page_b' });
     await act(async () => reload.resolve({ revisionId: 'revision_page_a' }));
     await request;
@@ -116,10 +125,15 @@ describe('usePageApplyState', () => {
       }),
     );
 
+    vi.mocked(editorRef.current!.getConfirmedWorking!).mockReturnValue({
+      scope: { projectId: 'project_1', pageId: 'page_a' },
+      workingVersion: 2,
+    });
     await act(async () => result.current.saveVersion());
+    expect(schemaMocks.workingState).not.toHaveBeenCalled();
 
     expect(editorRef.current!.flush).toHaveBeenCalledOnce();
-    expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
+    expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2);
     expect(onSchemaCommitted).not.toHaveBeenCalled();
   });
   it('keeps an ambiguous Apply across unmount, then clears it on explicit retry', async () => {

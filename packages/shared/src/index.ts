@@ -193,6 +193,8 @@ export {
   PageRecordSchema,
   CreatePageSchema,
   ApplyPageSchema,
+  ReloadFromProjectSchema,
+  type ReloadFromProjectRequest,
   SaveWorkingRevisionSchema,
   RestoreWorkingRevisionSchema,
   WorkingSchemaStateSchema,

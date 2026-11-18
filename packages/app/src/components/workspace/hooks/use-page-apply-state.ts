@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { schemaService } from '@/services/schema';
+import type { ReloadFromProjectRequest } from '@origamix/shared';
 type SessionKind = 'page';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { ApiRequestError, subscribeBackendReady } from '@/services/request';
@@ -36,7 +37,11 @@ export const usePageApplyState = ({
   const service = schemaService;
   const pageKey = pageOperationKey(projectId ?? '', pageId ?? '');
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
-  const [applyState, setApplyState] = useState<{ pageKey: string; value: PageApplyStatus }>({
+  const [applyState, setApplyState] = useState<{
+    pageKey: string;
+    value: PageApplyStatus;
+    reload?: ReloadFromProjectRequest;
+  }>({
     pageKey,
     value: 'loading',
   });
@@ -55,7 +60,8 @@ export const usePageApplyState = ({
       ? applyState.value
       : 'loading';
   const setApplyStatus = useCallback(
-    (value: PageApplyStatus): void => setApplyState({ pageKey, value }),
+    (value: PageApplyStatus, reload?: ReloadFromProjectRequest): void =>
+      setApplyState({ pageKey, value, reload }),
     [pageKey],
   );
 
@@ -64,10 +70,10 @@ export const usePageApplyState = ({
     const requestPageKey = pageOperationKey(projectId, pageId);
     const requestState = requests.current;
     const sequence = ++requestState.issued;
-    const publish = (value: PageApplyStatus) => {
+    const publish = (value: PageApplyStatus, reload?: ReloadFromProjectRequest) => {
       if (pageKeyRef.current !== requestPageKey || sequence <= requestState.accepted) return;
       requestState.accepted = sequence;
-      setApplyStatus(value);
+      setApplyStatus(value, reload);
     };
     try {
       if (databaseProject) {
@@ -76,7 +82,10 @@ export const usePageApplyState = ({
         return;
       }
       const state = await service.applyState(projectId, pageId);
-      publish(state.status);
+      publish(state.status, {
+        expectedWorkingVersion: state.workingVersion,
+        expectedTargetHash: state.targetSchemaHash,
+      });
     } catch {
       publish('error');
     }
@@ -146,10 +155,23 @@ export const usePageApplyState = ({
   const saveVersion = async (): Promise<void> => {
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    await editorRef.current?.flush();
-    const current = await service.workingState(projectId, pageId);
+    const editor = editorRef.current;
+    await editor?.flush();
     if (pageKeyRef.current !== requestPageKey) return;
-    const saved = await service.saveRevision(projectId, pageId, current.workingVersion);
+    const current = editor?.getConfirmedWorking?.();
+    if (!current || current.scope.projectId !== projectId || current.scope.pageId !== pageId)
+      throw new Error('页面尚未加载，请稍后再保存');
+    const saved = await service
+      .saveRevision(projectId, pageId, current.workingVersion)
+      .catch((error: unknown) => {
+        if (
+          error instanceof ApiRequestError &&
+          error.status === 409 &&
+          pageKeyRef.current === requestPageKey
+        )
+          onSchemaCommitted(pageId, `save_conflict_${nanoid()}`);
+        throw error;
+      });
     if (pageKeyRef.current !== requestPageKey) return;
     editorRef.current?.acknowledgeWorking?.({
       scope: { projectId, pageId },
@@ -163,7 +185,18 @@ export const usePageApplyState = ({
   const reloadFromProject = async (): Promise<void> => {
     if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    const result = await service.reloadFromProject(projectId, pageId);
+    if (
+      applyState.pageKey !== requestPageKey ||
+      applyState.value !== 'external_change' ||
+      !applyState.reload
+    )
+      throw new Error('请刷新项目状态后重新确认');
+    const result = await service
+      .reloadFromProject(projectId, pageId, applyState.reload)
+      .catch(async (error: unknown) => {
+        if (pageKeyRef.current === requestPageKey) await refreshApplyState();
+        throw error;
+      });
     if (pageKeyRef.current !== requestPageKey) return;
     onSchemaCommitted(pageId, result.revisionId);
     await refreshApplyState();

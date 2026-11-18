@@ -211,6 +211,10 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 内部接口重构时同步修改调用方，不保留旧名称别名、旧启动路径或内部实现的聚合导出。
 
+### 从外部目标重新读取
+
+文件项目调用 `POST /api/v1/pages/reload-from-project` 时，除项目和页面 ID 外，还须传入确认时的 `expectedWorkingVersion`、`expectedTargetHash`，分别取自 Apply 状态中的 `workingVersion` 和 `targetSchemaHash`。服务在页面写入队列内核对两者。任一不匹配返回 409，保留 Working 和版本历史。客户端刷新状态后由用户重新确认。
+
 ## 开发宿主与模板集成
 
 独立启动可设置 `ORIGAMIX_SERVER_TOKEN` 后执行 `pnpm --filter @origamix/server dev`。监听地址保持 loopback，客户端同时发送 bearer token 与 `X-Origamix-Service`。开发监督器只清理自己启动的进程。

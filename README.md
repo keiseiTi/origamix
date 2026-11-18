@@ -2,27 +2,21 @@
 
 本地优先的低代码编辑器：React 工作台提供页面编辑、Agent 会话和预览；Server 管理项目、工作副本和显式应用；Electron 提供本机授权与进程宿主。生成项目可独立运行。
 
-## 开始
+## 选择运行方式
 
-使用支持 `node:sqlite` 的 Node.js 24 和 pnpm，依赖版本以各包 `package.json` 和 `pnpm-lock.yaml` 为准。
+在仓库根目录使用 Node.js 24.15.0 至 24.x 和 pnpm 10，先执行 `pnpm install --frozen-lockfile`。只做可视化编辑时可以跳过模型配置。
 
-```sh
-pnpm install --frozen-lockfile
-pnpm dev       # Electron
-pnpm dev:web   # 浏览器开发宿主
-```
+| 使用场景         | 启动方式                                                               | 项目内容如何交付                                                   |
+| ---------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                                           | 保存页面版本后，点击「应用到项目」                                 |
+| 浏览器开发       | `pnpm dev:web`，可用 `ORIGAMIX_WEB_PROJECT_DIR` 指定授权项目的绝对路径 | 文件项目使用同一套页面 Apply                                       |
+| 单用户自托管 Web | 配置访问密码后执行 `pnpm build:web`、`pnpm start:web`                  | 文件模式使用宿主授权目录。MySQL 模式从项目菜单同步到本机或下载 ZIP |
 
-开发默认占用 Renderer 端口 9685，后端端口 1029。Web 开发数据保存在忽略的 `.origamix-web/`；已有项目由宿主显式授权：
-
-```sh
-ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
-```
-
-Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 ZIP 下载接口。正式 Web 宿主可用 `pnpm build:web` 构建、`pnpm start:web` 启动，提供密码登录和同源 API。配置 `ORIGAMIX_WEB_MYSQL_URL` 后可在浏览器创建数据库项目、编辑和保存版本，并通过项目菜单将模板与页面同步到授权目录。远程访问需要配置 HTTPS 反向代理。部署步骤见 [App README](packages/app/README.md#部署正式-web-宿主)。
+桌面与浏览器开发默认使用前端端口 9685、后端端口 1029，请分别启动。Web 开发数据默认位于 `.origamix-web/`。生产环境的密码要求、数据库与 HTTPS 反向代理配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 
-1. 用 `pnpm dev` 启动桌面应用，在设置中配置 DeepSeek API Key 和模型。
+1. 用 `pnpm dev` 启动桌面应用，需要使用 Agent 时，在设置中配置 DeepSeek API Key 和模型。
 2. 选择项目目录；已有清单时打开项目，没有清单时按提示填写初始化信息，再创建或打开页面。
 3. 在编辑器中修改页面，或让 Agent 修改当前页面；成功的修改自动保留为 Working 草稿。
 4. 预览当前草稿，确认后点击“保存版本”创建 Revision，再点击“应用到项目”更新生成项目的 `schema.json`。
@@ -52,7 +46,7 @@ Web 开发代理会在宿主侧附加认证信息，并提供独立项目模板 
 | [Runtime](packages/runtime/README.md)     | 传入 Schema 的独立渲染                           | `@origamix/runtime`                   |
 | [Template](packages/template/README.md)   | 可独立安装部署的项目骨架                         | 可复制的源码与配置                    |
 
-自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；真实项目页面目录由 `origamix.project.json.pageDirectory` 声明（默认 `src/pages`），其中 `<slug>/schema.json` 只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
+自动保留草稿、保存版本和历史恢复只修改 Working Schema / Revision；文件项目使用 `src/<pageDirectory>/<slug>/schema.json`（清单中 `pageDirectory` 默认为 `pages`），该文件只在初始化或显式“应用到项目”时写入。窗口导航、草稿与选项是 App 的投影，不能成为第二份权威页面数据。
 
 包内使用方法放在各自 README；维护约束放在对应 `AGENTS.md`。
 
@@ -100,18 +94,11 @@ Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感
 
 公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 不发布；`pnpm publish:npm` 才实际发布。模板使用的版本必须先在 npm 可安装。
 
-### 组合检查与工具版本
+### 一次运行完整仓库检查
 
-使用 Node.js 24.15+（24.x）和 pnpm 10.33.4，版本约束见根 package.json。
-`pnpm check` 先构建 Shared/Runtime，校验已提交的物料 Manifest 与配置一致，再构建 Materials，随后执行 lint、类型检查、测试和应用构建；`package:mac` 复用该流程。
-独立 `typecheck`、`test`、`build` 仍自动准备库；`*:prepared` 是组合流程内部入口，要求当前库产物已经构建，不能与库清理构建并行运行。
-pre-commit 对 TypeScript 变更使用 `pnpm build:libs:check` 顺序准备库并在 Materials 生成前校验 Manifest，再检查类型和测试，避免同时清理同一 dist。物料配置变更后运行 `pnpm --filter @origamix/materials manifest:generate`，将 `packages/materials/antd/generated/manifests.ts` 一起提交。
-根 lint 和暂存 lint 均覆盖根 scripts 下的发布工具。
+运行 `pnpm check` 可按顺序校验已提交的物料 Manifest，准备公共库，并完成 lint、类型检查、测试和应用构建。单独运行 `typecheck`、`test`、`build` 时也会准备依赖，避免并行运行这些命令。站点另外运行 `pnpm site:build`。
 
-开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
-公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
-
-自定义 Node 工具使用 TypeScript 和 tsx 执行；根目录、Desktop、App、Server 及调用公开归档工具的 Shared/Runtime/Materials 分别声明 tsx 开发依赖。`pnpm install --frozen-lockfile` 后使用原有 pnpm 命令即可。脚本由 tsc 严格检查，tsx 只负责执行。子进程继承 tsx loader；通过 Node 显式启动 TypeScript 子脚本时保留 `process.execArgv`。ESLint 配置统一使用 `.mjs`，边界规则和测试保持 TypeScript。Electron 验收入口使用 `.cts`，由 Node 启动器注册 `tsx/cjs` 后加载；启动器不会把加载配置传给被验收的后端进程。
+修改物料配置后执行 `pnpm --filter @origamix/materials manifest:generate` 并提交生成的清单。公开包名单与归档目录见 [发布工具](scripts/public-packages.ts)。开发重启、构建产物和集成检查见[开发与验证](site/docs/architecture/development.md)。
 
 ## 项目配置与布局
 

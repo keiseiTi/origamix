@@ -29,7 +29,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 
 ## Architecture invariants
 
-- Origamix is an AI-first, local-first Electron low-code product. The sole mutable Working Schema and its immutable Revision checkpoints are the editable page source of truth; the real project's target `schema.json` is a managed projection written only by the explicit Apply-to-Project pipeline. Do not add another target writer. Zustand holds projections and transient state, not a second database.
+- Origamix is an AI-first, local-first Electron low-code product. The sole mutable Working Schema and its immutable Revision checkpoints are the editable page source of truth; for file-backed pages, initialization creates the target `schema.json` and explicit Apply updates it. ProjectApplyService owns both writes. For MySQL projects, Server prepares a project-wide snapshot of saved pages. App writes that snapshot to a browser-authorized directory or exports a ZIP. Keep file Apply and database project sync scoped to their respective hosts. Zustand holds projections and transient state, not a second database.
 - Agent Schema edits must use the typed Operation Batch → validation → Working-version check → atomic Working-write pipeline in Server. The visual editor derives typed operations from its engine snapshots and uses the same pipeline; only changes the operation protocol cannot safely represent may use the internal versioned full-candidate fallback. Explicit save-version creates a Revision checkpoint. Initialization and history restore stay in the same service ownership; never add another file-writing path in UI or Main.
 - SQLite belongs to Server. **Never add `FOREIGN KEY`, `REFERENCES`, or cascading database actions.** Services enforce relationships and deletion order through explicit checks, transactions and reconciliation.
 - Renderer business operations use typed HTTP APIs. IPC is limited to named desktop capabilities; never expose raw `ipcRenderer`, filesystem, shell or arbitrary-path operations. Validate inputs and caller authority at the privileged boundary.
@@ -61,8 +61,8 @@ Keep automated coverage for these core-flow behaviors:
 1. **Open and resume:** authorized project/page ownership is enforced, and reopening a page restores its retained Working Schema.
 2. **Agent edit:** one Run is bound to one project/page and its starting Working version; typed operations are validated and applied atomically without creating a Revision or writing the target project.
 3. **Visual edit:** visual edits use the same version-checked Working pipeline as Agent edits; a successful edit increments Working while stale or invalid edits leave the previous draft intact.
-4. **Save Revision:** only an explicit save creates an immutable, page-scoped Revision; repeated requests are safe and ordinary edits never create checkpoints.
-5. **History restore:** history can be listed and inspected; restoring a Revision changes Working into an unsaved draft and never saves or applies automatically.
+4. **Save Revision:** explicit save checkpoints the current Working state. Initialization and confirmed reload from an external target also establish a checkpoint. Repeated saves of the same state are safe and ordinary edits never create checkpoints.
+5. **History restore:** history can be listed and inspected; restoring a Revision copies its content into Working (dirty when it differs from the latest saved content) and never saves or applies automatically.
 6. **Apply to project:** Apply accepts only the current explicitly saved state with clean Working, writes only the authorized target `schema.json`, detects external changes, is safe to retry with the same request identity, and records a receipt.
 7. **Recovery and isolation:** retained drafts and durable Agent/Apply outcomes can be recovered after interruption; stale responses, retries or Runs cannot cross project/page boundaries or repeat an ambiguous mutation automatically.
 
@@ -87,7 +87,7 @@ pnpm dev
 pnpm dev:web
 ```
 
-After TypeScript or UI changes, run all four repository gates:
+After TypeScript or UI changes, use `pnpm check` to run all four repository gates in dependency order. The individual entry points are:
 
 ```sh
 pnpm lint

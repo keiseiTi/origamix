@@ -1,4 +1,3 @@
-import { nanoid } from 'nanoid';
 import { equalJson } from '@origamix/shared';
 import { ApiRequestError, subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
@@ -21,10 +20,7 @@ type Session = {
   pending: Promise<void> | null;
   timer: number | null;
   failed: boolean;
-  attempt: {
-    schema: OrigamixPageSchema;
-    requestId: string;
-  } | null;
+  uncertainSchema: OrigamixPageSchema | null;
 };
 export const useEditorSession = (
   projectId: string,
@@ -51,7 +47,7 @@ export const useEditorSession = (
         pending: null,
         timer: null,
         failed: false,
-        attempt: null,
+        uncertainSchema: null,
       },
     }),
     [projectId, pageId],
@@ -74,6 +70,7 @@ export const useEditorSession = (
   useEffect(() => {
     onWorkingCommittedRef.current = onWorkingCommitted;
   }, [onWorkingCommitted]);
+  const explicitReload = useRef(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const ownedSession = sessionRef.current;
@@ -88,13 +85,19 @@ export const useEditorSession = (
     let active = true;
     const ownedSession = sessionRef.current;
     let sequence = 0;
+    const explicit = explicitReload.current;
+    explicitReload.current = false;
     const load = async () => {
       const request = ++sequence;
       try {
         if (ownedSession.pending) await ownedSession.pending;
         if (!active || request !== sequence) return;
-        if (ownedSession.failed || !equalJson(ownedSession.draft, ownedSession.savedSchema))
+        if (
+          !explicit &&
+          (ownedSession.failed || !equalJson(ownedSession.draft, ownedSession.savedSchema))
+        )
           throw new Error('Working 已更新，本地草稿已保留；请先重试保存草稿，再重试加载');
+        const draftBeforeRead = ownedSession.draft;
         const baseVersion = ownedSession.workingVersion;
         const result = await service.workingState(projectId, pageId);
         if (!active || request !== sequence) return;
@@ -102,10 +105,20 @@ export const useEditorSession = (
         if (
           ownedSession.workingVersion !== baseVersion ||
           ownedSession.pending ||
-          ownedSession.failed ||
-          !equalJson(ownedSession.draft, ownedSession.savedSchema)
+          ownedSession.draft !== draftBeforeRead
         )
           throw new Error('加载期间出现本地编辑，草稿已保留，请重试加载');
+        if (
+          explicit &&
+          ownedSession.draft &&
+          !equalJson(ownedSession.draft, result.schema) &&
+          !equalJson(ownedSession.draft, ownedSession.savedSchema) &&
+          !window.confirm('加载服务器版本会放弃本地未提交的修改，是否继续？')
+        )
+          return;
+        ownedSession.failed = false;
+        ownedSession.uncertainSchema = null;
+        setFailure(null);
         ownedSession.generation += 1;
         ownedSession.draft = result.schema;
         ownedSession.savedSchema = result.schema;
@@ -154,21 +167,48 @@ export const useEditorSession = (
           continue;
         }
         if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
-        const draft = sessionRef.current.draft;
+        const session = sessionRef.current;
+        if (session.uncertainSchema) {
+          const candidate = session.uncertainSchema;
+          const recovery = service
+            .workingState(projectId, pageId)
+            .then((working) => {
+              if (!session.active) throw new Error('编辑会话已关闭');
+              if (
+                working.workingVersion === session.workingVersion + 1 &&
+                equalJson(working.schema, candidate)
+              ) {
+                session.workingVersion = working.workingVersion;
+                session.savedSchema = working.schema;
+                onWorkingCommittedRef.current?.();
+              } else if (
+                working.workingVersion !== session.workingVersion ||
+                !equalJson(working.schema, session.savedSchema)
+              ) {
+                throw new Error('服务器页面已变化，本地草稿已保留。请核对修改后重试加载');
+              }
+              session.uncertainSchema = null;
+              session.failed = false;
+              setFailure(null);
+            })
+            .finally(() => {
+              session.pending = null;
+            });
+          session.pending = recovery;
+          await recovery;
+          continue;
+        }
+        const draft = session.draft;
         if (!draft || equalJson(draft, sessionRef.current.savedSchema)) return;
         if (readOnly) throw new Error('当前页面暂时只读，请稍后再试');
-        const attempt = {
-          schema: structuredClone(draft),
-          requestId: nanoid(),
-        };
-        sessionRef.current.attempt = attempt;
+        const candidate = structuredClone(draft);
         const transaction: EditorTransaction = createEditorTransaction(
           {
             scope: sessionRef.current.scope,
             workingVersion: sessionRef.current.workingVersion,
             schema: sessionRef.current.savedSchema!,
           },
-          attempt.schema,
+          candidate,
         );
         const request =
           transaction.kind === 'operations'
@@ -177,14 +217,12 @@ export const useEditorSession = (
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.operations,
-                ...[],
               )
             : service.updateWorking(
                 transaction.scope.projectId,
                 transaction.scope.pageId,
                 transaction.baseWorkingVersion,
                 transaction.schema,
-                ...[],
               );
         const operation = request
           .then((result) => {
@@ -192,9 +230,13 @@ export const useEditorSession = (
             sessionRef.current.workingVersion = result.workingVersion;
             sessionRef.current.savedSchema = result.schema;
             sessionRef.current.failed = false;
-            sessionRef.current.attempt = null;
             setFailure(null);
             onWorkingCommittedRef.current?.();
+          })
+          .catch((error: unknown) => {
+            if (!(error instanceof ApiRequestError) || error.status >= 500 || error.status === 408)
+              session.uncertainSchema = candidate;
+            throw error;
           })
           .finally(() => {
             if (sessionRef.current.pending === operation) sessionRef.current.pending = null;
@@ -204,8 +246,7 @@ export const useEditorSession = (
       }
       throw new Error('编辑会话已关闭');
     } catch (reason) {
-      if (reason instanceof ApiRequestError && reason.status < 500 && reason.status !== 408)
-        sessionRef.current.attempt = null;
+      if (sessionRef.current.timer !== null) window.clearTimeout(sessionRef.current.timer);
       if (sessionRef.current.active) {
         sessionRef.current.failed = true;
         setFailure({
@@ -215,7 +256,7 @@ export const useEditorSession = (
       }
       throw reason;
     }
-  }, [readOnly, sessionRef, service]);
+  }, [readOnly, sessionRef, service, projectId, pageId]);
   const generation = sessionRef.current.generation;
   const onChange = (
     schema: OrigamixPageSchema,
@@ -240,6 +281,20 @@ export const useEditorSession = (
         options?.immediate ? 0 : 700,
       );
   };
+  const getConfirmedWorking = useCallback(() => {
+    const current = sessionRef.current;
+    if (
+      !current.active ||
+      !current.savedSchema ||
+      current.failed ||
+      !equalJson(current.savedSchema, current.draft)
+    )
+      return null;
+    return {
+      scope: current.scope,
+      workingVersion: current.workingVersion,
+    };
+  }, [sessionRef]);
   const acknowledgeWorking = useCallback(
     (working: EditorWorkingState): void => {
       const current = sessionRef.current;
@@ -271,7 +326,11 @@ export const useEditorSession = (
     initial,
     loading: !current,
     refreshing: Boolean(current && current.refreshKey !== schemaRefreshKey),
-    retryLoad: () => setRetry((value) => value + 1),
+    retryLoad: () => {
+      explicitReload.current = true;
+      setRetry((value) => value + 1);
+    },
+    getConfirmedWorking,
     error: failure?.sessionRef === sessionRef ? failure.message : (current?.error ?? null),
     flush,
     onChange,
