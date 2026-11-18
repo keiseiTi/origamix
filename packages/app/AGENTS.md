@@ -108,4 +108,6 @@ pnpm --filter @origamix/app build
 
 - Production Web selects MySQL with `ORIGAMIX_WEB_MYSQL_URL`. The Renderer uses the host capability to offer database project creation and Working/Revision controls. Keep directory grants and file Apply on hosts that support them. Validate the database Web path with `pnpm test:web:mysql` against a disposable MySQL database and retain Desktop integration checks.
 
+- `src/services/project-sync-files.ts` owns template expansion and path/content validation for both directory sync and ZIP export. `project-sync.ts` owns directory authorization, writes, checkpoints and receipts.
+
 - Local sync retries reuse the prepared snapshot and the browser’s file-creation checkpoint. Verify managed files against both the last baseline and the prepared output before writes. Complete the receipt only after verification. Preserve Desktop Apply, template user files and unrelated local page files.

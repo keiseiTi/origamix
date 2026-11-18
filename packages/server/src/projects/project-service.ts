@@ -1,10 +1,17 @@
 import {
-  projectShellIssue,
+  pagesWithout,
+  prepareProjectSettings,
+  projectNavigation,
+  projectSettings,
+  requireProjectName,
+  sameProjectRouting,
+} from './project-settings';
+import {
   ProjectSettingsUpdateSchema,
   type ProjectSettingsUpdate,
   type ProjectSettings,
 } from '@origamix/shared';
-import { equalJson, type ProjectNavigationInfo } from '@origamix/shared';
+import { type ProjectNavigationInfo } from '@origamix/shared';
 import {
   ProjectRoutingSchema,
   DEFAULT_PROJECT_ROUTING,
@@ -85,8 +92,7 @@ export class ProjectService {
       throw invalid('路由配置无效');
     if (input.layoutVariant !== undefined && !['side', 'top', 'mix'].includes(input.layoutVariant))
       throw invalid('初始布局无效');
-    const name = input.name.trim();
-    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const name = requireProjectName(input.name.trim());
     const code = input.code.trim();
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
       throw invalid('项目标识仅支持小写字母、数字和连字符');
@@ -134,8 +140,7 @@ export class ProjectService {
   }): Promise<OpenProjectResult> {
     const path = this.grants.resolveGrant(input.directoryGrantId);
     const directoryName = basename(path);
-    const name = (input.name ?? directoryName).trim();
-    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const name = requireProjectName((input.name ?? directoryName).trim());
     const inferredCode =
       directoryName
         .toLowerCase()
@@ -210,15 +215,7 @@ export class ProjectService {
         const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== projectId || manifest.runtime !== 'origamix')
           throw invalid('项目不支持应用设置');
-        return {
-          projectId,
-          name: manifest.name,
-          pages: manifest.pages,
-          shell: manifest.shell,
-          layout: manifest.layout,
-          routing: manifest.routing,
-          manifestHash: manifestHash(source),
-        };
+        return projectSettings(manifest, manifestHash(source));
       });
     });
 
@@ -232,43 +229,17 @@ export class ProjectService {
         const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== input.projectId || manifest.runtime !== 'origamix')
           throw invalid('项目不支持应用设置');
-        const name = input.name?.trim() ?? manifest.name;
-        if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
-        const issue = projectShellIssue(input.shell, manifest.pages);
-        if (issue) throw invalid(issue);
-        const same =
-          manifest.name === name &&
-          equalJson(manifest.shell, input.shell) &&
-          equalJson(manifest.layout, input.layout) &&
-          equalJson(manifest.routing, input.routing);
-        if (manifestHash(source) !== input.expectedManifestHash && !same)
+        const next = prepareProjectSettings(manifest, input);
+        if (manifestHash(source) !== input.expectedManifestHash && next.changed)
           throw conflict('项目文件已被修改。输入已保留，请重新打开设置核对后保存');
-        if (!same) {
+        if (next.changed) {
           if (this.projects.hasActiveRuns(input.projectId))
             throw conflict('项目 Agent 正在运行，请停止后再保存项目设置');
-          await this.manifest.writeManifest(
-            project.path,
-            {
-              ...manifest,
-              name,
-              shell: input.shell,
-              layout: input.layout,
-              routing: input.routing,
-            },
-            source,
-          );
+          await this.manifest.writeManifest(project.path, next.manifest, source);
         }
         await this.reconcile(project.path);
-        const next = await this.manifest.readSource(project.path);
-        return {
-          projectId: input.projectId,
-          name,
-          pages: manifest.pages,
-          shell: input.shell,
-          layout: input.layout,
-          routing: input.routing,
-          manifestHash: manifestHash(next),
-        };
+        const saved = await this.manifest.readSource(project.path);
+        return projectSettings(next.manifest, manifestHash(saved));
       });
     });
 
@@ -279,11 +250,7 @@ export class ProjectService {
       return withProjectActivity(project.path, async () => {
         const manifest = await this.manifest.readManifest(project.path);
         if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
-        return {
-          runtime: manifest.runtime,
-          layoutEnabled: manifest.runtime === 'origamix' && manifest.layout.enabled,
-          pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
-        };
+        return projectNavigation(manifest);
       });
     });
 
@@ -313,9 +280,7 @@ export class ProjectService {
         const manifest = this.manifest.parseManifest(source);
         if (manifest.projectId !== input.projectId) throw invalid('项目清单归属无效');
         if (manifest.runtime !== 'origamix') throw conflict('此项目的应用运行由项目自行管理');
-        const same =
-          manifest.routing.mode === input.routing.mode &&
-          manifest.routing.basePath === input.routing.basePath;
+        const same = sameProjectRouting(manifest.routing, input.routing);
         // Retrying an already completed deterministic update is safe; never overwrite newer settings.
         if (manifestHash(source) !== input.expectedManifestHash && !same)
           throw conflict('项目配置已变化，请重新打开运行设置');
@@ -414,8 +379,7 @@ export class ProjectService {
     return withProjectQueue(projectId, async () => {
       const project = this.projects.getProject(projectId);
       if (!project) throw notFound('项目不存在');
-      const name = nameInput.trim();
-      if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+      const name = requireProjectName(nameInput.trim());
       await this.manifest.renameProject(project.path, name);
       return this.reconcile(project.path);
     });
@@ -477,16 +441,11 @@ export class ProjectService {
       if (!project) throw notFound('页面不存在');
       return withExclusiveProjectActivity(project.path, async () => {
         const manifest = await this.manifest.readManifest(project.path);
-        if (
-          manifest.shell &&
-          [
-            manifest.shell.homePageId,
-            manifest.shell.notFoundPageId,
-            ...manifest.shell.standalonePageIds,
-            ...(manifest.shell.navigation ?? []).map((item) => item.pageId),
-          ].includes(pageId)
-        )
-          throw conflict('该页面被项目设置引用，请先移除菜单、首页、404 或独立页面配置中的关联');
+        pagesWithout(
+          manifest,
+          pageId,
+          '该页面被项目设置引用，请先移除菜单、首页、404 或独立页面配置中的关联',
+        );
         if (manifest.projectId !== projectId) throw invalid('项目清单归属不匹配');
         let deletion = await readPageDeletion(project.path, pageId);
         if (deletion && deletion.projectId !== projectId) throw invalid('页面删除记录归属不匹配');

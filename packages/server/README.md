@@ -4,7 +4,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；桌面清单由文件拥有，SQLite 不存第二份。数据库 Web 项目使用 MySQL 中的配置和页面记录组装清单。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
 
-Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 页面 Agent 使用共用的 Run 状态机、执行器与 Working 提交工具，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 项目同步在 MySQL 中保留每个绑定目录的待完成快照、成功回执和文件哈希基线。浏览器负责写入。导出 ZIP 走只读快照，复用一致的页面清单和已保存 Schema。
+Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 两个宿主通过 [page-agent-runtime.ts](src/agent/page-agent-runtime.ts) 共用上下文、工具、执行器和 Run 恢复装配，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 项目同步在 MySQL 中保留每个绑定目录的待完成快照、成功回执和文件哈希基线。浏览器负责写入。导出 ZIP 走只读快照，复用一致的页面清单和已保存 Schema。
 
 ## 代码组织
 
@@ -31,7 +31,7 @@ scripts/                     构建、开发与独立 Server 配置
 test/                       核心流与架构测试；fixtures/ 放假引擎和夹具，helpers/ 放辅助工具
 ```
 
-Schema 服务只抽离契约、校验与结果转换；页面队列、Agent 回执和持久化顺序仍在同一协调模块。Project 服务只抽离目录规则与初始 Schema 构造，不改变授权、项目队列或写入责任。
+文件页面通过 [Schema 服务](src/schema/schema-service.ts) 检查项目和页面归属，MySQL 页面在项目事务内解析。Working 预检、操作提交与完整候选更新共用版本检查。两个项目服务通过 [project-settings.ts](src/projects/project-settings.ts) 共用设置校验、导航投影和页面引用规则，持久化仍由各宿主负责。
 
 ## 从哪里开始
 

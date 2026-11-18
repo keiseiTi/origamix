@@ -17,6 +17,8 @@ import { RevisionCommit, createRevisionSnapshot, validateSnapshot } from './revi
 import { hashSchema } from './schema-hash';
 import {
   type OrigamixPageSchema,
+  type PageRecord,
+  type ProjectRecord,
   type SchemaOperation,
   type RevisionHistory,
   type ReloadFromProjectRequest,
@@ -30,6 +32,34 @@ import {
 } from './schema-storage';
 import { WorkingSchemaStore } from './working-schema-store';
 import { applySchemaOperationBatch, SchemaOperationError } from './schema-operation-engine';
+
+export const requireFileSchemaPage = (
+  project: ProjectRecord | undefined,
+  page: PageRecord | undefined,
+): SchemaPageRef => {
+  if (
+    !project ||
+    project.status !== 0 ||
+    !page ||
+    page.status !== 0 ||
+    page.projectId !== project.id
+  )
+    throw notFound('页面不存在');
+  return {
+    projectPath: project.path,
+    pageId: page.id,
+    slug: page.slug,
+    relativePath: page.relativePath,
+  };
+};
+
+export const fileSchemaPageResolver =
+  (projects: {
+    getProject?: (projectId: string) => ProjectRecord | undefined;
+    getPage?: (projectId: string, pageId: string) => PageRecord | undefined;
+  }) =>
+  (projectId: string, pageId: string): SchemaPageRef =>
+    requireFileSchemaPage(projects.getProject?.(projectId), projects.getPage?.(projectId, pageId));
 
 // One process-wide page queue is shared by reads, Working writes, revisions and Apply.
 const pageQueue = new KeyedQueue();
@@ -310,6 +340,24 @@ export const getAgentWorkingCommitEvidence = (page: SchemaPageRef, runId: string
     return { receipt, working: await readWorking(page) };
   });
 
+const readWorkingAtVersion = async (page: SchemaPageRef, baseWorkingVersion: number) => {
+  const current = await getSchemaUnlocked(page);
+  if (current.workingVersion !== baseWorkingVersion)
+    throw conflict('页面草稿已更新，请重新加载后再提交');
+  return current;
+};
+
+const commitWorkingCandidate = async (
+  page: SchemaPageRef,
+  current: WorkingSchemaFile,
+  candidate: OrigamixPageSchema,
+  options: WorkingDraftWriteOptions,
+) => {
+  await options.validateCandidate?.(candidate);
+  await options.beforeWrite?.();
+  return writeWorkingDraft(page, current, candidate, options);
+};
+
 export const updateWorkingSchema = async (
   page: SchemaPageRef,
   input: {
@@ -319,12 +367,9 @@ export const updateWorkingSchema = async (
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
   return withSchemaPageQueue(page, async (page) => {
-    const current = await getSchemaUnlocked(page);
-    if (current.workingVersion !== input.baseWorkingVersion)
-      throw conflict('页面草稿已更新，请重新加载后再提交');
+    const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
     await validateWritableSchema(page, input.schema);
-    await options.beforeWrite?.();
-    return writeWorkingDraft(page, current, input.schema, options);
+    return commitWorkingCandidate(page, current, input.schema, options);
   });
 };
 
@@ -382,34 +427,25 @@ export const validateWorkingSchemaOperations = async (
   validateCandidate?: WorkingDraftWriteOptions['validateCandidate'],
 ): Promise<void> =>
   withSchemaPageQueue(page, async (page) => {
-    const current = await getSchemaUnlocked(page);
-    if (current.workingVersion !== input.baseWorkingVersion)
-      throw conflict('页面草稿已更新，请重新加载后再提交');
+    const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
     const candidate = await prepareWorkingOperations(page, current, input, true);
     await validateCandidate?.(candidate);
   });
 
 export const applyWorkingSchemaOperations = async (
   page: SchemaPageRef,
-  input: {
-    baseWorkingVersion: number;
-    operations: readonly SchemaOperation[];
-  },
+  input: WorkingOperationInput,
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
   return withSchemaPageQueue(page, async (page) => {
-    const current = await getSchemaUnlocked(page);
-    if (current.workingVersion !== input.baseWorkingVersion)
-      throw conflict('页面草稿已更新，请重新加载后再提交');
+    const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
     const candidate = await prepareWorkingOperations(
       page,
       current,
       input,
       Boolean(options.agentCommit),
     );
-    await options.validateCandidate?.(candidate);
-    await options.beforeWrite?.();
-    return writeWorkingDraft(page, current, candidate, options);
+    return commitWorkingCandidate(page, current, candidate, options);
   });
 };
 

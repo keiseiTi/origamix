@@ -1,25 +1,9 @@
+import { createPageAgentEngine, createPageAgentRuntime } from '../agent/page-agent-runtime';
 import { mysqlAgentUsage } from '../agent/agent-usage-repository';
 import { AgentUsageService } from '../agent/agent-usage-service';
 import type { RowDataPacket } from 'mysql2/promise';
-import { AgentService } from '../agent/agent-service';
-import { agentTarget } from '../agent/agent-target';
-import { ContextAssembler } from '../agent/context-assembler';
-import { AgentEventBroker } from '../agent/event-broker';
 import { MysqlAgentRunRepository } from '../agent/mysql-agent-repository';
-import { PiAgentEngine } from '../agent/pi-agent-engine';
-import { createPiModels } from '../agent/pi-runtime';
-import { ProductDocsProvider } from '../agent/product-docs-provider';
-import { progressPayload } from '../agent/progress';
 import { resolveAgentRunBudget } from '../agent/run-budget';
-import { RunExecutor } from '../agent/run-executor';
-import { recoverAgentRunsOnStartup } from '../agent/run-recovery';
-import { AgentRunService } from '../agent/run-service';
-import { createCompletePageRunTool } from '../agent/tools/complete-page-run';
-import { createDomainAgentTools } from '../agent/tools/domain-tools';
-import { createAgentElementIds } from '../agent/tools/element-ids';
-import { createReadOnlyAgentTools } from '../agent/tools/read-only-tools';
-import { createDefaultAgentToolEntries } from '../agent/tools/registry';
-import { createValidatePageOperationsTool } from '../agent/tools/validate-page-operations';
 import type { AgentEngine } from '../agent/agent-engine';
 import { MysqlConversationService } from '../conversations/mysql-conversation-service';
 import { openWebDatabase } from '../database/mysql-web';
@@ -50,10 +34,7 @@ export const startMysqlWebServer = async (input: {
     if (lock[0]?.acquired !== 1) throw new Error('已有 Web 宿主正在使用这个 MySQL 数据库');
     const projects = new MysqlProjectService(pool);
     const { agentProjects } = projects;
-    const resolvePage = (projectId: string, pageId: string) => ({
-      ...projects.resolveSchemaPage(projectId, pageId),
-      projectPath: projectId,
-    });
+    const resolvePage = projects.resolveSchemaPage;
     const getWorking = (projectId: string, pageId: string) =>
       getWorkingSchemaState(resolvePage(projectId, pageId));
     const loadMaterials = async (projectId: string) =>
@@ -66,107 +47,28 @@ export const startMysqlWebServer = async (input: {
     const usageRepository = mysqlAgentUsage(pool);
     const runs = new MysqlAgentRunRepository(pool);
     const conversations = new MysqlConversationService(pool, projects, runs);
-    const runService = new AgentRunService(runs);
-    const events = new AgentEventBroker();
-    runService.setTransitionListener((run) => {
-      const payload = progressPayload(run.status);
-      if (payload)
-        events.publish({
-          type: 'run.progress',
-          runId: run.id,
-          pageId: run.pageId,
-          requestId: run.clientRequestId,
-          target: agentTarget(run.projectId, run.pageId),
-          payload,
-        });
-    });
-    const docs = new ProductDocsProvider();
-    const context = new ContextAssembler(
-      { getCurrent: getWorkingSchemaState },
-      conversations,
-      docs,
-      {},
-      projects.getPageRoles,
-      loadMaterials,
-      false,
-    );
-    const pi = createPiModels();
-    const engine =
-      input.agentEngine ??
-      new PiAgentEngine({
-        resolveModel: (provider, model) => pi.models.getModel(provider, model),
-        stream: pi.models.streamSimple.bind(pi.models),
-        getCredential: async (provider) =>
-          provider === 'deepseek' ? input.getModelCredential?.(provider) : undefined,
-      });
-    const executor = new RunExecutor({
-      recordReportedUsage: usageRepository.record,
+    const agent = createPageAgentRuntime({
       projects: agentProjects,
       resolvePage,
       runs,
       conversations,
-      runService,
-      context,
-      engine,
-      createTools: (scope) => {
-        const ids = createAgentElementIds();
-        return createDefaultAgentToolEntries([
-          ...createReadOnlyAgentTools(
-            {
-              runId: scope.runId,
-              projectId: scope.projectId,
-              pageId: scope.pageId,
-              workingVersion: scope.baseWorkingVersion,
-            },
-            {
-              projects: agentProjects,
-              resolvePage,
-              loadMaterials,
-              getProjectRoles: projects.getPageRoles,
-            },
-            ids,
-          ),
-          ...createDomainAgentTools(scope, { projects: agentProjects, docs, diagnostics }),
-          createValidatePageOperationsTool(agentProjects, scope, ids, resolvePage),
-          createCompletePageRunTool(
-            { projects: agentProjects, resolvePage, loadMaterials, runs, runService },
-            scope,
-            ids,
-          ),
-        ]);
-      },
-      audit: async (audit) => {
-        await runs.appendAudit(audit);
-        const run = await runs.get(audit.runId);
-        if (run)
-          events.publish({
-            type: 'tool.activity',
-            runId: run.id,
-            pageId: run.pageId,
-            requestId: run.clientRequestId,
-            target: agentTarget(run.projectId, run.pageId),
-            payload: {
-              toolName: audit.toolName,
-              phase: audit.phase,
-              ...(audit.safeErrorCode ? { safeErrorCode: audit.safeErrorCode } : {}),
-            },
-          });
-      },
-    });
-    const service = new AgentService({
-      projects: agentProjects,
-      runs,
-      conversations,
-      runService,
-      events,
-      executor,
+      history: conversations,
+      diagnostics,
+      loadMaterials,
+      getPageRoles: projects.getPageRoles,
+      engine: input.agentEngine ?? createPageAgentEngine(input.getModelCredential),
+      audit: (event) => runs.appendAudit(event),
+      recordReportedUsage: usageRepository.record,
       budget: resolveAgentRunBudget(
         process.env.ORIGAMIX_AGENT_BUDGET_PROFILE,
         process.env.ORIGAMIX_AGENT_BUDGET_JSON,
       ),
-      getCurrentState: (projectId, pageId) => getWorking(projectId, pageId!),
+      getCurrentState: (projectId, pageId) => {
+        if (!pageId) throw new Error('页面 ID 缺失');
+        return getWorking(projectId, pageId);
+      },
     });
-    await recoverAgentRunsOnStartup(runs, agentProjects, conversations, resolvePage);
+    await agent.recover();
     const template = input.templateDownload && {
       version: input.templateDownload.version,
       sha256: input.templateDownload.sha256,
@@ -192,7 +94,7 @@ export const startMysqlWebServer = async (input: {
       resolveSchemaPage: projects.resolveSchemaPage,
       agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       runtimeDiagnostics: diagnostics,
-      agent: { conversations, runs: runService, events, service },
+      agent: agent.http,
     });
     const listener = server;
     await listener.listen({ host: '127.0.0.1', port: 0 });
@@ -203,7 +105,7 @@ export const startMysqlWebServer = async (input: {
     const close = (): Promise<void> => {
       closing ??= (async () => {
         clearInterval(heartbeat);
-        const agents = service.shutdown();
+        const agents = agent.http.service.shutdown();
         await Promise.all([agents, listener.close()]);
         ownership.destroy();
         await pool.end();

@@ -91,6 +91,8 @@ pnpm start:web
 
 首次启动自动初始化 Web 表，并为原有 MySQL 项目库增加 Agent 所需的表。MySQL 模式持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。数据库项目可以生成并同步到用户授权的本机目录。布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
 
+目录同步和 ZIP 导出共用 [文件清单校验](src/services/project-sync-files.ts)。目录同步先生成变更清单，再核对本地文件基线并写入，复核结果后才提交完成回执。
+
 用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。运行 `pnpm test:agent:mysql` 使用确定性模型验证过期写入冲突与中断恢复。
 
 根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。

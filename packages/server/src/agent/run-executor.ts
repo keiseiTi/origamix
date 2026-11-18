@@ -1,3 +1,4 @@
+import { requireFileSchemaPage } from '../schema/schema-service';
 import type { AgentUsageRepository, ReportedUsage } from './agent-usage-repository';
 import type { AgentModelUsageMetrics } from './agent-engine';
 import { agentTarget } from './agent-target';
@@ -201,12 +202,9 @@ export class RunExecutor {
         target: agentTarget(input.projectId, input.pageId),
         ...(page
           ? {
-              page: this.dependencies.resolvePage?.(input.projectId, page.id) ?? {
-                projectPath: project.path,
-                pageId: page.id,
-                slug: page.slug,
-                relativePath: page.relativePath,
-              },
+              page:
+                this.dependencies.resolvePage?.(input.projectId, page.id) ??
+                requireFileSchemaPage(project, page),
             }
           : { page: undefined }),
         conversationId: started.conversation.id,
@@ -359,26 +357,13 @@ export class RunExecutor {
         missingTerminalRepairUsed = true;
         prompt = `协议修复：你必须调用 ${terminalToolName} 提交一个结构化终态。不要输出自由文本作为最终答案，也不要省略终态工具。`;
       }
-      await this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
-      const current = await this.dependencies.runs.get(runId);
-      if (resultWorkingVersion) {
-        const resultPatch = { resultWorkingVersion };
-        if (current?.status === 'cancelling') {
-          await this.dependencies.runService.transition(runId, 'completed', resultPatch);
-        } else {
-          await this.dependencies.runService.transition(runId, 'completed', resultPatch);
-        }
-      } else {
-        await this.dependencies.runService.transition(runId, 'completed');
-      }
-      await this.persistMetrics(runId, tracker);
-      return {
+      return await this.completeRun(
         runId,
-        status: 'completed',
-        text: assistantText,
-        outcome: terminalOutcome,
-        ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
-      };
+        tracker,
+        assistantText,
+        terminalOutcome,
+        resultWorkingVersion,
+      );
     } catch (caught) {
       const error =
         controller.signal.reason instanceof AgentEngineError ? controller.signal.reason : caught;
@@ -386,36 +371,20 @@ export class RunExecutor {
       const committedWorkingVersion = current?.resultWorkingVersion ?? resultWorkingVersion;
       const persistedResponse = persistedTerminalResponse(current?.outcomeJson);
       if (current?.status === 'deciding' && current.outcome && assistantText) {
-        await this.dependencies.conversations.finishAssistant(runId, textContent(assistantText));
-        await this.dependencies.runService.transition(runId, 'completed');
-        await this.persistMetrics(runId, tracker);
-        return {
-          runId,
-          status: 'completed',
-          text: assistantText,
-          outcome: current.outcome,
-        };
+        return await this.completeRun(runId, tracker, assistantText, current.outcome);
       }
       if (
         committedWorkingVersion &&
         current &&
         !['completed', 'failed', 'cancelled', 'interrupted'].includes(current.status)
       ) {
-        await this.dependencies.conversations.finishAssistant(
+        return await this.completeRun(
           runId,
-          textContent(assistantText || persistedResponse || '页面草稿已完成修改。'),
+          tracker,
+          assistantText || persistedResponse || '页面草稿已完成修改。',
+          current.outcome ?? undefined,
+          committedWorkingVersion,
         );
-        await this.dependencies.runService.transition(runId, 'completed', {
-          resultWorkingVersion: committedWorkingVersion,
-        });
-        await this.persistMetrics(runId, tracker);
-        return {
-          runId,
-          status: 'completed',
-          text: assistantText || persistedResponse || '页面草稿已完成修改。',
-          ...(current.outcome ? { outcome: current.outcome } : {}),
-          resultWorkingVersion: committedWorkingVersion,
-        };
       }
       const cancelled =
         (controller.signal.aborted &&
@@ -478,6 +447,29 @@ export class RunExecutor {
     if ((await this.dependencies.runs.get(runId))?.status === expected) {
       await this.dependencies.runService.transition(runId, target);
     }
+  }
+
+  private async completeRun(
+    runId: string,
+    tracker: RunBudgetController,
+    text: string,
+    outcome?: PageAgentOutcome,
+    resultWorkingVersion?: number,
+  ): Promise<RunResult> {
+    await this.dependencies.conversations.finishAssistant(runId, textContent(text));
+    await this.dependencies.runService.transition(
+      runId,
+      'completed',
+      resultWorkingVersion ? { resultWorkingVersion } : undefined,
+    );
+    await this.persistMetrics(runId, tracker);
+    return {
+      runId,
+      status: 'completed',
+      text,
+      ...(outcome ? { outcome } : {}),
+      ...(resultWorkingVersion ? { resultWorkingVersion } : {}),
+    };
   }
 
   private async persistMetrics(runId: string, tracker: RunBudgetController): Promise<void> {

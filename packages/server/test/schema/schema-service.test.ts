@@ -134,6 +134,7 @@ describe('Schema Service', () => {
           projectId === 'project_test' && pageId === page.pageId
             ? ({
                 id: page.pageId,
+                projectId,
                 slug: page.slug,
                 relativePath: 'src/pages/test-page',
                 status: 0,

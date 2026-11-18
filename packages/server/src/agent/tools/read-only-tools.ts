@@ -14,7 +14,7 @@ import {
 
 import type { AgentProjects, AgentSchemaPage } from '../persistence';
 import { conflict, invalid, notFound } from '../../errors';
-import { getWorkingSchemaState } from '../../schema/schema-service';
+import { getWorkingSchemaState, requireFileSchemaPage } from '../../schema/schema-service';
 import { type SchemaPageRef } from '../../schema/schema-contracts';
 import type { AgentEngineTool } from '../agent-engine';
 import { createLogicReadTools, exactReadPagination, exactReadResult } from './logic-tools';
@@ -162,12 +162,8 @@ export const createReadOnlyAgentTools = (
     blocks = materials.blocks ?? [];
     agentCatalog = materials.agentCatalog;
     schemaPromise ??= (dependencies.readSchema ?? getWorkingSchemaState)(
-      dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
-        projectPath: project.path,
-        pageId: page!.id,
-        slug: page!.slug,
-        relativePath: page!.relativePath,
-      },
+      dependencies.resolvePage?.(scope.projectId, scope.pageId!) ??
+        requireFileSchemaPage(project, page),
     );
     const current = await schemaPromise;
     assertNotAborted(signal);

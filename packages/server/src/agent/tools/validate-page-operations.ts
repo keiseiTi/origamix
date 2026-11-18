@@ -5,7 +5,10 @@ import { Value } from '@sinclair/typebox/value';
 import { AgentEngineError, type AgentEngineTool } from '../agent-engine';
 import type { AgentProjects, AgentSchemaPage } from '../persistence';
 import { invalid, notFound } from '../../errors';
-import { validateWorkingSchemaOperations } from '../../schema/schema-service';
+import {
+  validateWorkingSchemaOperations,
+  requireFileSchemaPage,
+} from '../../schema/schema-service';
 import { SchemaValidationError } from '../../schema/validation/schema-validation';
 import type { CompletePageRunToolScope } from './complete-page-run';
 
@@ -42,12 +45,7 @@ export const createValidatePageOperationsTool = (
     try {
       elementIds.validate(operations);
       await validateWorkingSchemaOperations(
-        resolvePage?.(scope.projectId, page.id) ?? {
-          projectPath: project.path,
-          pageId: page.id,
-          slug: page.slug,
-          relativePath: page.relativePath,
-        },
+        resolvePage?.(scope.projectId, page.id) ?? requireFileSchemaPage(project, page),
         { baseWorkingVersion: scope.baseWorkingVersion, operations },
         (candidate) => {
           if (signal.aborted) throw signal.reason;

@@ -14,12 +14,13 @@ import {
 } from '@origamix/shared';
 
 import type { ProjectRepository } from '../projects/project-repository';
-import { conflict, invalid, notFound } from '../errors';
+import { conflict, invalid } from '../errors';
 import {
   applyWorkingSchemaOperation,
   getWorkingSchemaState,
   reloadWorkingSchemaFromTarget,
   updateWorkingBaseline,
+  fileSchemaPageResolver,
 } from './schema-service';
 import { type SchemaPageRef } from './schema-contracts';
 import { validateProjectPageAgainstMaterials } from './validation/material-validation';
@@ -48,23 +49,14 @@ const readJsonIfPresent = async <T>(path: string): Promise<T | undefined> => {
 };
 
 export class ProjectApplyService {
+  private readonly resolve: ReturnType<typeof fileSchemaPageResolver>;
+
   constructor(
     private readonly projects: ProjectRepository,
     private readonly targets = new TargetSchemaStore(),
     private readonly options: ProjectApplyOptions = {},
-  ) {}
-
-  private resolve(projectId: string, pageId: string): SchemaPageRef {
-    const project = this.projects.getProject(projectId);
-    const record = this.projects.getPage(projectId, pageId);
-    if (!project || !record) throw notFound('页面不存在');
-    const page = {
-      projectPath: project.path,
-      pageId: record.id,
-      slug: record.slug,
-      relativePath: record.relativePath,
-    };
-    return page;
+  ) {
+    this.resolve = fileSchemaPageResolver(projects);
   }
 
   private withOwnedPage<T>(

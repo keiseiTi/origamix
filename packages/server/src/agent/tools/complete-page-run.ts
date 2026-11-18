@@ -16,7 +16,11 @@ import {
 import type { AgentRunService } from '../run-service';
 import type { AgentProjects, AgentRunStore, AgentSchemaPage } from '../persistence';
 import { ApiError, conflict, invalid, notFound } from '../../errors';
-import { applyWorkingSchemaOperations, getWorkingSchemaState } from '../../schema/schema-service';
+import {
+  applyWorkingSchemaOperations,
+  getWorkingSchemaState,
+  requireFileSchemaPage,
+} from '../../schema/schema-service';
 import { SchemaValidationError } from '../../schema/validation/schema-validation';
 import { AgentEngineError, AgentToolValidationError, type AgentEngineTool } from '../agent-engine';
 
@@ -154,12 +158,8 @@ export const createCompletePageRunTool = (
         const page = await dependencies.projects.getPage(scope.projectId, scope.pageId);
         if (!project || !page) throw notFound('页面不属于当前项目');
         const working = await getWorkingSchemaState(
-          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
-            projectPath: project.path,
-            pageId: page.id,
-            slug: page.slug,
-            relativePath: page.relativePath,
-          },
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ??
+            requireFileSchemaPage(project, page),
         );
         if (working.workingVersion !== scope.baseWorkingVersion)
           throw conflict('页面草稿已变化，不能发布项目提案');
@@ -200,12 +200,8 @@ export const createCompletePageRunTool = (
       let candidates: ClarificationCandidate[] | undefined;
       if (input.outcome === 'needs_clarification' && input.candidates?.length) {
         const working = await getWorkingSchemaState(
-          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
-            projectPath: project.path,
-            pageId: page!.id,
-            slug: page!.slug,
-            relativePath: page!.relativePath,
-          },
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ??
+            requireFileSchemaPage(project, page),
         );
         if (working.workingVersion !== scope.baseWorkingVersion) {
           throw conflict('页面版本已变化，无法发布当前澄清选项');
@@ -253,12 +249,8 @@ export const createCompletePageRunTool = (
         assertNotCancelled(signal);
         elementIds.validate(operations);
         result = await applyWorkingSchemaOperations(
-          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ?? {
-            projectPath: project.path,
-            pageId: page!.id,
-            slug: page!.slug,
-            relativePath: page!.relativePath,
-          },
+          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ??
+            requireFileSchemaPage(project, page),
           { baseWorkingVersion: scope.baseWorkingVersion, operations },
           {
             validateCandidate: (candidate) => {

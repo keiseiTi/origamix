@@ -1,10 +1,16 @@
+import {
+  pagesWithout,
+  prepareProjectSettings,
+  projectNavigation,
+  projectSettings,
+  requireProjectName,
+  sameProjectRouting,
+} from './project-settings';
 import { nanoid } from 'nanoid';
 import type { Pool, PoolConnection } from 'mysql2/promise';
 import {
   emptyPageRoles,
-  equalJson,
   isProjectManifest,
-  projectShellIssue,
   resolveProjectStack,
   validateResolvedProjectStack,
   type InitialLayoutVariant,
@@ -137,16 +143,6 @@ const writeConfiguration = async (
   if (!isProjectManifest(manifest)) throw invalid('项目配置或页面关联无效');
   await repository.writeConfiguration(manifest.projectId, configuration(manifest));
 };
-
-const getSettings = ({ manifest }: WebProject) => ({
-  projectId: manifest.projectId,
-  name: manifest.name,
-  pages: manifest.pages,
-  shell: manifest.shell,
-  layout: manifest.layout,
-  routing: manifest.routing,
-  manifestHash: hashJson(manifest),
-});
 
 const getRoles = (manifest: ProjectManifest) => ({
   roles: manifest.pageRoles ?? emptyPageRoles(),
@@ -309,7 +305,7 @@ export class MysqlProjectService {
     );
 
   resolveSchemaPage = (projectId: string, pageId: string): SchemaPageRef => ({
-    projectPath: '',
+    projectPath: projectId,
     pageId,
     slug: '',
     withPersistence: (action) =>
@@ -320,8 +316,7 @@ export class MysqlProjectService {
   });
 
   async createDatabaseProject(input: CreateDatabaseProject): Promise<ProjectRecord> {
-    const name = input.name.trim();
-    if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+    const name = requireProjectName(input.name.trim());
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.code) || input.code.length > 128)
       throw invalid('项目标识无效或超过 128 字符');
     const id = `project_${nanoid()}`;
@@ -422,37 +417,24 @@ export class MysqlProjectService {
     );
 
   getNavigation = (projectId: string) =>
-    this.withProject(projectId, (_repository, { manifest }) => ({
-      runtime: manifest.runtime,
-      layoutEnabled: manifest.layout.enabled,
-      pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
-    }));
+    this.withProject(projectId, (_repository, { manifest }) => projectNavigation(manifest));
 
   getSettings = (projectId: string) =>
-    this.withProject(projectId, (_repository, project) => getSettings(project));
+    this.withProject(projectId, (_repository, { manifest }) =>
+      projectSettings(manifest, hashJson(manifest)),
+    );
 
   updateSettings = (input: ProjectSettingsUpdate) =>
-    this.withProject(input.projectId, async (repository, project) => {
-      const { manifest } = project;
-      const name = input.name?.trim() ?? manifest.name;
-      if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
-      const issue = projectShellIssue(input.shell, manifest.pages);
-      if (issue) throw invalid(issue);
-      const next = {
-        ...manifest,
-        name,
-        shell: input.shell,
-        layout: input.layout,
-        routing: input.routing,
-      };
-      if (!equalJson(next, manifest)) {
+    this.withProject(input.projectId, async (repository, { manifest }) => {
+      const next = prepareProjectSettings(manifest, input);
+      if (next.changed) {
         if (hashJson(manifest) !== input.expectedManifestHash)
           throw conflict('项目配置已变化，请重新读取');
         if (!(await repository.assertNoActiveRuns(input.projectId)))
           throw conflict('请先停止项目 Agent 再保存项目设置');
-        await writeConfiguration(repository, next);
+        await writeConfiguration(repository, next.manifest);
       }
-      return getSettings({ ...project, manifest: next });
+      return projectSettings(next.manifest, hashJson(next.manifest));
     });
 
   getRouting = (projectId: string) =>
@@ -464,7 +446,7 @@ export class MysqlProjectService {
   updateRouting = (input: ProjectRoutingUpdate) =>
     this.withProject(input.projectId, async (repository, { manifest }) => {
       const next = { ...manifest, routing: input.routing };
-      if (!equalJson(manifest.routing, input.routing)) {
+      if (!sameProjectRouting(manifest.routing, input.routing)) {
         if (hashJson(manifest) !== input.expectedManifestHash)
           throw conflict('项目配置已变化，请重新读取');
         await writeConfiguration(repository, next);
@@ -503,8 +485,7 @@ export class MysqlProjectService {
 
   renameProject = (projectId: string, input: string) =>
     this.withProject(projectId, async (repository, { row, manifest }) => {
-      const name = input.trim();
-      if (!name || /[\\/:*?"<>|]/.test(name)) throw invalid('项目名称无效');
+      const name = requireProjectName(input.trim());
       const next = { ...manifest, name };
       await writeConfiguration(repository, next);
       return toProject(row, next);
@@ -528,7 +509,7 @@ export class MysqlProjectService {
       const { manifest } = project;
       const next = {
         ...manifest,
-        pages: manifest.pages.filter((item) => item.pageId !== pageId),
+        pages: pagesWithout(manifest, pageId, '请先移除布局与路由中的页面引用'),
         ...(manifest.pageRoles
           ? {
               pageRoles: {
@@ -541,8 +522,6 @@ export class MysqlProjectService {
             }
           : {}),
       };
-      if (projectShellIssue(next.shell, next.pages))
-        throw conflict('请先移除布局与路由中的页面引用');
       await writeConfiguration(repository, next);
       await discardInitializedPageSchema(pageRef(connection, project, page));
       await repository.deleteAgentRecords(projectId, pageId);

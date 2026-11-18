@@ -14,23 +14,18 @@ import {
 import { request } from './request';
 import { observeWebSession } from './web-session';
 
-const encoder = new TextEncoder();
-const encode = (text: string) => encoder.encode(text);
+import {
+  encode,
+  pathParts,
+  planSyncChanges,
+  projectFiles,
+  sha256,
+  syncMarker,
+  templateFiles,
+  type FileChange,
+} from './project-sync-files';
 
-const marker = '.origamix-sync.json';
 const emptySha256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-const manifestFile = 'origamix.project.json';
-const sha256 = async (data: BufferSource) =>
-  Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
-
-const pathParts = (path: string) => {
-  const parts = path.split('/');
-  if (parts.some((part) => !/^[A-Za-z0-9._-]+$/.test(part) || part === '.' || part === '..'))
-    throw new Error(`项目文件路径无效：${path}`);
-  return parts;
-};
 
 const missing = (error: unknown) => error instanceof DOMException && error.name === 'NotFoundError';
 
@@ -88,7 +83,7 @@ const childDirectory = async (parent: ProjectDirectory, code: string) => {
 };
 
 const readTarget = async (root: FileSystemDirectoryHandle, recoverMarker = false) => {
-  const metadata = await readLocal(root, marker);
+  const metadata = await readLocal(root, syncMarker);
   if (!metadata || (recoverMarker && metadata.size === 0)) return undefined;
   try {
     const value = JSON.parse(await metadata.text()) as { projectId?: string; targetId?: string };
@@ -105,7 +100,7 @@ const readTarget = async (root: FileSystemDirectoryHandle, recoverMarker = false
 
 const confirmEmpty = async (root: ProjectDirectory, recoverMarker = false) => {
   for await (const entry of root.values()) {
-    if (recoverMarker && entry.kind === 'file' && entry.name === marker) continue;
+    if (recoverMarker && entry.kind === 'file' && entry.name === syncMarker) continue;
     throw new Error('同名目录已有文件。请选择其他父目录，或选择此项目原来的同步目录。');
   }
 };
@@ -118,7 +113,7 @@ export const bindProjectParent = (projectId: string, parent: ProjectDirectory) =
     const { code } = await request<{ code: string }>('/projects/sync/identity', { projectId });
     const prior = await readProjectDirectory(projectId);
     const sameParent = prior ? await parent.isSameEntry(prior.parent) : false;
-    const recoveringMarker = sameParent && prior?.creating?.path === marker;
+    const recoveringMarker = sameParent && prior?.creating?.path === syncMarker;
     const existing = await childDirectory(parent, code);
     const match = existing && (await readTarget(existing, recoveringMarker));
     if (match && match.projectId !== projectId) throw new Error('此目录绑定了其他项目');
@@ -153,14 +148,14 @@ const targetRoot = async (
       : undefined);
   if (!root) throw new Error('同步目录已移走。请重新选择项目父目录。');
   const recoverMarker =
-    binding.creating?.snapshotId === snapshot.id && binding.creating.path === marker;
+    binding.creating?.snapshotId === snapshot.id && binding.creating.path === syncMarker;
   const target = await readTarget(root, recoverMarker);
   if (!target && snapshot.bootstrap) {
     await confirmEmpty(root, recoverMarker);
-    await beforeCreate(marker);
+    await beforeCreate(syncMarker);
     await writeLocal(
       root,
-      marker,
+      syncMarker,
       encode(
         JSON.stringify({
           projectId: binding.projectId,
@@ -190,32 +185,8 @@ const downloadTemplate = async (template: ProjectExportSnapshot['template']) => 
   return bytes;
 };
 
-const templateFiles = async (bytes: ArrayBuffer, code: string) => {
-  const { unzipSync, strFromU8 } = await import('fflate');
-  const entries = Object.entries(unzipSync(new Uint8Array(bytes)));
-  const files = new Map<string, Uint8Array<ArrayBuffer>>();
-  for (const [path, contents] of entries) {
-    if (path.endsWith('/') || path === manifestFile) continue;
-    pathParts(path);
-    if (path === marker) throw new Error('模板包含用于同步的保留文件');
-    files.set(path, new Uint8Array(contents));
-  }
-  const manifest = files.get('package.json');
-  if (!manifest || !files.has('index.html')) throw new Error('模板缺少项目入口');
-  const pkg = JSON.parse(strFromU8(manifest));
-  files.set('package.json', encode(`${JSON.stringify({ ...pkg, name: code }, null, 2)}\n`));
-  return files;
-};
-
 const conflictMessage = (path: string) =>
   new Error(`本地文件已变化：${path}。请恢复上次同步的内容后重试。`);
-type FileChange = {
-  path: string;
-  desired: string | undefined;
-  prior: string | undefined;
-  bytes?: Uint8Array<ArrayBuffer>;
-};
-
 const inspectChange = async (
   root: FileSystemDirectoryHandle,
   change: FileChange,
@@ -286,7 +257,7 @@ export const syncProjectToDirectory = (projectId: string) =>
       targetId: binding.targetId,
     });
     if (snapshot.projectId !== projectId) throw new Error('同步快照不属于当前项目');
-    const changes: FileChange[] = [];
+    let template: Awaited<ReturnType<typeof templateFiles>> | undefined;
     if (snapshot.bootstrap) {
       const bytes =
         binding.bootstrapTemplate?.sha256 === snapshot.template.sha256
@@ -294,28 +265,9 @@ export const syncProjectToDirectory = (projectId: string) =>
           : await downloadTemplate(snapshot.template);
       binding = { ...binding, bootstrapTemplate: { sha256: snapshot.template.sha256, bytes } };
       await saveProjectDirectory(binding);
-      for (const [path, contents] of await templateFiles(bytes, snapshot.code))
-        changes.push({ path, desired: await sha256(contents), prior: undefined, bytes: contents });
+      template = await templateFiles(bytes, snapshot.code);
     }
-    const paths = new Set(changes.map(({ path }) => path));
-    for (const file of snapshot.files) {
-      if (paths.has(file.path) || file.path === marker)
-        throw new Error(`同步路径冲突：${file.path}`);
-      paths.add(file.path);
-      const bytes = encode(file.text);
-      if ((await sha256(bytes)) !== file.sha256) throw new Error(`同步文件校验失败：${file.path}`);
-      changes.push({
-        path: file.path,
-        desired: file.sha256,
-        prior: snapshot.previous[file.path],
-        bytes,
-      });
-    }
-    for (const file of snapshot.removals) {
-      if (paths.has(file.path) || file.path === marker)
-        throw new Error(`同步路径冲突：${file.path}`);
-      changes.push({ path: file.path, desired: undefined, prior: file.sha256 });
-    }
+    const changes = await planSyncChanges(snapshot, template);
     const beforeCreate = async (path: string) => {
       binding = { ...binding, creating: { snapshotId: snapshot.id, path } };
       await saveProjectDirectory(binding);
@@ -340,14 +292,8 @@ export const syncProjectToDirectory = (projectId: string) =>
 export const downloadProjectZip = async (projectId: string) => {
   const snapshot = await request<ProjectExportSnapshot>('/projects/export/snapshot', { projectId });
   if (snapshot.projectId !== projectId) throw new Error('导出快照不属于当前项目');
-  const files = await templateFiles(await downloadTemplate(snapshot.template), snapshot.code);
-  for (const file of snapshot.files) {
-    pathParts(file.path);
-    if (files.has(file.path) || file.path === marker) throw new Error(`导出路径冲突：${file.path}`);
-    const bytes = encode(file.text);
-    if ((await sha256(bytes)) !== file.sha256) throw new Error(`导出文件校验失败：${file.path}`);
-    files.set(file.path, bytes);
-  }
+  const template = await templateFiles(await downloadTemplate(snapshot.template), snapshot.code);
+  const files = await projectFiles(snapshot.files, template, '导出');
   const { zipSync } = await import('fflate');
   const zipped = zipSync(Object.fromEntries(files));
   const url = URL.createObjectURL(new Blob([new Uint8Array(zipped)], { type: 'application/zip' }));

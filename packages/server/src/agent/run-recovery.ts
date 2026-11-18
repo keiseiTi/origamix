@@ -6,7 +6,7 @@ import type {
 } from './persistence';
 import { ApiError } from '../errors';
 import { AgentRunService } from './run-service';
-import { getAgentWorkingCommitEvidence } from '../schema/schema-service';
+import { getAgentWorkingCommitEvidence, requireFileSchemaPage } from '../schema/schema-service';
 
 const responseFromOutcome = (value: unknown): string | undefined => {
   if (!value || typeof value !== 'object') return undefined;
@@ -30,12 +30,8 @@ export const recoverAgentRunsOnStartup = async (
     const page = run.pageId ? await projects.getPage(run.projectId, run.pageId) : undefined;
     if (!project || !page) return { disposition: 'not_committed' } as const;
     try {
-      const pageRef = resolvePage?.(run.projectId, run.pageId) ?? {
-        projectPath: project.path,
-        pageId: page!.id,
-        slug: page!.slug,
-        relativePath: page!.relativePath,
-      };
+      const pageRef =
+        resolvePage?.(run.projectId, run.pageId) ?? requireFileSchemaPage(project, page);
       const evidence = await getAgentWorkingCommitEvidence(pageRef, run.id);
       if (!evidence) return { disposition: 'not_committed' } as const;
       const { receipt, working } = evidence;

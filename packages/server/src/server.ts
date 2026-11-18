@@ -1,38 +1,21 @@
+import { createPageAgentEngine, createPageAgentRuntime } from './agent/page-agent-runtime';
 import { sqliteAgentUsage } from './agent/agent-usage-repository';
 import { AgentUsageService } from './agent/agent-usage-service';
-import { createAgentElementIds } from './agent/tools/element-ids';
 import { ProjectSettingsAgentService } from './agent/project-settings-agent-service';
 import { ProjectTaskService } from './agent/project-task-service';
-import { agentTarget } from './agent/agent-target';
-import { loadProjectMaterials } from './projects/project-materials';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
 import { AgentRunRepository } from './agent/run-repository';
 import { ConversationRepository } from './conversations/conversation-repository';
-import { AgentRunService } from './agent/run-service';
-import { recoverAgentRunsOnStartup } from './agent/run-recovery';
 import { ConversationService } from './conversations/conversation-service';
 import { ProjectService } from './projects/project-service';
 import { ProjectApplyService } from './schema/project-apply-service';
-import { getWorkingSchemaState } from './schema/schema-service';
+import { fileSchemaPageResolver, getWorkingSchemaState } from './schema/schema-service';
 import { createHttpServer } from './http/server';
-import { AgentEventBroker } from './agent/event-broker';
 import { RuntimeDiagnosticCache } from './diagnostics/diagnostic-cache';
 import { RuntimeDiagnosticService } from './diagnostics/diagnostic-service';
 import { resolveAgentRunBudget } from './agent/run-budget';
-import { AgentService } from './agent/agent-service';
-import { RunExecutor } from './agent/run-executor';
-import { ContextAssembler } from './agent/context-assembler';
-import { ProductDocsProvider } from './agent/product-docs-provider';
-import { createReadOnlyAgentTools } from './agent/tools/read-only-tools';
-import { createValidatePageOperationsTool } from './agent/tools/validate-page-operations';
-import { createDomainAgentTools } from './agent/tools/domain-tools';
-import { createCompletePageRunTool } from './agent/tools/complete-page-run';
-import { createDefaultAgentToolEntries } from './agent/tools/registry';
 import { DEEPSEEK_FLASH_MODEL_ID } from './agent/agent-engine';
-import { PiAgentEngine } from './agent/pi-agent-engine';
-import { createPiModels } from './agent/pi-runtime';
-import { progressPayload } from './agent/progress';
 import { AgentToolAuditRepository } from './agent/tool-audit-repository';
 
 export const startServer = async (input: {
@@ -63,31 +46,9 @@ export const startServer = async (input: {
     const runs = new AgentRunRepository(database);
     const toolAudits = new AgentToolAuditRepository(database);
     const conversationService = new ConversationService(database, projects, conversations, runs);
-    const runService = new AgentRunService(runs);
-    const agentEvents = new AgentEventBroker();
-    runService.setTransitionListener((run) => {
-      const payload = progressPayload(run.status);
-      if (!payload) return;
-      agentEvents.publish({
-        type: 'run.progress',
-        runId: run.id,
-        pageId: run.pageId,
-        target: agentTarget(run.projectId, run.pageId),
-        requestId: run.clientRequestId,
-        payload,
-      });
-    });
-    const getCurrentRevision = async (projectId: string, pageId: string) => {
-      const project = projects.getProject(projectId);
-      const page = projects.getPage(projectId, pageId);
-      if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-      return getWorkingSchemaState({
-        projectPath: project.path,
-        pageId: page.id,
-        slug: page.slug,
-        relativePath: page.relativePath,
-      });
-    };
+    const resolveSchemaPage = fileSchemaPageResolver(projects);
+    const getCurrentRevision = (projectId: string, pageId: string) =>
+      getWorkingSchemaState(resolveSchemaPage(projectId, pageId));
     const runtimeDiagnostics = new RuntimeDiagnosticService(
       projects,
       new RuntimeDiagnosticCache(),
@@ -100,75 +61,30 @@ export const startServer = async (input: {
       projectApplyService,
       (projectId, pageId) => runtimeDiagnostics.clear(projectId, pageId),
     );
-    const productDocs = new ProductDocsProvider();
-    const context = new ContextAssembler(
-      { getCurrent: getWorkingSchemaState },
-      conversations,
-      productDocs,
-      {},
-      projectService.getPageRoles,
-    );
-    const pi = createPiModels();
-    const engine = new PiAgentEngine({
-      resolveModel: (provider, model) => pi.models.getModel(provider, model),
-      stream: pi.models.streamSimple.bind(pi.models),
-      getCredential: async (provider) => {
-        if (provider !== 'deepseek') return undefined;
-        return input.getModelCredential?.('deepseek');
-      },
-    });
+    const engine = createPageAgentEngine(input.getModelCredential);
+    const getModelRef = async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID;
     const settingsAgent = new ProjectSettingsAgentService({
       projects: projectService,
       engine,
-      getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
+      getModelRef,
     });
-    const executor = new RunExecutor({
-      recordReportedUsage: usageRepository.record,
+    const agent = createPageAgentRuntime({
       projects,
       runs,
       conversations: conversationService,
-      runService,
-      context,
+      history: conversations,
       engine,
-      createTools: (scope) => {
-        const elementIds = createAgentElementIds();
-        return createDefaultAgentToolEntries([
-          ...createReadOnlyAgentTools(
-            {
-              runId: scope.runId,
-              projectId: scope.projectId,
-              pageId: scope.pageId,
-              workingVersion: scope.baseWorkingVersion,
-            },
-            {
-              projects,
-              loadMaterials: loadProjectMaterials,
-              getProjectRoles: projectService.getPageRoles,
-            },
-            elementIds,
-          ),
-          ...createDomainAgentTools(
-            { projectId: scope.projectId, pageId: scope.pageId },
-            {
-              projects,
-              docs: productDocs,
-              diagnostics: runtimeDiagnostics,
-            },
-          ),
-          createValidatePageOperationsTool(projects, scope, elementIds),
-          createCompletePageRunTool(
-            {
-              projects,
-              runs,
-              runService,
-              prepareProject: (...args) => projectTasks.prepare(...args),
-              loadMaterials: loadProjectMaterials,
-            },
-            scope,
-            elementIds,
-          ),
-        ]);
+      diagnostics: runtimeDiagnostics,
+      budget: agentBudget,
+      getModelRef,
+      getPageRoles: projectService.getPageRoles,
+      authorizeStart: (request) => projectTasks.assertContinuation(request),
+      prepareProject: (...args) => projectTasks.prepare(...args),
+      getCurrentState: (projectId, pageId) => {
+        if (!pageId) throw new Error('页面 ID 缺失');
+        return getCurrentRevision(projectId, pageId);
       },
+      recordReportedUsage: usageRepository.record,
       recordModelUsage: (runId, requestIndex, metrics) => {
         console.info(
           JSON.stringify({ event: 'agent.model_usage', runId, requestIndex, ...metrics }),
@@ -176,45 +92,9 @@ export const startServer = async (input: {
       },
       audit: (event) => {
         toolAudits.append(event);
-        const run = runs.get(event.runId);
-        if (!run) return;
-        agentEvents.publish({
-          type: 'tool.activity',
-          runId: run.id,
-          pageId: run.pageId,
-          target: agentTarget(run.projectId, run.pageId),
-          requestId: run.clientRequestId,
-          payload: {
-            toolName: event.toolName,
-            phase: event.phase,
-            ...(event.safeErrorCode ? { safeErrorCode: event.safeErrorCode } : {}),
-          },
-        });
       },
     });
-    const agentService = new AgentService({
-      budget: agentBudget,
-      authorizeStart: (request) => projectTasks.assertContinuation(request),
-      conversations: conversationService,
-      projects,
-      runs,
-      runService,
-      events: agentEvents,
-      executor,
-      getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
-      getCurrentState: async (projectId, pageId) => {
-        if (!pageId) throw new Error('页面 ID 缺失');
-        const project = projects.getProject(projectId);
-        const page = projects.getPage(projectId, pageId);
-        if (!project || !page) throw new Error('页面不存在或不属于当前项目');
-        return getWorkingSchemaState({
-          projectPath: project.path,
-          pageId: page.id,
-          slug: page.slug,
-          relativePath: page.relativePath,
-        });
-      },
-    });
+    const agentService = agent.http.service;
     const projectTasks: ProjectTaskService = new ProjectTaskService({
       projects,
       projectService,
@@ -232,12 +112,8 @@ export const startServer = async (input: {
       settingsAgent,
       agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       runtimeDiagnostics,
-      agent: {
-        conversations: conversationService,
-        runs: runService,
-        events: agentEvents,
-        service: agentService,
-      },
+      resolveSchemaPage,
+      agent: agent.http,
     });
     let closing = false;
     let closePromise: Promise<void> | undefined;
@@ -287,7 +163,7 @@ export const startServer = async (input: {
       projectService.registerGrant('startup-project', input.projectPath);
       await projectService.openProject({ directoryGrantId: 'startup-project' });
     }
-    await recoverAgentRunsOnStartup(runs, projects, conversationService);
+    await agent.recover();
     await server.listen({ host: '127.0.0.1', port });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');

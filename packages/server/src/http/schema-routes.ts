@@ -16,8 +16,9 @@ import {
   restoreRevisionToWorking,
   saveWorkingRevision,
   updateWorkingSchema,
+  fileSchemaPageResolver,
 } from '../schema/schema-service';
-import { invalid, notFound } from '../errors';
+import { invalid } from '../errors';
 import { PageScopeSchema, withPageScope } from './body-schemas';
 import type { RouteRegistrationContext } from './types';
 
@@ -34,18 +35,8 @@ const RestoreRevisionBodySchema = Type.Object(
 );
 
 export const registerSchemaRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
-  const resolvePage = (projectId: string, pageId: string) => {
-    if (input.resolveSchemaPage) return input.resolveSchemaPage(projectId, pageId);
-    const page = input.projects.getPage?.(projectId, pageId);
-    const project = input.projects.getProject?.(projectId);
-    if (!page || !project) throw notFound('页面不存在');
-    return {
-      projectPath: project.path,
-      pageId: page.id,
-      slug: page.slug,
-      relativePath: page.relativePath,
-    };
-  };
+  const resolvePage = input.resolveSchemaPage ?? fileSchemaPageResolver(input.projects);
+
   server.post(
     '/api/v1/pages/schema/get',
     { schema: { body: PageScopeSchema } },
