@@ -1,12 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
 import { deepStrictEqual } from 'node:assert';
 
+const usageColumns = ['reported_input_tokens', 'reported_output_tokens', 'fully_reported_calls'];
+const usageColumn = (name: string) => `${name} INTEGER NOT NULL DEFAULT 0`;
+
 export const schemaSql = `
 CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_opened_at TEXT NOT NULL);
 CREATE TABLE pages (id INTEGER PRIMARY KEY AUTOINCREMENT, page_id TEXT NOT NULL, project_id INTEGER NOT NULL, slug TEXT NOT NULL, name TEXT NOT NULL, relative_path TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, page_id INTEGER NOT NULL, title TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
 CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, run_id INTEGER, role TEXT NOT NULL, content_json TEXT NOT NULL, content_version TEXT NOT NULL DEFAULT '1', status INTEGER NOT NULL, sequence INTEGER NOT NULL, error_code TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-CREATE TABLE agent_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, project_id INTEGER NOT NULL, page_id INTEGER NOT NULL, conversation_id INTEGER NOT NULL, user_message_id INTEGER NOT NULL, client_request_id TEXT NOT NULL, base_working_version INTEGER NOT NULL, result_working_version INTEGER, result_working_hash TEXT, model_ref TEXT NOT NULL, run_kind TEXT NOT NULL DEFAULT 'page_assistant', status INTEGER NOT NULL, outcome TEXT, outcome_json TEXT, repair_attempts INTEGER NOT NULL DEFAULT 0, operation_count INTEGER, operation_digest TEXT, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id INTEGER, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, failure_stage TEXT, recovered_commit INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT);
+CREATE TABLE agent_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, project_id INTEGER NOT NULL, page_id INTEGER NOT NULL, conversation_id INTEGER NOT NULL, user_message_id INTEGER NOT NULL, client_request_id TEXT NOT NULL, base_working_version INTEGER NOT NULL, result_working_version INTEGER, result_working_hash TEXT, model_ref TEXT NOT NULL, run_kind TEXT NOT NULL DEFAULT 'page_assistant', status INTEGER NOT NULL, outcome TEXT, outcome_json TEXT, repair_attempts INTEGER NOT NULL DEFAULT 0, operation_count INTEGER, operation_digest TEXT, budget_json TEXT NOT NULL, prompt_version TEXT NOT NULL, policy_version TEXT NOT NULL, toolset_version TEXT NOT NULL, material_manifest_version TEXT NOT NULL, retry_of_run_id INTEGER, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, model_calls INTEGER NOT NULL DEFAULT 0, tool_calls INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER, error_code TEXT, error_message TEXT, failure_stage TEXT, recovered_commit INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, finished_at TEXT, reported_input_tokens INTEGER NOT NULL DEFAULT 0, reported_output_tokens INTEGER NOT NULL DEFAULT 0, fully_reported_calls INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE agent_tool_audits (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL, sequence INTEGER NOT NULL, tool_name TEXT NOT NULL, phase TEXT NOT NULL, safe_error_code TEXT, duration_ms INTEGER NOT NULL, operation_count INTEGER, operation_type_counts_json TEXT, operation_digest TEXT, occurred_at TEXT NOT NULL);
 CREATE UNIQUE INDEX idx_pages_project_slug ON pages(project_id, slug);
 CREATE UNIQUE INDEX projects_project_id_unique ON projects(project_id);
@@ -20,6 +23,7 @@ CREATE INDEX idx_messages_conversation_created ON messages(conversation_id, crea
 CREATE INDEX idx_messages_run_id ON messages(run_id);
 CREATE UNIQUE INDEX idx_agent_runs_client_request ON agent_runs(project_id, page_id, client_request_id);
 CREATE INDEX idx_agent_runs_conversation_created ON agent_runs(conversation_id, created_at);
+CREATE INDEX idx_agent_runs_created ON agent_runs(created_at);
 CREATE INDEX idx_agent_runs_recovery ON agent_runs(status, updated_at);
 CREATE UNIQUE INDEX idx_agent_tool_audits_run_sequence ON agent_tool_audits(run_id, sequence);
 CREATE INDEX idx_agent_tool_audits_run ON agent_tool_audits(run_id, occurred_at);
@@ -93,14 +97,18 @@ export const assertCurrentSchema = (connection: DatabaseSync): void => {
   }
 };
 
-export const DATABASE_VERSION = 1;
-/** Create a fresh current database or validate exactly the current storage contract. No migration. */
+export const DATABASE_VERSION = 2;
+/** Create, validate or transactionally upgrade the supported SQLite schema. */
 export const initializeDatabase = (connection: DatabaseSync): void => {
   const version = (connection.prepare('PRAGMA user_version').get() as { user_version: number })
     .user_version;
   const empty = currentUserTables(connection).length === 0;
   if (!empty) {
     if (version === 0) throw new Error('数据库缺少版本信息');
+    if (version === 1) {
+      upgradeUsageColumns(connection);
+      return;
+    }
     if (version !== DATABASE_VERSION) throw new Error('数据库版本不受当前应用支持');
     assertCurrentSchema(connection);
     return;
@@ -110,6 +118,27 @@ export const initializeDatabase = (connection: DatabaseSync): void => {
   try {
     connection.exec(schemaSql);
     connection.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    assertCurrentSchema(connection);
+    connection.exec('COMMIT');
+  } catch (error) {
+    connection.exec('ROLLBACK');
+    throw error;
+  }
+};
+
+const upgradeUsageColumns = (connection: DatabaseSync): void => {
+  connection.exec('BEGIN IMMEDIATE');
+  try {
+    // Another process may have completed the upgrade while this connection waited.
+    const current = connection.prepare('PRAGMA user_version').get()?.['user_version'];
+    if (current === 1) {
+      for (const name of usageColumns)
+        connection.exec(`ALTER TABLE agent_runs ADD COLUMN ${usageColumn(name)}`);
+      connection.exec('CREATE INDEX idx_agent_runs_created ON agent_runs(created_at)');
+      connection.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    } else if (current !== DATABASE_VERSION) {
+      throw new Error('数据库版本不受当前应用支持');
+    }
     assertCurrentSchema(connection);
     connection.exec('COMMIT');
   } catch (error) {

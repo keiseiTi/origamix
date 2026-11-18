@@ -443,3 +443,13 @@ export type {
   ProjectSyncSnapshot,
   ProjectSyncReceipt,
 } from './project/project-sync.ts';
+
+export type {
+  AgentUsageScope,
+  AgentTokenUsage,
+  AgentPageUsage,
+  AgentUsageDay,
+  AgentUsagePage,
+  AgentUsageProject,
+  AgentDailyUsage,
+} from './agent/agent-usage.ts';

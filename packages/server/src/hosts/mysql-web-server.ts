@@ -1,3 +1,5 @@
+import { mysqlAgentUsage } from '../agent/agent-usage-repository';
+import { AgentUsageService } from '../agent/agent-usage-service';
 import type { RowDataPacket } from 'mysql2/promise';
 import { AgentService } from '../agent/agent-service';
 import { agentTarget } from '../agent/agent-target';
@@ -61,6 +63,7 @@ export const startMysqlWebServer = async (input: {
       new RuntimeDiagnosticCache(),
       getWorking,
     );
+    const usageRepository = mysqlAgentUsage(pool);
     const runs = new MysqlAgentRunRepository(pool);
     const conversations = new MysqlConversationService(pool, projects, runs);
     const runService = new AgentRunService(runs);
@@ -97,6 +100,7 @@ export const startMysqlWebServer = async (input: {
           provider === 'deepseek' ? input.getModelCredential?.(provider) : undefined,
       });
     const executor = new RunExecutor({
+      recordReportedUsage: usageRepository.record,
       projects: agentProjects,
       resolvePage,
       runs,
@@ -186,6 +190,7 @@ export const startMysqlWebServer = async (input: {
       projectService: projects,
       createDatabaseProject: projects.createDatabaseProject.bind(projects),
       resolveSchemaPage: projects.resolveSchemaPage,
+      agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       runtimeDiagnostics: diagnostics,
       agent: { conversations, runs: runService, events, service },
     });

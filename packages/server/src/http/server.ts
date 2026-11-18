@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { nanoid } from 'nanoid';
 import type { ApiResult } from '@origamix/shared';
 import { ApiError } from '../errors';
+import { registerAgentUsageRoutes } from './agent-usage-routes';
 import { registerAgentRoutes } from './agent-routes';
 import { registerApplyRoutes } from './apply-routes';
 import { registerProjectRoutes } from './project-routes';
@@ -137,5 +138,6 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   registerApplyRoutes(context);
   registerRuntimeRoutes(context);
   registerAgentRoutes(context);
+  registerAgentUsageRoutes(context);
   return server;
 };

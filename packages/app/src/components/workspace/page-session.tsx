@@ -1,9 +1,12 @@
+import type { AgentUsageScope } from '@origamix/shared';
+import { PageUsage } from '@/components/usage/page-usage';
 import { usesDatabaseProjects } from '@/services/projects';
 import { useCallback, useEffect, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
+import { isRunActive } from '@/components/agent-chat/agent-chat-state';
 import { PageEditor } from '@/components/editor';
 import { useCreateEditor, type EditorHandle } from '@origamix/editor';
 import { AgentChatToolbar } from './agent-chat-toolbar';
@@ -17,6 +20,7 @@ export interface PageSessionProps {
   active?: boolean;
   pageId: string;
   editorRef: RefObject<EditorHandle | null>;
+  onOpenUsage?: (scope: AgentUsageScope) => void;
   onConfigureModel?: () => void;
 }
 
@@ -25,6 +29,7 @@ export const PageSession = ({
   pageId,
   editorRef,
   onConfigureModel,
+  onOpenUsage,
 }: PageSessionProps): React.JSX.Element => {
   const { page, project } = useWorkspaceStore(
     useShallow((state) => {
@@ -46,6 +51,7 @@ export const PageSession = ({
       projectName={project.name}
       editorRef={editorRef}
       onConfigureModel={onConfigureModel}
+      onOpenUsage={onOpenUsage}
     />
   );
 };
@@ -57,6 +63,7 @@ const PageSessionContent = ({
   projectName,
   editorRef,
   onConfigureModel,
+  onOpenUsage,
 }: Omit<PageSessionProps, 'pageId'> & {
   page: PageItem;
   projectId: string;
@@ -137,6 +144,16 @@ const PageSessionContent = ({
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
+        {active && mode === 'chat' && onOpenUsage && (
+          <PageUsage
+            key={`${projectId}:${page.id}`}
+            projectId={projectId}
+            pageId={page.id}
+            runId={agent.state.run?.runId}
+            runStatus={isRunActive(agent.state.stage) ? 'active' : (agent.state.stage ?? undefined)}
+            onOpenUsage={onOpenUsage}
+          />
+        )}
         <ChatWorkspace
           pageId={page.id}
           pageName={page.name}

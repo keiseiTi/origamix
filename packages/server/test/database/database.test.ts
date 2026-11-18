@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../src/database/database';
-import { assertSchemaSafety, schemaSql } from '../../src/database/initialize';
+import { assertSchemaSafety, DATABASE_VERSION, schemaSql } from '../../src/database/initialize';
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 describe('ApplicationDatabase', () => {
-  it('creates only the current durable domain tables and reopens them', async () => {
+  it('creates current tables and upgrades an existing v1 database without losing data', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
@@ -23,11 +23,30 @@ describe('ApplicationDatabase', () => {
     expect(tables.map(({ name }) => name)).toEqual(
       expect.arrayContaining(['projects', 'pages', 'conversations', 'messages', 'agent_runs']),
     );
-    expect(database.connection.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+    expect(database.connection.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: DATABASE_VERSION,
+    });
     database.close();
-    const reopened = new ApplicationDatabase(path);
-    expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM projects').get()).toEqual({
-      count: 0,
+    const legacyPath = join(directory, 'legacy.db');
+    const legacy = new DatabaseSync(legacyPath);
+    legacy.exec(
+      schemaSql
+        .replace(
+          /, reported_input_tokens INTEGER NOT NULL DEFAULT 0, reported_output_tokens INTEGER NOT NULL DEFAULT 0, fully_reported_calls INTEGER NOT NULL DEFAULT 0/,
+          '',
+        )
+        .replace('CREATE INDEX idx_agent_runs_created ON agent_runs(created_at);', ''),
+    );
+    legacy.exec(
+      "PRAGMA user_version = 1; INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
+    );
+    legacy.close();
+    const reopened = new ApplicationDatabase(legacyPath);
+    expect(reopened.connection.prepare('PRAGMA user_version').get()).toEqual({
+      user_version: DATABASE_VERSION,
+    });
+    expect(reopened.connection.prepare('SELECT name FROM projects').get()).toEqual({
+      name: 'Keep me',
     });
     reopened.close();
   });
@@ -59,7 +78,9 @@ describe('ApplicationDatabase', () => {
     expect(() => new ApplicationDatabase(path)).toThrow('唯一索引');
     const preserved = new DatabaseSync(path);
     try {
-      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+      expect(preserved.prepare('PRAGMA user_version').get()).toEqual({
+        user_version: DATABASE_VERSION,
+      });
       expect(
         preserved
           .prepare("SELECT name FROM sqlite_schema WHERE name = 'idx_agent_runs_client_request'")

@@ -1,3 +1,4 @@
+import type { AgentUsageRepository, ReportedUsage } from './agent-usage-repository';
 import type { AgentModelUsageMetrics } from './agent-engine';
 import { agentTarget } from './agent-target';
 import type { MessageContent, PageAgentOutcome } from '@origamix/shared';
@@ -115,6 +116,7 @@ export interface RunExecutorDependencies {
     maxOperationBytes?: number;
     maxRepairAttempts: number;
   }) => RegisteredAgentTool[];
+  recordReportedUsage?: AgentUsageRepository['record'];
   recordModelUsage?: (runId: string, requestIndex: number, metrics: AgentModelUsageMetrics) => void;
   audit?: (event: ToolAuditEvent) => void | Promise<void>;
 }
@@ -171,6 +173,11 @@ export class RunExecutor {
     let lastTerminalFailure: string | undefined;
     let previousSubmission: unknown;
     let modelRequestIndex = 0;
+    const reportedUsage: ReportedUsage = {
+      reportedInputTokens: 0,
+      reportedOutputTokens: 0,
+      fullyReportedCalls: 0,
+    };
     const registry = new AgentToolRegistry();
     try {
       for (const entry of this.dependencies.createTools({
@@ -231,6 +238,22 @@ export class RunExecutor {
           onEvent: async (event) => {
             if (event.type === 'model_usage') {
               modelRequestIndex += 1;
+              const metrics = event.metrics;
+              if (!metrics.inputUsageEstimated)
+                reportedUsage.reportedInputTokens += metrics.inputTokens;
+              if (!metrics.outputUsageEstimated)
+                reportedUsage.reportedOutputTokens += metrics.outputTokens;
+              if (!metrics.inputUsageEstimated && !metrics.outputUsageEstimated)
+                reportedUsage.fullyReportedCalls += 1;
+              try {
+                await this.dependencies.recordReportedUsage?.(
+                  runId,
+                  reportedUsage,
+                  tracker.snapshot().modelCalls,
+                );
+              } catch {
+                // Keep editing available. The final budget metrics still flag missing usage.
+              }
               try {
                 this.dependencies.recordModelUsage?.(runId, modelRequestIndex, event.metrics);
               } catch {

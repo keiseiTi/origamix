@@ -1,3 +1,5 @@
+import { AgentUsageService } from '../../src/agent/agent-usage-service';
+import { sqliteAgentUsage } from '../../src/agent/agent-usage-repository';
 import { createAgentElementIds } from '../../src/agent/tools/element-ids';
 import { loadProjectMaterials } from '../../src/projects/project-materials';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
@@ -110,7 +112,9 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       getCredential: async () => 'fake-secret',
       stream: (model, context, options) => models.streamSimple(model, context, options),
     });
+    const usageRepository = sqliteAgentUsage(database);
     const executor = new RunExecutor({
+      recordReportedUsage: usageRepository.record,
       projects,
       runs,
       runService,
@@ -157,6 +161,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       projects,
       projectService,
       projectApplyService,
+      agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       agent: { conversations, runs: runService, events, service },
     });
     const headers = {
@@ -184,6 +189,37 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       status: 'completed',
       resultWorkingVersion: expect.any(Number),
     });
+    const usageScope = { projectId: project.id, pageId: page.id };
+    const usageResponse = await server.inject({
+      method: 'POST',
+      url: '/api/v1/agent/usage/page',
+      headers,
+      payload: { ...usageScope, timeZone: 'Asia/Shanghai' },
+    });
+    expect(usageResponse.statusCode).toBe(200);
+    const { total, today } = usageResponse.json().data;
+    expect(total).toEqual(today);
+    expect(today.inputTokens).toBeGreaterThan(0);
+    expect(today.outputTokens).toBeGreaterThan(0);
+    expect(today.incompleteRuns).toBe(0);
+    const daily = await server.inject({
+      method: 'POST',
+      url: '/api/v1/agent/usage/daily',
+      headers,
+      payload: { days: 7, scope: usageScope, timeZone: 'Asia/Shanghai' },
+    });
+    expect(daily.json().data).toMatchObject({
+      today,
+      projects: [{ projectId: project.id, pages: [{ pageId: page.id, ...today }] }],
+    });
+    const foreignUsage = await server.inject({
+      method: 'POST',
+      url: '/api/v1/agent/usage/page',
+      headers,
+      payload: { ...usageScope, projectId: 'project_foreign', timeZone: 'Asia/Shanghai' },
+    });
+    expect(foreignUsage.statusCode).toBe(404);
+
     const edited = await getSchema(pageRef);
     expect(edited.revisionId).toBe(before.revisionId);
     expect(edited.schema.flows.flow_agent).toEqual(flow);

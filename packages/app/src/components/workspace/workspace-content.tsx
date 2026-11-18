@@ -1,3 +1,4 @@
+import type { AgentUsageScope } from '@origamix/shared';
 import { ProjectSettingsPanel } from '@/components/project-settings/project-settings-panel';
 import { WorkspaceRecoveryView } from './workspace-recovery-view';
 import { editorRefForPage, useWorkspaceStore } from '@/store/workspace';
@@ -7,11 +8,13 @@ import { useMountedPages } from './hooks/use-mounted-pages';
 
 export interface WorkspaceContentProps {
   onConfigureModel: () => void;
+  onOpenUsage: (scope: AgentUsageScope) => void;
   onCreateProject: () => void;
 }
 
 export const WorkspaceContent = ({
   onConfigureModel,
+  onOpenUsage,
   onCreateProject,
 }: WorkspaceContentProps): React.JSX.Element => {
   const workspaceReady = useWorkspaceStore((state) => state.workspaceReady);
@@ -44,6 +47,7 @@ export const WorkspaceContent = ({
                 pageId={pageId}
                 editorRef={editorRefForPage(pageId)}
                 onConfigureModel={onConfigureModel}
+                onOpenUsage={onOpenUsage}
               />
             )}
           </div>

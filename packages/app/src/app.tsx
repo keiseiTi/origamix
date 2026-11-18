@@ -1,3 +1,4 @@
+import type { AgentUsageScope } from '@origamix/shared';
 import { WebSessionNotice } from '@/components/web-session-notice';
 import { watchBackendConnection } from '@/services/request';
 import { Toaster, TooltipProvider } from '@origamix/ui';
@@ -7,7 +8,7 @@ import {
   type SidebarNavigationHandle,
 } from '@/components/sidebar/sidebar-navigation';
 import { CreateProjectModal } from '@/components/sidebar/mod/create-project-modal';
-import { SettingsModal } from '@/components/settings';
+import { SettingsModal, type SettingsSection } from '@/components/settings';
 import { Workspace } from '@/components/workspace';
 import { useAppPreferences } from '@/hooks/use-app-preferences';
 import { useGlobalShortcuts } from '@/hooks/use-global-shortcuts';
@@ -17,7 +18,8 @@ import { AppLayout } from '@/components/app-layout';
 const App = (): React.JSX.Element => {
   const sidebarRef = useRef<SidebarNavigationHandle>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<'general' | 'model'>('general');
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile');
+  const [usageScope, setUsageScope] = useState<AgentUsageScope>();
   const [isHomeProjectModalOpen, setIsHomeProjectModalOpen] = useState(false);
 
   useAppPreferences();
@@ -29,13 +31,22 @@ const App = (): React.JSX.Element => {
 
   const openSettings = useCallback((): void => {
     sidebarRef.current?.closePeek();
-    setSettingsSection('general');
+    setUsageScope(undefined);
+    setSettingsSection('profile');
     setIsSettingsOpen(true);
   }, []);
 
   const openModelSettings = (): void => {
     sidebarRef.current?.closePeek();
+    setUsageScope(undefined);
     setSettingsSection('model');
+    setIsSettingsOpen(true);
+  };
+
+  const openUsageSettings = (scope: AgentUsageScope): void => {
+    sidebarRef.current?.closePeek();
+    setUsageScope(scope);
+    setSettingsSection('usage');
     setIsSettingsOpen(true);
   };
 
@@ -64,6 +75,7 @@ const App = (): React.JSX.Element => {
             onSelectPage={pages.selectPage}
             onClosePage={pages.closePage}
             onConfigureModel={openModelSettings}
+            onOpenUsage={openUsageSettings}
             onCreateProject={() => setIsHomeProjectModalOpen(true)}
           />
         </AppLayout>
@@ -71,6 +83,7 @@ const App = (): React.JSX.Element => {
         <SettingsModal
           isOpen={isSettingsOpen}
           initialSection={settingsSection}
+          usageScope={usageScope}
           onClose={closeSettings}
         />
 

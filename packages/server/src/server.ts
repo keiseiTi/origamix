@@ -1,3 +1,5 @@
+import { sqliteAgentUsage } from './agent/agent-usage-repository';
+import { AgentUsageService } from './agent/agent-usage-service';
 import { createAgentElementIds } from './agent/tools/element-ids';
 import { ProjectSettingsAgentService } from './agent/project-settings-agent-service';
 import { ProjectTaskService } from './agent/project-task-service';
@@ -57,6 +59,7 @@ export const startServer = async (input: {
   try {
     const projects = new ProjectRepository(database);
     const conversations = new ConversationRepository(database);
+    const usageRepository = sqliteAgentUsage(database);
     const runs = new AgentRunRepository(database);
     const toolAudits = new AgentToolAuditRepository(database);
     const conversationService = new ConversationService(database, projects, conversations, runs);
@@ -120,6 +123,7 @@ export const startServer = async (input: {
       getModelRef: async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID,
     });
     const executor = new RunExecutor({
+      recordReportedUsage: usageRepository.record,
       projects,
       runs,
       conversations: conversationService,
@@ -226,6 +230,7 @@ export const startServer = async (input: {
       projectApplyService,
       projectTasks,
       settingsAgent,
+      agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       runtimeDiagnostics,
       agent: {
         conversations: conversationService,

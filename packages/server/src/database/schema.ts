@@ -115,6 +115,9 @@ export const agentRuns = sqliteTable(
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
     finishedAt: text('finished_at'),
+    reportedInputTokens: integer('reported_input_tokens').notNull().default(0),
+    reportedOutputTokens: integer('reported_output_tokens').notNull().default(0),
+    fullyReportedCalls: integer('fully_reported_calls').notNull().default(0),
   },
   (table) => [
     uniqueIndex('agent_runs_run_id_unique').on(table.runId),
@@ -124,6 +127,7 @@ export const agentRuns = sqliteTable(
       table.clientRequestId,
     ),
     index('idx_agent_runs_conversation_created').on(table.conversationId, table.createdAt),
+    index('idx_agent_runs_created').on(table.createdAt),
     index('idx_agent_runs_recovery').on(table.status, table.updatedAt),
   ],
 );

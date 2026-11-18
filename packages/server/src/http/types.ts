@@ -73,6 +73,7 @@ export interface HttpServerInput {
     events: AgentEventBroker;
     service: Pick<AgentService, 'start' | 'cancel'>;
   };
+  agentUsage?: import('../agent/agent-usage-service').AgentUsageService;
   runtimeDiagnostics?: RuntimeDiagnosticService;
 }
 

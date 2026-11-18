@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
-import type { AgentRun, CreateAgentRunRequest, SchemaOperation } from '@origamix/shared';
+import type {
+  AgentDailyUsage,
+  AgentPageUsage,
+  AgentRun,
+  CreateAgentRunRequest,
+  SchemaOperation,
+} from '@origamix/shared';
 import type { AgentEngine } from '../src/agent/agent-engine';
 import { MysqlAgentRunRepository } from '../src/agent/mysql-agent-repository';
 import { resolveAgentRunBudget } from '../src/agent/run-budget';
@@ -45,6 +51,30 @@ const engine: AgentEngine = {
       entered.resolve();
       await proceed.promise;
     }
+    const usage = { inputTokens: 2, outputTokens: 3, totalTokens: 5 };
+    request.budget?.beforeRequest(2, 128_000, 16_000);
+    await request.onEvent?.({
+      type: 'model_usage',
+      metrics: {
+        estimatedInputTokens: 5,
+        inputBytes: 0,
+        systemBytes: 0,
+        toolDefinitionBytes: 0,
+        userBytes: 0,
+        assistantBytes: 0,
+        toolResultBytes: 0,
+        inputTokens: 2,
+        outputTokens: 3,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        inputUsageEstimated: false,
+        outputUsageEstimated: false,
+        durationMs: 0,
+        toolCalls: 1,
+        repeatedToolCalls: 0,
+      },
+    });
+    request.budget?.recordUsage(usage);
     const tool = request.tools?.find(({ name }) => name === 'complete_page_run');
     assert.ok(tool);
     const input = { outcome: 'apply_changes', operations: [operation(64)], response: '已修改页面' };
@@ -56,7 +86,11 @@ const engine: AgentEngine = {
     } catch (result) {
       await request.onEvent?.({ type: 'tool_end', ...event, result, isError: true });
     }
-    return { text: '', usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 } };
+    return {
+      text: '',
+      budgetTracked: true,
+      usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 },
+    };
   },
 };
 
@@ -236,6 +270,25 @@ try {
   assert.equal(recovered.run.resultWorkingVersion, commit.workingVersion);
   assert.equal(recovered.run.resultWorkingHash, commit.workingHash);
   assert.equal((await working()).workingHash, newer.workingHash);
+  // A failed model call still used tokens, while the duplicate submission and
+  // startup recovery do not generate any additional provider usage.
+  const usage = await post<AgentPageUsage>('/agent/usage/page', {
+    ...scope,
+    timeZone: 'Asia/Shanghai',
+  });
+  assert.deepEqual(usage.total, { inputTokens: 4, outputTokens: 6, incompleteRuns: 0 });
+  const daily = await post<AgentDailyUsage>('/agent/usage/daily', {
+    days: 7,
+    scope,
+    timeZone: 'Asia/Shanghai',
+  });
+  assert.equal(daily.days.length, 7);
+  assert.deepEqual(daily.today, usage.today);
+  assert.deepEqual(daily.projects[0]?.pages[0], {
+    ...scope,
+    name: 'Home',
+    ...usage.total,
+  });
   const unsettled = await post<{ run: AgentRun }>('/agent/runs/get', {
     projectId,
     runId: uncommitted.run.id,

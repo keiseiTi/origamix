@@ -319,3 +319,7 @@ Page Agent terminal `propose_project` records a structured role-operation propos
 模板读取项目配置并渲染应用布局。
 
 布局配置助手由 `agent/project-settings-agent-service.ts` 处理，通过经过认证的 POST `/projects/settings/assist` 流式返回 NDJSON。它复用页面模型引擎、凭据和预算，仅允许读取配置和提交经校验的草稿建议，不能写项目文件或页面 Working。服务端校验真实页面引用和清单版本；关闭连接会停止模型，关闭服务会中止并等待配置请求退出。配置保存仍由显式 settings/update 完成。
+
+### 页面 Agent 用量
+
+`POST /api/v1/agent/usage/page` 返回指定项目和页面的累计用量与今日用量。`POST /api/v1/agent/usage/daily` 返回按日统计和项目、页面明细，支持 1、7、30 天以及可选的页面范围和明细日期。两者均使用请求指定的时区。历史预算估算不会进入用量总量，响应中的 `incompleteRuns` 标明记录缺失的运行数。
