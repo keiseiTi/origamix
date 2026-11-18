@@ -16,7 +16,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 - Do not import Electron, the desktop bridge, Origamix's local backend or privileged credentials. Generated runtime is independent of the editor.
 - Generated page code is a stable shell: it loads the page's managed `schema.json`, registers the declared `@origamix/materials/*` package and renders through `@origamix/runtime`. Origamix applies Schema only; it must not regenerate or overwrite the shell during ordinary editing.
 - Keep Origamix page data compatible with Shared Schema without a runtime dependency on `@origamix/shared`. Coordinate format changes with Server project/page generation and the Apply-to-Project pipeline.
-- Use strict TypeScript and Tailwind. Follow root HeroUI/Lucide requirements when adding controls/icons and declare imported packages directly, including stylesheet entry packages such as `@heroui/styles`. Do not add packages for unused future plans.
+- Use strict TypeScript and Tailwind. Use the existing Ant Design shell controls and declare imported packages directly. Do not add packages for unused future plans.
 - `src/index.css` includes the installed Materials `dist` in Tailwind scanning so generated projects compile material-owned canvas classes independently of the monorepo.
 - Changed pages support light/dark themes and accessible states. Do not copy workbench navigation, editor chrome or mock persistence into generated applications.
 - Keep source-only content: no installed dependencies, private files, caches, app databases, compiled output or user projects.
@@ -26,7 +26,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Verification
 
-Generated page shells consume `@origamix/materials/antd/runtime`. Template smoke verifies that standalone installation does not pull editor engines. HeroUI remains a direct scaffold UI dependency.
+Generated page shells consume `@origamix/materials/antd/runtime`. Template smoke verifies that standalone installation does not pull editor engines. Ant Design provides the scaffold UI controls.
 
 The scaffold manifest records framework and materialSet { id, version }; no project version or uiLibrary. Artifact preparation checks Runtime/Materials/template package release alignment separately from the material contract. Opening/checking a project never changes dependencies. Existing page shells are never rewritten to implement stack selection.
 
@@ -45,6 +45,6 @@ pnpm --filter @origamix/server test:template
 
 - Keep eslint.config.mjs in the scaffold copy allowlist and standalone installation checks.
 
-- routing-config.ts is a pure local reader shared by Vite and runtime configuration. project-pages.ts maps the single manifest page directory for router/navigation. Browser uses basename; Hash keeps the prefix outside the hash. Both use the same Vite asset base. No automatic source upgrade of existing projects.
+- routing-config.ts is a pure local reader shared by Vite and runtime configuration. project-config.ts parses the browser application settings once for the router and application shell. project-pages.ts maps the single manifest page directory for router/navigation. Browser uses basename; Hash keeps the prefix outside the hash. Both use the same Vite asset base. No automatic source upgrade of existing projects.
 
 - `application.tsx` consumes the required manifest shell through the template-owned Ant Design `application-shell.tsx`. Router owns home/404 and standalonePageIds policy, including unknown-route 404 page identity without redirect. No layout Schema projection, compatibility branch or project-preview transport.

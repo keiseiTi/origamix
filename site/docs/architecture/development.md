@@ -78,7 +78,7 @@ pnpm test
 pnpm build
 ```
 
-根 `pnpm typecheck` 会先按依赖顺序构建库；单独检查 App、Server 等消费包前，可用 `pnpm --filter @origamix/materials... build` 准备 Materials 及其上游产物。
+根 `pnpm check` 和提交前检查各校验一次已提交的物料清单，再用同一份清单执行后续构建、类型检查和测试。单独运行 Materials 构建、类型检查或测试时仍会生成清单。根 `pnpm typecheck` 会先按依赖顺序构建库；单独检查 App、Server 等消费包前，可用 `pnpm --filter @origamix/materials... build` 准备 Materials 及其上游产物。
 
 单包 `build` 只构建本包，调用前需准备其上游产物；根命令负责依赖顺序。Desktop 的 `build` 还组装已有 Server 与模板产物，包内 `package:*` 只消费已有资源。
 

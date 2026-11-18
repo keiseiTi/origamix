@@ -169,6 +169,17 @@ const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
   });
   await desktopControl.ready;
 };
+const updateTarget = (batch: ReadonlySet<string>, canKeepWindow: boolean) => {
+  if (!canKeepWindow) return 'desktop';
+  if (batch.size === 1 && batch.has('server')) return 'backend';
+  if (
+    batch.has('materials') &&
+    [...batch].every((name) => name === 'materials' || name === 'server')
+  )
+    return 'workbench';
+  return 'desktop';
+};
+
 const update = async () => {
   if (running || stopping || !dirty.size) return;
   running = true;
@@ -188,21 +199,16 @@ const update = async () => {
     if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
     if (batch.has('desktop')) await build({ ...options, clean: false });
     if (stopping) return;
-    const materialsUpdate =
-      !initial &&
-      batch.has('materials') &&
-      [...batch].every((name) => name === 'materials' || name === 'server') &&
-      Boolean(electron && desktopControl);
-    const backendOnly =
-      !initial && batch.size === 1 && batch.has('server') && Boolean(electron && desktopControl);
-    if (backendOnly || materialsUpdate) {
+    const control = initial || !electron ? undefined : desktopControl;
+    const target = updateTarget(batch, Boolean(control));
+    if (target !== 'desktop' && control) {
       if (paused || dirty.size) {
         for (const name of batch) dirty.add(name);
         if (paused) console.info('[开发环境] 自动重启已暂停，输入 p 并回车恢复。');
         else completed = true;
         return;
       }
-      if (materialsUpdate) {
+      if (target === 'workbench') {
         stagedTemplate = await mkdtemp(`${desktopRoot}dist/.template-next-`);
         await run(`${desktopRoot}scripts/assemble-resources.ts`, workspaceRoot, [stagedTemplate]);
         if (stopping) return;
@@ -212,9 +218,9 @@ const update = async () => {
           return;
         }
       }
-      await desktopControl!.request('pause-backend');
+      await control.request('pause-backend');
       await copyServerArtifact();
-      if (materialsUpdate) {
+      if (target === 'workbench') {
         await rm(`${desktopRoot}dist/template`, { recursive: true, force: true });
         await rename(stagedTemplate!, `${desktopRoot}dist/template`);
         stagedTemplate = undefined;
@@ -223,9 +229,9 @@ const update = async () => {
         await stopChild(previousVite);
         await startVite(env, rendererUrl);
       }
-      await desktopControl!.request('resume-backend');
-      if (materialsUpdate) {
-        await desktopControl!.request('reload-workbench');
+      await control.request('resume-backend');
+      if (target === 'workbench') {
+        await control.request('reload-workbench');
         console.info('[开发环境] 物料已更新，App 已刷新，桌面窗口保持不变');
       }
       console.info('[开发环境] 后端已独立重启，桌面窗口保持不变');

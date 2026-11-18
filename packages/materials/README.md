@@ -35,9 +35,9 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials... build
 ```
 
-`build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 TypeScript 提交检查在 Materials 构建前检查，避免构建自动生成掩盖遗漏提交。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
+`build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 `pnpm check:staged` 各校验一次已提交的 Manifest，再用同一份产物执行构建、类型检查与测试。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
 
-tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design、Runtime、Lucide 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板自身使用 HeroUI 基础控件。
+tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design、Runtime、Lucide 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板应用壳使用 Ant Design 控件。
 
 维护约束见 [AGENTS.md](AGENTS.md)。
 

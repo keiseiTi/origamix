@@ -1,10 +1,9 @@
 // Origamix application shell 1.0.0
 import { useSyncExternalStore, useMemo, useCallback } from 'react';
 import { Outlet, useMatches, useNavigate, useHref } from 'react-router';
-import { readProjectShell, PageNavigationProvider } from '@origamix/runtime';
+import { PageNavigationProvider } from '@origamix/runtime';
 import { RuntimeProvider } from '@origamix/materials/antd/runtime';
-import manifest from '../origamix.project.json';
-import { readLayoutVariant } from './routing-config';
+import { projectConfig } from './project-config';
 import { projectPages } from './project-pages';
 import { ApplicationShell } from './application-shell';
 const subscribeTheme = (notify: () => void) => {
@@ -15,7 +14,7 @@ const subscribeTheme = (notify: () => void) => {
 const readTheme = (): 'light' | 'dark' =>
   document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 const readServerTheme = (): 'light' | 'dark' => 'light';
-const shell = readProjectShell(manifest);
+const { shell, name, layoutEnabled, layoutVariant } = projectConfig;
 const Application = (): React.JSX.Element => {
   const matches = useMatches(),
     navigate = useNavigate(),
@@ -39,15 +38,10 @@ const Application = (): React.JSX.Element => {
       <div className='min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'>
         <PageNavigationProvider pages={pages} onNavigate={go}>
           <ApplicationShell
-            config={{
-              ...shell,
-              logo: shell.logo.startsWith('/')
-                ? manifest.routing.basePath + shell.logo.slice(1)
-                : shell.logo,
-            }}
-            title={manifest.name}
-            enabled={manifest.layout.enabled && !shell.standalonePageIds.includes(currentPageId)}
-            variant={readLayoutVariant(manifest)}
+            config={shell}
+            title={name}
+            enabled={layoutEnabled && !shell.standalonePageIds.includes(currentPageId)}
+            variant={layoutVariant}
             pages={pages}
             currentPageId={currentPageId}
             onNavigate={go}

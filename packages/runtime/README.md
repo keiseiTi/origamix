@@ -80,7 +80,7 @@ const Page = (): React.JSX.Element => (
 export default Page;
 ```
 
-调用项目需要直接声明 Runtime、Materials 及其 peer dependencies，并启用 TypeScript JSON 导入；Schema 示例见 [Shared README](../shared/README.md)。样式由调用者导入，生成项目的 [index.css](../template/src/index.css) 包含 Tailwind 与 HeroUI 样式入口，Runtime 不会注入工作台主题。
+调用项目需要直接声明 Runtime、Materials 及其 peer dependencies，并启用 TypeScript JSON 导入；Schema 示例见 [Shared README](../shared/README.md)。样式由调用者导入，生成项目的 [index.css](../template/src/index.css) 包含 Tailwind 样式入口和已安装物料的扫描路径，Runtime 不会注入工作台主题。
 
 渲染异常由页面级边界兜底；每个 Schema 元素另有局部边界，运行态与设计态共用。未知物料或单个物料失败时，仅替换对应子树，兄弟元素继续显示；容器自身失败仍会隐藏其子树。`renderError` 自定义页面级错误，`renderElementError({ diagnostic, error, retry })` 自定义元素占位。默认占位保留布局框和设计态 frame 属性，提供错误详情与重试；设计弹层即使尚未打开也能显示失败占位。普通事件处理器、异步回调和 SSR 异常不由 React ErrorBoundary 捕获，流程执行错误通过 `onFlowError` 交给调用方。
 

@@ -1,4 +1,3 @@
-import { readProjectShell } from '@origamix/runtime';
 // Origamix application shell 1.0.0
 import { createElement, type ComponentType } from 'react';
 import {
@@ -10,13 +9,12 @@ import {
 } from 'react-router';
 import Application from './application';
 import ApplicationError from './application-error';
-import manifest from '../origamix.project.json';
-import { readRoutingConfig } from './routing-config';
+import { projectConfig } from './project-config';
 import { projectPages as pages } from './project-pages';
 
 const modules = import.meta.glob<{ default: ComponentType }>('./**/index.tsx', { eager: true });
 const routes: RouteObject[] = pages.map((page) => {
-  const Component = modules[`./${manifest.pageDirectory}/${page.slug}/index.tsx`]?.default;
+  const Component = modules[`./${projectConfig.pageDirectory}/${page.slug}/index.tsx`]?.default;
   if (!Component) throw new Error(`页面入口不存在：${page.slug}`);
   return { handle: page.pageId, path: page.path, Component };
 });
@@ -26,13 +24,12 @@ if (pages.length && !pages.some((page) => page.path === '/'))
     Component: () => createElement(Navigate, { to: `/${pages[0]!.slug}`, replace: true }),
   });
 
-const shell = readProjectShell(manifest);
-const notFoundPageId = shell.notFoundPageId;
+const notFoundPageId = projectConfig.shell.notFoundPageId;
 const notFound = pages.find((page) => page.pageId === notFoundPageId);
 const NotFoundComponent = notFound
-  ? modules[`./${manifest.pageDirectory}/${notFound.slug}/index.tsx`]?.default
+  ? modules[`./${projectConfig.pageDirectory}/${notFound.slug}/index.tsx`]?.default
   : undefined;
-const routing = readRoutingConfig(manifest);
+const { routing } = projectConfig;
 const createRouter = routing.mode === 'hash' ? createHashRouter : createBrowserRouter;
 export default createRouter(
   [

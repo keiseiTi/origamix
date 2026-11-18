@@ -197,7 +197,8 @@ try {
   assert.equal(
     await evaluate(`(async () => {
     const c = window.__oldConnection;
-    const response = await fetch(c.baseUrl + '/projects/list', { method: 'POST', body: '{}',
+    const replacement = await window.api.backend.getConnection();
+    const response = await fetch(replacement.baseUrl + '/projects/list', { method: 'POST', body: '{}',
       headers: { Authorization: 'Bearer ' + c.token, 'X-Origamix-Service': c.serviceInstanceId, 'Content-Type': 'application/json' } });
     return response.status === 401;
   })()`),
