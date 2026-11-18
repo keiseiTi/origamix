@@ -75,6 +75,14 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** Only a definitive client rejection can retire an unresolved mutation. */
+export const isMutationRejected = (error: unknown): boolean =>
+  error instanceof ApiRequestError &&
+  error.status >= 400 &&
+  error.status < 500 &&
+  error.status !== 408 &&
+  error.code < 500;
+
 export const getApiConnection = async (forceRefresh = false): Promise<ApiConnection> => {
   if (forceRefresh) invalidateConnection();
   if (!backendAvailable) throw new Error('后端正在重启或暂时不可用，请稍后重试');

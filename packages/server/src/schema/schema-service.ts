@@ -208,7 +208,7 @@ export const reloadWorkingSchemaFromTarget = async (
   page: SchemaPageRef,
   expected: ReloadFromProjectRequest,
   readTarget: () => Promise<OrigamixPageSchema>,
-): Promise<SchemaReadResult> => {
+): Promise<WorkingSchemaReadResult> => {
   return withSchemaPageQueue(page, async (page) => {
     const current = await getSchemaUnlocked(page);
     if (current.workingVersion !== expected.expectedWorkingVersion)
@@ -218,7 +218,7 @@ export const reloadWorkingSchemaFromTarget = async (
       throw conflict('项目文件已变化，请刷新状态后重新确认');
     const candidate = requireCompatibleSchema(schema);
     await validateWritableSchema(page, candidate);
-    const updated = await commitsFor(page).commit(
+    await commitsFor(page).commit(
       page,
       createRevisionSnapshot(
         schema,
@@ -227,12 +227,9 @@ export const reloadWorkingSchemaFromTarget = async (
       ),
       {},
     );
-    const working = await readWorking(page);
-    await storeFor(page).writeWorking(page, {
-      ...working,
-      baselineHash: hashSchema(schema),
-    });
-    return updated;
+    const working = { ...(await readWorking(page)), baselineHash: hashSchema(schema) };
+    await storeFor(page).writeWorking(page, working);
+    return workingResult(working);
   });
 };
 

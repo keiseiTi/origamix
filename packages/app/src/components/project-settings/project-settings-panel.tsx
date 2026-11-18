@@ -1,5 +1,4 @@
 import { usesDatabaseProjects } from '@/services/projects';
-import { nanoid } from 'nanoid';
 import { useProjectSettingsSession } from './use-project-settings-session';
 import { ProjectSettingsChat } from './project-settings-chat';
 import { useState } from 'react';
@@ -9,153 +8,23 @@ import { type ProjectMenuItem } from '@origamix/shared';
 import {
   Button,
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
   Field,
   FieldLabel,
   Input,
   Switch,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from '@origamix/ui';
-import { ArrowUp, ArrowDown, Plus, Save, Trash2 } from 'lucide-react';
+import { Save } from 'lucide-react';
+import { SettingsChoice } from './settings-choice';
+import { SettingsMenu } from './settings-menu';
 import { RoutingFields } from './routing-fields';
-
-const Choice = ({
-  label,
-  value,
-  items,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  items: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) => (
-  <Field>
-    <FieldLabel>{label}</FieldLabel>
-    <Select value={value} items={items} onValueChange={(value) => onChange(value ?? '')}>
-      <SelectTrigger aria-label={label}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {items.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </Field>
-);
-
-const AddMenuDialog = ({
-  pages,
-  parents,
-  onAdd,
-}: {
-  pages: { value: string; label: string }[];
-  parents: { value: string; label: string }[];
-  onAdd: (item: ProjectMenuItem) => void;
-}) => {
-  const [open, setOpen] = useState(false);
-  const [pageId, setPageId] = useState('');
-  const [title, setTitle] = useState('');
-  const [parentId, setParentId] = useState('');
-  const [hidden, setHidden] = useState(false);
-  const validPage = !pageId || pages.some((page) => page.value === pageId);
-  const validParent = !parentId || parents.some((parent) => parent.value === parentId);
-  const canAdd = validPage && validParent && Boolean(pageId || title.trim());
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          setPageId('');
-          setTitle('');
-          setParentId('');
-          setHidden(false);
-        }
-        setOpen(next);
-      }}
-    >
-      <DialogTrigger render={<Button size='sm' type='button' variant='outline' />}>
-        <Plus size={14} />
-        添加菜单
-      </DialogTrigger>
-      <DialogContent className='sm:max-w-md'>
-        <form
-          className='grid gap-4'
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!canAdd) return;
-            onAdd({
-              id: nanoid(),
-              title: title.trim(),
-              pageId: pageId || undefined,
-              parentId: parentId || undefined,
-              hidden,
-            });
-            setOpen(false);
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>添加菜单</DialogTitle>
-          </DialogHeader>
-          <Choice
-            label='关联页面'
-            value={pageId}
-            items={[{ value: '', label: '仅作为分组' }, ...pages]}
-            onChange={setPageId}
-          />
-          <Field>
-            <FieldLabel htmlFor='new-menu-title'>菜单标题</FieldLabel>
-            <Input
-              id='new-menu-title'
-              maxLength={80}
-              required={!pageId}
-              placeholder={pageId ? '留空跟随页面名称' : '输入分组名称'}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </Field>
-          <Choice
-            label='父级菜单'
-            value={parentId}
-            items={[{ value: '', label: '顶级菜单' }, ...parents]}
-            onChange={setParentId}
-          />
-          <Field orientation='horizontal'>
-            <Switch id='new-menu-hidden' checked={hidden} onCheckedChange={setHidden} />
-            <FieldLabel htmlFor='new-menu-hidden'>隐藏菜单及子菜单</FieldLabel>
-          </Field>
-          {(!validPage || !validParent) && (
-            <p role='alert' className='text-sm text-destructive'>
-              页面或父级菜单已变化，请重新选择。
-            </p>
-          )}
-          <DialogFooter>
-            <DialogClose render={<Button type='button' variant='outline' />}>取消</DialogClose>
-            <Button type='submit' disabled={!canAdd}>
-              添加
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 export const ProjectSettingsPanel = ({
   projectId,
@@ -170,11 +39,6 @@ export const ProjectSettingsPanel = ({
   const [mode, setMode] = useState<'assistant' | 'form'>(() =>
     usesDatabaseProjects() ? 'form' : 'assistant',
   );
-  const menu = draft?.shell.navigation ?? [];
-  const updateMenu = (next: ProjectMenuItem[]) =>
-    setDraft((current) => current && { ...current, shell: { ...current.shell, navigation: next } });
-  const updateItem = (id: string, change: Partial<ProjectMenuItem>) =>
-    updateMenu(menu.map((item) => (item.id === id ? { ...item, ...change } : item)));
   const pageItems = [
     { value: '', label: '模板默认' },
     ...(draft?.pages ?? []).map((page) => ({ value: page.pageId, label: page.name })),
@@ -397,165 +261,19 @@ export const ProjectSettingsPanel = ({
                       }
                     />
                   </Field>
-                  <section className='grid gap-3' aria-label='菜单配置'>
-                    <div className='flex items-center justify-between'>
-                      <h3 className='text-sm font-medium'>菜单配置</h3>
-                      <AddMenuDialog
-                        pages={pageItems.slice(1)}
-                        parents={menu.map((item) => ({
-                          value: item.id,
-                          label:
-                            item.title ||
-                            draft.pages.find((page) => page.pageId === item.pageId)?.name ||
-                            '未命名',
-                        }))}
-                        onAdd={(item) =>
-                          setDraft(
-                            (current) =>
-                              current && {
-                                ...current,
-                                shell: {
-                                  ...current.shell,
-                                  navigation: [...(current.shell.navigation ?? []), item],
-                                },
-                              },
-                          )
-                        }
-                      />
-                    </div>
-                    {draft.shell.navigation === undefined && (
-                      <p className='text-xs text-muted-foreground'>
-                        尚未配置。添加菜单后显示真实数据；示例菜单不会写入项目。
-                      </p>
-                    )}
-                    {draft.shell.navigation?.length === 0 && (
-                      <p className='text-xs text-muted-foreground'>
-                        菜单为空，应用中不显示菜单项。
-                      </p>
-                    )}
-                    {menu.map((item, index) => (
-                      <div key={item.id} className='grid gap-3 rounded-lg border border-border p-3'>
-                        <div className='flex items-center justify-between'>
-                          <span className='text-xs text-muted-foreground'>菜单 {index + 1}</span>
-                          <div className='flex gap-1'>
-                            <Button
-                              size='icon-xs'
-                              variant='ghost'
-                              type='button'
-                              aria-label={`上移菜单 ${index + 1}`}
-                              disabled={index === 0}
-                              onClick={() => {
-                                const next = [...menu];
-                                [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-                                updateMenu(next);
-                              }}
-                            >
-                              <ArrowUp size={14} />
-                            </Button>
-                            <Button
-                              size='icon-xs'
-                              variant='ghost'
-                              type='button'
-                              aria-label={`下移菜单 ${index + 1}`}
-                              disabled={index === menu.length - 1}
-                              onClick={() => {
-                                const next = [...menu];
-                                [next[index], next[index + 1]] = [next[index + 1]!, next[index]!];
-                                updateMenu(next);
-                              }}
-                            >
-                              <ArrowDown size={14} />
-                            </Button>
-                            <Button
-                              size='icon-xs'
-                              variant='ghost'
-                              type='button'
-                              aria-label={`删除菜单 ${index + 1}`}
-                              onClick={() => {
-                                const removed = new Set([item.id]);
-                                let changed = true;
-                                while (changed) {
-                                  changed = false;
-                                  for (const candidate of menu)
-                                    if (
-                                      candidate.parentId &&
-                                      removed.has(candidate.parentId) &&
-                                      !removed.has(candidate.id)
-                                    ) {
-                                      removed.add(candidate.id);
-                                      changed = true;
-                                    }
-                                }
-                                updateMenu(menu.filter((candidate) => !removed.has(candidate.id)));
-                              }}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </div>
-                        <Choice
-                          label={`菜单 ${index + 1} 页面`}
-                          value={item.pageId ?? ''}
-                          items={[{ value: '', label: '仅作为分组' }, ...pageItems.slice(1)]}
-                          onChange={(pageId) =>
-                            updateItem(item.id, { pageId: pageId || undefined })
-                          }
-                        />
-                        <Field>
-                          <FieldLabel htmlFor={`menu-title-${item.id}`}>菜单标题</FieldLabel>
-                          <Input
-                            id={`menu-title-${item.id}`}
-                            value={item.title}
-                            maxLength={80}
-                            placeholder='留空跟随页面名称'
-                            onChange={(event) => updateItem(item.id, { title: event.target.value })}
-                          />
-                        </Field>
-                        <Choice
-                          label={`菜单 ${index + 1} 父级`}
-                          value={item.parentId ?? ''}
-                          items={[
-                            { value: '', label: '顶级菜单' },
-                            ...menu
-                              .filter((candidate) => {
-                                let parent: string | undefined = candidate.id;
-                                const seen = new Set<string>();
-                                while (parent && !seen.has(parent)) {
-                                  if (parent === item.id) return false;
-                                  seen.add(parent);
-                                  parent = menu.find((node) => node.id === parent)?.parentId;
-                                }
-                                return true;
-                              })
-                              .map((candidate) => ({
-                                value: candidate.id,
-                                label:
-                                  candidate.title ||
-                                  draft.pages.find((page) => page.pageId === candidate.pageId)
-                                    ?.name ||
-                                  '未命名',
-                              })),
-                          ]}
-                          onChange={(parentId) =>
-                            updateItem(item.id, { parentId: parentId || undefined })
-                          }
-                        />
-                        <Field orientation='horizontal'>
-                          <Switch
-                            id={`menu-hidden-${item.id}`}
-                            checked={item.hidden}
-                            onCheckedChange={(hidden) => updateItem(item.id, { hidden })}
-                          />
-                          <FieldLabel htmlFor={`menu-hidden-${item.id}`}>
-                            隐藏菜单及子菜单
-                          </FieldLabel>
-                        </Field>
-                      </div>
-                    ))}
-                  </section>
+                  <SettingsMenu
+                    navigation={draft.shell.navigation}
+                    pages={draft.pages}
+                    onChange={(navigation) =>
+                      setDraft(
+                        (current) =>
+                          current && { ...current, shell: { ...current.shell, navigation } },
+                      )
+                    }
+                  />
                 </>
               )}
-              <Choice
+              <SettingsChoice
                 label='首页'
                 value={draft.shell.homePageId ?? ''}
                 items={pageItems}
@@ -566,7 +284,7 @@ export const ProjectSettingsPanel = ({
                   })
                 }
               />
-              <Choice
+              <SettingsChoice
                 label='404 页面'
                 value={draft.shell.notFoundPageId ?? ''}
                 items={pageItems}

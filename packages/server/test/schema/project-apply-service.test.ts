@@ -321,6 +321,7 @@ describe('ProjectApplyService', () => {
     await expect(reload(confirmed)).rejects.toThrow('草稿已更新');
     expect(await readdir(revisions)).toHaveLength(2);
     expect(reloaded.schema).toEqual(external);
+    expect(await getWorkingSchemaState(scope)).toMatchObject(reloaded);
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
       'in_sync',
     );

@@ -1,5 +1,5 @@
 import { equalJson } from '@origamix/shared';
-import { ApiRequestError, subscribeBackendReady } from '@/services/request';
+import { isMutationRejected, subscribeBackendReady } from '@/services/request';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { EditorTransaction, EditorWorkingState } from '@origamix/editor';
 import { createEditorTransaction } from '@origamix/editor';
@@ -26,9 +26,9 @@ export const useEditorSession = (
   projectId: string,
   pageId: string,
   readOnly: boolean,
-  onWorkingCommitted?: () => void,
+  onWorkingCommitted?: (workingVersion: number) => void,
   readyToEdit = true,
-  schemaRefreshKey = '',
+  externalWorkingChange: number | symbol | null = null,
 ) => {
   const service = schemaService;
   // A new ref cell per scope isolates queues even when an old request is pending.
@@ -57,7 +57,7 @@ export const useEditorSession = (
       current: Session;
     };
     initial: WorkingState | null;
-    refreshKey: string;
+    refreshKey: number | symbol | null;
     error: string | null;
   } | null>(null);
   const [failure, setFailure] = useState<{
@@ -94,6 +94,18 @@ export const useEditorSession = (
         if (!active || request !== sequence) return;
         if (
           !explicit &&
+          typeof externalWorkingChange === 'number' &&
+          ownedSession.workingVersion >= externalWorkingChange
+        ) {
+          setLoaded((previous) =>
+            previous?.sessionRef === sessionRef
+              ? { ...previous, refreshKey: externalWorkingChange }
+              : previous,
+          );
+          return;
+        }
+        if (
+          !explicit &&
           (ownedSession.failed || !equalJson(ownedSession.draft, ownedSession.savedSchema))
         )
           throw new Error('Working 已更新，本地草稿已保留；请先重试保存草稿，再重试加载');
@@ -123,13 +135,13 @@ export const useEditorSession = (
         ownedSession.draft = result.schema;
         ownedSession.savedSchema = result.schema;
         ownedSession.workingVersion = result.workingVersion;
-        setLoaded({ sessionRef, initial: result, refreshKey: schemaRefreshKey, error: null });
+        setLoaded({ sessionRef, initial: result, refreshKey: externalWorkingChange, error: null });
       } catch (reason) {
         if (active && request === sequence)
           setLoaded((previous) => ({
             sessionRef,
             initial: previous?.sessionRef === sessionRef ? previous.initial : null,
-            refreshKey: schemaRefreshKey,
+            refreshKey: externalWorkingChange,
             error: reason instanceof Error ? reason.message : '无法读取 Schema',
           }));
       }
@@ -143,7 +155,7 @@ export const useEditorSession = (
       unsubscribe();
       active = false;
     };
-  }, [projectId, pageId, sessionRef, schemaRefreshKey, retry, service]);
+  }, [projectId, pageId, sessionRef, externalWorkingChange, retry, service]);
   useEffect(() => {
     if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
     const ownedSession = sessionRef.current;
@@ -166,7 +178,6 @@ export const useEditorSession = (
           await sessionRef.current.pending;
           continue;
         }
-        if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');
         const session = sessionRef.current;
         if (session.uncertainSchema) {
           const candidate = session.uncertainSchema;
@@ -180,7 +191,7 @@ export const useEditorSession = (
               ) {
                 session.workingVersion = working.workingVersion;
                 session.savedSchema = working.schema;
-                onWorkingCommittedRef.current?.();
+                onWorkingCommittedRef.current?.(session.workingVersion);
               } else if (
                 working.workingVersion !== session.workingVersion ||
                 !equalJson(working.schema, session.savedSchema)
@@ -231,11 +242,10 @@ export const useEditorSession = (
             sessionRef.current.savedSchema = result.schema;
             sessionRef.current.failed = false;
             setFailure(null);
-            onWorkingCommittedRef.current?.();
+            onWorkingCommittedRef.current?.(session.workingVersion);
           })
           .catch((error: unknown) => {
-            if (!(error instanceof ApiRequestError) || error.status >= 500 || error.status === 408)
-              session.uncertainSchema = candidate;
+            if (!isMutationRejected(error)) session.uncertainSchema = candidate;
             throw error;
           })
           .finally(() => {
@@ -325,7 +335,7 @@ export const useEditorSession = (
   return {
     initial,
     loading: !current,
-    refreshing: Boolean(current && current.refreshKey !== schemaRefreshKey),
+    refreshing: Boolean(current && current.refreshKey !== externalWorkingChange),
     retryLoad: () => {
       explicitReload.current = true;
       setRetry((value) => value + 1);

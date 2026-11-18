@@ -1,35 +1,33 @@
 import { usePageNavigationMetadata } from './use-page-navigation-metadata';
 import { Editor as EditorView } from '@origamix/editor';
-import type { EditorHandle, EditorInstance, EditorTargetSelection } from '@origamix/editor';
+import type { EditorInstance, EditorTargetSelection } from '@origamix/editor';
 import { Spinner, Button } from '@origamix/ui';
-import { useImperativeHandle, useState, type Ref } from 'react';
+import { useState } from 'react';
 import { useWorkspaceStore } from '@/store/workspace';
 import { usePreferencesStore } from '@/store/preferences';
-import { useEditorMaterials } from '@/materials/use-editor-materials';
-import { useEditorSession } from './use-editor-session';
+import type { useEditorMaterials } from '@/materials/use-editor-materials';
+import type { useEditorSession } from './use-editor-session';
 interface EditorProps {
-  ref?: Ref<EditorHandle>;
   visible: boolean;
-  schemaRefreshKey: string;
   projectId: string;
   pageId: string;
   readOnly?: boolean;
   readOnlyMessage?: string;
   editor: EditorInstance;
-  onWorkingCommitted?: () => void;
+  working: ReturnType<typeof useEditorSession>;
+  materials: ReturnType<typeof useEditorMaterials>;
   targetSelection?: EditorTargetSelection;
 }
 export const PageEditor = ({
-  ref,
   projectId,
   pageId,
   visible,
-  schemaRefreshKey,
-  onWorkingCommitted,
+  working: session,
+  materials,
   readOnly = false,
   ...viewProps
 }: EditorProps) => {
-  const navigation = usePageNavigationMetadata(projectId, visible && true);
+  const navigation = usePageNavigationMetadata(projectId, visible);
   const changePageMode = useWorkspaceStore((state) => state.changePageMode);
   const [returningToChat, setReturningToChat] = useState(false);
   const returnToChat = async (): Promise<void> => {
@@ -46,27 +44,9 @@ export const PageEditor = ({
     </Button>
   );
   const theme = usePreferencesStore((state) => state.theme);
-  const materials = useEditorMaterials(projectId, visible);
   const registration = materials.registration;
   const MaterialProvider = materials.Provider;
-  const session = useEditorSession(
-    projectId,
-    pageId,
-    readOnly,
-    onWorkingCommitted,
-    visible && Boolean(materials.registration),
-    schemaRefreshKey,
-  );
-  useImperativeHandle(
-    ref,
-    () => ({
-      flush: session.flush,
-      getConfirmedWorking: session.getConfirmedWorking,
-      acknowledgeWorking: session.acknowledgeWorking,
-    }),
-    [session.flush, session.acknowledgeWorking, session.getConfirmedWorking],
-  );
-  // Keep host recovery alive without mounting canvas portals in chat or preview.
+  // Canvas portals only mount for the active editor.
   if (!visible) return null;
   if (materials.error)
     return (

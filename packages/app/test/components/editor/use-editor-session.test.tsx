@@ -144,19 +144,19 @@ describe('useEditorSession', () => {
   it('reloads external Working updates without replacing a rejected local draft', async () => {
     const hook = renderHook(
       ({ refresh }) => useEditorSession('project_one', 'page_one', false, undefined, true, refresh),
-      { initialProps: { refresh: '' } },
+      { initialProps: { refresh: null as number | null } },
     );
     await waitFor(() => expect(hook.result.current.initial).not.toBeNull());
     const oldChange = hook.result.current.onChange;
     const updated = structuredClone(schema);
     updated.elements.element_root!.props = { padding: 16 };
     schemaMocks.workingState.mockResolvedValue({ schema: updated, workingVersion: 5 });
-    hook.rerender({ refresh: 'agent_5' });
+    hook.rerender({ refresh: 5 });
     await waitFor(() => expect(hook.result.current.initial?.workingVersion).toBe(5));
     expect(hook.result.current.initial?.schema).toEqual(updated);
     // A detached engine may finish cleanup after the new Working is installed.
     act(() => oldChange(schema));
-    hook.rerender({ refresh: 'agent_5' });
+    hook.rerender({ refresh: 5 });
     expect(hook.result.current.snapshot?.schema).toEqual(updated);
     await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
     const draft = structuredClone(updated);
@@ -166,7 +166,7 @@ describe('useEditorSession', () => {
     await act(async () => {
       await expect(hook.result.current.flush()).rejects.toThrow('连接中断');
     });
-    hook.rerender({ refresh: 'agent_6' });
+    hook.rerender({ refresh: 6 });
     await act(async () => Promise.resolve());
     expect(schemaMocks.workingState).toHaveBeenCalledTimes(2);
     expect(hook.result.current.snapshot?.schema).toEqual(draft);

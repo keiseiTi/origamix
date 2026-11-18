@@ -1,14 +1,14 @@
 import type { AgentUsageScope } from '@origamix/shared';
 import { PageUsage } from '@/components/usage/page-usage';
 import { usesDatabaseProjects } from '@/services/projects';
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { useEffect, useImperativeHandle, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { ChatWorkspace } from '@/components/agent-chat';
 import { isRunActive } from '@/components/agent-chat/agent-chat-state';
 import { PageEditor } from '@/components/editor';
-import { useCreateEditor, type EditorHandle } from '@origamix/editor';
+import { useCreateEditor } from '@origamix/editor';
 import { AgentChatToolbar } from './agent-chat-toolbar';
 import { createWorkspaceToolbarPlugin } from './workspace-toolbar-plugin';
 import { usePageSession } from './hooks/use-page-session';
@@ -19,7 +19,7 @@ const workspaceToolbarPlugin = createWorkspaceToolbarPlugin();
 export interface PageSessionProps {
   active?: boolean;
   pageId: string;
-  editorRef: RefObject<EditorHandle | null>;
+  editorRef: RefObject<{ flush: () => Promise<void> } | null>;
   onOpenUsage?: (scope: AgentUsageScope) => void;
   onConfigureModel?: () => void;
 }
@@ -45,6 +45,7 @@ export const PageSession = ({
 
   return (
     <PageSessionContent
+      key={JSON.stringify([project.id, page.id])}
       active={active}
       page={page}
       projectId={project.id}
@@ -79,17 +80,16 @@ const PageSessionContent = ({
   const databaseProject = usesDatabaseProjects();
   const theme = usePreferencesStore((state) => state.theme);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
-  const { pageApply, agent, capabilities, schemaRefreshKey } = usePageSession({
-    projectId,
-    pageId: page.id,
-    databaseProject,
-    active,
-    editorRef,
-  });
+  const { working, materials, pageApply, agent, capabilities, externalWorkingChange } =
+    usePageSession({
+      projectId,
+      pageId: page.id,
+      databaseProject,
+      active,
+      editing: active && mode === 'edit',
+    });
   const setPageStatus = useWorkspaceStore((state) => state.setPageStatus);
-  const onWorkingCommitted = useCallback((): void => {
-    void pageApply.refreshApplyState();
-  }, [pageApply]);
+  useImperativeHandle(editorRef, () => ({ flush: working.flush }), [working.flush]);
 
   useEffect(() => {
     const status = pageApply.applyStatus;
@@ -104,10 +104,6 @@ const PageSessionContent = ({
       setPageStatus(page.id, null);
     }
   }, [pageApply.applyStatus, page.id, setPageStatus]);
-  // Agent commits already carry the authoritative Working version. Feed that
-  // signal directly into the editor lifecycle while the page session refreshes
-  // its pageApply state.
-  const editorSchemaRefreshKey = `${schemaRefreshKey}:${agent.state.workingRefreshKey ?? ''}`;
   const toolbarProps = {
     active: active,
     canPreview: true,
@@ -135,9 +131,7 @@ const PageSessionContent = ({
         active: active && mode === 'edit',
       }),
     ],
-    beforeModeChange: async () => {
-      await editorRef.current?.flush();
-    },
+    beforeModeChange: working.flush,
   });
 
   return (
@@ -167,12 +161,11 @@ const PageSessionContent = ({
       <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <PageEditor
           visible={active && mode === 'edit'}
-          schemaRefreshKey={editorSchemaRefreshKey}
-          ref={editorRef}
+          working={working}
+          materials={materials}
           editor={editor}
           projectId={projectId}
           pageId={page.id}
-          onWorkingCommitted={onWorkingCommitted}
           readOnly={!capabilities.canEdit}
           readOnlyMessage={
             capabilities.agentChecking
@@ -196,7 +189,7 @@ const PageSessionContent = ({
           projectId={projectId}
           pageId={page.id}
           pageName={page.name}
-          schemaRefreshKey={editorSchemaRefreshKey}
+          externalWorkingChange={externalWorkingChange}
           theme={theme}
         />
       </div>

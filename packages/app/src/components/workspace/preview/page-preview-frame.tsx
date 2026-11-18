@@ -13,7 +13,7 @@ interface PagePreviewFrameProps {
   projectId: string;
   pageId: string;
   pageName: string;
-  schemaRefreshKey: string;
+  externalWorkingChange: number | symbol | null;
   theme: AppTheme;
 }
 export const PagePreviewFrame = ({
@@ -21,7 +21,7 @@ export const PagePreviewFrame = ({
   projectId,
   pageId,
   pageName,
-  schemaRefreshKey,
+  externalWorkingChange,
   theme,
 }: PagePreviewFrameProps): React.JSX.Element | null => {
   const changePageMode = useWorkspaceStore((state) => state.changePageMode);
@@ -226,7 +226,7 @@ export const PagePreviewFrame = ({
       window.clearTimeout(initial);
       generation.current += 1;
     };
-  }, [active, schemaRefreshKey, syncPreview]);
+  }, [active, externalWorkingChange, syncPreview]);
 
   useEffect(() => {
     const retained = currentSnapshot.current;

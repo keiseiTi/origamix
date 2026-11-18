@@ -1,9 +1,7 @@
 // @vitest-environment happy-dom
 
 import { act, cleanup, renderHook } from '@testing-library/react';
-import type { RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EditorHandle } from '@origamix/editor';
 
 const schemaMocks = vi.hoisted(() => ({
   applyState: vi.fn(),
@@ -28,15 +26,17 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
-const editorRef = {
-  current: { getConfirmedWorking: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) },
-} as unknown as RefObject<EditorHandle | null>;
+const working = {
+  getConfirmedWorking: vi.fn(),
+  flush: vi.fn<() => Promise<void>>(),
+  acknowledgeWorking: vi.fn(),
+};
 
 describe('usePageApplyState', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetAllMocks();
-    vi.mocked(editorRef.current!.flush).mockResolvedValue(undefined);
+    working.flush.mockResolvedValue(undefined);
     usePendingOperations.setState({ applies: {}, agents: {} });
   });
 
@@ -51,19 +51,19 @@ describe('usePageApplyState', () => {
       .mockReturnValueOnce(previous.promise)
       .mockResolvedValue({ status: 'saved_pending_apply' });
     const hook = renderHook(
-      ({ revision }) =>
+      ({ workingVersion }) =>
         usePageApplyState({
           projectId: 'project_1',
           pageId: 'page_a',
-          schemaRefreshKey: revision,
-          editorRef,
+          externalWorkingChange: workingVersion,
+          working,
           onSchemaCommitted: vi.fn(),
         }),
-      { initialProps: { revision: 'revision_1' } },
+      { initialProps: { workingVersion: 1 } },
     );
 
     await act(async () => vi.advanceTimersByTime(0));
-    hook.rerender({ revision: 'revision_2' });
+    hook.rerender({ workingVersion: 2 });
     await act(async () => vi.advanceTimersByTime(0));
     await act(async () => previous.resolve({ status: 'external_change' }));
 
@@ -76,7 +76,7 @@ describe('usePageApplyState', () => {
       workingVersion: 2,
       targetSchemaHash: 'hash',
     });
-    const reload = deferred<{ revisionId: string }>();
+    const reload = deferred<{ workingVersion: number }>();
     schemaMocks.reloadFromProject.mockReturnValue(reload.promise);
     const onSchemaCommitted = vi.fn();
     const { result, rerender } = renderHook(
@@ -84,8 +84,8 @@ describe('usePageApplyState', () => {
         usePageApplyState({
           projectId: 'project_1',
           pageId,
-          schemaRefreshKey: 'revision_1',
-          editorRef,
+          externalWorkingChange: 1,
+          working,
           onSchemaCommitted,
         }),
       { initialProps: { pageId: 'page_a' } },
@@ -98,7 +98,7 @@ describe('usePageApplyState', () => {
       expectedTargetHash: 'hash',
     });
     rerender({ pageId: 'page_b' });
-    await act(async () => reload.resolve({ revisionId: 'revision_page_a' }));
+    await act(async () => reload.resolve({ workingVersion: 3 }));
     await request;
 
     expect(onSchemaCommitted).not.toHaveBeenCalled();
@@ -119,21 +119,26 @@ describe('usePageApplyState', () => {
       usePageApplyState({
         projectId: 'project_1',
         pageId: 'page_a',
-        schemaRefreshKey: 'revision_old',
-        editorRef,
+        externalWorkingChange: 2,
+        working,
         onSchemaCommitted,
       }),
     );
 
-    vi.mocked(editorRef.current!.getConfirmedWorking!).mockReturnValue({
+    working.getConfirmedWorking.mockReturnValue({
       scope: { projectId: 'project_1', pageId: 'page_a' },
       workingVersion: 2,
     });
     await act(async () => result.current.saveVersion());
     expect(schemaMocks.workingState).not.toHaveBeenCalled();
 
-    expect(editorRef.current!.flush).toHaveBeenCalledOnce();
+    expect(working.flush).toHaveBeenCalledOnce();
     expect(schemaMocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2);
+    expect(working.acknowledgeWorking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workingVersion: 3,
+      }),
+    );
     expect(onSchemaCommitted).not.toHaveBeenCalled();
   });
   it('keeps an ambiguous Apply across unmount, then clears it on explicit retry', async () => {
@@ -144,8 +149,8 @@ describe('usePageApplyState', () => {
       usePageApplyState({
         projectId: 'project_1',
         pageId: 'page_a',
-        schemaRefreshKey: 'revision_1',
-        editorRef,
+        externalWorkingChange: 1,
+        working,
         onSchemaCommitted: vi.fn(),
       });
     const first = renderHook(usePage);

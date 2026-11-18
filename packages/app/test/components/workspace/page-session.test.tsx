@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
 import type {
   EditorInstance,
   EditorMode,
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   subscribeAgentEvents: vi.fn(),
   applyState: vi.fn(),
   workingState: vi.fn(),
+  applyWorkingOperations: vi.fn(),
   saveRevision: vi.fn(),
   apply: vi.fn(),
   reloadFromProject: vi.fn(),
@@ -27,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   getRevision: vi.fn(),
   restoreRevision: vi.fn(),
   editorMounted: vi.fn(),
-  editorRefresh: vi.fn(),
+  flush: vi.fn<() => Promise<void> | undefined>(),
 }));
 // Model the public editor hooks while keeping the host persistence/recovery real.
 type TestEditor = EditorInstance & { mode: EditorMode; plugins: readonly EditorPlugin[] };
@@ -90,36 +92,60 @@ vi.mock('@origamix/editor', async (importOriginal) => ({
   },
   useEditorContext: () => useContext(EditorTestContext)!,
 }));
+const schema: OrigamixPageSchema = {
+  elements: { element_root: { type: 'container', props: {} } },
+  layout: { root: 'element_root', structure: { element_root: [] } },
+  flows: {},
+  bindElements: [],
+  context: { globalVariables: [] },
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
+};
+const editedSchema = {
+  ...schema,
+  elements: { element_root: { type: 'container', props: { padding: 24 } } },
+};
+vi.mock('../../../src/materials/use-editor-materials', () => ({
+  useEditorMaterials: () => ({ registration: {} }),
+}));
 vi.mock('../../../src/services/agent', () => mocks);
 vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
 vi.mock('../../../src/components/editor/index', () => ({
   PageEditor: ({
     readOnly,
     readOnlyMessage,
-    onWorkingCommitted,
+    working,
     visible,
-    schemaRefreshKey,
     editor,
   }: {
     visible: boolean;
-    schemaRefreshKey: string;
+    working: ReturnType<
+      typeof import('../../../src/components/editor/use-editor-session').useEditorSession
+    >;
     editor: TestEditor;
     readOnly: boolean;
     readOnlyMessage?: string;
-    onWorkingCommitted?: () => void;
   }) => {
     useEffect(() => mocks.editorMounted(), []);
-    useEffect(() => mocks.editorRefresh(schemaRefreshKey), [schemaRefreshKey]);
     return (
       <EditorTestContext.Provider value={editor}>
-        {visible &&
-          editor.plugins.reduceRight<ReactNode>(
-            (children, plugin) =>
-              plugin.editor?.renderToolbar?.({ editor, area: 'all', children, props: undefined }) ??
-              children,
-            null,
-          )}
-        <button disabled={readOnly} aria-label='编辑画布' onClick={onWorkingCommitted}>
+        <div data-testid='editor-toolbar'>
+          {visible &&
+            editor.plugins.reduceRight<ReactNode>(
+              (children, plugin) =>
+                plugin.editor?.renderToolbar?.({
+                  editor,
+                  area: 'all',
+                  children,
+                  props: undefined,
+                }) ?? children,
+              null,
+            )}
+        </div>
+        <button
+          disabled={readOnly || working.loading || working.refreshing}
+          aria-label='编辑画布'
+          onClick={() => working.onChange(editedSchema, { immediate: true })}
+        >
           {readOnlyMessage ?? '画布'}
         </button>
       </EditorTestContext.Provider>
@@ -128,15 +154,20 @@ vi.mock('../../../src/components/editor/index', () => ({
 }));
 import { PageSession } from '../../../src/components/workspace/page-session';
 
-const confirmedEditor = (pageId: string) => ({
-  current: {
-    flush: async () => {},
-    getConfirmedWorking: () => ({ scope: { projectId: 'project_1', pageId }, workingVersion: 2 }),
-  },
+const editorRef = { current: null };
+vi.mock('../../../src/components/editor/use-editor-session', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../src/components/editor/use-editor-session')>();
+  return {
+    useEditorSession: (...args: Parameters<typeof actual.useEditorSession>) => {
+      const working = actual.useEditorSession(...args);
+      return { ...working, flush: async () => mocks.flush() ?? working.flush() };
+    },
+  };
 });
 const props = {
   pageId: 'page_a',
-  editorRef: confirmedEditor('page_a'),
+  editorRef,
 };
 describe('workspace recovery controls', () => {
   beforeEach(() => {
@@ -175,7 +206,11 @@ describe('workspace recovery controls', () => {
       pageDrafts: { page_a: 'hello', page_b: '' },
     });
     mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
-    mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 2 });
+    mocks.workingState.mockResolvedValue({
+      revisionId: 'revision_1',
+      workingVersion: 2,
+      schema,
+    });
     mocks.listConversations.mockRejectedValue(new Error('无法恢复对话'));
     mocks.listRevisions.mockResolvedValue({
       revisions: [
@@ -197,12 +232,8 @@ describe('workspace recovery controls', () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
     await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
-    const flush = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('草稿保存失败'))
-      .mockResolvedValue(undefined);
-    const editorRef = { current: { flush, undo: vi.fn(), redo: vi.fn() } };
-    render(<PageSession {...props} editorRef={editorRef} active />);
+    mocks.flush.mockRejectedValueOnce(new Error('草稿保存失败'));
+    render(<PageSession {...props} active />);
     await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: '逻辑' }));
     await waitFor(() => expect(screen.getByText('草稿保存失败')).toBeTruthy());
@@ -213,39 +244,55 @@ describe('workspace recovery controls', () => {
         'true',
       ),
     );
-    expect(flush).toHaveBeenCalledTimes(2);
+    expect(mocks.flush).toHaveBeenCalledTimes(2);
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes a visual Working commit before saving and applying the page', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
-    mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
+    mocks.applyWorkingOperations.mockResolvedValue({ schema: editedSchema, workingVersion: 3 });
+    mocks.saveRevision.mockResolvedValue({
+      schema: editedSchema,
+      revisionId: 'revision_2',
+      workingVersion: 4,
+    });
+    await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
     render(<PageSession {...props} active />);
-    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
-    const save = () => screen.getByRole('button', { name: '保存版本' }) as HTMLButtonElement;
-    const apply = () => screen.getByRole('button', { name: '应用到项目' }) as HTMLButtonElement;
+    await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
+    const toolbar = within(screen.getByTestId('editor-toolbar'));
+    const save = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '保存版本' });
+    const apply = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '应用到项目' });
     expect(save().disabled).toBe(true);
     expect(apply().disabled).toBe(true);
 
+    const canvas = screen.getByRole<HTMLButtonElement>('button', { name: '编辑画布' });
+    await waitFor(() => expect(canvas.disabled).toBe(false));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
     mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
-    fireEvent.click(screen.getByRole('button', { name: '编辑画布' }));
+    fireEvent.click(canvas);
+    await waitFor(() => expect(mocks.applyWorkingOperations).toHaveBeenCalled());
     await waitFor(() => expect(save().disabled).toBe(false));
     expect(apply().disabled).toBe(true);
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
 
     mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    mocks.workingState.mockResolvedValue({
+      schema: editedSchema,
+      revisionId: 'revision_2',
+      workingVersion: 4,
+    });
     fireEvent.click(save());
     await waitFor(() => expect(apply().disabled).toBe(false));
-    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 2);
+    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
     fireEvent.click(apply());
-    await waitFor(() => expect(screen.getByText('与项目一致')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
     expect(mocks.apply).toHaveBeenCalledWith(
       'project_1',
       'page_a',
-      'revision_1',
-      2,
+      'revision_2',
+      4,
       expect.any(String),
     );
   });
@@ -253,12 +300,16 @@ describe('workspace recovery controls', () => {
   it('saves only the active page once per shortcut', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
-    mocks.saveRevision.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 3 });
+    mocks.saveRevision.mockResolvedValue({
+      revisionId: 'revision_2',
+      workingVersion: 2,
+      schema,
+    });
     const second = {
       ...props,
       active: false,
       pageId: 'page_b',
-      editorRef: confirmedEditor('page_b'),
+      editorRef: { current: null },
     };
     const view = render(
       <>
@@ -337,6 +388,7 @@ describe('workspace recovery controls', () => {
     await waitFor(() => expect(listener).toBeDefined());
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
 
+    mocks.workingState.mockClear();
     listener!.onEvent({
       version: '1',
       eventId: 1,
@@ -349,7 +401,7 @@ describe('workspace recovery controls', () => {
       payload: { baseWorkingVersion: 2, resultWorkingVersion: 3, operationCount: 1 },
     });
 
-    await waitFor(() => expect(mocks.editorRefresh.mock.lastCall?.[0]).toContain('3'));
+    await waitFor(() => expect(mocks.workingState).toHaveBeenCalledWith('project_1', 'page_a'));
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
     await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
     await act(async () => Promise.resolve());

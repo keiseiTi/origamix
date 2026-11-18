@@ -13,7 +13,7 @@ export interface AgentChatState {
   stage: AgentRunStatus | null;
   progressMessage: string | null;
   progressHistory: string[];
-  workingRefreshKey: string | null;
+  committedWorkingVersion: number | null;
   lastEventId: number;
   error: string | null;
   connection: 'idle' | 'connecting' | 'connected' | 'recovering';
@@ -40,7 +40,7 @@ export const initialAgentChatState: AgentChatState = {
   stage: null,
   progressMessage: null,
   progressHistory: [],
-  workingRefreshKey: null,
+  committedWorkingVersion: null,
   lastEventId: -1,
   error: null,
   connection: 'idle',
@@ -139,7 +139,7 @@ export const agentChatReducer = (
       streamedText: '',
       progressMessage: '正在提交请求',
       progressHistory: ['正在提交请求'],
-      workingRefreshKey: null,
+      committedWorkingVersion: null,
       error: null,
       connection: 'connecting',
     };
@@ -176,11 +176,11 @@ export const agentChatReducer = (
       progressMessage: isRunActive(action.run?.status) ? state.progressMessage : null,
       progressHistory: changedRun ? (terminalProgress ? [terminalProgress] : []) : progressHistory,
       lastEventId: changedRun ? -1 : state.lastEventId,
-      workingRefreshKey: action.run?.resultWorkingVersion
-        ? `working_${action.run.runId}_${action.run.resultWorkingVersion}`
+      committedWorkingVersion: action.run?.resultWorkingVersion
+        ? action.run.resultWorkingVersion
         : changedRun
           ? null
-          : state.workingRefreshKey,
+          : state.committedWorkingVersion,
       error:
         action.run?.status === 'interrupted'
           ? '上次生成因服务重启而中断，请重新描述并发送。'
@@ -198,7 +198,7 @@ export const agentChatReducer = (
       streamedText: '',
       progressMessage: null,
       progressHistory: ['请求已进入处理队列'],
-      workingRefreshKey: null,
+      committedWorkingVersion: null,
       lastEventId: -1,
       error: null,
       connection: 'connecting',
@@ -276,11 +276,11 @@ export const agentChatReducer = (
     stage: status ?? state.stage,
     progressMessage,
     progressHistory,
-    workingRefreshKey:
+    committedWorkingVersion:
       (event.type === 'working.committed' || event.type === 'run.completed') &&
       typeof eventPayload.resultWorkingVersion === 'number'
-        ? `working_${event.runId}_${String(eventPayload.resultWorkingVersion)}`
-        : state.workingRefreshKey,
+        ? eventPayload.resultWorkingVersion
+        : state.committedWorkingVersion,
     error,
     connection: status && terminalStatuses.has(status) ? 'idle' : 'connected',
   };

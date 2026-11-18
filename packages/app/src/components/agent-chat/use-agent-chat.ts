@@ -11,9 +11,8 @@ import {
   subscribeAgentEvents,
 } from '@/services/agent';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
-import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
+import { isMutationRejected, subscribeBackendStatus } from '@/services/request';
 import { schemaService } from '@/services/schema';
-type SessionKind = 'page';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 import { uniqueId } from '@/utils';
 
@@ -38,7 +37,6 @@ export const useAgentChat = (
   projectId: string,
   pageId: string,
   enabled = true,
-  kind: SessionKind = 'page',
 ): AgentChatSession => {
   const schema = schemaService;
   const [projectTask, setProjectTask] = useState<
@@ -75,7 +73,7 @@ export const useAgentChat = (
       authorityRequest.current === request;
     dispatch({ type: 'connection.changed', connection: 'recovering' });
     try {
-      const listed = await listConversations(projectId, pageId, kind);
+      const listed = await listConversations(projectId, pageId);
       if (!current()) return;
       const conversation = listed.conversations[0];
       conversationId.current = conversation?.conversationId ?? null;
@@ -85,18 +83,18 @@ export const useAgentChat = (
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
-      const history = await listAllMessages(projectId, pageId, conversation.conversationId, kind);
+      const history = await listAllMessages(projectId, pageId, conversation.conversationId);
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
-      if (lastRunId) run = (await getAgentRun(projectId, lastRunId, kind)).run;
+      if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
       let task: import('@origamix/shared').ProjectTaskState | null = null;
       let sourceRun = run;
       if (run?.retryOfRunId && run.requestId.startsWith('project_run_'))
-        sourceRun = (await getAgentRun(projectId, run.retryOfRunId, kind)).run;
-      if (kind === 'page' && sourceRun?.projectProposal) {
+        sourceRun = (await getAgentRun(projectId, run.retryOfRunId)).run;
+      if (sourceRun?.projectProposal) {
         task = await getProjectTask({ projectId, pageId, runId: sourceRun.runId });
         if (task.childRunId && task.childRunId !== run?.runId)
-          run = (await getAgentRun(projectId, task.childRunId, kind)).run;
+          run = (await getAgentRun(projectId, task.childRunId)).run;
       }
       if (current()) {
         setProjectTask(task);
@@ -110,7 +108,7 @@ export const useAgentChat = (
           message: error instanceof Error ? error.message : '无法加载对话记录',
         });
     }
-  }, [pageId, projectId, pageKey, enabled, kind]);
+  }, [pageId, projectId, pageKey, enabled]);
 
   useEffect(() => {
     generation.current += 1;
@@ -196,39 +194,34 @@ export const useAgentChat = (
           });
       }, 750);
     };
-    const unsubscribe = subscribeAgentEvents(
-      projectId,
-      activeRunId,
-      {
-        afterEventId,
-        onOpen: () => {
-          if (current()) dispatch({ type: 'connection.changed', connection: 'connected' });
-        },
-        onEvent: (event: AgentEvent) => {
-          if (!current()) return;
-          if (event.target && (event.target.kind !== kind || event.target.projectId !== projectId))
-            return;
-          dispatch({ type: 'event.received', event });
-          if (
-            event.type === 'run.completed' ||
-            event.type === 'run.failed' ||
-            event.type === 'run.cancelled' ||
-            event.type === 'run.interrupted'
-          ) {
-            terminalReceived = true;
-            setVerifiedPageKey(null);
-            void loadAuthority();
-          }
-        },
-        onError: () => {
-          if (!terminalReceived) reconnect();
-        },
-        onClose: () => {
-          if (!terminalReceived) reconnect();
-        },
+    const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
+      afterEventId,
+      onOpen: () => {
+        if (current()) dispatch({ type: 'connection.changed', connection: 'connected' });
       },
-      kind,
-    );
+      onEvent: (event: AgentEvent) => {
+        if (!current()) return;
+        if (event.target && (event.target.kind !== 'page' || event.target.projectId !== projectId))
+          return;
+        dispatch({ type: 'event.received', event });
+        if (
+          event.type === 'run.completed' ||
+          event.type === 'run.failed' ||
+          event.type === 'run.cancelled' ||
+          event.type === 'run.interrupted'
+        ) {
+          terminalReceived = true;
+          setVerifiedPageKey(null);
+          void loadAuthority();
+        }
+      },
+      onError: () => {
+        if (!terminalReceived) reconnect();
+      },
+      onClose: () => {
+        if (!terminalReceived) reconnect();
+      },
+    });
     return () => {
       disposed = true;
       window.clearTimeout(timer);
@@ -237,7 +230,7 @@ export const useAgentChat = (
     // Event ids are per Run. The current cursor is captured only when opening a stream;
     // received deltas must not tear down and recreate the same connection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRunId, loadAuthority, projectId, reconnectAttempt, kind]);
+  }, [activeRunId, loadAuthority, projectId, reconnectAttempt]);
 
   const submit = useCallback(
     async (
@@ -309,12 +302,12 @@ export const useAgentChat = (
         const replayEvents = isRunActive(created.status);
         // A renderer can briefly outlive an older desktop Server during a dev
         // rebuild. Recover the Run snapshot instead of silently skipping SSE.
-        const run = created.run ?? (await getAgentRun(projectId, created.runId, kind)).run;
+        const run = created.run ?? (await getAgentRun(projectId, created.runId)).run;
         if (!current()) return;
         // The create response includes the Run snapshot, so subscribe before
         // loading message history or making another backend state request.
         if (replayEvents) dispatch({ type: 'run.queued', run });
-        const history = await listAllMessages(projectId, pageId, created.conversationId, kind);
+        const history = await listAllMessages(projectId, pageId, created.conversationId);
         // A terminal SSE event may have started a newer backend state reload while
         // this initial reconciliation was in flight. Never let this older
         // snapshot overwrite the persisted final assistant message.
@@ -332,14 +325,7 @@ export const useAgentChat = (
         });
       } catch (error) {
         if (input && !accepted)
-          operations.finishAgent(
-            pageKey,
-            input.clientRequestId,
-            error instanceof ApiRequestError &&
-              error.status >= 400 &&
-              error.status < 500 &&
-              error.status !== 408,
-          );
+          operations.finishAgent(pageKey, input.clientRequestId, isMutationRejected(error));
         if (current()) {
           setVerifiedPageKey(null);
           dispatch({
@@ -367,7 +353,6 @@ export const useAgentChat = (
       state.stage,
       loadAuthority,
       enabled,
-      kind,
       schema,
       projectTask,
     ],
@@ -398,9 +383,9 @@ export const useAgentChat = (
 
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
-    await cancelAgentRun(projectId, state.run.runId, requestId(), kind);
+    await cancelAgentRun(projectId, state.run.runId, requestId());
     await loadAuthority();
-  }, [loadAuthority, projectId, state.run, state.stage, kind]);
+  }, [loadAuthority, projectId, state.run, state.stage]);
 
   const retry = useCallback(async (): Promise<void> => {
     const request = usePendingOperations.getState().agents[pageKey];

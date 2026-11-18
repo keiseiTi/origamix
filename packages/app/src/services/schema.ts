@@ -25,8 +25,6 @@ interface WorkingSchemaResult extends SchemaResult {
 }
 
 export const schemaService = {
-  get: (projectId: string, pageId: string): Promise<SchemaResult> =>
-    request<SchemaResult>('/pages/schema/get', { projectId, pageId }),
   workingState: (projectId: string, pageId: string): Promise<WorkingSchemaResult> =>
     request<WorkingSchemaResult>('/pages/working-state/get', { projectId, pageId }),
   listRevisions: (projectId: string, pageId: string): Promise<RevisionHistory> =>
@@ -85,8 +83,8 @@ export const schemaService = {
     projectId: string,
     pageId: string,
     expected: ReloadFromProjectRequest,
-  ): Promise<SchemaResult> =>
-    request<SchemaResult>('/pages/reload-from-project', { projectId, pageId, ...expected }),
+  ): Promise<WorkingSchemaResult> =>
+    request<WorkingSchemaResult>('/pages/reload-from-project', { projectId, pageId, ...expected }),
   apply: (
     projectId: string,
     pageId: string,

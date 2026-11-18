@@ -1,103 +1,87 @@
-import { useEffect, useRef, useState, type SetStateAction } from 'react';
-import {
-  projectShellIssue,
-  type ProjectSettings,
-  type ProjectSettingsDraft,
-} from '@origamix/shared';
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'react';
+import { projectShellIssue, type ProjectSettings } from '@origamix/shared';
 import { projectsService } from '@/services/projects';
-import { ApiRequestError, subscribeBackendStatus } from '@/services/request';
-import { assistProjectSettings } from '@/services/project-settings-agent';
+import { ApiRequestError } from '@/services/request';
+import { useProjectSettingsAssistant } from './use-project-settings-assistant';
 import { useWorkspaceStore } from '@/store/workspace';
 import { reconcileProjectSettings } from './reconcile-project-settings';
 
-export interface SettingsChatMessage {
-  role: 'user' | 'assistant';
-  text: string;
-}
-
 /** One retained draft shared by the form, layout renderer and AI proposal receiver. */
 export const useProjectSettingsSession = (projectId: string) => {
-  const [draft, renderDraft] = useState<ProjectSettings>();
-  const current = useRef<ProjectSettings | undefined>(undefined);
-  const [baseline, setBaseline] = useState<ProjectSettings>();
-  const [stale, setStale] = useState(false);
-  const [latest, setLatest] = useState<ProjectSettings>();
-  const version = useRef(0);
-  const mounted = useRef(false);
+  const [form, renderForm] = useState<{
+    draft: ProjectSettings;
+    baseline: ProjectSettings;
+    version: number;
+    stale: boolean;
+    latest?: ProjectSettings;
+  }>();
+  const current = useRef(form);
+  const publish = useCallback((next: typeof form) => {
+    current.current = next;
+    renderForm(next);
+  }, []);
+  const activeForm = form?.draft.projectId === projectId ? form : undefined;
+  const { draft, baseline, stale, latest } = activeForm ?? {};
   const generation = useRef(0);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const [attempt, setAttempt] = useState(0);
   const [saved, setSaved] = useState(false);
-  const [messages, setMessages] = useState<SettingsChatMessage[]>([]);
-  const messagesRef = useRef<SettingsChatMessage[]>([]);
-  const [stream, setStream] = useState('');
-  const [progress, setProgress] = useState('');
-  const [running, setRunning] = useState(false);
-  const execution = useRef<AbortController | null>(null);
-  const [chatError, setChatError] = useState<string>();
-  const [changed, setChanged] = useState(false);
   const setDraft = (update: SetStateAction<ProjectSettings | undefined>) => {
-    if (saving.current) return;
-    const next = typeof update === 'function' ? update(current.current) : update;
-    current.current = next;
-    version.current += 1;
-    renderDraft(next);
+    const form = current.current;
+    if (!form || form.draft.projectId !== projectId || saving.current) return;
+    const next = typeof update === 'function' ? update(form.draft) : update;
+    if (!next || next.projectId !== projectId) return;
+    publish({ ...form, draft: next, version: form.version + 1 });
     setSaved(false);
   };
   useEffect(() => {
-    mounted.current = true;
     generation.current += 1;
     current.current = undefined;
     saving.current = false;
-    messagesRef.current = [];
     const controller = new AbortController();
     void projectsService
       .settings(projectId)
       .then((next) => {
         if (!controller.signal.aborted) {
-          current.current = next;
-          setBaseline(next);
-          setStale(false);
-          setLatest(undefined);
-          version.current += 1;
-          renderDraft(next);
+          if (next.projectId !== projectId) throw new Error('读取的设置与当前项目不一致');
+          publish({ draft: next, baseline: next, version: 1, stale: false });
           setError(undefined);
-          setBusy(false);
           setSaved(false);
-          setMessages([]);
-          setStream('');
-          setRunning(false);
-          setChatError(undefined);
-          setChanged(false);
+          setBusy(false);
         }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
           setError(reason instanceof Error ? reason.message : '读取配置失败');
       });
-    const unsubscribe = subscribeBackendStatus(() => {
-      if (execution.current) {
-        execution.current.abort();
-        execution.current = null;
-        setRunning(false);
-        setStream('');
-        setChatError('后端连接已变化，配置草稿已保留，请重新发送');
-      }
-    });
     return () => {
-      mounted.current = false;
       generation.current += 1;
       controller.abort();
-      execution.current?.abort();
-      execution.current = null;
-      unsubscribe();
     };
-  }, [projectId, attempt]);
+  }, [projectId, attempt, publish]);
+  const readDraft = () => {
+    const form = current.current;
+    return form?.draft.projectId === projectId && !form.stale && !saving.current ? form : undefined;
+  };
+  const assistant = useProjectSettingsAssistant({
+    projectId,
+    attempt,
+    readDraft,
+    applyProposal: (version, proposal) => {
+      const form = readDraft();
+      if (!form || form.version !== version)
+        throw new Error('生成期间表单已修改，AI 结果未应用。你的修改已保留，请重新发送');
+      const issue = projectShellIssue(proposal.shell, form.draft.pages);
+      if (issue) throw new Error(issue);
+      setDraft({ ...form.draft, ...proposal });
+    },
+  });
   const save = async () => {
-    const snapshot = current.current;
-    if (!snapshot || stale || saving.current || execution.current) return;
+    const form = readDraft();
+    if (!form || assistant.isRunning()) return;
+    const snapshot = form.draft;
     const issue = projectShellIssue(snapshot.shell, snapshot.pages);
     if (issue) {
       setError(issue);
@@ -115,11 +99,9 @@ export const useProjectSettingsSession = (projectId: string) => {
         layout: snapshot.layout,
         routing: snapshot.routing,
       });
-      if (!mounted.current || generation.current !== saveGeneration) return;
-      current.current = next;
-      setBaseline(next);
-      version.current += 1;
-      renderDraft(next);
+      if (generation.current !== saveGeneration || current.current !== form) return;
+      if (next.projectId !== projectId) throw new Error('保存结果与当前项目不一致');
+      publish({ draft: next, baseline: next, version: form.version + 1, stale: false });
       setSaved(true);
       useWorkspaceStore.getState().setProjects((projects) =>
         projects.map((project) =>
@@ -134,14 +116,15 @@ export const useProjectSettingsSession = (projectId: string) => {
         ),
       );
     } catch (reason) {
-      if (mounted.current && generation.current === saveGeneration) {
-        if (reason instanceof ApiRequestError && reason.status === 409) setStale(true);
+      if (generation.current === saveGeneration && current.current === form) {
+        if (reason instanceof ApiRequestError && reason.status === 409)
+          publish({ ...form, stale: true });
         setError(reason instanceof Error ? reason.message : '保存失败，输入已保留');
       }
     } finally {
       if (generation.current === saveGeneration) {
         saving.current = false;
-        if (mounted.current) setBusy(false);
+        setBusy(false);
       }
     }
   };
@@ -150,26 +133,25 @@ export const useProjectSettingsSession = (projectId: string) => {
       ? reconcileProjectSettings(baseline, draft, latest)
       : undefined;
   const applyLatest = (next: ProjectSettings, merged: ProjectSettings) => {
-    setBaseline(next);
-    current.current = merged;
-    version.current += 1;
-    renderDraft(merged);
-    setLatest(undefined);
-    setStale(false);
+    const form = current.current;
+    if (!form || form.draft.projectId !== projectId) return;
+    publish({ draft: merged, baseline: next, version: form.version + 1, stale: false });
+    setSaved(false);
     setError(projectShellIssue(merged.shell, merged.pages) ?? undefined);
   };
   const reviewLatest = async () => {
-    const base = baseline;
-    const edited = current.current;
-    if (!base || !edited || saving.current || execution.current) return;
+    const form = current.current;
+    if (!form || form.draft.projectId !== projectId || saving.current || assistant.isRunning())
+      return;
     const readGeneration = generation.current;
     saving.current = true;
     setBusy(true);
     try {
       const next = await projectsService.settings(projectId);
-      if (generation.current !== readGeneration) return;
-      const result = reconcileProjectSettings(base, edited, next);
-      if (result.conflicts.length) setLatest(next);
+      if (generation.current !== readGeneration || current.current !== form) return;
+      if (next.projectId !== projectId) throw new Error('读取的设置与当前项目不一致');
+      const result = reconcileProjectSettings(form.baseline, form.draft, next);
+      if (result.conflicts.length) publish({ ...form, latest: next });
       else applyLatest(next, result.draft);
     } catch (reason) {
       if (generation.current === readGeneration)
@@ -182,121 +164,29 @@ export const useProjectSettingsSession = (projectId: string) => {
     }
   };
   const resolveReview = (keepDraft: boolean) => {
-    if (!latest || !baseline || !current.current || saving.current) return;
-    const result = reconcileProjectSettings(baseline, current.current, latest, keepDraft);
-    applyLatest(latest, result.draft);
-  };
-  const send = async (prompt: string): Promise<boolean> => {
-    const snapshot = current.current;
-    if (!snapshot || stale || saving.current || execution.current || !prompt.trim()) return false;
-    const issue = projectShellIssue(snapshot.shell, snapshot.pages);
-    if (issue) {
-      setChatError(`请先修正表单：${issue}`);
-      throw new Error(issue);
-    }
-    const baseVersion = version.current;
-    const controller = new AbortController();
-    execution.current = controller;
-    setRunning(true);
-    setChatError(undefined);
-    setChanged(false);
-    setStream('');
-    setProgress('正在准备配置上下文');
-    const history = messagesRef.current
-      .slice(-12)
-      .map((message) => ({ ...message, text: message.text.slice(0, 8000) }));
-    messagesRef.current = [...messagesRef.current, { role: 'user', text: prompt }];
-    setMessages(messagesRef.current);
-    let completed = false;
-    const active = () =>
-      mounted.current && execution.current === controller && !controller.signal.aborted;
-    try {
-      await assistProjectSettings(
-        {
-          projectId,
-          expectedManifestHash: snapshot.manifestHash,
-          draftVersion: baseVersion,
-          draft: { shell: snapshot.shell, layout: snapshot.layout, routing: snapshot.routing },
-          prompt: prompt.trim(),
-          history,
-        },
-        controller.signal,
-        (event) => {
-          if (!active()) return;
-          if (completed) throw new Error('助手重复提交结果');
-          if (event.type === 'text') setStream((text) => text + event.delta);
-          if (event.type === 'progress') setProgress(event.message);
-          if (event.type === 'failed') {
-            completed = true;
-            throw new Error(event.message);
-          }
-          if (event.type === 'completed') {
-            if (event.projectId !== projectId || event.draftVersion !== baseVersion)
-              throw new Error('助手结果与当前配置会话不一致');
-            completed = true;
-            if (event.draft) {
-              if (version.current !== baseVersion)
-                throw new Error('生成期间表单已修改，AI 结果未应用。你的修改已保留，请重新发送');
-              applyProposal(event.draft);
-              setChanged(true);
-            }
-            messagesRef.current = [...messagesRef.current, { role: 'assistant', text: event.text }];
-            setMessages(messagesRef.current);
-            setStream('');
-          }
-        },
-      );
-      if (active() && !completed) throw new Error('助手连接中断，配置草稿未修改，请重新发送');
-      return active() && completed;
-    } catch (reason) {
-      if (active())
-        setChatError(reason instanceof Error ? reason.message : '请求失败，配置草稿已保留');
-      return false;
-    } finally {
-      if (active()) {
-        execution.current = null;
-        setRunning(false);
-        setStream('');
-        setProgress('');
-      }
-    }
-  };
-  const applyProposal = (proposal: ProjectSettingsDraft) => {
-    const snapshot = current.current;
-    if (!snapshot) return;
-    const issue = projectShellIssue(proposal.shell, snapshot.pages);
-    if (issue) throw new Error(issue);
-    setDraft({ ...snapshot, ...proposal });
-  };
-  const cancel = () => {
-    execution.current?.abort();
-    execution.current = null;
-    setRunning(false);
-    setStream('');
-    setProgress('');
-    setChatError('已停止，配置草稿保持不变');
+    const form = current.current;
+    if (!form?.latest || form.draft.projectId !== projectId || saving.current) return;
+    const result = reconcileProjectSettings(form.baseline, form.draft, form.latest, keepDraft);
+    applyLatest(form.latest, result.draft);
   };
   return {
-    draft: draft?.projectId === projectId ? draft : undefined,
+    draft,
     setDraft,
     error,
     busy,
     saved,
-    stale,
+    stale: Boolean(stale),
     reviewLatest,
     conflicts: review?.conflicts,
     latest,
     resolveReview,
-    dismissReview: () => setLatest(undefined),
+    dismissReview: () => {
+      const form = current.current;
+      if (form?.latest && form.draft.projectId === projectId && !saving.current)
+        publish({ ...form, latest: undefined });
+    },
     save,
     reload: () => setAttempt((value) => value + 1),
-    messages,
-    stream,
-    progress,
-    running,
-    chatError,
-    changed,
-    send,
-    cancel,
+    ...assistant,
   };
 };

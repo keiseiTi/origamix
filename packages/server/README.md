@@ -213,7 +213,7 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 ### 从外部目标重新读取
 
-文件项目调用 `POST /api/v1/pages/reload-from-project` 时，除项目和页面 ID 外，还须传入确认时的 `expectedWorkingVersion`、`expectedTargetHash`，分别取自 Apply 状态中的 `workingVersion` 和 `targetSchemaHash`。服务在页面写入队列内核对两者。任一不匹配返回 409，保留 Working 和版本历史。客户端刷新状态后由用户重新确认。
+文件项目调用 `POST /api/v1/pages/reload-from-project` 时，除项目和页面 ID 外，还须传入确认时的 `expectedWorkingVersion`、`expectedTargetHash`，分别取自 Apply 状态中的 `workingVersion` 和 `targetSchemaHash`。服务在页面写入队列内核对两者。任一不匹配返回 409，保留 Working 和版本历史。客户端刷新状态后由用户重新确认。成功响应返回已确认的 Working 状态，包含 `workingVersion` 和新检查点的 `revisionId`。
 
 ## 开发宿主与模板集成
 

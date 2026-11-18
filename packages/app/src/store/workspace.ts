@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { EditorHandle } from '@origamix/editor';
 
 export type WorkspaceMode = 'chat' | 'edit' | 'preview';
 export type PageLifecycleStatus =
@@ -168,9 +167,11 @@ const reconcileTabs = (projects: ProjectItem[], tabs: OpenPageTab[]): OpenPageTa
 const withoutDrafts = (drafts: Record<string, string>, keptIds: Set<string>) =>
   Object.fromEntries(Object.entries(drafts).filter(([id]) => keptIds.has(id)));
 
-const editorRefs = new Map<string, { current: EditorHandle | null }>();
+type PageDraftHandle = { flush: () => Promise<void> };
 
-export const editorRefForPage = (pageId: string): { current: EditorHandle | null } => {
+const editorRefs = new Map<string, { current: PageDraftHandle | null }>();
+
+export const editorRefForPage = (pageId: string): { current: PageDraftHandle | null } => {
   let ref = editorRefs.get(pageId);
   if (!ref) {
     ref = { current: null };

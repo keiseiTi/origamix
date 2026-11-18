@@ -208,7 +208,7 @@ export const ChatWorkspace = ({
               {active && state.connection === 'recovering' ? ' · 正在恢复实时进度' : ''}
             </p>
           )}
-          {state.workingRefreshKey && (
+          {state.committedWorkingVersion && (
             <div className='mt-3 flex items-center gap-2' role='status'>
               <span className='text-xs text-success'>AI 已修改草稿，尚未保存版本。</span>
               <Button size='sm' variant='ghost' onClick={() => void changePageMode(pageId, 'edit')}>

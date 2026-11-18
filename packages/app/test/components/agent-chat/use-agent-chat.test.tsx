@@ -219,7 +219,7 @@ describe('Agent recovery', () => {
     });
     expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
     expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
-    expect(hook.result.current.state.workingRefreshKey).toBe('working_run_fast_2');
+    expect(hook.result.current.state.committedWorkingVersion).toBe(2);
     expect(hook.result.current.state.stage).toBe('completed');
     await waitFor(
       () => expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
@@ -347,44 +347,39 @@ describe('Agent recovery', () => {
     expect(mocks.subscribeAgentEvents).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['page'] as const)(
-    'retries the exact uncertain %s request after unmount without automatically resending',
-    async (kind) => {
-      const pageId = 'page_a';
-      mocks.createAgentRun
-        .mockRejectedValueOnce(new Error('connection lost'))
-        .mockResolvedValueOnce({
-          conversationId: 'conversation_1',
-          runId: 'run_1',
-          status: 'completed',
-          run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
-        });
-      const first = renderHook(() => useAgentChat('project_1', pageId, true, kind));
-      await waitFor(() => expect(first.result.current.activity).toBe('idle'));
-      await act(async () => {
-        await expect(first.result.current.send('hello')).rejects.toThrow();
-      });
-      const original = mocks.createAgentRun.mock.calls[0]![0];
-      expect(original.target.kind).toBe(kind);
+  it('retries the exact uncertain page request after unmount without automatically resending', async () => {
+    const pageId = 'page_a';
+    mocks.createAgentRun.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({
+      conversationId: 'conversation_1',
+      runId: 'run_1',
+      status: 'completed',
+      run: { runId: 'run_1', pageId: 'page_a', status: 'completed' },
+    });
+    const first = renderHook(() => useAgentChat('project_1', pageId));
+    await waitFor(() => expect(first.result.current.activity).toBe('idle'));
+    await act(async () => {
+      await expect(first.result.current.send('hello')).rejects.toThrow();
+    });
+    const original = mocks.createAgentRun.mock.calls[0]![0];
+    expect(original.target.kind).toBe('page');
 
-      first.unmount();
-      // Recovery discovers a conversation created by the ambiguous request. Retry must
-      // still omit conversationId exactly as the original request did.
-      mocks.listConversations.mockResolvedValue({
-        conversations: [{ conversationId: 'conversation_1' }],
-      });
-      mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
-      const next = renderHook(() => useAgentChat('project_1', pageId, true, kind));
-      await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
-      expect(next.result.current.pendingSubmission).toBe(true);
-      expect(next.result.current.activity).toBe('unknown');
-      expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
-      await act(async () => next.result.current.retry());
-      expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
-      expect(usePendingOperations.getState().agents).toEqual({});
-      expect(next.result.current.activity).toBe('idle');
-    },
-  );
+    first.unmount();
+    // Recovery discovers a conversation created by the ambiguous request. Retry must
+    // still omit conversationId exactly as the original request did.
+    mocks.listConversations.mockResolvedValue({
+      conversations: [{ conversationId: 'conversation_1' }],
+    });
+    mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
+    const next = renderHook(() => useAgentChat('project_1', pageId));
+    await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
+    expect(next.result.current.pendingSubmission).toBe(true);
+    expect(next.result.current.activity).toBe('unknown');
+    expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
+    await act(async () => next.result.current.retry());
+    expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
+    expect(usePendingOperations.getState().agents).toEqual({});
+    expect(next.result.current.activity).toBe('idle');
+  });
 
   it('continues a prepared submission after closing its tab and blocks a reopened tab', async () => {
     const working = deferred<{ workingVersion: number }>();

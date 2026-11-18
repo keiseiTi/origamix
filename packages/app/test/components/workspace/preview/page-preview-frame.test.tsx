@@ -54,7 +54,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     projectId: 'project_test',
     pageId: 'page_test',
     pageName: 'Test',
-    schemaRefreshKey: 'one',
+    externalWorkingChange: 1,
     theme: 'light' as const,
   };
   const view = render(<PagePreviewFrame {...props} active />);
@@ -73,7 +73,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     );
   await waitFor(() => expect(mocks.workingState).toHaveBeenCalledTimes(1));
   send({ type: 'origamix.preview.ready' });
-  view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='two' />);
+  view.rerender(<PagePreviewFrame {...props} active externalWorkingChange={2} />);
   await waitFor(() => expect(post).toHaveBeenCalled());
   const current = post.mock.calls.at(-1)![0].snapshot;
   expect(current.workingVersion).toBe(2);
@@ -104,14 +104,14 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   });
   await waitFor(() => expect(mocks.report).toHaveBeenCalledOnce());
 
-  view.rerender(<PagePreviewFrame {...props} active={false} schemaRefreshKey='two' />);
+  view.rerender(<PagePreviewFrame {...props} active={false} externalWorkingChange={2} />);
   mocks.workingState.mockResolvedValueOnce({ ...working(2), revisionId: 'revision_new' });
-  view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='two' />);
+  view.rerender(<PagePreviewFrame {...props} active externalWorkingChange={2} />);
   await waitFor(() => expect(mocks.workingState).toHaveBeenCalledTimes(3));
   expect(view.getByTitle('Test 预览')).toBe(frame);
   expect(post).toHaveBeenCalledOnce();
 
-  view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='three' theme='dark' />);
+  view.rerender(<PagePreviewFrame {...props} active externalWorkingChange={3} theme='dark' />);
   await waitFor(() => expect(view.getByTitle('Test 预览')).not.toBe(frame));
   const replacement = view.getByTitle('Test 预览') as HTMLIFrameElement;
   const replacementPost = vi.fn();
@@ -124,7 +124,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   await act(async () => report.reject(new Error('obsolete report failure')));
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
   mocks.workingState.mockRejectedValueOnce(new Error('page unavailable'));
-  view.rerender(<PagePreviewFrame {...props} active schemaRefreshKey='four' />);
+  view.rerender(<PagePreviewFrame {...props} active externalWorkingChange={4} />);
   await waitFor(() => expect(view.getByRole('alert').textContent).toContain('page unavailable'));
   expect(view.getByTitle('Test 预览')).toBe(replacement);
 });
@@ -141,7 +141,7 @@ it('publishes the loaded snapshot when iframe readiness arrives before React com
       projectId='project_test'
       pageId='page_test'
       pageName='Test'
-      schemaRefreshKey=''
+      externalWorkingChange={null}
       theme='light'
     />,
   );

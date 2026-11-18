@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useState } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
-import type { EditorHandle } from '@origamix/editor';
+import { useEditorSession } from '@/components/editor/use-editor-session';
+import { useEditorMaterials } from '@/materials/use-editor-materials';
 import { usePageApplyState } from './use-page-apply-state';
 
 export const derivePageCapabilities = ({
@@ -24,62 +25,61 @@ export const derivePageCapabilities = ({
 export const usePageSession = ({
   projectId,
   pageId,
-  active = true,
-  kind = 'page',
-  available = true,
-  databaseProject = false,
-  editorRef,
+  active,
+  editing,
+  databaseProject,
 }: {
   projectId: string;
   pageId: string;
-  active?: boolean;
-  kind?: 'page';
-  available?: boolean;
-  databaseProject?: boolean;
-  editorRef: RefObject<EditorHandle | null>;
+  active: boolean;
+  editing: boolean;
+  databaseProject: boolean;
 }) => {
-  const [refresh, setRefresh] = useState<{ pageId: string; key: string } | null>(null);
-  const schemaRefreshKey = refresh?.pageId === pageId ? refresh.key : '';
-  const onSchemaCommitted = useCallback(
-    (committedPageId: string, refreshKey: string): void => {
-      if (committedPageId === pageId) setRefresh({ pageId, key: refreshKey });
-    },
-    [pageId],
+  const agent = useAgentChat(projectId, pageId);
+  const materials = useEditorMaterials(projectId, editing);
+  const [refresh, setRefresh] = useState<{
+    signal: number | symbol | null;
+    agentVersion: number | null;
+  }>({ signal: null, agentVersion: null });
+  const agentVersion = agent.state.committedWorkingVersion;
+  // Consume an Agent commit in the same render that unlocks the editor.
+  // A later non-writing Run must not invalidate the loaded schema.
+  if (agentVersion !== null && agentVersion > (refresh.agentVersion ?? 0))
+    setRefresh({
+      signal:
+        typeof refresh.signal === 'number' ? Math.max(refresh.signal, agentVersion) : agentVersion,
+      agentVersion,
+    });
+
+  const [visualWorkingVersion, setVisualWorkingVersion] = useState(0);
+  const working = useEditorSession(
+    projectId,
+    pageId,
+    agent.activity !== 'idle',
+    setVisualWorkingVersion,
+    editing && Boolean(materials.registration),
+    refresh.signal,
   );
   const pageApply = usePageApplyState({
     projectId,
     pageId,
-    schemaRefreshKey,
-    active: active && available,
+    externalWorkingChange: refresh.signal,
+    visualWorkingVersion,
+    active,
     databaseProject,
-    kind,
-    editorRef,
-    onSchemaCommitted,
+    working,
+    onSchemaCommitted: (signal) => setRefresh((current) => ({ ...current, signal })),
   });
-  const agent = useAgentChat(projectId, pageId, available, kind);
-  const notifiedWorkingRef = useRef<{ pageId: string; refreshKey: string } | null>(null);
-
-  useEffect(() => {
-    const refreshKey = agent.state.workingRefreshKey;
-    if (
-      !refreshKey ||
-      (notifiedWorkingRef.current?.pageId === pageId &&
-        notifiedWorkingRef.current.refreshKey === refreshKey)
-    )
-      return;
-    notifiedWorkingRef.current = { pageId, refreshKey };
-    onSchemaCommitted(pageId, refreshKey);
-  }, [agent.state.workingRefreshKey, onSchemaCommitted, pageId]);
 
   return {
+    working,
+    materials,
     pageApply,
     agent,
-    schemaRefreshKey,
-    capabilities: {
-      ...derivePageCapabilities({
-        agentActivity: available ? agent.activity : 'unknown',
-        applyStatus: pageApply.applyStatus,
-      }),
-    },
+    externalWorkingChange: refresh.signal,
+    capabilities: derivePageCapabilities({
+      agentActivity: agent.activity,
+      applyStatus: pageApply.applyStatus,
+    }),
   };
 };

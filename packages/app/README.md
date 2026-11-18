@@ -7,13 +7,14 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 - [src/app.tsx](src/app.tsx)：工作台装配。
 - [src/services](src/services)：通过 Shared 契约调用 HTTP，统一认证刷新和错误处理。
 - [src/store](src/store)：窗口级导航和偏好投影；导航、页签和未发送草稿使用 `sessionStorage`。
-- [src/components/editor](src/components/editor)：PageEditor 宿主装配、Working 会话、保存队列；编辑实现见 [Editor](../editor/README.md)。
+- [页面会话](src/components/workspace/hooks/use-page-session.ts)：按项目和页面管理 Working 草稿提交、版本操作与预览刷新。
+- [src/components/editor](src/components/editor)：PageEditor 装配与 Working 草稿队列；编辑实现见 [Editor](../editor/README.md)。
 - [src/components/agent-chat](src/components/agent-chat)：Agent 会话及事件恢复。
 - [src/preview](src/preview)：给 Runtime 渲染结果添加工作台反馈；引擎创建归 Runtime。
 - [src/materials](src/materials)：读取 Server 解析的项目技术栈，通过固定导入表按需加载编辑/运行物料；加载失败可重试，旧页面响应不会覆盖当前注册。
 - [dev-server.ts](dev-server.ts)：Node 开发宿主，允许使用 Server 的公开启动入口。
 
-`src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。编辑会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
+`src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。页面会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
 
 基础控件通过 `@origamix/ui` 引用，`main.css` 显式引入公共样式；`index.html` 的 `origamix-ui` 类启用主题。App 保留主题偏好、状态色和布局，组件生成规则见 [UI README](../ui/README.md)。
 
@@ -136,7 +137,7 @@ MySQL 模式下，新建项目可以选择「本机父目录」。Web 宿主提�
 - Agent 断线或后端重启：界面从持久化 Run、消息和 Working 恢复；恢复状态未加载时编辑与提交可能暂时禁用，失败时使用界面重试入口。不会自动恢复模型请求。
 - 预览报未知物料或渲染失败：检查 Schema 类型、物料注册和属性；渲染错误不会证明草稿已损坏，也不会写入目标项目。
 
-这些流程的实现入口见 [编辑会话](src/components/editor)、[版本操作](src/components/workspace/toolbar/revision-actions.tsx) 和 [历史管理](src/components/workspace/history/revision-history-dialog.tsx)。
+这些流程的实现入口见 [页面会话](src/components/workspace/hooks/use-page-session.ts)、[版本操作](src/components/workspace/toolbar/revision-actions.tsx) 和 [历史管理](src/components/workspace/history/revision-history-dialog.tsx)。
 
 开发宿主会通过 Server 的模板准备工具，在本地状态目录生成固定 Runtime/Materials npm 版本的模板，供新建项目使用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
 

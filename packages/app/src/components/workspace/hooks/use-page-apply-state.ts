@@ -1,11 +1,10 @@
 import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { schemaService } from '@/services/schema';
 import type { ReloadFromProjectRequest } from '@origamix/shared';
-type SessionKind = 'page';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
-import { ApiRequestError, subscribeBackendReady } from '@/services/request';
-import type { EditorHandle } from '@origamix/editor';
+import { ApiRequestError, isMutationRejected, subscribeBackendReady } from '@/services/request';
+import type { useEditorSession } from '@/components/editor/use-editor-session';
 
 export type PageApplyStatus =
   | 'loading'
@@ -19,23 +18,27 @@ export type PageApplyStatus =
 export const usePageApplyState = ({
   projectId,
   pageId,
-  schemaRefreshKey,
+  externalWorkingChange,
+  visualWorkingVersion = 0,
   active = true,
   databaseProject = false,
-  editorRef,
+  working,
   onSchemaCommitted,
 }: {
-  projectId?: string;
-  pageId?: string;
-  schemaRefreshKey: string;
+  projectId: string;
+  pageId: string;
+  externalWorkingChange: number | symbol | null;
+  visualWorkingVersion?: number;
   active?: boolean;
   databaseProject?: boolean;
-  kind?: SessionKind;
-  editorRef: RefObject<EditorHandle | null>;
-  onSchemaCommitted: (pageId: string, revisionId: string) => void;
+  working: Pick<
+    ReturnType<typeof useEditorSession>,
+    'flush' | 'getConfirmedWorking' | 'acknowledgeWorking'
+  >;
+  onSchemaCommitted: (signal: number | symbol) => void;
 }) => {
   const service = schemaService;
-  const pageKey = pageOperationKey(projectId ?? '', pageId ?? '');
+  const pageKey = pageOperationKey(projectId, pageId);
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
   const [applyState, setApplyState] = useState<{
     pageKey: string;
@@ -66,7 +69,6 @@ export const usePageApplyState = ({
   );
 
   const refreshApplyState = useCallback(async (): Promise<void> => {
-    if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
     const requestState = requests.current;
     const sequence = ++requestState.issued;
@@ -100,7 +102,7 @@ export const usePageApplyState = ({
       requestState.accepted = ++requestState.issued;
       window.clearTimeout(initial);
     };
-  }, [active, refreshApplyState, schemaRefreshKey]);
+  }, [active, refreshApplyState, externalWorkingChange, visualWorkingVersion]);
 
   useEffect(() => {
     if (!active) return;
@@ -108,16 +110,15 @@ export const usePageApplyState = ({
   }, [active, refreshApplyState]);
 
   const applyPage = async (): Promise<void> => {
-    if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    await editorRef.current?.flush();
+    await working.flush();
+    if (pageKeyRef.current !== requestPageKey) return;
     const current = await service.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     const operations = usePendingOperations.getState();
     const previousRequest = operations.applies[requestPageKey];
     if (previousRequest?.inFlight) throw new Error('应用请求仍在处理中，请稍后重试');
     if (!previousRequest && !current.revisionId) throw new Error('请先保存版本，再应用到项目');
-    if (pageKeyRef.current !== requestPageKey) return;
     const request = previousRequest ?? {
       revisionId: current.revisionId!,
       workingVersion: current.workingVersion,
@@ -136,29 +137,19 @@ export const usePageApplyState = ({
       if (pageKeyRef.current !== requestPageKey) return;
       await refreshApplyState();
     } catch (error) {
+      const rejected = isMutationRejected(error);
       if (pageKeyRef.current === requestPageKey)
-        setApplyStatus(
-          !(error instanceof ApiRequestError) || error.status >= 500 ? 'result_pending' : 'error',
-        );
-      operations.finishApply(
-        requestPageKey,
-        request.clientRequestId,
-        error instanceof ApiRequestError &&
-          error.status >= 400 &&
-          error.status < 500 &&
-          error.status !== 408,
-      );
+        setApplyStatus(rejected ? 'error' : 'result_pending');
+      operations.finishApply(requestPageKey, request.clientRequestId, rejected);
       throw error;
     }
   };
 
   const saveVersion = async (): Promise<void> => {
-    if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    const editor = editorRef.current;
-    await editor?.flush();
+    await working.flush();
     if (pageKeyRef.current !== requestPageKey) return;
-    const current = editor?.getConfirmedWorking?.();
+    const current = working.getConfirmedWorking();
     if (!current || current.scope.projectId !== projectId || current.scope.pageId !== pageId)
       throw new Error('页面尚未加载，请稍后再保存');
     const saved = await service
@@ -169,11 +160,11 @@ export const usePageApplyState = ({
           error.status === 409 &&
           pageKeyRef.current === requestPageKey
         )
-          onSchemaCommitted(pageId, `save_conflict_${nanoid()}`);
+          onSchemaCommitted(Symbol('save conflict'));
         throw error;
       });
     if (pageKeyRef.current !== requestPageKey) return;
-    editorRef.current?.acknowledgeWorking?.({
+    working.acknowledgeWorking({
       scope: { projectId, pageId },
       schema: saved.schema,
       workingVersion: saved.workingVersion,
@@ -183,7 +174,6 @@ export const usePageApplyState = ({
   };
 
   const reloadFromProject = async (): Promise<void> => {
-    if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
     if (
       applyState.pageKey !== requestPageKey ||
@@ -198,14 +188,13 @@ export const usePageApplyState = ({
         throw error;
       });
     if (pageKeyRef.current !== requestPageKey) return;
-    onSchemaCommitted(pageId, result.revisionId);
-    await refreshApplyState();
+    onSchemaCommitted(result.workingVersion);
   };
 
   const restoreRevision = async (revisionId: string): Promise<void> => {
-    if (!pageId || !projectId) return;
     const requestPageKey = pageOperationKey(projectId, pageId);
-    await editorRef.current?.flush();
+    await working.flush();
+    if (pageKeyRef.current !== requestPageKey) return;
     const current = await service.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     const restored = await service.restoreRevision(
@@ -215,8 +204,7 @@ export const usePageApplyState = ({
       current.workingVersion,
     );
     if (pageKeyRef.current !== requestPageKey) return;
-    onSchemaCommitted(pageId, `working_restore_${restored.workingVersion}`);
-    await refreshApplyState();
+    onSchemaCommitted(restored.workingVersion);
   };
 
   return {

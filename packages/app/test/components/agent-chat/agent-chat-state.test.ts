@@ -51,19 +51,19 @@ describe('agent chat Working isolation', () => {
       type: 'event.received',
       event: event(1, 'run.completed', { outcome: 'answered_only', response: '无需修改' }),
     });
-    expect(state.workingRefreshKey).toBeNull();
+    expect(state.committedWorkingVersion).toBeNull();
 
     state = agentChatReducer(state, { type: 'run.queued', run });
     state = agentChatReducer(state, {
       type: 'event.received',
       event: { ...event(2, 'working.committed', { resultWorkingVersion: 9 }), runId: 'run_old' },
     });
-    expect(state.workingRefreshKey).toBeNull();
+    expect(state.committedWorkingVersion).toBeNull();
 
     state = agentChatReducer(state, {
       type: 'event.received',
       event: event(3, 'working.committed', { resultWorkingVersion: 2 }),
     });
-    expect(state.workingRefreshKey).toBe('working_run_one_2');
+    expect(state.committedWorkingVersion).toBe(2);
   });
 });
