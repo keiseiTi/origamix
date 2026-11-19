@@ -29,9 +29,11 @@ export const recoverAgentRunsOnStartup = async (
     const project = await projects.getProject(run.projectId);
     const page = run.pageId ? await projects.getPage(run.projectId, run.pageId) : undefined;
     if (!project || !page) return { disposition: 'not_committed' } as const;
+    let transactional = false;
     try {
       const pageRef =
         resolvePage?.(run.projectId, run.pageId) ?? requireFileSchemaPage(project, page);
+      transactional = Boolean(pageRef.withPersistence);
       const evidence = await getAgentWorkingCommitEvidence(pageRef, run.id);
       if (!evidence) return { disposition: 'not_committed' } as const;
       const { receipt, working } = evidence;
@@ -51,7 +53,7 @@ export const recoverAgentRunsOnStartup = async (
           working.workingHash === receipt.resultWorkingHash) ||
         // MySQL commits the receipt and Working in the same transaction. A later explicit
         // canvas edit cannot invalidate the evidence of this already committed mutation.
-        (pageRef.withPersistence &&
+        (transactional &&
           receipt.state === 'committed' &&
           working.workingVersion > receipt.resultWorkingVersion)
       ) {
@@ -66,7 +68,7 @@ export const recoverAgentRunsOnStartup = async (
       }
       return { disposition: 'conflict' } as const;
     } catch (error) {
-      if (resolvePage && !(error instanceof ApiError)) throw error;
+      if (transactional && !(error instanceof ApiError)) throw error;
       return { disposition: 'conflict' } as const;
     }
   });

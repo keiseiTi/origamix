@@ -70,6 +70,7 @@ export const startServer = async (input: {
     });
     const agent = createPageAgentRuntime({
       projects,
+      resolvePage: resolveSchemaPage,
       runs,
       conversations: conversationService,
       history: conversations,

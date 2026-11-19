@@ -29,15 +29,15 @@
 组件、工具和类型统一使用根入口，样式单独导入：
 
 ```tsx
-import { Editor, CodeEditor, createEditorTransaction, type EditorHandle } from '@origamix/editor';
+import { Editor, CodeEditor, createEditorTransaction } from '@origamix/editor';
 import '@origamix/editor/styles.css';
 ```
 
-包内仍按模块维护并使用相对路径，不提供历史子路径出口。FlowEditor 的动态加载边界保持在包内。LogicFlow 图转换后通过 Shared 校验流程结构。画布拖放由 [CanvasDragContext](src/components/canvas/canvas-drag-context.tsx) 负责，使用当前 EditorProvider 会话。CodeEditor 首次挂载时加载 Monaco，历史查看、Schema 和流程函数编辑共用这个加载入口。
+包内仍按模块维护并使用相对路径，不提供历史子路径出口。FlowEditor 的动态加载边界保持在包内。LogicFlow 图转换后通过 Shared 校验流程结构。画布拖放由 [CanvasDragContext](src/components/canvas/canvas-drag-context.tsx) 负责，使用当前 EditorProvider 会话。历史查看、Schema 和流程函数编辑在 CodeEditor 首次挂载时按需加载 Monaco。加载失败时自动切换到保留当前内容、主题和只读设置的纯文本模式。
 
 ## 宿主装配
 
-App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过插件的 `editor.renderToolbar` 组合 Toolbar，其渲染在 EditorProvider 内，使用 `useEditorSelector(selector)` 按需订阅公共状态、`useEditorContext()` 获取稳定实例并执行撤销/重做、切换模式和调整宽度。内部 Store 和任意 setState 不对外开放。主题、物料目录、候选选择、只读状态与实例引用统一存入会话 Zustand Store，通过一个 EditorSessionContext 注入；环境更新只更新对应字段，不重建 Schema、撤销历史或触发 onChange。模式与宽度继续随保留的 EditorInstance 存活。独立使用 CodeEditor 时仍支持显式 theme，未提供时默认浅色。App 的 PageEditor 保留宿主 flush 与 acknowledgeWorking 句柄；后者只确认同一 Schema 的服务端版本，不替换草稿或历史。切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后从保留的当前草稿初始化画布；外部 Working 变更通过显式刷新读取。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
+App 提供初始 schema、稳定的 sessionKey、当前物料 catalog/groups、主题和编辑回调。Editor 内保留一个 EditorProvider，两种视图共享 Schema、选中元素与编辑历史。宿主通过插件的 `editor.renderToolbar` 组合 Toolbar，其渲染在 EditorProvider 内，使用 `useEditorSelector(selector)` 按需订阅公共状态、`useEditorContext()` 获取稳定实例并执行撤销/重做、切换模式和调整宽度。内部 Store 和任意 setState 不对外开放。主题、物料目录、候选选择、只读状态与实例引用统一存入会话 Zustand Store，通过一个 EditorSessionContext 注入；环境更新只更新对应字段，不重建 Schema、撤销历史或触发 onChange。模式与宽度继续随保留的 EditorInstance 存活。独立使用 CodeEditor 时仍支持显式 theme，未提供时默认浅色。App 的页面会话负责确认 Working 版本，并向工作区提供草稿提交入口 `flush`。切页、切换编辑视图与预览前必须等待 flush 成功。每个 EditorProvider 创建独立会话，Schema 编辑工具、历史和选中状态互不共享。App 仍只挂载当前活动编辑页的画布；切换前提交，返回后从保留的当前草稿初始化画布；外部 Working 变更通过显式刷新读取。在对话、预览和非活动页面中只保留宿主协调，不挂载画布及其 portal。
 
 宿主在保留的页面会话中调用 `useCreateEditor({ plugins, initialViewportWidth, initialMode, beforeModeChange })`，将稳定实例传给 `<Editor editor={editor} ... />`。初始选项仅用于创建；`beforeModeChange` 使用最新回调，必须等待宿主 flush；失败保持原模式，异步完成时若画布会话已切换则拒绝切换。实例保存宽度和编辑模式，画布卸载后仍保留；Schema、选中元素和撤销历史仍由当前 `sessionKey` 的独立内核维护。一个实例同一时间只能挂载一个编辑器；卸载后 Schema 命令不可用，只读时拒绝修改。实例不公开原始 Store 或任意 setState。
 
@@ -126,4 +126,4 @@ pnpm --filter @origamix/editor build
 
 History 插件当前提供工具栏入口，历史栈、600ms 合并和画布/逻辑流快捷键保留在共享会话中。这样完整 Schema 的撤销仍经过原 Working 管线；本轮不将历史存储迁入插件，不引入第二套历史。
 
-工作台保存版本时先调用 `EditorHandle.flush()`，再通过 `getConfirmedWorking()` 取得该编辑会话已确认的页面与 Working 版本。宿主按此版本创建检查点，并通过 `acknowledgeWorking` 更新会话基准。
+工作台保存版本时直接调用页面会话提交草稿，以服务端已确认的 Working 版本创建检查点。返回的 Working 版本更新会话基准，画布继续使用当前草稿和撤销历史。详见 [App 保存流程](../app/src/components/workspace/hooks/use-page-apply-state.ts)。

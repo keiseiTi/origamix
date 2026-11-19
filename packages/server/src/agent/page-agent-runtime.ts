@@ -41,7 +41,7 @@ export const createPageAgentEngine = (
 
 export const createPageAgentRuntime = (input: {
   projects: AgentProjects;
-  resolvePage?: AgentSchemaPage;
+  resolvePage: AgentSchemaPage;
   runs: AgentRunStore;
   conversations: AgentConversations;
   history: ConstructorParameters<typeof ContextAssembler>[1];

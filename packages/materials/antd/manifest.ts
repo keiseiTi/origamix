@@ -11,7 +11,38 @@ export const antdMaterialManifest: MaterialManifestCatalog = {
   materials: manifests,
 };
 
-export const antdAgentMaterialCatalog = manifests.map(toAgentMaterialSummary);
+// Earlier entries are retained first when the Agent's material context is truncated.
+const agentMaterialPriority = [
+  'container',
+  'form',
+  'input',
+  'number',
+  'checkbox',
+  'radio',
+  'select',
+  'textarea',
+  'datePicker',
+  'datePickerRange',
+  'timePicker',
+  'switch',
+  'treeSelect',
+  'cascader',
+  'slider',
+  'upload',
+  'button',
+  'modal',
+  'drawer',
+  'table',
+  'tabs',
+  'text',
+  'tree',
+];
+const agentMaterialRank = new Map(agentMaterialPriority.map((type, index) => [type, index]));
+const rank = (type: string) => agentMaterialRank.get(type) ?? agentMaterialRank.size;
+
+export const antdAgentMaterialCatalog = [...manifests]
+  .sort((left, right) => rank(left.type) - rank(right.type))
+  .map(toAgentMaterialSummary);
 
 export const antdValidationMaterialRegistry = Object.fromEntries(
   [basicPageManifest, ...manifests].map((manifest) => [

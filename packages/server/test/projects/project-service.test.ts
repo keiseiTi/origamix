@@ -36,6 +36,34 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
 });
 
+it('preserves an external manifest edit made while saving project routing', async () => {
+  const { database, project, service } = await deletionFixture();
+  try {
+    const before = await service.getRouting(project.id);
+    const path = join(project.path, 'origamix.project.json');
+    const external = JSON.parse(await readFile(path, 'utf8'));
+    external.shell.title = 'External title';
+    const contents = JSON.stringify(external);
+    const write = ProjectManifestStore.prototype.writeManifest;
+    vi.spyOn(ProjectManifestStore.prototype, 'writeManifest').mockImplementationOnce(
+      async function (this: ProjectManifestStore, projectPath, manifest, expectedSource) {
+        await writeFile(path, contents);
+        await write.call(this, projectPath, manifest, expectedSource);
+      },
+    );
+    await expect(
+      service.updateRouting({
+        projectId: project.id,
+        expectedManifestHash: before.manifestHash,
+        routing: { mode: 'hash', basePath: '/admin/' },
+      }),
+    ).rejects.toThrow('项目文件已被修改');
+    expect(await readFile(path, 'utf8')).toBe(contents);
+  } finally {
+    database.close();
+  }
+});
+
 describe('Project page persistence and recovery', () => {
   it('keeps project roles unique, preserves layout, and recovers a manifest write without replaying it', async () => {
     const { database, project, page, service, projects } = await deletionFixture();

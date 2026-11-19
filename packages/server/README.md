@@ -314,7 +314,7 @@ Page Agent terminal `propose_project` records a structured role-operation propos
 
 ## 项目设置
 
-`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
+`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。文件项目的完整设置保存和独立路由保存都会在写入前复核读到的清单。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
 
 模板读取项目配置并渲染应用布局。
 

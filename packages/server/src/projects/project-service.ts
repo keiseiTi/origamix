@@ -285,7 +285,11 @@ export class ProjectService {
         if (manifestHash(source) !== input.expectedManifestHash && !same)
           throw conflict('项目配置已变化，请重新打开运行设置');
         if (!same)
-          await this.manifest.writeManifest(project.path, { ...manifest, routing: input.routing });
+          await this.manifest.writeManifest(
+            project.path,
+            { ...manifest, routing: input.routing },
+            source,
+          );
         const next = await this.manifest.readSource(project.path);
         return {
           routing: this.manifest.parseManifest(next).routing,

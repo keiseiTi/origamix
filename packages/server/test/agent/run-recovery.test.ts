@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { ProjectService } from '../../src/projects/project-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
 import {
   applyWorkingSchemaOperations,
+  fileSchemaPageResolver,
   getWorkingSchemaState,
   updateWorkingSchema,
 } from '../../src/schema/schema-service';
@@ -240,6 +241,36 @@ describe('Agent Working commit receipt recovery', () => {
         status: 'failed',
         errorCode: 'AGENT_COMMIT_RECOVERY_CONFLICT',
       });
+    } finally {
+      fixture.database.close();
+    }
+  });
+
+  it('isolates an unreadable file receipt when startup uses the shared page resolver', async () => {
+    const fixture = await setup();
+    try {
+      const started = await startApplyingRun(fixture, 'unreadable-receipt');
+      const receipts = join(
+        fixture.project.path,
+        '.origamix',
+        'pages',
+        fixture.page.id,
+        'agent-commits',
+      );
+      await mkdir(receipts, { recursive: true });
+      await writeFile(join(receipts, `${started.run.id}.json`), '{');
+
+      await recoverAgentRunsOnStartup(
+        fixture.runs,
+        fixture.projects,
+        fixture.conversations,
+        fileSchemaPageResolver(fixture.projects),
+      );
+      expect(fixture.runs.get(started.run.id)).toMatchObject({
+        status: 'failed',
+        errorCode: 'AGENT_COMMIT_RECOVERY_CONFLICT',
+      });
+      expect(await getWorkingSchemaState(fixture.pageRef)).toEqual(started.current);
     } finally {
       fixture.database.close();
     }
