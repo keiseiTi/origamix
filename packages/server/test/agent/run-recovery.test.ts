@@ -1,3 +1,4 @@
+import { retainWorkingFixture } from '../helpers/retain-working-fixture';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +12,6 @@ import {
   applyWorkingSchemaOperations,
   fileSchemaPageResolver,
   getWorkingSchemaState,
-  updateWorkingSchema,
 } from '../../src/schema/schema-service';
 import { AgentRunRepository } from '../../src/agent/run-repository';
 import { AgentRunService } from '../../src/agent/run-service';
@@ -220,7 +220,7 @@ describe('Agent Working commit receipt recovery', () => {
           },
         },
       );
-      await updateWorkingSchema(fixture.pageRef, {
+      await retainWorkingFixture(fixture.pageRef, {
         baseWorkingVersion: committed.workingVersion,
         schema: {
           ...committed.schema,

@@ -20,6 +20,7 @@ describe('HTTP authentication and responses', () => {
     const database = new ApplicationDatabase(':memory:');
     const projects = new ProjectRepository(database);
     const server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
@@ -132,6 +133,7 @@ describe('HTTP authentication and responses', () => {
       [],
     );
     const server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
@@ -170,6 +172,7 @@ describe('HTTP authentication and responses', () => {
     const database = new ApplicationDatabase(':memory:');
     const projects = new ProjectRepository(database);
     const server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
@@ -192,7 +195,7 @@ describe('HTTP authentication and responses', () => {
 
       const missing = await server.inject({
         method: 'POST',
-        url: '/api/v1/pages/schema/get',
+        url: '/api/v1/pages/working-state/get',
         headers,
         payload: { projectId: 'project_missing', pageId: 'page_missing' },
       });

@@ -1,6 +1,6 @@
 import type { AgentUsageScope } from '@origamix/shared';
 import { PageUsage } from '@/components/usage/page-usage';
-import { usesDatabaseProjects } from '@/services/projects';
+import { workbenchHost } from '@/services/projects';
 import { useEffect, useImperativeHandle, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
@@ -77,7 +77,7 @@ const PageSessionContent = ({
       setPageDraft: state.setPageDraft,
     })),
   );
-  const databaseProject = usesDatabaseProjects();
+  const databaseProject = workbenchHost() === 'web';
   const theme = usePreferencesStore((state) => state.theme);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
   const { working, materials, pageApply, agent, capabilities, externalWorkingChange } =

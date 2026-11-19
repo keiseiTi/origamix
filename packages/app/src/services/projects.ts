@@ -19,9 +19,14 @@ import {
 import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
-export const usesDatabaseProjects = () =>
+export const workbenchHost = (): 'desktop' | 'web' =>
   typeof document !== 'undefined' &&
-  document.querySelector('meta[name="origamix-project-storage"][content="mysql"]') !== null;
+  document.querySelector('meta[name="origamix-host"][content="web"]') !== null
+    ? 'web'
+    : 'desktop';
+
+type WorkbenchProject = Omit<ProjectRecord, 'path'> & { path?: string };
+type WorkbenchProjectWithPages = WorkbenchProject & Pick<ProjectWithPages, 'pages'>;
 
 export const projectsService = {
   settings: (projectId: string): Promise<ProjectSettings> =>
@@ -41,7 +46,8 @@ export const projectsService = {
   },
   stack: async (projectId: string): Promise<ProjectStack> =>
     validateResolvedProjectStack(await request<unknown>('/projects/stack/get', { projectId })),
-  list: (): Promise<ProjectWithPages[]> => request<ProjectWithPages[]>('/projects/list'),
+  list: (): Promise<WorkbenchProjectWithPages[]> =>
+    request<WorkbenchProjectWithPages[]>('/projects/list'),
   create: (input: {
     layoutEnabled: boolean;
     layoutVariant?: InitialLayoutVariant;
@@ -50,18 +56,18 @@ export const projectsService = {
     code: string;
     pageDirectory: string;
     directoryGrantId?: string;
-  }): Promise<ProjectRecord> => request<ProjectRecord>('/projects/create', input),
+  }): Promise<WorkbenchProject> => request<WorkbenchProject>('/projects/create', input),
   open: (input: {
     name?: string;
     code?: string;
     directoryGrantId: string;
-    pageDirectory: string;
+    pageDirectory?: string;
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> => request<OpenProjectResult>('/projects/open', input),
-  rename: (projectId: string, name: string): Promise<ProjectRecord> =>
-    request<ProjectRecord>('/projects/rename', { projectId, name }),
+  rename: (projectId: string, name: string): Promise<WorkbenchProject> =>
+    request<WorkbenchProject>('/projects/rename', { projectId, name }),
   delete: (projectId: string): Promise<{ deleted: true }> =>
-    request<{ deleted: true }>('/projects/delete', { projectId, scope: 'desktop_record' }),
+    request<{ deleted: true }>('/projects/delete', { projectId }),
   pages: (projectId: string): Promise<PageRecord[]> =>
     request<PageRecord[]>('/pages/list', { projectId }),
   createPage: async (
@@ -90,7 +96,6 @@ export const projectsService = {
       return await request<{ deleted: true }>('/pages/delete', {
         projectId,
         pageId,
-        scope: 'desktop_record',
       });
     } finally {
       notifyPageRolesChanged(projectId);

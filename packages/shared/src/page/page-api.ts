@@ -2,7 +2,11 @@ import { PageRoleIdSchema } from '../project/page-role.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
 import { PageSchema, RevisionIdSchema } from './page-schema.ts';
-import { SchemaOperationSchema, ChangeSourceSchema } from './schema-operation.ts';
+import {
+  SchemaOperationSchema,
+  EditorSchemaOperationSchema,
+  ChangeSourceSchema,
+} from './schema-operation.ts';
 import { Value } from '@sinclair/typebox/value';
 
 export const PageRecordSchema = Type.Object({
@@ -59,18 +63,13 @@ export const WorkingSchemaStateSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const UpdateWorkingSchemaSchema = Type.Object(
-  {
-    baseWorkingVersion: Type.Integer({ minimum: 1 }),
-    schema: PageSchema,
-  },
-  { additionalProperties: false },
-);
-
 export const ApplyWorkingOperationsSchema = Type.Object(
   {
     baseWorkingVersion: Type.Integer({ minimum: 1 }),
-    operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 }),
+    operations: Type.Array(Type.Union([SchemaOperationSchema, EditorSchemaOperationSchema]), {
+      minItems: 1,
+      maxItems: 200,
+    }),
   },
   { additionalProperties: false },
 );

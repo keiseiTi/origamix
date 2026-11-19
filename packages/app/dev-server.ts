@@ -16,7 +16,7 @@ export const mysqlWebDevelopment = (config: ReturnType<typeof loadAppConfig>): P
     transformIndexHtml: () =>
       config.desktop
         ? undefined
-        : [{ tag: 'meta', attrs: { name: 'origamix-project-storage', content: 'mysql' } }],
+        : [{ tag: 'meta', attrs: { name: 'origamix-host', content: 'web' } }],
     async configureServer(vite) {
       if (config.desktop || process.env.VITEST) return;
       const { mysqlUrl } = config;

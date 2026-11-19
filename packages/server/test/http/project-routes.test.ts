@@ -24,6 +24,7 @@ describe('Project and Schema HTTP flows', () => {
     const service = new ProjectService(projects, templatePath);
     service.registerGrant('grant_project', directory);
     const server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
@@ -76,7 +77,6 @@ describe('Project and Schema HTTP flows', () => {
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
       shell: { title: '', logo: '', standalonePageIds: [] },
-      product: 'desktop' as const,
       runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'mix' as const },
       routing: { mode: 'browser' as const, basePath: '/' },
@@ -186,6 +186,7 @@ describe('Project and Schema HTTP flows', () => {
       slug: 'home',
     });
     const server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'desktop-token',
       serviceInstanceId: 'service-instance',
       projects,
@@ -265,7 +266,7 @@ describe('Project and Schema HTTP flows', () => {
           method: 'POST',
           url: '/api/v1/pages/delete',
           headers,
-          payload: { projectId: project.id, pageId: page.id, scope: 'desktop_record' },
+          payload: { projectId: project.id, pageId: page.id },
         })
       ).json().data,
     ).toEqual({ deleted: true });
@@ -282,7 +283,7 @@ describe('Project and Schema HTTP flows', () => {
           method: 'POST',
           url: '/api/v1/projects/delete',
           headers,
-          payload: { projectId: project.id, scope: 'desktop_record' },
+          payload: { projectId: project.id },
         })
       ).json().data,
     ).toEqual({ deleted: true });

@@ -14,7 +14,7 @@ interface ProjectNavigationProps {
   onCreatePage: (projectId: string) => void;
   onSelectPage: (pageId: string) => void;
   onLifecycle: (target: LifecycleTarget) => void;
-  onSync?: (project: ProjectItem) => void;
+  onExport?: (project: ProjectItem) => void;
 }
 
 const ProjectNavigationRow = ({
@@ -23,7 +23,7 @@ const ProjectNavigationRow = ({
   onCreatePage,
   onSelectPage,
   onLifecycle,
-  onSync,
+  onExport,
 }: ProjectNavigationProps & {
   project: ProjectItem;
   activePageId: string | null;
@@ -63,7 +63,7 @@ const ProjectNavigationRow = ({
         <span className='min-w-0 flex-1 truncate'>{project.name}</span>
         <SidebarActionMenu
           label={`${project.name} 项目操作`}
-          onSync={onSync && (() => onSync(project))}
+          onExport={onExport && (() => onExport(project))}
           onRename={() =>
             onLifecycle({ kind: 'rename-project', id: project.id, name: project.name })
           }
@@ -173,7 +173,7 @@ export const ProjectNavigation = ({
   onCreatePage,
   onSelectPage,
   onLifecycle,
-  onSync,
+  onExport,
 }: ProjectNavigationProps): React.JSX.Element => {
   const { projects, activePageId } = useWorkspaceStore(
     useShallow((state) => ({ projects: state.projects, activePageId: state.activeTabId })),
@@ -189,7 +189,7 @@ export const ProjectNavigation = ({
           onCreatePage={onCreatePage}
           onSelectPage={onSelectPage}
           onLifecycle={onLifecycle}
-          onSync={onSync}
+          onExport={onExport}
         />
       ))}
     </nav>

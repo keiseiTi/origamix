@@ -1,4 +1,4 @@
-import { usesDatabaseProjects } from '@/services/projects';
+import { workbenchHost } from '@/services/projects';
 import { Button } from '@origamix/ui';
 import { Plus, Sparkles } from 'lucide-react';
 
@@ -7,7 +7,7 @@ export const EmptyWorkspace = ({
 }: {
   onCreateProject: () => void;
 }): React.JSX.Element => {
-  const canCreateProject = Boolean(window.api?.dialog) || usesDatabaseProjects();
+  const canCreateProject = Boolean(window.api?.dialog) || workbenchHost() === 'web';
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <div className='flex flex-1 flex-col items-center justify-center pb-12 text-center'>

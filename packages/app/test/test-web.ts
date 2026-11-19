@@ -96,7 +96,7 @@ try {
   const deleted = await fetch(new URL('/api/v1/projects/delete', url), {
     method: 'POST',
     headers: { ...sameOrigin, Origin: new URL(url).origin, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId: devProject.id, scope: 'desktop_record' }),
+    body: JSON.stringify({ projectId: devProject.id }),
   });
   assert.equal(deleted.status, 200);
   await server.close();
@@ -186,7 +186,6 @@ try {
   process.stdout.write(browser.stdout);
   await productionRequest('/projects/delete', {
     projectId: registered.id,
-    scope: 'desktop_record',
   });
   const logout = await fetch(new URL('/auth/logout', origin), {
     method: 'POST',

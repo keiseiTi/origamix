@@ -25,7 +25,6 @@ import { createValidatePageOperationsTool } from './tools/validate-page-operatio
 import { getWorkingSchemaState } from '../schema/schema-service';
 import { loadProjectMaterials } from '../projects/project-materials';
 import type { RuntimeDiagnosticService } from '../diagnostics/diagnostic-service';
-import type { ProjectTaskService } from './project-task-service';
 
 export const createPageAgentEngine = (
   getCredential?: (provider: 'deepseek') => Promise<string | undefined>,
@@ -52,8 +51,6 @@ export const createPageAgentRuntime = (input: {
   getModelRef?: () => Promise<string>;
   loadMaterials?: typeof loadProjectMaterials;
   getPageRoles: NonNullable<ConstructorParameters<typeof ContextAssembler>[4]>;
-  prepareProject?: ProjectTaskService['prepare'];
-  authorizeStart?: ProjectTaskService['assertContinuation'];
   recordReportedUsage: RunExecutorDependencies['recordReportedUsage'];
   recordModelUsage?: RunExecutorDependencies['recordModelUsage'];
   audit: NonNullable<RunExecutorDependencies['audit']>;
@@ -82,7 +79,6 @@ export const createPageAgentRuntime = (input: {
     {},
     input.getPageRoles,
     loadMaterials,
-    Boolean(input.prepareProject),
   );
   const executor = new RunExecutor({
     projects,
@@ -116,7 +112,6 @@ export const createPageAgentRuntime = (input: {
             loadMaterials,
             runs,
             runService,
-            prepareProject: input.prepareProject,
           },
           scope,
           ids,
@@ -151,7 +146,6 @@ export const createPageAgentRuntime = (input: {
     budget: input.budget,
     getCurrentState: input.getCurrentState,
     getModelRef: input.getModelRef,
-    authorizeStart: input.authorizeStart,
   });
   return {
     http: { conversations, runs: runService, events, service },

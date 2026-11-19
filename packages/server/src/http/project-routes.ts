@@ -4,7 +4,6 @@ import {
   UpdatePageRolesSchema,
   CreatePageSchema,
   CreateProjectSchema,
-  DeleteDesktopRecordSchema,
   DuplicatePageSchema,
   OpenProjectSchema,
   RenamePageSchema,
@@ -12,6 +11,7 @@ import {
 } from '@origamix/shared';
 import {
   EmptyBodySchema,
+  PageScopeSchema,
   ProjectScopeSchema,
   withPageScope,
   withProjectScope,
@@ -23,11 +23,9 @@ const CreateDatabaseProjectSchema = Type.Omit(CreateProjectSchema, ['directoryGr
 });
 
 const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
-const DeleteProjectBodySchema = withProjectScope(DeleteDesktopRecordSchema);
 const CreatePageBodySchema = withProjectScope(CreatePageSchema);
 const RenamePageBodySchema = withPageScope(RenamePageSchema);
 const DuplicatePageBodySchema = withPageScope(DuplicatePageSchema);
-const DeletePageBodySchema = withPageScope(DeleteDesktopRecordSchema);
 
 export const registerProjectRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   server.post(
@@ -77,7 +75,7 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
       input.projectService.getStack(request.body.projectId),
     ),
   );
-  if (input.createDatabaseProject) {
+  if (input.host === 'web') {
     const createDatabaseProject = input.createDatabaseProject;
     server.post(
       '/api/v1/projects/create',
@@ -114,8 +112,8 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
   );
   server.post(
     '/api/v1/projects/delete',
-    { schema: { body: DeleteProjectBodySchema } },
-    route<Static<typeof DeleteProjectBodySchema>>(async (request) => {
+    { schema: { body: ProjectScopeSchema } },
+    route<Static<typeof ProjectScopeSchema>>(async (request) => {
       await input.projectService.deleteProject(request.body.projectId);
       return { deleted: true as const };
     }),
@@ -161,8 +159,8 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
   );
   server.post(
     '/api/v1/pages/delete',
-    { schema: { body: DeletePageBodySchema } },
-    route<Static<typeof DeletePageBodySchema>>(async (request) => {
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>(async (request) => {
       await input.projectService.deletePage(request.body.projectId, request.body.pageId);
       return { deleted: true as const };
     }),

@@ -214,9 +214,9 @@ try {
     modelRef: 'deepseek-flash',
     runKind: 'page_assistant' as const,
     budget: resolveAgentRunBudget(),
-    promptVersion: '2',
+    promptVersion: '1',
     policyVersion: '1',
-    toolsetVersion: '2',
+    toolsetVersion: '1',
     materialManifestVersion: 'official-antd@1.0.0',
   };
   const interrupted = await conversations.startRun({
@@ -313,7 +313,7 @@ try {
 } finally {
   proceed.resolve();
   try {
-    if (host && projectId) await post('/projects/delete', { projectId, scope: 'desktop_record' });
+    if (host && projectId) await post('/projects/delete', { projectId });
   } finally {
     await host?.close();
     await seedPool?.end();

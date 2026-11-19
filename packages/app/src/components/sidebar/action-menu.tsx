@@ -6,20 +6,20 @@ import {
   DropdownMenuTrigger,
 } from '@origamix/ui';
 
-import { Ellipsis, FolderSync, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Download, Pencil, Trash2 } from 'lucide-react';
 
 interface SidebarActionMenuProps {
   label: string;
   onRename: () => void;
   onDelete: () => void;
-  onSync?: () => void;
+  onExport?: () => void;
 }
 
 export const SidebarActionMenu = ({
   label,
   onRename,
   onDelete,
-  onSync,
+  onExport,
 }: SidebarActionMenuProps): React.JSX.Element => {
   return (
     <DropdownMenu>
@@ -40,10 +40,10 @@ export const SidebarActionMenu = ({
           <Pencil />
           编辑
         </DropdownMenuItem>
-        {onSync && (
-          <DropdownMenuItem onClick={onSync}>
-            <FolderSync />
-            同步到本地
+        {onExport && (
+          <DropdownMenuItem onClick={onExport}>
+            <Download />
+            导出项目 ZIP
           </DropdownMenuItem>
         )}
         <DropdownMenuItem variant='destructive' onClick={onDelete}>

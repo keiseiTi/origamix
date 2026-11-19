@@ -3,13 +3,13 @@ import {
   resolveProjectStack,
   type ProjectManifest,
   type ProjectExportSnapshot,
-  type ProjectSyncFile,
+  type ProjectExportFile,
 } from '@origamix/shared';
 import { conflict, invalid } from '../errors';
 import type { WorkingSchemaReadResult } from '../schema/schema-contracts';
 import { pageComponentSource } from './project-source';
 
-const file = (path: string, text: string): ProjectSyncFile => ({
+const file = (path: string, text: string): ProjectExportFile => ({
   path,
   text,
   sha256: createHash('sha256').update(text).digest('hex'),
@@ -22,7 +22,7 @@ export const buildProjectSnapshot = async (
 ): Promise<ProjectExportSnapshot> => {
   const code = manifest.code;
   if (!code) throw invalid('项目标识缺失');
-  const files: ProjectSyncFile[] = [];
+  const files: ProjectExportFile[] = [];
   const unsaved: string[] = [];
   const stack = resolveProjectStack(manifest);
   for (const page of manifest.pages) {
@@ -38,8 +38,6 @@ export const buildProjectSnapshot = async (
     );
   }
   if (unsaved.length) throw conflict(`请先保存页面版本：${unsaved.join('、')}`);
-  files.push(
-    file('origamix.project.json', `${JSON.stringify({ ...manifest, product: 'web' }, null, 2)}\n`),
-  );
+  files.push(file('origamix.project.json', `${JSON.stringify(manifest, null, 2)}\n`));
   return { projectId: manifest.projectId, code, template, files };
 };

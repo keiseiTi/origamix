@@ -7,7 +7,8 @@ const { tmpdir } = require('node:os') as typeof import('node:os');
 const { seedPreviewPage, verifyPreview, waitFor } =
   require('./preview-isolation.cts') as typeof import('./preview-isolation.cts');
 
-const { verifyProjectSync } = require('./project-sync.cts') as typeof import('./project-sync.cts');
+const { verifyProjectExport } =
+  require('./project-export.cts') as typeof import('./project-export.cts');
 
 const state = mkdtempSync(join(tmpdir(), 'origamix-web-preview-'));
 app.setPath('userData', state);
@@ -60,7 +61,8 @@ app
         .executeJavaScript(`[...document.querySelectorAll('[role="dialog"] button')]
         .find((button) => button.textContent.trim() === '取消').click()`);
     }
-    await window.webContents.executeJavaScript(`(async () => {
+    const fixture: { name: string; pageName: string } = await window.webContents
+      .executeJavaScript(`(async () => {
     const baseUrl = location.origin + '/api/v1';
     const request = async (path, body = {}) => {
       const response = await fetch(baseUrl + path, {
@@ -72,10 +74,13 @@ app
     };
     const projects = await request('/projects/list');
     const project = ${projectId ? `projects.find((item) => item.id === ${JSON.stringify(projectId)})` : 'projects[0]'};
-    await (${seedPreviewPage.toString()})(request, project.id, baseUrl);
+    const pageName = 'Preview ' + project.id;
+    const page = await request('/pages/create', { projectId: project.id, name: pageName, slug: 'home' });
+    await (${seedPreviewPage.toString()})(request, project.id, baseUrl, page.id);
+    return { name: project.name, pageName };
   })()`);
     await window.loadURL(password ? new URL('/workspace/direct/', url).href : url.origin);
-    await verifyPreview(window.webContents);
+    await verifyPreview(window.webContents, fixture.pageName);
     if (projectId) {
       await window.webContents.executeJavaScript(
         `document.querySelector('button[aria-label="退出预览"]').click()`,
@@ -83,7 +88,7 @@ app
       await waitFor(() =>
         window.webContents.executeJavaScript(`(() => {
           const edit = document.querySelector('button[aria-label="编辑"]');
-          if (!edit || !edit.getClientRects().length) return false;
+          if (!edit || edit.disabled || !edit.getClientRects().length) return false;
           edit.click();
           return true;
         })()`),
@@ -102,7 +107,13 @@ app
         window.webContents.executeJavaScript(`document.body.innerText.includes('版本已保存')`),
       );
     }
-    if (projectId) await verifyProjectSync(window.webContents, projectId);
+    if (projectId)
+      await verifyProjectExport(
+        window.webContents,
+        projectId,
+        process.argv[5] ?? join(state, 'export.zip'),
+        fixture.name,
+      );
     if (password) {
       await window.webContents.session.cookies.remove(url.origin, 'origamix-loopback-session');
       const checkSession = () =>

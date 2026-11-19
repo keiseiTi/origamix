@@ -2,7 +2,7 @@
 delete process.env.NODE_OPTIONS;
 const { app, BrowserWindow, dialog, utilityProcess } =
   require('electron') as typeof import('electron');
-const { mkdtempSync, mkdirSync, rmSync, existsSync } =
+const { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync } =
   require('node:fs') as typeof import('node:fs');
 const { join, resolve } = require('node:path') as typeof import('node:path');
 const { tmpdir } = require('node:os') as typeof import('node:os');
@@ -40,10 +40,12 @@ app.on('will-quit', () => {
   if (!passed || !backendExited)
     return fail(new Error('Application quit without passing checks or closing its backend'));
   console.info(
-    'Main test passed: directory IPC, project creation, iframe preview and graceful backend shutdown.',
+    'Main test passed: directory IPC, project creation, iframe preview, Monaco fallback Working save and graceful backend shutdown.',
   );
 });
 
+const { verifyMonacoRecovery } =
+  require('./monaco-recovery.cts') as typeof import('./monaco-recovery.cts');
 const { waitFor, seedPreviewPage, verifyPreview } =
   require('./preview-isolation.cts') as typeof import('./preview-isolation.cts');
 
@@ -135,6 +137,13 @@ app
         ),
     );
     await verifyPreview(main.webContents);
+    const targetPath = join(result.path, 'src/pages/home/schema.json');
+    const targetBefore = readFileSync(targetPath, 'utf8');
+    await verifyMonacoRecovery(main.webContents, {
+      projectId: result.projectId,
+      pageId: result.pageId,
+    });
+    assert.equal(readFileSync(targetPath, 'utf8'), targetBefore);
     assert.equal(
       await main.webContents.executeJavaScript('typeof window.api.projectPreview'),
       'undefined',

@@ -1,4 +1,14 @@
-import { and, asc, desc, eq, isNull, inArray, notInArray, notInArray as notIn } from 'drizzle-orm';
+import {
+  and,
+  or,
+  asc,
+  desc,
+  eq,
+  isNull,
+  inArray,
+  notInArray,
+  notInArray as notIn,
+} from 'drizzle-orm';
 import type { PageRecord, ProjectRecord, ProjectWithPages } from '@origamix/shared';
 import type { ApplicationDatabase, DatabaseClient } from '../database/database';
 import {
@@ -9,6 +19,7 @@ import {
   pages,
   projects,
 } from '../database/schema';
+import { conflict } from '../errors';
 import { pageKey, projectKey, projectPublicId } from '../database/identity';
 import { agentRunStatus } from '../database/status-codecs';
 
@@ -201,6 +212,30 @@ export class ProjectRepository {
   }
   reconcile(project: ProjectRecord, pageRecords: PageRecord[]): void {
     this.database.transaction((client) => {
+      const registered = client
+        .select({ id: projects.id, path: projects.path, publicId: projects.projectId })
+        .from(projects)
+        .where(or(eq(projects.projectId, project.id), eq(projects.path, project.path)))
+        .all();
+      if (registered.some((entry) => entry.path !== project.path))
+        throw conflict('此项目已登记到另一目录，请从已登记的目录打开');
+      if (registered.some((entry) => entry.publicId !== project.id))
+        throw conflict('此目录已登记为另一项目，请恢复原项目清单');
+      const registeredPages = pageRecords.length
+        ? client
+            .select({ projectId: pages.projectId })
+            .from(pages)
+            .where(
+              inArray(
+                pages.pageId,
+                pageRecords.map(({ id }) => id),
+              ),
+            )
+            .all()
+        : [];
+      if (registeredPages.some(({ projectId }) => projectId !== registered[0]?.id))
+        throw conflict('项目包含已登记到其他项目的页面');
+
       client
         .insert(projects)
         .values({ ...project, id: undefined, projectId: project.id })

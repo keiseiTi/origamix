@@ -4,7 +4,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；桌面清单由文件拥有，SQLite 不存第二份。数据库 Web 项目使用 MySQL 中的配置和页面记录组装清单。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
 
-Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 两个宿主通过 [page-agent-runtime.ts](src/agent/page-agent-runtime.ts) 共用上下文、工具、执行器和 Run 恢复装配，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 项目同步在 MySQL 中保留每个绑定目录的待完成快照、成功回执和文件哈希基线。浏览器负责写入。导出 ZIP 走只读快照，复用一致的页面清单和已保存 Schema。
+Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 两个宿主通过 [page-agent-runtime.ts](src/agent/page-agent-runtime.ts) 共用上下文、工具、执行器和 Run 恢复装配，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 ZIP 导出读取同一时点的项目清单和已保存 Schema。
 
 ## 代码组织
 
@@ -20,7 +20,7 @@ src/
   agent/                     Run 执行、状态、模型适配与工具
   conversations/             会话与消息
   http/                      认证和具名业务路由
-  database/                  SQLite、表结构与存储迁移
+  database/                  SQLite／MySQL 表结构与启动校验
   diagnostics/               Runtime 诊断
   infrastructure/            队列与原子文件操作
   templates/copy-template.ts 白名单复制模板
@@ -31,7 +31,7 @@ scripts/                     构建、开发与独立 Server 配置
 test/                       核心流与架构测试；fixtures/ 放假引擎和夹具，helpers/ 放辅助工具
 ```
 
-文件页面通过 [Schema 服务](src/schema/schema-service.ts) 检查项目和页面归属，MySQL 页面在项目事务内解析。Working 预检、操作提交与完整候选更新共用版本检查。两个项目服务通过 [project-settings.ts](src/projects/project-settings.ts) 共用设置校验、导航投影和页面引用规则，持久化仍由各宿主负责。
+文件页面通过 [Schema 服务](src/schema/schema-service.ts) 检查项目和页面归属，MySQL 页面在项目事务内解析。Working 预检与操作提交共用版本检查。两个项目服务通过 [project-settings.ts](src/projects/project-settings.ts) 共用设置校验、导航投影和页面引用规则，持久化仍由各宿主负责。
 
 ## 从哪里开始
 
@@ -74,7 +74,7 @@ test/                       核心流与架构测试；fixtures/ 放假引擎和
 
 ### 保存 Schema
 
-可视化编辑通常通过 `src/http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。当前 Operation 协议无法安全表达的编辑器变化才使用内部完整候选 Schema 入口。
+可视化编辑通常通过 `src/http/schema-routes.ts` 的 `working-operations` 入口提交类型化 Operation List，再由 `schema/schema-service.ts#applyWorkingSchemaOperations` 在页面队列中检查 Working Version、生成并校验最终候选 Schema、原子更新 Working。元素树重挂和流程图布局均通过 typed operations 提交。
 
 流程数据与事件绑定使用 Shared 的当前类型契约。Shared 检查图结构安全及绑定唯一性；[flow-reference-validation.ts](src/schema/validation/flow-reference-validation.ts) 检查物料目标、context.writable 可写属性、context.variables 可读业务属性、可调用方法、变量、event.payload 与显式上下文引用。Server 不编译或执行表达式/函数体，也不静态推断任意 JS 的行为。
 
@@ -292,7 +292,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 `database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 2`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
 
-发布时执行 `pnpm release:version --set <版本>` 同步包版本。`pnpm release:version --check` 检查包版本、契约 SemVer 和模板物料声明。
+`pnpm release:version --check` 校验首版包、Schema、物料版本和模板清单。
 
 ## 独立开发环境配置
 
@@ -308,19 +308,15 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 
 物料协议与校验分工：Shared 检查页面结构及唯一父节点；Server 检查通用 Manifest 属性、层级和安全边界；Materials 的 React-free `antd/validation` 入口检查该物料族的字段与跨元素语义。Server 校验器单测使用固定测试清单，Materials 生成器检查真实默认值。
 
-### Project roles and Agent proposals
+### 登录页用途
 
 `/projects/page-roles/get` reads role configuration plus the current manifest hash. `/projects/page-roles/update` accepts the complete role configuration, expected manifest hash and stable client request ID. The project queue preserves unrelated layout/manifest settings; durable receipts distinguish prepared and committed writes.
 
-Page Agent terminal `propose_project` records a structured role-operation proposal without writing Working or the manifest. `/agent/project-task/get` reads durable task state; `/agent/project-task/decide` explicitly confirms or cancels it. Confirmed roles use the same project service, followed by a deterministic page Run for the optional page intent. Unknown outcomes require explicit same-task recovery; startup never resumes a model call. Page-stage failure preserves committed project configuration.
-
 ## 项目设置
 
-`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。文件项目的完整设置保存和独立路由保存都会在写入前复核读到的清单。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
+`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。文件项目保存设置时会在写入前复核清单，Web 在 MySQL 事务中提交。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
 
 模板读取项目配置并渲染应用布局。
-
-布局配置助手由 `agent/project-settings-agent-service.ts` 处理，通过经过认证的 POST `/projects/settings/assist` 流式返回 NDJSON。它复用页面模型引擎、凭据和预算，仅允许读取配置和提交经校验的草稿建议，不能写项目文件或页面 Working。服务端校验真实页面引用和清单版本；关闭连接会停止模型，关闭服务会中止并等待配置请求退出。配置保存仍由显式 settings/update 完成。
 
 ### 页面 Agent 用量
 

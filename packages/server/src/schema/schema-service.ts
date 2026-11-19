@@ -19,7 +19,7 @@ import {
   type OrigamixPageSchema,
   type PageRecord,
   type ProjectRecord,
-  type SchemaOperation,
+  type WorkingSchemaOperation,
   type RevisionHistory,
   type ReloadFromProjectRequest,
 } from '@origamix/shared';
@@ -163,13 +163,6 @@ const getSchemaUnlocked = async (page: SchemaPageRef): Promise<WorkingSchemaFile
   requireCompatibleSchema(working.schema);
   return working;
 };
-export const getSchema = async (page: SchemaPageRef): Promise<SchemaReadResult> => {
-  return withSchemaPageQueue(page, async (page) => {
-    const { schema, lastSavedRevisionId } = await getSchemaUnlocked(page);
-    return { schema, revisionId: lastSavedRevisionId };
-  });
-};
-
 export const getWorkingSchemaState = async (
   page: SchemaPageRef,
 ): Promise<WorkingSchemaReadResult & { schemaHash: string }> => {
@@ -358,24 +351,9 @@ const commitWorkingCandidate = async (
   return writeWorkingDraft(page, current, candidate, options);
 };
 
-export const updateWorkingSchema = async (
-  page: SchemaPageRef,
-  input: {
-    baseWorkingVersion: number;
-    schema: OrigamixPageSchema;
-  },
-  options: WorkingDraftWriteOptions = {},
-): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async (page) => {
-    const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
-    await validateWritableSchema(page, input.schema);
-    return commitWorkingCandidate(page, current, input.schema, options);
-  });
-};
-
 interface WorkingOperationInput {
   baseWorkingVersion: number;
-  operations: readonly SchemaOperation[];
+  operations: readonly WorkingSchemaOperation[];
 }
 
 const prepareWorkingOperations = async (

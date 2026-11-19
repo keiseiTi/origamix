@@ -1,8 +1,6 @@
 import { createPageAgentEngine, createPageAgentRuntime } from './agent/page-agent-runtime';
 import { sqliteAgentUsage } from './agent/agent-usage-repository';
 import { AgentUsageService } from './agent/agent-usage-service';
-import { ProjectSettingsAgentService } from './agent/project-settings-agent-service';
-import { ProjectTaskService } from './agent/project-task-service';
 import { ApplicationDatabase } from './database/database';
 import { ProjectRepository } from './projects/project-repository';
 import { AgentRunRepository } from './agent/run-repository';
@@ -63,11 +61,6 @@ export const startServer = async (input: {
     );
     const engine = createPageAgentEngine(input.getModelCredential);
     const getModelRef = async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID;
-    const settingsAgent = new ProjectSettingsAgentService({
-      projects: projectService,
-      engine,
-      getModelRef,
-    });
     const agent = createPageAgentRuntime({
       projects,
       resolvePage: resolveSchemaPage,
@@ -79,8 +72,6 @@ export const startServer = async (input: {
       budget: agentBudget,
       getModelRef,
       getPageRoles: projectService.getPageRoles,
-      authorizeStart: (request) => projectTasks.assertContinuation(request),
-      prepareProject: (...args) => projectTasks.prepare(...args),
       getCurrentState: (projectId, pageId) => {
         if (!pageId) throw new Error('页面 ID 缺失');
         return getCurrentRevision(projectId, pageId);
@@ -96,21 +87,12 @@ export const startServer = async (input: {
       },
     });
     const agentService = agent.http.service;
-    const projectTasks: ProjectTaskService = new ProjectTaskService({
-      projects,
-      projectService,
-      runs,
-      getWorkingVersion: async (projectId, pageId) =>
-        (await getCurrentRevision(projectId, pageId)).workingVersion,
-      startPage: (request) => agentService.start(request),
-    });
     const server = createHttpServer({
       ...input,
+      host: 'desktop',
       projects,
       projectService,
       projectApplyService,
-      projectTasks,
-      settingsAgent,
       agentUsage: new AgentUsageService(usageRepository, () => projects.listProjects()),
       runtimeDiagnostics,
       resolveSchemaPage,
@@ -131,7 +113,7 @@ export const startServer = async (input: {
       if (closePromise) return closePromise;
       closing = true;
       // Fence starts synchronously, before waiting for HTTP/SSE connections to close.
-      const agents = Promise.all([agentService.shutdown(), settingsAgent.shutdown()]);
+      const agents = agentService.shutdown();
       closePromise = (async () => {
         const http = server.close();
         void http.catch(() => undefined);

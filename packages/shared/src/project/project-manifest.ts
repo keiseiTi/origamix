@@ -7,6 +7,8 @@ import type { Static } from '@sinclair/typebox';
 import { VersionedStackReferenceSchema } from './project-stack.ts';
 import { Value } from '@sinclair/typebox/value';
 
+export const TEMPLATE_PROJECT_ID = 'project_template';
+
 export const ProjectPageManifestSchema = Type.Object({
   pageId: Type.String({ pattern: '^page_[A-Za-z0-9_-]+$' }),
   name: Type.String({ minLength: 1, maxLength: 80 }),
@@ -20,7 +22,6 @@ export const ProjectLayoutConfigSchema = Type.Object(
 
 export const ProjectManifestSchema = Type.Object(
   {
-    product: Type.Optional(Type.Union([Type.Literal('desktop'), Type.Literal('web')])),
     shell: ProjectShellSchema,
     runtime: Type.Union([Type.Literal('origamix'), Type.Literal('external')]),
     code: Type.Optional(Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })),

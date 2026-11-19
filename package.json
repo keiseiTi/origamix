@@ -31,7 +31,6 @@
     "test:web": "pnpm build:web && pnpm --filter @origamix/app test:web",
     "test:desktop": "pnpm build && pnpm --filter @origamix/desktop test:main",
     "test:dev": "pnpm --filter @origamix/desktop test:dev && pnpm --filter @origamix/server test:dev",
-    "build:verify": "pnpm build:libs && pnpm --filter @origamix/ui --filter @origamix/editor build",
     "release:check": "pnpm release:version --check && pnpm pack:npm && tsx scripts/check-public-packages.ts",
     "publish:npm": "pnpm release:check && tsx scripts/publish-public.ts",
     "release:registry": "tsx scripts/check-registry.ts",

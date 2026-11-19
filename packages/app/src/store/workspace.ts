@@ -16,7 +16,7 @@ export interface PageItem {
 export interface ProjectItem {
   id: string;
   name: string;
-  path: string;
+  path?: string;
   pages: PageItem[];
   runtime?: 'origamix' | 'external';
   layoutEnabled?: boolean;

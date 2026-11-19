@@ -51,7 +51,9 @@ const totalTokens = (usage: AgentTokenUsage) => usage.inputTokens + usage.output
 export class AgentUsageService {
   constructor(
     private readonly repository: AgentUsageRepository,
-    private readonly listProjects: () => ProjectWithPages[] | Promise<ProjectWithPages[]>,
+    private readonly listProjects: () =>
+      | Pick<ProjectWithPages, 'id' | 'name' | 'pages'>[]
+      | Promise<Pick<ProjectWithPages, 'id' | 'name' | 'pages'>[]>,
   ) {}
 
   private async projectTree(scope?: AgentUsageScope) {

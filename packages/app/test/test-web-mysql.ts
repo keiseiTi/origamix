@@ -1,7 +1,9 @@
-import type { ProjectSyncSnapshot, ProjectSyncReceipt } from '@origamix/shared';
+import { verifyStandaloneProject } from '../../../scripts/verify-standalone-project.ts';
+import type { OpenProjectResult, ProjectExportSnapshot } from '@origamix/shared';
+import { startServer } from '@origamix/server/runtime';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,14 +71,14 @@ try {
   const project = await post<Project>(
     '/projects/create',
     {
-      name: 'Web MySQL integration',
+      name: `Web MySQL integration ${nanoid(6)}`,
       code: `web-test-${nanoid(12).toLowerCase().replaceAll('_', 'a').replaceAll('-', 'b')}`,
       pageDirectory: 'pages',
     },
     201,
   );
   projectId = project.id;
-  assert.equal(project.path, '');
+  assert.equal(project.path, undefined);
   const { manifestHash } = await post<{ manifestHash: string }>('/projects/page-roles/get', {
     projectId,
   });
@@ -139,11 +141,10 @@ try {
     saved,
   );
 
-  const target = { projectId, targetId: 'target_integration_fixture' };
-  const pending = await post<ProjectSyncSnapshot>('/projects/sync/prepare', target);
+  const pending = await post<ProjectExportSnapshot>('/projects/export/snapshot', { projectId });
   const exportedManifest = pending.files.find(({ path }) => path === 'origamix.project.json');
   assert.ok(exportedManifest);
-  assert.equal(JSON.parse(exportedManifest.text).product, 'web');
+  assert.equal(JSON.parse(exportedManifest.text).projectId, projectId);
   const desktopOpen = await fetch(new URL('/api/v1/projects/open', origin), {
     method: 'POST',
     headers: { Cookie: cookie, Origin: origin.origin, 'Content-Type': 'application/json' },
@@ -170,16 +171,7 @@ try {
     ...draft,
     schemaHash: draft.workingHash,
   });
-  await post('/projects/sync/prepare', { projectId, targetId: 'target_unsaved_fixture_test' }, 409);
-  assert.deepEqual(await post<ProjectSyncSnapshot>('/projects/sync/prepare', target), pending);
-  const receipt = await post<ProjectSyncReceipt>('/projects/sync/finish', {
-    ...target,
-    snapshotId: pending.id,
-  });
-  assert.deepEqual(
-    await post<ProjectSyncReceipt>('/projects/sync/finish', { ...target, snapshotId: pending.id }),
-    receipt,
-  );
+  await post('/projects/export/snapshot', { projectId }, 409);
   const report = await post<{ disposition: string }>('/pages/runtime-reports/report', {
     ...scope,
     version: '1',
@@ -216,28 +208,93 @@ try {
     ...scope,
     expectedWorkingVersion: restored.workingVersion,
   });
-  const newer = await post<ProjectSyncSnapshot>('/projects/sync/prepare', target);
-  assert.notEqual(newer.id, pending.id);
-  assert.equal(newer.bootstrap, false);
-  await post('/projects/sync/finish', { ...target, snapshotId: newer.id });
-  assert.deepEqual(
-    await post<ProjectSyncReceipt>('/projects/sync/finish', { ...target, snapshotId: pending.id }),
-    receipt,
-  );
+  const newer = await post<ProjectExportSnapshot>('/projects/export/snapshot', { projectId });
+  assert.notDeepEqual(newer.files, pending.files);
+  const archive = join(stateDirectory, 'export.zip');
   const browser = await promisify(execFile)(
     'pnpm',
-    ['--filter', '@origamix/desktop', 'test:main', '--web', origin.origin, password, projectId],
+    [
+      '--filter',
+      '@origamix/desktop',
+      'test:main',
+      '--web',
+      origin.origin,
+      password,
+      projectId,
+      archive,
+    ],
     { cwd: join(root, '../..'), timeout: 75000 },
   );
   process.stdout.write(browser.stdout);
+  const extracted = join(stateDirectory, 'extracted');
+  await mkdir(extracted);
+  await promisify(execFile)('unzip', ['-q', archive, '-d', extracted]);
+  const beforeExportEdit = await post<Working>('/pages/working-state/get', scope);
+  const beforeExportHistory = await post('/pages/revisions/list', scope);
+  const desktop = await startServer({
+    databasePath: join(stateDirectory, 'desktop.db'),
+    templatePath: extracted,
+    desktopToken: 'desktop-fixture',
+    serviceInstanceId: 'desktop-fixture-instance',
+    port: 0,
+  });
+  try {
+    desktop.registerGrant('grant-extracted', extracted);
+    const local = async <T>(path: string, body: object): Promise<T> => {
+      const response = await fetch(`http://127.0.0.1:${desktop.port}/api/v1${path}`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer desktop-fixture',
+          'X-Origamix-Service': 'desktop-fixture-instance',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json();
+      assert.ok(response.ok && payload.success, JSON.stringify(payload));
+      return payload.data;
+    };
+    const opened = await local<OpenProjectResult>('/projects/open', {
+      directoryGrantId: 'grant-extracted',
+    });
+    assert.equal(opened.status, 'opened');
+    if (opened.status !== 'opened') throw new Error('Desktop did not register the ZIP project');
+    assert.equal(opened.project.id, projectId);
+    assert.deepEqual(await readdir(extracted).then((files) => files.includes('.origamix')), false);
+    const imported = await local<Working>('/pages/working-state/get', scope);
+    assert.equal(imported.workingHash, beforeExportEdit.workingHash);
+    const file = join(extracted, 'src/pages/editing/schema.json');
+    const original = await readFile(file, 'utf8');
+    const edited = await local<Working>(
+      '/pages/working-operations/apply',
+      update(632, imported.workingVersion),
+    );
+    const checkpoint = await local<Working>('/pages/revisions/save', {
+      ...scope,
+      expectedWorkingVersion: edited.workingVersion,
+    });
+    assert.equal(await readFile(file, 'utf8'), original);
+    await local('/pages/apply', {
+      ...scope,
+      expectedRevisionId: checkpoint.revisionId,
+      expectedWorkingVersion: checkpoint.workingVersion,
+      clientRequestId: 'apply-extracted-zip',
+    });
+    assert.equal(JSON.parse(await readFile(file, 'utf8')).elements.element_root.props.height, 632);
+    assert.deepEqual(await post<Working>('/pages/working-state/get', scope), beforeExportEdit);
+    assert.deepEqual(await post('/pages/revisions/list', scope), beforeExportHistory);
+  } finally {
+    await desktop.close();
+  }
+  await verifyStandaloneProject(extracted, join(stateDirectory, 'archives'));
   console.info(
-    'MySQL Web test passed: project/page creation, versioned editing, restart recovery, Chromium preview and local directory sync.',
+    'MySQL Web test passed: project/page creation, versioned editing, restart recovery, Chromium preview, ZIP export, desktop Apply and standalone build.',
   );
 } finally {
   try {
     if (host && projectId) {
       await login();
-      await post('/projects/delete', { projectId, scope: 'desktop_record' });
+      await post('/projects/delete', { projectId });
     }
   } finally {
     await host?.close();

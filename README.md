@@ -9,10 +9,10 @@
 | 使用场景         | 启动方式                                                       | 项目内容如何交付                   |
 | ---------------- | -------------------------------------------------------------- | ---------------------------------- |
 | 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                                   | 保存页面版本后，点击「应用到项目」 |
-| 浏览器开发       | 配置 `ORIGAMIX_WEB_MYSQL_URL` 后执行 `pnpm dev:web`            | 保存版本后同步到本机或下载 ZIP     |
-| 单用户自托管 Web | 配置 MySQL 和访问密码后执行 `pnpm build:web`、`pnpm start:web` | 保存版本后同步到本机或下载 ZIP     |
+| 浏览器开发       | 配置 `ORIGAMIX_WEB_MYSQL_URL` 后执行 `pnpm dev:web`            | 保存版本后导出 ZIP                 |
+| 单用户自托管 Web | 配置 MySQL 和访问密码后执行 `pnpm build:web`、`pnpm start:web` | 保存版本后导出 ZIP                 |
 
-桌面与 Web 开发默认使用前端端口 9685，请分别启动。桌面项目使用本地目录和 SQLite，Web 项目保存在 MySQL。Web 同步和 ZIP 是独立部署产物，无法作为桌面项目打开。桌面只打开清单标记为 `"product": "desktop"` 的项目，已有无标记目录不会自动转换。生产环境的密码要求、数据库与 HTTPS 反向代理配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
+桌面与 Web 开发默认使用前端端口 9685，请分别启动。桌面以本地目录和 SQLite 保存编辑状态，Web 使用 MySQL。Web 项目 ZIP 可以独立部署，也可以解压后在桌面打开继续编辑。两端各自保存草稿、版本历史、会话和回执。生产配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 
@@ -24,7 +24,7 @@
 
 根开发命令会自动准备当前库构建产物。开发宿主会准备使用固定 npm 版本的模板，供新建项目使用。
 
-`pnpm dev` 在首次依赖构建完成后自动启动 Materials `manifest:watch`，退出开发进程时一并停止；无需额外启动该命令。物料源码变化仍通过原有有序构建链更新 Materials 和 Server，生成文件不触发重复构建。
+`pnpm dev` 和 `pnpm dev:web` 在每轮涉及 Materials 的构建中准备一次物料清单。物料源码变化按顺序更新 Materials 和 Server，生成文件不会触发下一轮构建。
 
 浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
 
@@ -76,7 +76,21 @@ pnpm build
 
 包内 `build` 只构建本包，所需上游产物须先准备；根命令负责依赖顺序，避免重复构建。Desktop 的 `build` 还组装已构建的 Server 和模板资源，包内 `package:*` 只消费这些产物。Shared、Runtime 在工作区与发布包统一使用 dist 出口；Materials 始终使用 dist；Editor、UI 保持私有源码出口以支持 HMR。
 
-集成入口：`pnpm test:template` 验证独立模板，`pnpm test:web` 使用 `ORIGAMIX_TEST_MYSQL_URL` 指定的独立测试库验证浏览器宿主，`pnpm test:desktop` 验证真实 Main，`pnpm test:dev` 验证 Desktop／Server 开发更新，Server 开发检查也使用该测试库。前三项自动准备构建输入，开发更新检查使用临时工作区。Web 和桌面预览检查均需要图形会话。
+### 首版验收
+
+| 命令                    | 验证范围                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `pnpm check`            | Lint、类型、核心流程测试与桌面构建                                             |
+| `pnpm test:desktop`     | 真实 Electron、目录授权、后端恢复、明暗主题预览及 Monaco 降级后的 Working 保存 |
+| `pnpm test:web`         | 开发与正式 Web 宿主、鉴权和预览隔离                                            |
+| `pnpm test:web:mysql`   | MySQL 草稿恢复、真实 ZIP 下载、独立构建、桌面打开与 Apply，以及 Web 数据隔离   |
+| `pnpm test:agent:mysql` | 使用确定性模型验证页面 Agent 冲突、回执与恢复                                  |
+| `pnpm test:template`    | 桌面生成项目的独立安装、类型检查与 Browser／Hash 构建                          |
+| `pnpm test:dev`         | 开发环境有序重建、重启和清理                                                   |
+| `pnpm release:check`    | 安装实际 npm 归档并加载公开入口                                                |
+| `pnpm site:build`       | 构建中文站点                                                                   |
+
+Web 与 Server 开发集成使用 `ORIGAMIX_TEST_MYSQL_URL` 指定的独立测试库。Electron 和 Chromium 检查需要图形会话。独立安装与归档检查需要 npm registry 或相应缓存。
 
 桌面构建包当前仅面向 macOS 13+ 的 Apple Silicon（arm64）。`release/` 中的 `OrigaMix-<version>-macOS-arm64.dmg` 用于拖入 Applications，ZIP 提供同一应用的归档；`release/mac-arm64/OrigaMix.app` 为解包目录。本地 ad-hoc 签名不等于 Developer ID 签名或 Apple 公证，当前构建属于本地试用交付；官网尚未提供公开下载。详细验证与限制见 [Desktop README](apps/desktop/README.md#macos-构建包)。
 
@@ -86,13 +100,13 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 ### 统一发布版本
 
-所有自有包统一使用根版本。`pnpm release:version --check` 检查包版本对齐及独立契约的 SemVer；`pnpm release:version --set <版本>` 只更新包发布版本，不递增物料契约或 Schema。`MATERIAL_CONTRACT_VERSION`、`SCHEMA_VERSION` 独立维护，遵循 SemVer：patch 修复、minor 向后兼容扩展、major 不兼容变化。当前仅接受明确支持的精确版本，不推断兼容范围。页面打开只检查，不自动转换。见 [Server README](packages/server/README.md#契约校验与恢复)。
+首版自有包、页面 Schema 和物料契约均为 `1.0.0`。`pnpm release:version --check` 校验包版本和模板清单。页面打开时校验当前格式。见 [Server README](packages/server/README.md#契约校验与恢复)。
 
 ## 开发环境文件
 
 Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量。Desktop 开发启动器监听自身环境文件并自动重启开发实例；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
 
-公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 不发布；`pnpm publish:npm` 才实际发布。模板使用的版本必须先在 npm 可安装。
+公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 在隔离目录安装实际归档并加载公开入口。`pnpm publish:npm` 执行发布。模板使用的版本必须先在 npm 可安装。
 
 ### 一次运行完整仓库检查
 
@@ -102,14 +116,14 @@ Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感
 
 ## 项目配置与布局
 
-项目「… → 编辑」中可启用布局配置，启用后点击项目下的「布局配置」在工作区打开。面板采用左侧布局效果、右侧配置表单，支持左右、顶部、混合布局，标题、Logo、父子菜单及排序/隐藏、首页、404 和「页面使用应用布局」开关。可按页关闭应用布局。点击「保存配置」直接更新 `origamix.project.json` 的必填 `shell`、`layout`、`routing`，使用清单哈希检测冲突，失败保留输入。未配置菜单时只在设置界面显示示例数据；显式空菜单保持为空。
+项目「… → 编辑」中可启用布局配置，启用后点击项目下的「布局配置」在工作区打开。面板采用左侧布局效果、右侧配置表单，支持左右、顶部、混合布局，标题、Logo、父子菜单及排序/隐藏、首页、404 和「页面使用应用布局」开关。可按页关闭应用布局。点击「保存配置」提交 `shell`、`layout`、`routing`。桌面保存到 `origamix.project.json`，Web 保存到 MySQL。保存时校验配置基线，失败保留输入。未配置菜单时只在设置界面显示示例数据；显式空菜单保持为空。
 
 新建项目只填写名称、标识、页面目录、生成位置和启用布局；默认 Browser 路由、根访问前缀和混合布局。关闭布局保留配置，首页和 404 继续有效。引用使用稳定 pageId，删除关联页面前需移除引用。
 
 「页面预览」运行当前页面的 Working 草稿。要更新生成项目中的页面内容，依次点击「保存版本」和「应用到项目」。「布局配置」中的「查看效果」展示当前配置草稿的布局示意，完整菜单、路由和业务行为在生成项目中验证。
 
-布局 AI 助手与表单共用一份临时草稿，AI 修改经过校验后即时展示，点击「保存配置」才写入项目。
+在布局表单中指定首页、404 页面和应用壳，点击「保存配置」提交草稿。登录页用途可以在页面设置中标记。
 
 使用方法见 [项目布局指南](site/docs/guide/layout.md)。
 
-布局配置右侧可切换「AI 助手」与「表单配置」。助手使用与页面 Agent 相同的模型、凭据、流式引擎和预算控制；每次携带最新配置及真实页面清单，结果绑定项目与草稿版本。生成期间若手工改动表单，旧结果不会覆盖新草稿。停止、断线和保存失败保留配置；不会自动重发模型请求。当前配置草稿及布局对话仅保留在打开的工作区会话中，关闭标签或退出后不恢复，未保存时请先保存。
+布局表单草稿仅保留在当前工作区标签中。关闭标签或退出前，请先保存配置。

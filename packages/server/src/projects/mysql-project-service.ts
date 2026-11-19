@@ -17,8 +17,6 @@ import {
   type ProjectSettingsUpdate,
   type ProjectManifest,
   type ProjectExportSnapshot,
-  type ProjectSyncSnapshot,
-  type ProjectSyncReceipt,
   type ProjectRecord,
   type PageRecord,
   type PageRoleId,
@@ -32,14 +30,12 @@ import { MysqlSchemaStore } from '../schema/mysql-schema-store';
 import type { SchemaPageRef } from '../schema/schema-contracts';
 import {
   discardInitializedPageSchema,
-  getSchema,
   getWorkingSchemaState,
   initializePageSchema,
 } from '../schema/schema-service';
 import { createInitialPageSchema } from './initial-page-schema';
 import { normalizePageDirectory } from './page-directory';
-import { MysqlSyncRepository } from './mysql-sync-repository';
-import { buildProjectSnapshot } from './project-sync-snapshot';
+import { buildProjectSnapshot } from './project-export-snapshot';
 import { createProjectManifest } from './project-manifest-store';
 
 import { MysqlProjectRepository, type ProjectRow, type PageRow } from './mysql-project-repository';
@@ -82,10 +78,9 @@ const configuration = ({
     pageRoles,
   });
 
-const toProject = (row: ProjectRow, manifest: ProjectManifest): ProjectRecord => ({
+const toProject = (row: ProjectRow, manifest: ProjectManifest): Omit<ProjectRecord, 'path'> => ({
   id: row.id,
   name: manifest.name,
-  path: '',
   status: 0,
   createdAt: row.created_at,
   lastOpenedAt: row.created_at,
@@ -222,58 +217,9 @@ export class MysqlProjectService {
     );
   }
 
-  syncIdentity = (projectId: string) =>
-    this.withProject(projectId, (_repository, { row }) => ({ code: row.code }));
-
   exportProject = (projectId: string, template: ProjectExportSnapshot['template']) =>
     this.withProject(projectId, (_repository, project, connection) =>
       this.snapshot(project, connection, template),
-    );
-
-  prepareSync = (
-    projectId: string,
-    targetId: string,
-    template: ProjectExportSnapshot['template'],
-  ) =>
-    this.withProject(
-      projectId,
-      async (_repository, project, connection): Promise<ProjectSyncSnapshot> => {
-        const targets = new MysqlSyncRepository(connection, projectId);
-        const current = await targets.get(targetId);
-        if (current.pending) return current.pending;
-        const snapshot = await this.snapshot(project, connection, template);
-        const previous = current.baseline ?? {};
-        const paths = new Set(snapshot.files.map(({ path }) => path));
-        const pending: ProjectSyncSnapshot = {
-          ...snapshot,
-          id: `sync_${nanoid()}`,
-          bootstrap: !current.baseline,
-          previous,
-          removals: Object.entries(previous)
-            .filter(([path]) => !paths.has(path))
-            .map(([path, sha256]) => ({ path, sha256 })),
-        };
-        await targets.prepare(targetId, pending);
-        return pending;
-      },
-    );
-
-  finishSync = (projectId: string, targetId: string, snapshotId: string) =>
-    this.withProject(
-      projectId,
-      async (_repository, _project, connection): Promise<ProjectSyncReceipt> => {
-        const targets = new MysqlSyncRepository(connection, projectId);
-        const completed = await targets.getReceipt(targetId, snapshotId);
-        if (completed) return completed;
-        const current = await targets.get(targetId);
-        if (current.pending?.id !== snapshotId) throw conflict('同步快照已变化，请重新读取');
-        const baseline = Object.fromEntries(
-          current.pending.files.map(({ path, sha256 }) => [path, sha256]),
-        );
-        const receipt = { snapshotId, completedAt: new Date().toISOString() };
-        await targets.finish(targetId, baseline, receipt);
-        return receipt;
-      },
     );
 
   async listProjects() {
@@ -313,7 +259,7 @@ export class MysqlProjectService {
       }),
   });
 
-  async createDatabaseProject(input: CreateDatabaseProject): Promise<ProjectRecord> {
+  async createDatabaseProject(input: CreateDatabaseProject): Promise<Omit<ProjectRecord, 'path'>> {
     const name = requireProjectName(input.name.trim());
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.code) || input.code.length > 128)
       throw invalid('项目标识无效或超过 128 字符');
@@ -395,7 +341,7 @@ export class MysqlProjectService {
   duplicatePage = (projectId: string, pageId: string, name?: string) =>
     this.withProject(projectId, async (repository, project, connection) => {
       const page = findPage(project, pageId);
-      const { schema } = await getSchema(pageRef(connection, project, page));
+      const { schema } = await getWorkingSchemaState(pageRef(connection, project, page));
       const base = `${page.slug.slice(0, 108).replace(/-+$/, '')}-copy`;
       let slug = base;
       for (let index = 2; project.pages.some((item) => item.slug === slug); index++)

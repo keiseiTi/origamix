@@ -1,4 +1,3 @@
-import { ProjectProposalSchema } from './project-proposal.ts';
 import { withAgentTarget } from './agent-target.ts';
 import { AgentTargetSchema } from './agent-target.ts';
 import { Type } from '@sinclair/typebox';
@@ -75,7 +74,6 @@ export const AgentRunSchema = withAgentTarget(
     materialManifestVersion: Type.String({ minLength: 1 }),
     outcome: Type.Optional(PageAgentOutcomeSchema),
     clarification: Type.Optional(ClarificationResultSchema),
-    projectProposal: Type.Optional(ProjectProposalSchema),
     repairAttempts: Type.Optional(Type.Integer({ minimum: 0 })),
     resultWorkingVersion: Type.Optional(Type.Integer({ minimum: 1 })),
     resultWorkingHash: Type.Optional(Type.String({ pattern: '^[a-f0-9]{64}$' })),

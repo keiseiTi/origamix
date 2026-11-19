@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const schemaMocks = vi.hoisted(() => ({
   workingState: vi.fn(),
-  updateWorking: vi.fn(),
   applyWorkingOperations: vi.fn(),
 }));
 
@@ -67,7 +66,6 @@ describe('useEditorSession', () => {
     expect(schemaMocks.applyWorkingOperations).toHaveBeenCalledWith('project_one', 'page_one', 4, [
       { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 24 } },
     ]);
-    expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     expect(hook.result.current.initial?.revisionId).toBe('revision_saved');
     expect(onWorkingCommitted).toHaveBeenCalledTimes(1);
     // Hiding the canvas retains the host queue; returning must use the saved draft.
@@ -136,7 +134,6 @@ describe('useEditorSession', () => {
         [{ operation: 'updateElementProps', elementId: 'element_root', set: { padding: 32 } }],
       );
       expect(hook.result.current.error).toBeNull();
-      expect(schemaMocks.updateWorking).not.toHaveBeenCalled();
     },
   );
 

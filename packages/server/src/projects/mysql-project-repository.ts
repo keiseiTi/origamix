@@ -137,12 +137,6 @@ export class MysqlProjectRepository {
       projectId,
     ]);
     await this.sql.execute('DELETE FROM origamix_web_pages WHERE project_id = ?', [projectId]);
-    await this.sql.execute('DELETE FROM origamix_web_sync_receipts WHERE project_id = ?', [
-      projectId,
-    ]);
-    await this.sql.execute('DELETE FROM origamix_web_sync_targets WHERE project_id = ?', [
-      projectId,
-    ]);
     await this.sql.execute('DELETE FROM origamix_web_projects WHERE id = ?', [projectId]);
   }
 }

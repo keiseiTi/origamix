@@ -33,16 +33,12 @@ export const OpenProjectSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
   code: Type.Optional(Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })),
   directoryGrantId: Type.String({ minLength: 1 }),
-  pageDirectory: Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' }),
+  pageDirectory: Type.Optional(Type.String({ pattern: '^[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*$' })),
   initializeIfNeeded: Type.Optional(Type.Boolean()),
 });
 
 export const RenameProjectSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
-});
-
-export const DeleteDesktopRecordSchema = Type.Object({
-  scope: Type.Literal('desktop_record'),
 });
 
 export interface ProjectRecord {

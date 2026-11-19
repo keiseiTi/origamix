@@ -1,3 +1,4 @@
+import { verifyStandaloneProject } from '../../../scripts/verify-standalone-project.ts';
 import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import assert from 'node:assert/strict';
 import { startServer } from '@origamix/server/runtime';
@@ -219,35 +220,7 @@ try {
   assert.ok(readme.includes('## 职责与入口'));
   await backend.close();
   backend = undefined;
-  // Test unpublished release artifacts through npm-compatible package overrides.
-  const projectPackagePath = join(project, 'package.json');
-  const testPackage = JSON.parse(await readFile(projectPackagePath, 'utf8'));
-  const archives = join(directory, 'archives');
-  for (const kind of ['runtime', 'materials']) {
-    const packed = spawnSync(
-      process.execPath,
-      [
-        ...process.execArgv,
-        fileURLToPath(new URL('../../../scripts/pack-public.ts', import.meta.url)),
-        kind,
-      ],
-      { env: { ...process.env, ORIGAMIX_PACK_DIR: archives }, stdio: 'inherit' },
-    );
-    assert.equal(packed.status, 0);
-    const version = testPackage.dependencies[`@origamix/${kind}`];
-    testPackage.pnpm ??= { overrides: {} };
-    testPackage.pnpm.overrides[`@origamix/${kind}`] =
-      `file:${join(archives, `origamix-${kind}-${version}.tgz`)}`;
-  }
-  await writeFile(projectPackagePath, JSON.stringify(testPackage, null, 2));
-  for (const args of [['install', '--ignore-scripts'], ['typecheck'], ['build']]) {
-    const child = spawnSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', args, {
-      cwd: project,
-      stdio: 'inherit',
-      timeout: 120000,
-    });
-    if (child.error || child.status !== 0) throw child.error ?? new Error(`pnpm ${args[0]} failed`);
-  }
+  await verifyStandaloneProject(project, join(directory, 'archives'));
   assert.ok(
     (await readFile(join(project, 'dist/index.html'), 'utf8')).includes('/console/assets/'),
   );

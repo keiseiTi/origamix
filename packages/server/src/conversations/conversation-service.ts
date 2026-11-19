@@ -181,11 +181,7 @@ export class ConversationService {
       version: '1',
       messageId: '',
       conversationId: conversation.id,
-      // A confirmed project task continues internally; it is not another user message.
-      role:
-        input.retryOfRunId && runs.get(input.retryOfRunId)?.outcome === 'needs_project_confirmation'
-          ? 'system'
-          : 'user',
+      role: 'user',
       content: input.content,
       sequence: conversations.nextSequence(conversation.id),
       createdAt: timestamp,

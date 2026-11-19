@@ -7,7 +7,7 @@ description: 常见问题的职责、使用与开发说明
 
 ## 为什么工作台变了，生成项目没有变化？
 
-页面编辑更新 Working 草稿。对页面执行「保存版本」和「应用到项目」后，生成项目才会读到新的页面内容。MySQL 项目在项目菜单选择「同步到本地」，也可以下载新的项目 ZIP。布局修改另行点击「保存配置」。
+页面编辑更新 Working。桌面项目保存版本并应用后，目标项目才读取到新内容。Web 项目从项目菜单导出 ZIP。布局修改另行点击「保存配置」。
 
 ## 在哪里查看完整菜单、跨页导航和 404？
 
@@ -27,7 +27,7 @@ Shared、Runtime、Materials、Server、Main/Preload 等源码变化会触发依
 
 ## 能在浏览器直接使用吗？
 
-本机开发运行 `pnpm dev:web`。单用户正式部署使用 `pnpm build:web` 和 `pnpm start:web`。MySQL 项目可通过项目菜单同步到本机或导出完整 ZIP。见[正式 Web 宿主](/architecture/development#正式-web-宿主)。
+开发运行 `pnpm dev:web`。单用户部署使用 `pnpm build:web` 和 `pnpm start:web`。Web 保存版本后可导出完整项目 ZIP。详见 [正式 Web 宿主](/architecture/development#正式-web-宿主)。
 
 ## 可以离开 Origamix 运行页面吗？
 

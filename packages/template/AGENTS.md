@@ -26,7 +26,7 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Verification
 
-The base scaffold carries the Desktop product marker. Web snapshots supply their own project manifest with the Web product marker.
+The base scaffold reserves the `project_template` ID. Project instantiation assigns an ID and emits the same source manifest for Desktop and Web.
 
 Generated page shells consume `@origamix/materials/antd`. Template smoke verifies that standalone installation does not pull editor engines. Ant Design provides the scaffold UI controls.
 

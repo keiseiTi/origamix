@@ -1,3 +1,4 @@
+import { retainWorkingFixture } from '../helpers/retain-working-fixture';
 import { createValidatePageOperationsTool } from '../../src/agent/tools/validate-page-operations';
 import { instantiateBlock } from '@origamix/shared';
 import { antdBlocks } from '@origamix/materials/antd/manifest';
@@ -25,13 +26,11 @@ import {
 import {
   applyWorkingSchemaOperations,
   validateWorkingSchemaOperations,
-  getSchema,
   getWorkingSchemaState,
   initializePageSchema,
   listRevisionHistory,
   restoreRevisionToWorking,
   saveWorkingRevision,
-  updateWorkingSchema,
 } from '../../src/schema/schema-service';
 
 const directories: string[] = [];
@@ -98,7 +97,6 @@ const createPageFixture = async (): Promise<{
     join(projectPath, 'origamix.project.json'),
     JSON.stringify({
       shell: { title: '', logo: '', standalonePageIds: [] },
-      product: 'desktop' as const,
       runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'side' as const },
       routing: { mode: 'browser' as const, basePath: '/' },
@@ -277,7 +275,7 @@ describe('Schema Service', () => {
       await symlink(moved, original, 'dir');
       try {
         await expect(
-          updateWorkingSchema(page, {
+          retainWorkingFixture(page, {
             baseWorkingVersion: before.workingVersion,
             schema: {
               ...schema,
@@ -380,7 +378,7 @@ describe('Schema Service', () => {
     expect((await getWorkingSchemaState(page)).workingHash).toBe(draft.workingHash);
   });
 
-  // These cases protect the sole Working write boundary, including the editor candidate fallback.
+  // These cases protect the sole Working write boundary, including visual operations.
   it.each<{
     name: string;
     mutate: (flow: PageFlow, candidate: OrigamixPageSchema) => void;
@@ -530,14 +528,14 @@ describe('Schema Service', () => {
         };
       },
     },
-  ])('rejects $name atomically through operations and candidate writes', async ({ mutate }) => {
+  ])('rejects $name atomically through visual and individual operations', async ({ mutate }) => {
     const page = await createPageFixture();
     await initializePageSchema(page, logicSchema());
     const current = await getWorkingSchemaState(page);
     const candidate = structuredClone(current.schema);
     mutate(candidate.flows.flow_one!, candidate);
     await expect(
-      updateWorkingSchema(page, { baseWorkingVersion: current.workingVersion, schema: candidate }),
+      retainWorkingFixture(page, { baseWorkingVersion: current.workingVersion, schema: candidate }),
     ).rejects.toThrow();
     await expect(
       applyWorkingSchemaOperations(page, {
@@ -576,7 +574,7 @@ describe('Schema Service', () => {
       const candidate = logicFlow();
       candidate.nodes.action = invalidAction;
       if (!invalidAction.prev.length) candidate.nodes.start!.next = [];
-      const visual = await updateWorkingSchema(page, {
+      const visual = await retainWorkingFixture(page, {
         baseWorkingVersion: (await getWorkingSchemaState(page)).workingVersion,
         schema: { ...current.schema, flows: { ...current.schema.flows, flow_one: candidate } },
       });
@@ -719,7 +717,7 @@ describe('Schema Service', () => {
     const page = await createPageFixture();
     const initialRevisionId = await initializePageSchema(page, schema);
     const initial = await getWorkingSchemaState(page);
-    const updated = await updateWorkingSchema(page, {
+    const updated = await retainWorkingFixture(page, {
       baseWorkingVersion: initial.workingVersion,
       schema: {
         ...schema,
@@ -743,7 +741,7 @@ describe('Schema Service', () => {
       }),
     );
     await expect(
-      updateWorkingSchema(page, {
+      retainWorkingFixture(page, {
         baseWorkingVersion: updated.workingVersion,
         schema,
       }),
@@ -763,7 +761,7 @@ describe('Schema Service', () => {
     expect(updated.workingVersion).toBe(initial.workingVersion + 1);
     expect(updated.revisionId).toBe(initialRevisionId);
     expect(updated.workingHash).not.toBe(updated.savedSchemaHash);
-    expect((await getSchema(page)).schema.elements.element_root.props.padding).toBe(24);
+    expect((await getWorkingSchemaState(page)).schema.elements.element_root.props.padding).toBe(24);
     expect(
       await readdir(join(page.projectPath, '.origamix', 'revisions', page.pageId)),
     ).toHaveLength(1);
@@ -869,7 +867,7 @@ describe('Schema Service', () => {
     const page = await createPageFixture();
     const initialRevisionId = await initializePageSchema(page, schema);
     const initial = await getWorkingSchemaState(page);
-    const draft = await updateWorkingSchema(page, {
+    const draft = await retainWorkingFixture(page, {
       baseWorkingVersion: initial.workingVersion,
       schema: {
         ...schema,
@@ -925,7 +923,7 @@ describe('Schema Service', () => {
     candidate.elements.child = { type: 'text', props: {} };
     candidate.layout.structure[candidate.layout.root] = ['child', 'child'];
     await expect(
-      updateWorkingSchema(page, { baseWorkingVersion: before.workingVersion, schema: candidate }),
+      retainWorkingFixture(page, { baseWorkingVersion: before.workingVersion, schema: candidate }),
     ).rejects.toThrow('INVALID_LAYOUT_PARENT');
     expect(await getWorkingSchemaState(page)).toEqual(before);
   });
@@ -984,9 +982,25 @@ describe('Schema Service', () => {
           elementId: 'element_root',
           set: { padding: 16, alias: '页面布局' },
         },
+        {
+          operation: 'reconcileElementTree',
+          set: { element_group: { type: 'container', props: {} } },
+          remove: [],
+          layout: {
+            root: 'element_root',
+            structure: {
+              element_root: ['element_group'],
+              element_group: ['button_existing'],
+              button_existing: [],
+            },
+          },
+        },
+        { operation: 'setFlowGraph', graph: {} },
       ],
     });
     expect(draft.schema.elements.button_existing!.props).toEqual({ text: '新按钮' });
+    expect(draft.schema.layout.structure.element_group).toEqual(['button_existing']);
+    expect(draft.schema.extensions.flowGraph).toEqual({});
     expect(draft.workingVersion).toBe(working.workingVersion + 1);
     expect(await readFile(targetPath, 'utf8')).toBe(targetBefore);
     expect(draft.revisionId).toBe(initialRevisionId);
@@ -1001,12 +1015,14 @@ describe('Schema Service', () => {
           operations: [{ operation: 'updateElementProps', elementId: 'element_root', set }],
         }),
       ).rejects.toThrow('INVALID_MATERIAL_PROPS');
-      expect((await getSchema(page)).schema).toEqual(draft.schema);
+      expect((await getWorkingSchemaState(page)).schema).toEqual(draft.schema);
       expect((await getWorkingSchemaState(page)).workingVersion).toBe(draft.workingVersion);
     }
     const saved = await saveWorkingRevision(page, draft.workingVersion);
     expect(saved.revisionId).not.toBe(initialRevisionId);
-    expect((await getSchema(page)).schema.elements.element_root.props.alias).toBe('页面布局');
+    expect((await getWorkingSchemaState(page)).schema.elements.element_root.props.alias).toBe(
+      '页面布局',
+    );
   });
 });
 
@@ -1051,7 +1067,7 @@ it('rejects unsupported or missing Schema versions without rewriting Working', a
       workingHash: hashSchema(candidate as OrigamixPageSchema),
     });
     await writeFile(path, original);
-    await expect(getSchema(page)).rejects.toThrow();
+    await expect(getWorkingSchemaState(page)).rejects.toThrow();
     expect(await readFile(path, 'utf8')).toBe(original);
   }
 });

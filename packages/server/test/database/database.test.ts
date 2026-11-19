@@ -38,13 +38,13 @@ describe('ApplicationDatabase', () => {
         .replace('CREATE INDEX idx_agent_runs_created ON agent_runs(created_at);', ''),
     );
     legacy.exec(
-      "PRAGMA user_version = 1; INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
+      "PRAGMA user_version = 2; INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
     );
     legacy.close();
     expect(() => new ApplicationDatabase(legacyPath)).toThrow('数据库版本不受当前应用支持');
     const unchanged = new DatabaseSync(legacyPath, { readOnly: true });
     try {
-      expect(unchanged.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+      expect(unchanged.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 });
       expect(unchanged.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
     } finally {
       unchanged.close();

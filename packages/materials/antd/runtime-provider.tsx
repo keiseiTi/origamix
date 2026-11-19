@@ -1,5 +1,5 @@
 import { ConfigProvider, theme } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import zhCN from 'antd/locale/zh_CN.js';
 import type { ReactNode } from 'react';
 
 /** Material-family theme boundary for hosts rendering Ant Design pages. */

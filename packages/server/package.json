@@ -19,10 +19,6 @@
     "./utility": "./dist/server.cjs",
     "./build": "./scripts/build.ts",
     "./development": "./scripts/dev-supervisor.ts",
-    "./template": {
-      "types": "./src/templates/copy-template.ts",
-      "default": "./dist/template.cjs"
-    },
     "./template-artifact": {
       "types": "./scripts/prepare-template-artifact.ts",
       "default": "./scripts/prepare-template-artifact.ts"

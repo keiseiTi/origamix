@@ -1,3 +1,4 @@
+import { retainWorkingFixture } from '../helpers/retain-working-fixture';
 import { hashSchema } from '../../src/schema/schema-hash';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,12 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
-import {
-  getSchema,
-  getWorkingSchemaState,
-  saveWorkingRevision,
-  updateWorkingSchema,
-} from '../../src/schema/schema-service';
+import { getWorkingSchemaState, saveWorkingRevision } from '../../src/schema/schema-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
 import { ProjectService } from '../../src/projects/project-service';
 
@@ -23,7 +19,7 @@ const savePaddingRevision = async (
   padding: number,
 ) => {
   const working = await getWorkingSchemaState(page);
-  const draft = await updateWorkingSchema(page, {
+  const draft = await retainWorkingFixture(page, {
     baseWorkingVersion: working.workingVersion,
     schema: {
       ...working.schema,
@@ -98,7 +94,7 @@ describe('ProjectApplyService', () => {
 
   it('rejects request IDs that could escape the receipt directory', async () => {
     const fixture = await setup();
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: fixture.project.path,
       pageId: fixture.page.id,
       slug: fixture.page.slug,
@@ -121,7 +117,7 @@ describe('ProjectApplyService', () => {
   it('uses the apply target writer when initializing a page target', async () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: fixture.project.path,
       pageId: fixture.page.id,
       slug: fixture.page.slug,
@@ -258,7 +254,7 @@ describe('ProjectApplyService', () => {
       pageId: fixture.page.id,
       slug: fixture.page.slug,
     };
-    const current = await getSchema(ref);
+    const current = await getWorkingSchemaState(ref);
     const changed = await savePaddingRevision(ref, 24);
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
     const external = structuredClone(current.schema);
@@ -280,7 +276,7 @@ describe('ProjectApplyService', () => {
   it('reloads a valid external target only after an explicit request', async () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: fixture.project.path,
       pageId: fixture.page.id,
       slug: fixture.page.slug,
@@ -304,7 +300,7 @@ describe('ProjectApplyService', () => {
       fixture.apply.reloadFromProject(fixture.project.id, fixture.page.id, input);
     const draftSchema = structuredClone(current.schema);
     draftSchema.elements.element_root!.props = { padding: 24 };
-    const draft = await updateWorkingSchema(scope, {
+    const draft = await retainWorkingFixture(scope, {
       baseWorkingVersion: observed.workingVersion,
       schema: draftSchema,
     });
@@ -332,7 +328,7 @@ describe('ProjectApplyService', () => {
     const fixture = await setup();
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
     await rm(target);
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: fixture.project.path,
       pageId: fixture.page.id,
       slug: fixture.page.slug,
@@ -364,7 +360,7 @@ describe('ProjectApplyService', () => {
     const initial = await getWorkingSchemaState(ref);
     const draftSchema = structuredClone(initial.schema);
     draftSchema.elements.element_root!.props = { padding: 52 };
-    const draft = await updateWorkingSchema(ref, {
+    const draft = await retainWorkingFixture(ref, {
       baseWorkingVersion: initial.workingVersion,
       schema: draftSchema,
     });
@@ -398,7 +394,7 @@ describe('ProjectApplyService', () => {
     const fixture = await setup();
     const pageDirectory = join(fixture.project.path, fixture.page.relativePath);
     const outside = join(dirname(fixture.project.path), 'outside-page');
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: fixture.project.path,
       pageId: fixture.page.id,
       slug: fixture.page.slug,

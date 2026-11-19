@@ -8,10 +8,10 @@ export const ElementIdSchema = Type.String({ pattern: '^[A-Za-z][A-Za-z0-9_-]*$'
 
 export const RevisionIdSchema = Type.String({ pattern: '^revision_[A-Za-z0-9_-]+$' });
 
-export const PageElementSchema = Type.Object({
-  type: Type.String({ minLength: 1 }),
-  props: Type.Record(Type.String(), Type.Unknown()),
-});
+export const PageElementSchema = Type.Object(
+  { type: Type.String({ minLength: 1 }), props: Type.Record(Type.String(), Type.Unknown()) },
+  { additionalProperties: false },
+);
 
 export const GlobalVariableSchema = Type.Object({
   name: Type.String(),
@@ -22,20 +22,35 @@ export const GlobalVariableSchema = Type.Object({
 
 export type GlobalVariable = Static<typeof GlobalVariableSchema>;
 
-export const PageSchema = Type.Object({
-  elements: Type.Record(ElementIdSchema, PageElementSchema),
-  layout: Type.Object({
-    root: ElementIdSchema,
-    structure: Type.Record(ElementIdSchema, Type.Array(ElementIdSchema)),
-  }),
-  flows: Type.Record(Type.String(), PageFlowSchema, { propertyNames: FlowIdSchema }),
-  bindElements: Type.Array(ElementEventBindingSchema),
-  context: Type.Object({ globalVariables: Type.Array(GlobalVariableSchema) }),
-  extensions: Type.Object({
-    flowGraph: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-    origamix: Type.Object({ schemaVersion: Type.Literal(SCHEMA_VERSION) }),
-  }),
-});
+export const PageSchema = Type.Object(
+  {
+    elements: Type.Record(ElementIdSchema, PageElementSchema),
+    layout: Type.Object(
+      {
+        root: ElementIdSchema,
+        structure: Type.Record(ElementIdSchema, Type.Array(ElementIdSchema)),
+      },
+      { additionalProperties: false },
+    ),
+    flows: Type.Record(Type.String(), PageFlowSchema, { propertyNames: FlowIdSchema }),
+    bindElements: Type.Array(ElementEventBindingSchema),
+    context: Type.Object(
+      { globalVariables: Type.Array(GlobalVariableSchema) },
+      { additionalProperties: false },
+    ),
+    extensions: Type.Object(
+      {
+        flowGraph: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+        origamix: Type.Object(
+          { schemaVersion: Type.Literal(SCHEMA_VERSION) },
+          { additionalProperties: false },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+  },
+  { additionalProperties: false },
+);
 
 export type OrigamixPageSchema = Static<typeof PageSchema>;
 

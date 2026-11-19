@@ -199,7 +199,6 @@ export {
   SaveWorkingRevisionSchema,
   RestoreWorkingRevisionSchema,
   WorkingSchemaStateSchema,
-  UpdateWorkingSchemaSchema,
   ApplyWorkingOperationsSchema,
   RevisionHistoryItemSchema,
   RevisionHistorySchema,
@@ -257,11 +256,13 @@ export {
   RemoveElementEventBindingOperationSchema,
   UpdatePageContextOperationSchema,
   SchemaOperationSchema,
+  EditorSchemaOperationSchema,
   SchemaOperationBatchSchema,
 } from './page/schema-operation.ts';
 export type {
   ChangeSource,
   SchemaOperation,
+  WorkingSchemaOperation,
   SchemaOperationBatch,
 } from './page/schema-operation.ts';
 
@@ -271,13 +272,13 @@ export {
   CreateProjectSchema,
   OpenProjectSchema,
   RenameProjectSchema,
-  DeleteDesktopRecordSchema,
 } from './project/project-api.ts';
 export type { ProjectWithPages, ProjectRecord, OpenProjectResult } from './project/project-api.ts';
 
 export {
   ProjectPageManifestSchema,
   ProjectManifestSchema,
+  TEMPLATE_PROJECT_ID,
   isProjectManifest,
 } from './project/project-manifest.ts';
 export type { ProjectPageManifest, ProjectManifest } from './project/project-manifest.ts';
@@ -339,8 +340,6 @@ export {
   MATERIAL_CONTRACT_VERSION,
   SEMVER_PATTERN,
   isSemanticVersion,
-  SUPPORTED_SCHEMA_VERSIONS,
-  SUPPORTED_MATERIAL_VERSIONS,
   contractCompatibilityIssue,
 } from './version.ts';
 
@@ -369,22 +368,6 @@ export {
   UpdatePageRolesSchema,
 } from './project/page-role.ts';
 export type { ProjectPageRoles, PageRoleState, UpdatePageRoles } from './project/page-role.ts';
-
-export {
-  ProjectRoleOperationSchema,
-  ProjectProposalSchema,
-  applyProjectRoleOperations,
-  ProjectTaskScopeSchema,
-  ProjectTaskDecisionSchema,
-  ProjectTaskStateSchema,
-} from './agent/project-proposal.ts';
-export type {
-  ProjectRoleOperation,
-  ProjectProposal,
-  ProjectTaskScope,
-  ProjectTaskDecision,
-  ProjectTaskState,
-} from './agent/project-proposal.ts';
 
 export {
   ProjectRoutingSchema,
@@ -420,24 +403,7 @@ export type {
   ProjectNavigationInfo,
 } from './project/project-navigation.ts';
 
-export {
-  ProjectSettingsDraftSchema,
-  ProjectSettingsAgentRequestSchema,
-  isProjectSettingsAgentEvent,
-} from './project/project-settings-agent.ts';
-export type {
-  ProjectSettingsDraft,
-  ProjectSettingsAgentRequest,
-  ProjectSettingsAgentEvent,
-} from './project/project-settings-agent.ts';
-
-export type {
-  ProjectExportSnapshot,
-  ProjectSyncFile,
-  ProjectSyncRemoval,
-  ProjectSyncSnapshot,
-  ProjectSyncReceipt,
-} from './project/project-sync.ts';
+export type { ProjectExportSnapshot, ProjectExportFile } from './project/project-export.ts';
 
 export type {
   AgentUsageScope,

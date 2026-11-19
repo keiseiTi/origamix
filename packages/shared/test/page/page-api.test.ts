@@ -1,10 +1,8 @@
-import { SCHEMA_VERSION } from '@origamix/shared';
 import { Value } from '@sinclair/typebox/value';
 import { describe, expect, it } from 'vitest';
 import {
   ApplyWorkingOperationsSchema,
   ApplyPageSchema,
-  UpdateWorkingSchemaSchema,
   isApplyPageResult,
   isPageApplyState,
 } from '../../src/page/page-api.ts';
@@ -93,27 +91,6 @@ describe('Apply request protocol', () => {
 });
 
 describe('Working Schema request protocol', () => {
-  const schema = {
-    elements: { element_root: { type: 'container', props: {} } },
-    layout: { root: 'element_root', structure: { element_root: [] } },
-    flows: {},
-    bindElements: [],
-    context: { globalVariables: [] },
-    extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
-  };
-
-  it('requires a versioned full Schema draft update', () => {
-    expect(Value.Check(UpdateWorkingSchemaSchema, { baseWorkingVersion: 2, schema })).toBe(true);
-    expect(Value.Check(UpdateWorkingSchemaSchema, { baseWorkingVersion: 0, schema })).toBe(false);
-    expect(
-      Value.Check(UpdateWorkingSchemaSchema, {
-        baseWorkingVersion: 2,
-        schema,
-        unexpected: true,
-      }),
-    ).toBe(false);
-  });
-
   it('requires a non-empty typed Operation List', () => {
     expect(
       Value.Check(ApplyWorkingOperationsSchema, {

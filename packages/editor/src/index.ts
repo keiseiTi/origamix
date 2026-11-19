@@ -4,7 +4,6 @@
 /* eslint-enable @typescript-eslint/triple-slash-reference */
 export { Editor } from './editor';
 export { createEditorTransaction } from './transactions/create-editor-transaction';
-export { deriveSchemaOperations } from './transactions/derive-schema-operations';
 
 export {
   CanvasPrototypeSurface,
@@ -33,7 +32,6 @@ export type * from './interfaces/editor-operation';
 export { SchemaEditor } from './components/schema-editor';
 export { GlobalVariablesEditor } from './components/global-variables-editor';
 export { CodeEditor, type CodeEditorProps } from './components/code-editor';
-export { JsonAttributeField } from './components/json-attribute-field';
 export {
   EditorToolbar,
   EditorToolbarArea,

@@ -2,10 +2,10 @@
 
 统一页面编辑实现包，逻辑编辑器是 Editor 内部模块，与画布共享编辑上下文。App 负责项目装配、Working 会话、HTTP、Agent、Revision 与 Apply；本包只负责编辑体验、引擎适配和编辑数据转换。
 
-| 公开入口                      | 内容                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------ |
-| `@origamix/editor`            | `Editor`、`CodeEditor`、`JsonAttributeField`、事务工具及全部公开契约类型 |
-| `@origamix/editor/styles.css` | Tailwind 源码扫描入口                                                    |
+| 公开入口                      | 内容                                               |
+| ----------------------------- | -------------------------------------------------- |
+| `@origamix/editor`            | `Editor`、`CodeEditor`、事务工具及全部公开契约类型 |
+| `@origamix/editor/styles.css` | Tailwind 源码扫描入口                              |
 
 `src/index.ts` 是统一入口，`src/editor.tsx` 负责编辑器装配，`src/components/` 包含画布和面板，`src/components/flow-editor/` 是内部逻辑编辑模块，不单独公开 visual/flow 入口。
 
@@ -81,7 +81,7 @@ Editor 不导入任何物料家族。App 当前装配默认 Antd，FlowEditor �
 
 ## 提交与恢复
 
-App 持有最后一次确认的 Working、当前本地候选及版本。flush 调用 `createEditorTransaction`，再通过现有 Server 管线提交。普通编辑使用非空 Operation Batch，仅无法安全表达的修改使用内部完整候选分支。一次事务不创建 Revision，也不写真实项目。
+App 持有最后一次确认的 Working、当前本地候选及版本。flush 调用 `createEditorTransaction`，再通过现有 Server 管线提交。每次修改通过一个非空 Operation Batch 提交，元素树重挂和流程图坐标同样使用类型化操作。一次事务不创建 Revision，也不写真实项目。
 
 保存失败保留候选、展示错误并阻止切换；继续输入不会自动重放失败请求，用户可显式重试。每个项目/页面拥有独立提交队列，切换后旧响应不能修改新页面或触发新页面的提交回调。保存 Revision 和 Apply 始终属于 App 的显式业务动作。
 

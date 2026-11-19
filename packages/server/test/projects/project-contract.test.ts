@@ -1,3 +1,4 @@
+import { retainWorkingFixture } from '../helpers/retain-working-fixture';
 import { mkdtemp, readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,7 +7,7 @@ import { expect, it } from 'vitest';
 import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
-import { getWorkingSchemaState, updateWorkingSchema } from '../../src/schema/schema-service';
+import { getWorkingSchemaState } from '../../src/schema/schema-service';
 import { hashSchema } from '../../src/schema/schema-hash';
 
 // Unsupported contracts and interrupted writes must preserve existing drafts and targets.
@@ -33,7 +34,7 @@ it('rejects unsupported project data and interrupted writes without replacing re
       relativePath: page.relativePath,
     };
     const initial = await getWorkingSchemaState(ref);
-    const draft = await updateWorkingSchema(ref, {
+    const draft = await retainWorkingFixture(ref, {
       baseWorkingVersion: initial.workingVersion,
       schema: {
         ...initial.schema,
@@ -71,7 +72,7 @@ it('rejects unsupported project data and interrupted writes without replacing re
       JSON.stringify({ ...current, materialSet: { ...current.materialSet, version: '2.0.0' } }),
     );
     await expect(
-      updateWorkingSchema(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
+      retainWorkingFixture(ref, { baseWorkingVersion: draft.workingVersion, schema: draft.schema }),
     ).rejects.toThrow('不受当前应用支持');
     await writeFile(manifestPath, JSON.stringify(current));
     const incompatible = JSON.stringify({

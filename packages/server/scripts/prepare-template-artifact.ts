@@ -1,7 +1,7 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolveProjectStack, validateResolvedProjectStack } from '@origamix/shared';
-import { copyTemplate } from '@origamix/server/template';
+import { copyTemplate } from '../src/templates/copy-template';
 
 export interface TemplateArtifactInput {
   sourceTemplate: string;

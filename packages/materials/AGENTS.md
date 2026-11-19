@@ -5,7 +5,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 ## Ownership and entry points
 
 - `antd/runtime.ts`: Ant Design runtime registry.
-- `src/index.ts`: public root explicitly exporting every public type and helper from `src/`, including material contracts, editor assembly, Manifest helpers, runtime props, value types and class-name utilities; replaces the former `/material` subpath; never aggregate concrete Ant Design materials here.
+- `src/index.ts` aggregates internal material helpers for this package. Consumers use the declared Ant Design runtime, editor, manifest and validation entries.
 - `antd/editor.ts`: public `/antd/editor` entry for editor groups, Manifest catalog and property-editor registrations. Runtime and Manifest retain their separate public subpaths; Server must never load the root or editor entry.
 - `antd/*/material-config.ts`: the sole material definition, using `defineMaterial`; `antd/manifest.ts` publishes the generated pure-data catalog and named manifests. Catalog order follows sorted definition directories, with basicPage kept separate. Editor palette grouping stays in antd/editor.ts.
 - Define metadata, capabilities, defaults and panels together. Infer simple property schemas from controls; custom/JSON fields and exceptional constraints supply `schema`. `hidden` fields retain protocol-only properties without displaying controls. Never duplicate field rules in a hand-maintained Manifest.
@@ -15,7 +15,7 @@ Applies to `packages/materials/`. Read the [root guide](../../AGENTS.md) first.
 - `pnpm manifest:check` verifies generation without modifying files; root `pnpm check` and `pnpm check:staged` run it once before using prepared Materials tasks that consume the committed manifest.
 - `antd/material-set.ts`: installed material-set identity shared by Manifest and runtime; runtime exports it so lazy consumers can check the installed version without loading editor metadata.
 - `antd/*/index.tsx`: thin Origamix material component adapters.
-- `pnpm manifest:watch` regenerates with a fresh subprocess/module graph after changes in `antd`, `src`, `components`, `utils` or `scripts` and package/TypeScript configuration. Source-only polling avoids native watcher limits; never scan `node_modules`, `dist` or generated output. Root `pnpm dev` starts one long-lived instance of this watcher after initial library preparation and stops it with the Desktop supervisor. Existing source watchers still own ordered rebuilds; generated output must not trigger another rebuild. Both web/Desktop library preparation explicitly generates manifests before invoking tsdown.
+- `pnpm manifest:watch` is available for standalone material work. Desktop and Web development supervisors regenerate once in the ordered build when Materials is rebuilt.
 - Package-local editor controls, contracts and helpers should stay in this package when they are added; they must not reach into App source.
 
 - `tsconfig.json` retains `@` → `src/index.ts` and `@/*` → `src/*`; tsdown resolves these aliases for JavaScript and declarations. Built artifacts must not retain private aliases.

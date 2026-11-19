@@ -2,16 +2,14 @@ import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'r
 import { projectShellIssue, type ProjectSettings } from '@origamix/shared';
 import { projectsService } from '@/services/projects';
 import { ApiRequestError } from '@/services/request';
-import { useProjectSettingsAssistant } from './use-project-settings-assistant';
 import { useWorkspaceStore } from '@/store/workspace';
 import { reconcileProjectSettings } from './reconcile-project-settings';
 
-/** One retained draft shared by the form, layout renderer and AI proposal receiver. */
+/** One retained draft shared by the form and layout renderer. */
 export const useProjectSettingsSession = (projectId: string) => {
   const [form, renderForm] = useState<{
     draft: ProjectSettings;
     baseline: ProjectSettings;
-    version: number;
     stale: boolean;
     latest?: ProjectSettings;
   }>();
@@ -33,7 +31,7 @@ export const useProjectSettingsSession = (projectId: string) => {
     if (!form || form.draft.projectId !== projectId || saving.current) return;
     const next = typeof update === 'function' ? update(form.draft) : update;
     if (!next || next.projectId !== projectId) return;
-    publish({ ...form, draft: next, version: form.version + 1 });
+    publish({ ...form, draft: next });
     setSaved(false);
   };
   useEffect(() => {
@@ -46,7 +44,7 @@ export const useProjectSettingsSession = (projectId: string) => {
       .then((next) => {
         if (!controller.signal.aborted) {
           if (next.projectId !== projectId) throw new Error('读取的设置与当前项目不一致');
-          publish({ draft: next, baseline: next, version: 1, stale: false });
+          publish({ draft: next, baseline: next, stale: false });
           setError(undefined);
           setSaved(false);
           setBusy(false);
@@ -65,22 +63,9 @@ export const useProjectSettingsSession = (projectId: string) => {
     const form = current.current;
     return form?.draft.projectId === projectId && !form.stale && !saving.current ? form : undefined;
   };
-  const assistant = useProjectSettingsAssistant({
-    projectId,
-    attempt,
-    readDraft,
-    applyProposal: (version, proposal) => {
-      const form = readDraft();
-      if (!form || form.version !== version)
-        throw new Error('生成期间表单已修改，AI 结果未应用。你的修改已保留，请重新发送');
-      const issue = projectShellIssue(proposal.shell, form.draft.pages);
-      if (issue) throw new Error(issue);
-      setDraft({ ...form.draft, ...proposal });
-    },
-  });
   const save = async () => {
     const form = readDraft();
-    if (!form || assistant.isRunning()) return;
+    if (!form) return;
     const snapshot = form.draft;
     const issue = projectShellIssue(snapshot.shell, snapshot.pages);
     if (issue) {
@@ -101,7 +86,7 @@ export const useProjectSettingsSession = (projectId: string) => {
       });
       if (generation.current !== saveGeneration || current.current !== form) return;
       if (next.projectId !== projectId) throw new Error('保存结果与当前项目不一致');
-      publish({ draft: next, baseline: next, version: form.version + 1, stale: false });
+      publish({ draft: next, baseline: next, stale: false });
       setSaved(true);
       useWorkspaceStore.getState().setProjects((projects) =>
         projects.map((project) =>
@@ -135,14 +120,13 @@ export const useProjectSettingsSession = (projectId: string) => {
   const applyLatest = (next: ProjectSettings, merged: ProjectSettings) => {
     const form = current.current;
     if (!form || form.draft.projectId !== projectId) return;
-    publish({ draft: merged, baseline: next, version: form.version + 1, stale: false });
+    publish({ draft: merged, baseline: next, stale: false });
     setSaved(false);
     setError(projectShellIssue(merged.shell, merged.pages) ?? undefined);
   };
   const reviewLatest = async () => {
     const form = current.current;
-    if (!form || form.draft.projectId !== projectId || saving.current || assistant.isRunning())
-      return;
+    if (!form || form.draft.projectId !== projectId || saving.current) return;
     const readGeneration = generation.current;
     saving.current = true;
     setBusy(true);
@@ -187,6 +171,5 @@ export const useProjectSettingsSession = (projectId: string) => {
     },
     save,
     reload: () => setAttempt((value) => value + 1),
-    ...assistant,
   };
 };

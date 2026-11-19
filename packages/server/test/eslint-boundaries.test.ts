@@ -53,7 +53,7 @@ for (const [file, code] of [
   ['agent/new-service.ts', "import { host } from '@origamix/server/runtime';"],
   ['agent/new-service.ts', 'const module = import(name);'],
   ['database/new.ts', "import { ProjectService } from '../projects/project-service';"],
-  ['infrastructure/new.ts', "import { getSchema } from '../schema/schema-service';"],
+  ['infrastructure/new.ts', "import { getWorkingSchemaState } from '../schema/schema-service';"],
 ]) {
   test(`rejects ${file}: ${code}`, () => {
     const messages = lint(file, code);

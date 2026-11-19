@@ -8,7 +8,6 @@ export const options = {
     'web-runtime': `${root}src/hosts/mysql-web-server.ts`,
     runtime: `${root}src/server.ts`,
     tooling: `${root}src/tooling.ts`,
-    template: `${root}src/templates/copy-template.ts`,
   },
   outDir: `${root}dist`,
   format: ['cjs' as const],

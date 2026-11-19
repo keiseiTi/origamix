@@ -99,10 +99,10 @@ const requestNode = getFlowNodeManifest('interfaceRequest');
 
 ## 统一版本
 
-`ORIGAMIX_VERSION` 是统一包发布版本；`SCHEMA_VERSION` 和 `MATERIAL_CONTRACT_VERSION` 为独立的 SemVer 契约，应用发布不会自动递增它们。支持版本显式声明，初期精确匹配，不按 major/minor 推断。项目清单保存 framework、materialSet 对象，页面通过 `extensions.origamix.schemaVersion` 声明格式。打开、预览、历史恢复均不自动转换；不兼容时保留原文件并说明原因。
+`ORIGAMIX_VERSION` 是统一包发布版本；`SCHEMA_VERSION` 和 `MATERIAL_CONTRACT_VERSION` 为独立的 SemVer 契约，应用发布不会自动递增它们。首版使用精确的契约版本校验。项目清单保存 framework、materialSet 对象，页面通过 `extensions.origamix.schemaVersion` 声明格式。打开、预览、历史恢复均不自动转换；不兼容时保留原文件并说明原因。
 
 ## 项目布局配置
 
 [project-shell.ts](src/project/project-shell.ts) 定义项目清单中的布局配置及保存请求。配置包含菜单、品牌、首页、404 和独立页面。保存时用清单哈希检查变更冲突。
 
-[project-settings-agent.ts](src/project/project-settings-agent.ts) 定义布局助手请求及流式事件。配置建议绑定项目和草稿版本，用户通过布局配置页显式保存。
+页面用途包含登录页标记。首页和 404 由应用壳配置指定。

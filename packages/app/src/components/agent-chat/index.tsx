@@ -1,5 +1,4 @@
 import { ChatComposer } from './chat-composer';
-import { ProjectTaskCard } from './project-task-card';
 import { Button, Spinner } from '@origamix/ui';
 import { ChevronDown, ChevronUp, RotateCcw, Sparkles } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -88,12 +87,6 @@ export const ChatWorkspace = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
   const active = isRunActive(state.stage);
-  const projectPending = Boolean(
-    session.projectTask &&
-    ['awaiting_confirmation', 'applying_project', 'project_applied'].includes(
-      session.projectTask.phase,
-    ),
-  );
   const modelConfigurationRequired = !unavailableReason && hasModelApiKey === false;
   useEffect(() => {
     mountedRef.current = true;
@@ -111,13 +104,7 @@ export const ChatWorkspace = ({
     <ProgressSteps key={state.run?.runId ?? 'pending'} messages={state.progressHistory} />
   );
   const submit = async (): Promise<void> => {
-    if (
-      unavailableReason ||
-      !draft.trim() ||
-      activity !== 'idle' ||
-      projectPending ||
-      modelConfigurationRequired
-    )
+    if (unavailableReason || !draft.trim() || activity !== 'idle' || modelConfigurationRequired)
       return;
     try {
       await send(draft);
@@ -192,14 +179,6 @@ export const ChatWorkspace = ({
               <MessageMarkdown content={state.streamedText} />
             </div>
           )}
-          {session.projectTask && session.decideProject && (
-            <ProjectTaskCard
-              key={session.projectTask.runId}
-              task={session.projectTask}
-              busy={session.projectTaskBusy ?? false}
-              decide={session.decideProject}
-            />
-          )}
           {state.stage && (
             <p className='mt-3 text-xs text-zinc-500 dark:text-zinc-400' role='status'>
               {stageLabels[state.stage]}
@@ -272,12 +251,7 @@ export const ChatWorkspace = ({
           onSubmit={() => void submit()}
           onCancel={() => void cancel()}
           running={active}
-          disabled={
-            Boolean(unavailableReason) ||
-            activity !== 'idle' ||
-            projectPending ||
-            modelConfigurationRequired
-          }
+          disabled={Boolean(unavailableReason) || activity !== 'idle' || modelConfigurationRequired}
           configurationRequired={modelConfigurationRequired}
           onConfigureModel={onConfigureModel}
           contextLabel='当前页面'

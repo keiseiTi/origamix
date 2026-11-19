@@ -14,10 +14,6 @@
       "types": "./dist/public/antd/runtime.d.ts",
       "import": "./dist/public/antd/runtime.js"
     },
-    ".": {
-      "types": "./dist/internal/index.d.ts",
-      "import": "./dist/internal/index.js"
-    },
     "./antd/editor": {
       "types": "./dist/internal/antd/editor.d.ts",
       "import": "./dist/internal/antd/editor.js"

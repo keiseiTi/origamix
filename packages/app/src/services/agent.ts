@@ -1,6 +1,5 @@
 import { validateCreateAgentRunResponse } from '@origamix/shared';
 import { observeWebSession } from './web-session';
-import { notifyPageRolesChanged } from './page-role-events';
 import type {
   AgentEvent,
   CancelAgentRunResponse,
@@ -245,18 +244,4 @@ export const agentService = {
   getAgentRun,
   cancelAgentRun,
   subscribeAgentEvents,
-};
-
-export const getProjectTask = (
-  scope: import('@origamix/shared').ProjectTaskScope,
-): Promise<import('@origamix/shared').ProjectTaskState> =>
-  request('/agent/project-task/get', scope);
-export const decideProjectTask = async (
-  input: import('@origamix/shared').ProjectTaskDecision,
-): Promise<import('@origamix/shared').ProjectTaskState> => {
-  try {
-    return await request('/agent/project-task/decide', input);
-  } finally {
-    notifyPageRolesChanged(input.projectId);
-  }
 };

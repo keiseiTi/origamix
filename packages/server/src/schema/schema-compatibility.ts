@@ -1,6 +1,5 @@
 import {
   SCHEMA_VERSION,
-  SUPPORTED_SCHEMA_VERSIONS,
   contractCompatibilityIssue,
   isSemanticVersion,
   validatePage,
@@ -15,11 +14,7 @@ const schemaVersionOf = (value: unknown): string => {
   return version;
 };
 export const requireCompatibleSchema = (source: unknown): OrigamixPageSchema => {
-  const issue = contractCompatibilityIssue(
-    'Schema',
-    schemaVersionOf(source),
-    SUPPORTED_SCHEMA_VERSIONS,
-  );
+  const issue = contractCompatibilityIssue('Schema', schemaVersionOf(source), SCHEMA_VERSION);
   if (issue) throw invalid(issue);
   const validation = validatePage(source);
   if (!validation.valid) throw invalid(`Schema ${SCHEMA_VERSION} 内容校验失败，原数据已保留`);

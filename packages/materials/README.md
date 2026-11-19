@@ -6,12 +6,12 @@ Origamix 页面物料包，当前只提供 Ant Design。它拥有页面组件、
 
 ## 公开接口
 
-| 入口                                  | 消费方与用途                         |
-| ------------------------------------- | ------------------------------------ |
-| `@origamix/materials/antd`            | Runtime/生成页面使用的组件注册表     |
-| `@origamix/materials/antd/editor`     | 编辑器使用的分组、清单与扩展注册     |
-| `@origamix/materials`                 | `src/` 的公共类型与辅助函数          |
-| `@origamix/materials/antd/manifest`   | Server、Agent 使用的纯数据物料清单   |
+| 入口                              | 消费方与用途                     |
+| --------------------------------- | -------------------------------- |
+| `@origamix/materials/antd`        | Runtime/生成页面使用的组件注册表 |
+| `@origamix/materials/antd/editor` | 编辑器使用的分组、清单与扩展注册 |
+
+| `@origamix/materials/antd/manifest` | Server、Agent 使用的纯数据物料清单 |
 | `@origamix/materials/antd/validation` | 物料字段与跨元素语义校验，不加载组件 |
 
 运行、编辑和清单使用各自的 Ant Design 子入口，物料编写 API 使用根入口，不提供旧入口别名；格式类型直接从 Shared 导入。`antd/editor` 导出 `materialGroups`、`antdMaterialManifest` 与空的 `propertyEditors`；列与选项编辑器通过 editor-only custom 属性控件提供。
@@ -35,7 +35,7 @@ pnpm --filter @origamix/materials test
 pnpm --filter @origamix/materials... build
 ```
 
-`build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 `pnpm check:staged` 各校验一次已提交的 Manifest，再用同一份产物执行构建、类型检查与测试。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。根 `pnpm dev` 会在首次库准备后自动启动一个 `manifest:watch`，退出时一并清理，无需额外开终端。监听生成文件不会触发第二轮构建；原有源码监听仍顺序重建 Materials、Server。`pnpm dev:web` 在每轮 Materials 构建前执行一次生成。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
+`build`、`typecheck` 和 `test` 会先生成 Manifest，生成失败则中止。生成文件是可见、受版本管理的源码依赖，必须随物料配置一起提交，禁止手动修改。公共属性、生命周期和版本由纯数据辅助统一补齐，不逐物料重复输出；编辑器和运行时统一通过 `antd/manifest.ts` 引用。`pnpm --filter @origamix/materials manifest:check` 只检查一致性，不写文件；首次检查前准备 Shared/Runtime，或运行根 `pnpm build:libs:check`。根 `pnpm check` 和 `pnpm check:staged` 各校验一次已提交的 Manifest，再用同一份产物执行构建、类型检查与测试。`pnpm --filter @origamix/materials manifest:watch` 可单独监听配置及共享依赖；每轮使用新进程加载最新模块，成功后原子替换文件，无变化不写入；使用源码目录轮询以规避原生文件监听数量限制，不扫描依赖或构建产物。桌面和 Web 的开发启动器在每轮 Materials 构建前生成一次清单，再顺序构建 Materials 和 Server。生成文件不会触发第二轮构建。配置应能在 Node 中加载，浏览器专属组件使用 lazy 引入。
 
 tsdown 输出到 `dist/`；根 `pnpm pack:npm` 构建并生成 tarball。工作区使用 public 与 internal 两组 dist 入口，npm 归档公开 runtime／Manifest／纯校验入口。根 `pnpm typecheck` 会先按依赖顺序构建库；单独运行 App、Server 的类型检查前，先执行 `pnpm --filter @origamix/materials... build`。Shared 的代码与类型、Runtime 的物料注入类型均内联，不成为安装依赖。React、Ant Design、Runtime、Lucide 为运行 peer dependencies；UI 是工作区内部编辑依赖，npm 归档不声明该私有 peer。模板应用壳使用 Ant Design 控件。
 

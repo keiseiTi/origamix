@@ -91,10 +91,10 @@ const seedPreviewPage = async (
   });
 };
 
-const verifyPreview = async (contents: WebContents): Promise<void> => {
+const verifyPreview = async (contents: WebContents, pageName = 'Home'): Promise<void> => {
   await waitFor(() =>
     contents.executeJavaScript(`(() => {
-      const page = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Home');
+      const page = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === ${JSON.stringify(pageName)});
       if (!page) return false;
       page.click();
       return true;
@@ -152,7 +152,9 @@ const verifyPreview = async (contents: WebContents): Promise<void> => {
     );
   }
   const blocked = await contents.executeJavaScript(
-    `document.querySelector('iframe[title="Home 预览"]').contentDocument === null`,
+    `[...document.querySelectorAll('iframe')].find(
+      (frame) => frame.title === ${JSON.stringify(pageName + ' 预览')},
+    )?.contentDocument === null`,
   );
   if (!blocked) throw new Error('The workbench can read the preview document');
 };

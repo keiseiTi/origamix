@@ -1,8 +1,4 @@
-import type {
-  ProjectExportSnapshot,
-  ProjectSyncReceipt,
-  ProjectSyncSnapshot,
-} from '@origamix/shared';
+import type { ProjectExportSnapshot } from '@origamix/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../projects/project-repository';
 import type { ProjectService } from '../projects/project-service';
@@ -24,7 +20,11 @@ type ProjectQueries = Pick<ProjectRepository, 'getProject' | 'getPage'>;
 type TreeQueries = {
   [K in 'listProjects' | 'listPages']: (
     ...args: Parameters<ProjectRepository[K]>
-  ) => Awaitable<ReturnType<ProjectRepository[K]>>;
+  ) => Awaitable<
+    K extends 'listProjects'
+      ? (Omit<ReturnType<ProjectRepository[K]>[number], 'path'> & { path?: string })[]
+      : ReturnType<ProjectRepository[K]>
+  >;
 };
 type ProjectCommands = Pick<
   ProjectService,
@@ -34,37 +34,29 @@ type ProjectCommands = Pick<
   | 'getPageRoles'
   | 'updatePageRoles'
   | 'getStack'
-  | 'renameProject'
   | 'deleteProject'
   | 'createPage'
   | 'renamePage'
   | 'duplicatePage'
   | 'deletePage'
->;
+> & {
+  renameProject: (
+    projectId: string,
+    name: string,
+  ) => Promise<Omit<import('@origamix/shared').ProjectRecord, 'path'>>;
+};
 
-export interface HttpServerInput {
+interface HttpServerServices {
   desktopToken: string;
   serviceInstanceId: string;
   projects: TreeQueries & Partial<ProjectQueries>;
   projectService: ProjectCommands & Partial<Pick<ProjectService, 'createProject' | 'openProject'>>;
-  createDatabaseProject?: (
-    input: import('../projects/mysql-project-service').CreateDatabaseProject,
-  ) => Promise<import('@origamix/shared').ProjectRecord>;
   resolveSchemaPage?: (
     projectId: string,
     pageId: string,
   ) => import('../schema/schema-contracts').SchemaPageRef;
-  settingsAgent?: import('../agent/project-settings-agent-service').ProjectSettingsAgentService;
-  projectTasks?: Pick<import('../agent/project-task-service').ProjectTaskService, 'get' | 'decide'>;
-  projectApplyService?: ProjectApplyService;
   allowedOrigins?: readonly string[];
   templateDownload?: TemplateDownload;
-  projectSync?: {
-    identity(projectId: string): Promise<{ code: string }>;
-    prepare(projectId: string, targetId: string): Promise<ProjectSyncSnapshot>;
-    finish(projectId: string, targetId: string, snapshotId: string): Promise<ProjectSyncReceipt>;
-    export(projectId: string): Promise<ProjectExportSnapshot>;
-  };
   agent?: {
     conversations: Pick<AgentConversations, 'list' | 'history'>;
     runs: Pick<AgentRunService, 'get'>;
@@ -74,6 +66,16 @@ export interface HttpServerInput {
   agentUsage?: import('../agent/agent-usage-service').AgentUsageService;
   runtimeDiagnostics?: RuntimeDiagnosticService;
 }
+
+export type HttpServerInput = HttpServerServices &
+  (
+    | { host: 'desktop'; projectApplyService?: ProjectApplyService }
+    | {
+        host: 'web';
+        createDatabaseProject: import('../projects/mysql-project-service').MysqlProjectService['createDatabaseProject'];
+        exportProject?: (projectId: string) => Promise<ProjectExportSnapshot>;
+      }
+  );
 
 export type RouteInput<T> = {
   body: T;

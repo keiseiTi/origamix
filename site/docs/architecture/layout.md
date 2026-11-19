@@ -16,4 +16,4 @@ description: 项目清单配置、服务端保存和模板布局渲染的职责�
 
 清单中的 shell、layout 和 routing 均为必填。
 
-布局助手通过经过认证的 POST /projects/settings/assist 返回 NDJSON 事件，复用 PiAgentEngine、模型凭据与 RunBudgetController。工具白名单只有读取配置和 complete_project_settings，服务只产生建议，不能写清单或页面 Working。服务端校验页面引用与清单哈希；App 的共享配置会话再检查项目、草稿版本和连接身份。AI、表单和左侧效果使用同一临时草稿，显式保存仍只调用 ProjectService.updateSettings。布局对话为当前标签内的临时会话，不伪造页面 Run，不复用页面数据库记录，不做自动续跑。
+布局表单在当前标签保存临时草稿。用户保存配置时，ProjectService 校验项目、清单基线和页面引用，再提交设置。

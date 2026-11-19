@@ -97,6 +97,7 @@ const setup = () => {
     cancel: (runId: string) => runService.cancel(runId),
   } as unknown as AgentService;
   const server = createHttpServer({
+    host: 'desktop',
     desktopToken: 'desktop-token',
     serviceInstanceId: 'service-instance',
     projects,

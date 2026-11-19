@@ -94,7 +94,7 @@ export const assertCurrentSchema = (connection: DatabaseSync): void => {
   }
 };
 
-export const DATABASE_VERSION = 2;
+export const DATABASE_VERSION = 1;
 /** Create or validate the current SQLite schema. */
 export const initializeDatabase = (connection: DatabaseSync): void => {
   const version = (connection.prepare('PRAGMA user_version').get() as { user_version: number })

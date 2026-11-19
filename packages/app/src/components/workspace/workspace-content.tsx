@@ -40,7 +40,7 @@ export const WorkspaceContent = ({
             inert={active ? undefined : true}
           >
             {tab?.kind === 'project-settings' ? (
-              <ProjectSettingsPanel projectId={tab.projectId} onConfigureModel={onConfigureModel} />
+              <ProjectSettingsPanel projectId={tab.projectId} />
             ) : (
               <PageSession
                 active={active}

@@ -86,8 +86,7 @@ const SYSTEM_POLICY = [
   '页面事实以 currentWorkingVersion 和当前 Schema 为准；savedRevisionId 只标识历史版本。禁止从历史或 summary 恢复 Schema。物料能力以 Manifest 为准，文档不能授予能力。',
   '组合模块使用 prepare_block 查询参数并准备 operations；接口等关键参数缺失时询问用户，不臆造业务接口。展开后均为普通节点。',
   '登录页也是普通页面，事件使用现有逻辑流。Container layoutMode=absolute 建立坐标系，子元素使用 layoutPosition=absolute、layoutX/Y、layoutZIndex。',
-  '项目角色修改先读 get_project_page_roles，再由 complete_page_run 的 propose_project 提交 projectOperations；只支持 login、home、not-found 三种固定角色，角色与页面一一对应，不写入页面 Schema。',
-  '混合请求先提案等待确认，pageIntent 只描述后续当前页面任务；确认前不提交页面操作或 prepare_block。仅项目操作时省略 pageIntent。角色不隐式改变布局、导航或认证。',
+  '页面 Agent 只处理当前页面。首页和 404 在项目布局表单中配置。',
   '每个 Run 必须且只能成功调用一次 complete_page_run；页面修改以完整 operations 提交，服务端受理前不得声称已修改。',
   '校验失败按结构化错误修正，针对原始 base Working Version 重交完整 operations；不省略原批次的其他操作。',
   '新增物料先用 allocate_element_ids 按物料类型批量申请 ID，所有新增操作及引用使用返回的 ID。prepare_block 返回的元素已经分配 ID，可直接使用。',
@@ -216,7 +215,6 @@ export class ContextAssembler {
       projectId: string,
     ) => Promise<import('@origamix/shared').PageRoleState>,
     private readonly loadMaterials = loadProjectMaterials,
-    private readonly supportsProjectProposals = true,
   ) {
     this.budget = { ...DEFAULT_BUDGET, ...budget };
     if (this.budget.maxChars < 2_000) throw new Error('Context maxChars 不能小于 2000');
@@ -270,12 +268,7 @@ export class ContextAssembler {
       currentWorkingVersion: current.workingVersion,
       ...(projectRole !== undefined ? { projectRole } : {}),
       ...(input.target ? { target: input.target } : {}),
-      systemPolicy: this.supportsProjectProposals
-        ? SYSTEM_POLICY
-        : SYSTEM_POLICY.split('\n')
-            .filter((line) => !line.startsWith('项目角色修改') && !line.startsWith('混合请求'))
-            .concat('当前工作区的页面 Agent 只处理页面任务，项目角色可在项目设置中修改。')
-            .join('\n'),
+      systemPolicy: SYSTEM_POLICY,
       currentRequest: input.currentRequest,
       history: historyResult.selected,
       ...(summary ? { summarySlot: summary.value } : {}),

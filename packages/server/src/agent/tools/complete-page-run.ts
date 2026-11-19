@@ -1,5 +1,4 @@
 import { createAgentElementIds, type AgentElementIds } from './element-ids';
-import type { ProjectProposal, ProjectRoleOperation } from '@origamix/shared';
 import type { ProjectMaterialReader } from './material-reader';
 import { nanoid } from 'nanoid';
 import { hashOperations as operationDigest } from './operation-digest';
@@ -36,12 +35,6 @@ export interface CompletePageRunToolScope {
 }
 
 export interface CompletePageRunToolDependencies {
-  prepareProject?: (
-    projectId: string,
-    operations: ProjectRoleOperation[],
-    response: string,
-    pageIntent?: string,
-  ) => Promise<ProjectProposal>;
   loadMaterials: ProjectMaterialReader;
   projects: AgentProjects;
   resolvePage?: AgentSchemaPage;
@@ -64,7 +57,6 @@ const assertNotCancelled = (signal: AbortSignal): void => {
 };
 
 const terminalOutcome = (input: CompletePageRunInput): PageAgentOutcome => {
-  if (input.outcome === 'propose_project') return 'needs_project_confirmation';
   if (input.outcome === 'apply_changes')
     return input.answeredQuestion ? 'changed_and_answered' : 'changed';
   if (input.outcome === 'answer_only') return 'answered_only';
@@ -88,7 +80,7 @@ export const createCompletePageRunTool = (
   return {
     name: terminalToolName,
     description:
-      '结束当前页面请求。涉及项目角色修改时先提交项目提案。' +
+      '结束当前页面请求。' +
       '每个 Run 必须且只能成功调用一次。需要修改时提交完整 operations 和最终回复；多个已有元素匹配但用户没有指定目标或明确批量范围时，必须提交 needs_clarification、question 和真实元素 candidates，不得先修改。只回答、无需修改或拒绝时提交对应 outcome。',
     parameters: CompletePageRunToolParametersSchema,
     execute: async (raw, signal) => {
@@ -122,9 +114,7 @@ export const createCompletePageRunTool = (
       const input = raw as CompletePageRunInput;
       if (
         rejectedWrite &&
-        (input.outcome === 'no_change_needed' ||
-          input.outcome === 'answer_only' ||
-          input.outcome === 'propose_project')
+        (input.outcome === 'no_change_needed' || input.outcome === 'answer_only')
       ) {
         throw invalid(
           '本轮页面写入尚未成功，必须修正并提交 apply_changes，不能报告无需修改或只回答',
@@ -147,39 +137,6 @@ export const createCompletePageRunTool = (
         throw new AgentEngineError('BUDGET_EXCEEDED', 'Schema 修复次数已超过本次运行预算');
       }
 
-      if (input.outcome === 'propose_project') {
-        if (!scope.pageId || !dependencies.prepareProject) throw invalid('当前目标不支持项目操作');
-        if (
-          run.retryOfRunId &&
-          (await dependencies.runs.get(run.retryOfRunId))?.outcome === 'needs_project_confirmation'
-        )
-          throw invalid('已确认的页面阶段不能再次提出项目操作');
-        const project = await dependencies.projects.getProject(scope.projectId);
-        const page = await dependencies.projects.getPage(scope.projectId, scope.pageId);
-        if (!project || !page) throw notFound('页面不属于当前项目');
-        const working = await getWorkingSchemaState(
-          dependencies.resolvePage?.(scope.projectId, scope.pageId!) ??
-            requireFileSchemaPage(project, page),
-        );
-        if (working.workingVersion !== scope.baseWorkingVersion)
-          throw conflict('页面草稿已变化，不能发布项目提案');
-        const proposal = await dependencies.prepareProject(
-          scope.projectId,
-          input.projectOperations,
-          input.response,
-          input.pageIntent,
-        );
-        assertNotCancelled(signal);
-        await dependencies.runService.transition(scope.runId, 'deciding', {
-          outcome: 'needs_project_confirmation',
-          outcomeJson: proposal,
-        });
-        return {
-          accepted: true,
-          outcome: 'needs_project_confirmation',
-          response: input.response,
-        } satisfies CompletePageRunResult;
-      }
       const outcome = terminalOutcome(input);
       const operations = input.outcome === 'apply_changes' ? input.operations : undefined;
       const digest = operations ? operationDigest(operations) : undefined;

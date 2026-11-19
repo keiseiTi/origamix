@@ -4,6 +4,7 @@ import {
   RevisionIdSchema,
   ElementIdSchema,
   PageElementSchema,
+  PageSchema,
   GlobalVariableSchema,
 } from './page-schema.ts';
 import { FlowIdSchema, PageFlowSchema, ElementEventBindingSchema } from '../flow/flow-schema.ts';
@@ -177,3 +178,39 @@ export type ChangeSource = Static<typeof ChangeSourceSchema>;
 export type SchemaOperation = Static<typeof SchemaOperationSchema>;
 
 export type SchemaOperationBatch = Static<typeof SchemaOperationBatchSchema>;
+
+const ReconcileElementTreeSchema = Type.Object(
+  {
+    operation: Type.Literal('reconcileElementTree'),
+    layout: PageSchema.properties.layout,
+    set: PageSchema.properties.elements,
+    remove: Type.Array(ElementIdSchema, { uniqueItems: true }),
+  },
+  { additionalProperties: false },
+);
+
+const ReconcileFlowsSchema = Type.Object(
+  {
+    operation: Type.Literal('reconcileFlows'),
+    set: PageSchema.properties.flows,
+    remove: Type.Array(FlowIdSchema, { uniqueItems: true }),
+  },
+  { additionalProperties: false },
+);
+
+const SetFlowGraphSchema = Type.Object(
+  {
+    operation: Type.Literal('setFlowGraph'),
+    graph: Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+
+// These editor operations support whole-tree rearrangements and draft-only diagram metadata.
+export const EditorSchemaOperationSchema = Type.Union([
+  ReconcileElementTreeSchema,
+  ReconcileFlowsSchema,
+  SetFlowGraphSchema,
+]);
+
+export type WorkingSchemaOperation = SchemaOperation | Static<typeof EditorSchemaOperationSchema>;

@@ -29,7 +29,12 @@ describe('visual editor Operation Batch', () => {
 
     expect(deriveSchemaOperations(before, after)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ operation: 'addElement', elementId: 'button_one' }),
+        expect.objectContaining({
+          operation: 'reconcileElementTree',
+          layout: after.layout,
+          set: { button_one: after.elements.button_one },
+          remove: [],
+        }),
       ]),
     );
     after.elements.button_one!.props = {

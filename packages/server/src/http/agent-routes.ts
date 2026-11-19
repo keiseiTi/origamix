@@ -1,7 +1,4 @@
 import {
-  ProjectProposalSchema,
-  ProjectTaskScopeSchema,
-  ProjectTaskDecisionSchema,
   CancelAgentRunRequestSchema,
   agentTargetFields,
   resolveAgentTarget,
@@ -42,10 +39,6 @@ const publicRun = (run: AgentRunRecord): AgentRun => ({
   Value.Check(ClarificationResultSchema, run.outcomeJson)
     ? { clarification: run.outcomeJson as AgentRun['clarification'] }
     : {}),
-  ...(run.outcome === 'needs_project_confirmation' &&
-  Value.Check(ProjectProposalSchema, run.outcomeJson)
-    ? { projectProposal: run.outcomeJson }
-    : {}),
   repairAttempts: run.repairAttempts,
   ...(run.resultWorkingVersion ? { resultWorkingVersion: run.resultWorkingVersion } : {}),
   ...(run.resultWorkingHash ? { resultWorkingHash: run.resultWorkingHash } : {}),
@@ -61,19 +54,6 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     for (const stream of streams) stream.end();
   });
   const agent = input.agent;
-  if (input.projectTasks) {
-    const tasks = input.projectTasks;
-    server.post(
-      '/api/v1/agent/project-task/get',
-      { schema: { body: ProjectTaskScopeSchema } },
-      route<Static<typeof ProjectTaskScopeSchema>>((request) => tasks.get(request.body)),
-    );
-    server.post(
-      '/api/v1/agent/project-task/decide',
-      { schema: { body: ProjectTaskDecisionSchema } },
-      route<Static<typeof ProjectTaskDecisionSchema>>((request) => tasks.decide(request.body)),
-    );
-  }
   {
     const prefix = '/agent';
     const ScopeSchema = PageScopeSchema;

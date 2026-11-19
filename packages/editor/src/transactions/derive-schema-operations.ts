@@ -1,128 +1,56 @@
 import { equalJson } from '@origamix/shared';
-import type { OrigamixPageSchema, SchemaOperation } from '@origamix/shared';
+import type { OrigamixPageSchema, WorkingSchemaOperation } from '@origamix/shared';
 
-const same = (left: unknown, right: unknown): boolean => equalJson(left, right);
+const changes = <T>(before: Record<string, T>, after: Record<string, T>) => ({
+  set: Object.fromEntries(
+    Object.entries(after).filter(([id, value]) => !equalJson(before[id], value)),
+  ),
+  remove: Object.keys(before).filter((id) => !Object.hasOwn(after, id)),
+});
 
-const parentMap = (schema: OrigamixPageSchema): Map<string, string> => {
-  const result = new Map<string, string>();
-  for (const [parentId, children] of Object.entries(schema.layout.structure))
-    for (const childId of children) result.set(childId, parentId);
-  return result;
-};
-
-const depthOf = (elementId: string, parents: Map<string, string>): number => {
-  let depth = 0;
-  let current = elementId;
-  const visited = new Set<string>();
-  while (parents.has(current) && !visited.has(current)) {
-    visited.add(current);
-    current = parents.get(current)!;
-    depth += 1;
-  }
-  return depth;
-};
-
-/**
- * Converts an Editor snapshot into deterministic domain operations.
- * Returns null when the change cannot be represented safely by the current
- * operation protocol, allowing the editor-only snapshot endpoint to be used.
- */
 export const deriveSchemaOperations = (
   before: OrigamixPageSchema,
   after: OrigamixPageSchema,
-): SchemaOperation[] | null => {
-  if (before.layout.root !== after.layout.root || !same(before.extensions, after.extensions))
-    return null;
+): WorkingSchemaOperation[] => {
+  const operations: WorkingSchemaOperation[] = [];
+  const elements = changes(before.elements, after.elements);
+  const updatedIds = Object.keys(elements.set);
+  const layoutChanged = !equalJson(before.layout, after.layout);
+  const [onlyId] = updatedIds;
+  const oldElement = onlyId ? before.elements[onlyId] : undefined;
+  const newElement = onlyId ? elements.set[onlyId] : undefined;
 
-  const operations: SchemaOperation[] = [];
-  const beforeIds = new Set(Object.keys(before.elements));
-  const afterIds = new Set(Object.keys(after.elements));
-  const beforeParents = parentMap(before);
-  const afterParents = parentMap(after);
-  const removedIds = [...beforeIds].filter((id) => !afterIds.has(id));
-
-  // Removing an ancestor while retaining one of its descendants would require
-  // reparenting before deletion. Keep that uncommon transformation on the
-  // validated editor-only snapshot fallback instead of guessing an order.
-  for (const removedId of removedIds) {
-    const stack = [...(before.layout.structure[removedId] ?? [])];
-    while (stack.length > 0) {
-      const descendant = stack.pop()!;
-      if (afterIds.has(descendant)) return null;
-      stack.push(...(before.layout.structure[descendant] ?? []));
-    }
-  }
-
-  const removedSet = new Set(removedIds);
-  for (const elementId of removedIds.filter((id) => !removedSet.has(beforeParents.get(id) ?? '')))
-    operations.push({ operation: 'removeElement', elementId, removeDescendants: true });
-
-  const addedIds = [...afterIds]
-    .filter((id) => !beforeIds.has(id))
-    .sort((left, right) => depthOf(left, afterParents) - depthOf(right, afterParents));
-  for (const elementId of addedIds) {
-    if (elementId === after.layout.root) return null;
-    const parentId = afterParents.get(elementId);
-    const element = after.elements[elementId];
-    if (!parentId || !element) return null;
+  if (
+    !layoutChanged &&
+    !elements.remove.length &&
+    updatedIds.length === 1 &&
+    onlyId &&
+    oldElement &&
+    newElement &&
+    oldElement.type === newElement.type
+  ) {
+    const props = changes(oldElement.props, newElement.props);
     operations.push({
-      operation: 'addElement',
-      elementId,
-      element,
-      parentId,
-      index: after.layout.structure[parentId]?.indexOf(elementId),
+      operation: 'updateElementProps',
+      elementId: onlyId,
+      ...(Object.keys(props.set).length ? { set: props.set } : {}),
+      ...(props.remove.length ? { unset: props.remove } : {}),
     });
+  } else if (layoutChanged || elements.remove.length || updatedIds.length) {
+    operations.push({ operation: 'reconcileElementTree', layout: after.layout, ...elements });
   }
 
-  for (const elementId of [...beforeIds].filter((id) => afterIds.has(id))) {
-    const beforeElement = before.elements[elementId]!;
-    const afterElement = after.elements[elementId]!;
-    if (beforeElement.type !== afterElement.type) {
-      operations.push({ operation: 'replaceElement', elementId, element: afterElement });
-      continue;
-    }
-    const set = Object.fromEntries(
-      Object.entries(afterElement.props).filter(
-        ([key, value]) => !same(beforeElement.props[key], value),
-      ),
-    );
-    const unset = Object.keys(beforeElement.props).filter((key) => !(key in afterElement.props));
-    if (Object.keys(set).length > 0 || unset.length > 0)
-      operations.push({
-        operation: 'updateElementProps',
-        elementId,
-        ...(Object.keys(set).length > 0 ? { set } : {}),
-        ...(unset.length > 0 ? { unset } : {}),
-      });
-  }
-
-  for (const [parentId, children] of Object.entries(after.layout.structure)) {
-    for (const [index, elementId] of children.entries()) {
-      if (elementId === after.layout.root || !after.elements[elementId]) return null;
-      if (
-        !addedIds.includes(elementId) &&
-        beforeParents.get(elementId) === parentId &&
-        before.layout.structure[parentId]?.indexOf(elementId) === index
-      )
-        continue;
-      operations.push({ operation: 'moveElement', elementId, parentId, index });
-    }
-  }
-
-  for (const flowId of Object.keys(before.flows).filter((id) => !(id in after.flows)))
-    operations.push({ operation: 'removeFlow', flowId });
-  for (const [flowId, flow] of Object.entries(after.flows)) {
-    if (!(flowId in before.flows)) operations.push({ operation: 'addFlow', flowId, flow });
-    else if (!same(before.flows[flowId], flow))
-      operations.push({ operation: 'updateFlow', flowId, flow });
-  }
-  if (!same(before.bindElements, after.bindElements))
+  const flows = changes(before.flows, after.flows);
+  if (flows.remove.length || Object.keys(flows.set).length)
+    operations.push({ operation: 'reconcileFlows', ...flows });
+  if (!equalJson(before.bindElements, after.bindElements))
     operations.push({ operation: 'setElementBindings', bindings: after.bindElements });
-  if (!same(before.context.globalVariables, after.context.globalVariables))
+  if (!equalJson(before.context.globalVariables, after.context.globalVariables))
     operations.push({
       operation: 'updatePageContext',
       globalVariables: after.context.globalVariables,
     });
-
+  if (!equalJson(before.extensions.flowGraph, after.extensions.flowGraph))
+    operations.push({ operation: 'setFlowGraph', graph: after.extensions.flowGraph ?? null });
   return operations;
 };

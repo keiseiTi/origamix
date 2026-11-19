@@ -141,10 +141,29 @@ vi.mock('../../../src/components/editor/index', () => ({
               null,
             )}
         </div>
+        {visible && (
+          <output aria-label='画布 Schema'>{JSON.stringify(working.snapshot?.schema)}</output>
+        )}
         <button
           disabled={readOnly || working.loading || working.refreshing}
           aria-label='编辑画布'
-          onClick={() => working.onChange(editedSchema, { immediate: true })}
+          onClick={() => {
+            const current = working.snapshot?.schema;
+            if (!current) return;
+            working.onChange(
+              {
+                ...current,
+                elements: {
+                  ...current.elements,
+                  element_root: {
+                    ...current.elements.element_root,
+                    props: { ...current.elements.element_root.props, padding: 24 },
+                  },
+                },
+              },
+              { immediate: true },
+            );
+          }}
         >
           {readOnlyMessage ?? '画布'}
         </button>
@@ -359,7 +378,7 @@ describe('workspace recovery controls', () => {
     expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2);
   });
 
-  it('signals a Working refresh without replacing the host session when an Agent commits', async () => {
+  it('loads the Agent draft and continues editing from its Working version', async () => {
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
@@ -388,7 +407,16 @@ describe('workspace recovery controls', () => {
     await waitFor(() => expect(listener).toBeDefined());
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
 
+    const agentSchema = {
+      ...schema,
+      elements: { element_root: { type: 'container', props: { height: 320 } } },
+    };
     mocks.workingState.mockClear();
+    mocks.workingState.mockResolvedValue({
+      revisionId: 'revision_1',
+      workingVersion: 3,
+      schema: agentSchema,
+    });
     listener!.onEvent({
       version: '1',
       eventId: 1,
@@ -404,7 +432,43 @@ describe('workspace recovery controls', () => {
     await waitFor(() => expect(mocks.workingState).toHaveBeenCalledWith('project_1', 'page_a'));
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
     await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
-    await act(async () => Promise.resolve());
+    await waitFor(() =>
+      expect(screen.getByLabelText('画布 Schema').textContent).toBe(JSON.stringify(agentSchema)),
+    );
+    mocks.getAgentRun.mockResolvedValue({
+      run: { runId: 'run_1', pageId: 'page_a', status: 'completed', resultWorkingVersion: 3 },
+    });
+    listener!.onEvent({
+      version: '1',
+      eventId: 2,
+      sequence: 2,
+      type: 'run.completed',
+      runId: 'run_1',
+      pageId: 'page_a',
+      requestId: 'request_1',
+      occurredAt: '2026-09-23T00:00:01.000Z',
+      payload: { outcome: 'changed', resultWorkingVersion: 3 },
+    });
+    mocks.applyWorkingOperations.mockResolvedValue({
+      revisionId: 'revision_1',
+      workingVersion: 4,
+      schema: {
+        ...agentSchema,
+        elements: { element_root: { type: 'container', props: { height: 320, padding: 24 } } },
+      },
+    });
+    const canvas = screen.getByRole<HTMLButtonElement>('button', { name: '编辑画布' });
+    await waitFor(() => expect(canvas.disabled).toBe(false));
+    fireEvent.click(canvas);
+    await waitFor(() =>
+      expect(mocks.applyWorkingOperations).toHaveBeenCalledWith('project_1', 'page_a', 3, [
+        {
+          operation: 'updateElementProps',
+          elementId: 'element_root',
+          set: { padding: 24 },
+        },
+      ]),
+    );
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });
 });

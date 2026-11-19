@@ -221,20 +221,12 @@ export const useEditorSession = (
           },
           candidate,
         );
-        const request =
-          transaction.kind === 'operations'
-            ? service.applyWorkingOperations(
-                transaction.scope.projectId,
-                transaction.scope.pageId,
-                transaction.baseWorkingVersion,
-                transaction.operations,
-              )
-            : service.updateWorking(
-                transaction.scope.projectId,
-                transaction.scope.pageId,
-                transaction.baseWorkingVersion,
-                transaction.schema,
-              );
+        const request = service.applyWorkingOperations(
+          transaction.scope.projectId,
+          transaction.scope.pageId,
+          transaction.baseWorkingVersion,
+          transaction.operations,
+        );
         const operation = request
           .then((result) => {
             if (!sessionRef.current.active) throw new Error('编辑会话已切换，旧请求结果已忽略');

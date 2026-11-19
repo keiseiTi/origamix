@@ -8,7 +8,7 @@ const ApplyBodySchema = withPageScope(ApplyPageSchema);
 const ReloadBodySchema = withPageScope(ReloadFromProjectSchema);
 
 export const registerApplyRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
-  if (!input.projectApplyService) return;
+  if (input.host !== 'desktop' || !input.projectApplyService) return;
   const projectApply = input.projectApplyService;
   server.post(
     '/api/v1/pages/apply-state/get',

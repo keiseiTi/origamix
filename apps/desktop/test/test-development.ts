@@ -231,6 +231,7 @@ try {
     (await m.getApiConnection()).serviceInstanceId === (await window.api.backend.getConnection()).serviceInstanceId)`),
   );
   const templateBefore = await readFile(join(desktop, 'dist/template/README.md'), 'utf8');
+  const fullRebuildStart = output.length;
   for (const name of ['shared', 'runtime', 'server']) {
     const source = join(
       root,
@@ -279,7 +280,10 @@ try {
     await readFile(join(root, 'packages/materials/antd/generated/manifests.ts'), 'utf8'),
     /Development button/,
   );
-  assert.equal(output.match(/已启动 Materials manifest:watch/g)?.length, 1);
+  assert.equal(
+    output.slice(fullRebuildStart).match(/Generated \d+ material manifests/g)?.length,
+    1,
+  );
   assert.match(
     await readFile(join(desktop, 'dist/template/README.md'), 'utf8'),
     /Development template refreshed/,

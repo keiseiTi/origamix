@@ -34,7 +34,6 @@ const owners = new Map([
       'projects/project-scaffold',
       'projects/page-deletion-store',
       'projects/page-role-store',
-      'projects/project-task-store',
       'schema/working-schema-store',
       'schema/target-schema-store',
       'schema/project-apply-service',
@@ -107,7 +106,6 @@ export const serverBoundaries: Rule.RuleModule = {
             {
               runtime: 'server',
               utility: 'hosts/utility-process',
-              template: 'templates/copy-template',
             } as Record<string, string>
           )[specifier.slice('@origamix/server/'.length)] ??
           sourcePath(specifier.slice('@origamix/server/'.length));

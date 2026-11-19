@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import {
   type OrigamixPageSchema,
   type ReloadFromProjectRequest,
-  type SchemaOperation,
+  type WorkingSchemaOperation,
   isApplyPageResult,
   isPageApplyState,
   type ApplyPageResult,
@@ -31,23 +31,11 @@ export const schemaService = {
     request<RevisionHistory>('/pages/revisions/list', { projectId, pageId }),
   getRevision: (projectId: string, pageId: string, revisionId: string): Promise<SchemaResult> =>
     request<SchemaResult>('/pages/revisions/schema/get', { projectId, pageId, revisionId }),
-  updateWorking: (
-    projectId: string,
-    pageId: string,
-    baseWorkingVersion: number,
-    schema: OrigamixPageSchema,
-  ): Promise<WorkingSchemaResult> =>
-    request<WorkingSchemaResult>('/pages/working-state/update', {
-      projectId,
-      pageId,
-      baseWorkingVersion,
-      schema,
-    }),
   applyWorkingOperations: (
     projectId: string,
     pageId: string,
     baseWorkingVersion: number,
-    operations: readonly SchemaOperation[],
+    operations: readonly WorkingSchemaOperation[],
   ): Promise<WorkingSchemaResult> =>
     request<WorkingSchemaResult>('/pages/working-operations/apply', {
       projectId,

@@ -36,6 +36,7 @@ import { nanoid } from 'nanoid';
 import {
   type OpenProjectResult,
   type PageRecord,
+  TEMPLATE_PROJECT_ID,
   type ProjectRecord,
   type OrigamixPageSchema,
   resolveProjectStack,
@@ -43,7 +44,7 @@ import {
 
 import {
   discardInitializedPageSchema,
-  getSchema,
+  getWorkingSchemaState,
   initializePageSchema,
 } from '../schema/schema-service';
 import type { ProjectRepository } from './project-repository';
@@ -137,17 +138,6 @@ export class ProjectService {
     initializeIfNeeded?: boolean;
   }): Promise<OpenProjectResult> {
     const path = this.grants.resolveGrant(input.directoryGrantId);
-    const directoryName = basename(path);
-    const name = requireProjectName((input.name ?? directoryName).trim());
-    const inferredCode =
-      directoryName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') || 'imported-project';
-    const code = (input.code ?? inferredCode).trim();
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code))
-      throw invalid('项目标识仅支持小写字母、数字和连字符');
-    const pageDirectory = normalizePageDirectory(input.pageDirectory);
     try {
       await access(join(path, 'origamix.project.json'));
     } catch (error) {
@@ -170,6 +160,17 @@ export class ProjectService {
           status: 'initialization_required',
           displayPath: path,
         };
+      const directoryName = basename(path);
+      const name = requireProjectName((input.name ?? directoryName).trim());
+      const inferredCode =
+        directoryName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'imported-project';
+      const code = (input.code ?? inferredCode).trim();
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code))
+        throw invalid('项目标识仅支持小写字母、数字和连字符');
+      const pageDirectory = normalizePageDirectory(input.pageDirectory);
       await this.scaffold.initializeExistingProject(path, { name, code, pageDirectory });
     }
     this.grants.consumeGrant(input.directoryGrantId);
@@ -364,7 +365,7 @@ export class ProjectService {
     const project = this.projects.getProject(projectId);
     const page = this.projects.getPage(projectId, pageId);
     if (!project || !page) throw notFound('页面不存在');
-    const current = await getSchema({
+    const current = await getWorkingSchemaState({
       projectPath: project.path,
       pageId: page.id,
       slug: page.slug,
@@ -479,6 +480,8 @@ export class ProjectService {
   reconcile = async (path: string): Promise<ProjectRecord> =>
     withProjectActivity(path, async () => {
       const manifest = await this.manifest.readManifest(path);
+      if (manifest.projectId === TEMPLATE_PROJECT_ID)
+        throw invalid('此目录是基础模板，请先创建项目');
       const timestamp = now();
       const pages: PageRecord[] = [];
       for (const item of manifest.pages) {

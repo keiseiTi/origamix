@@ -1,5 +1,5 @@
-import { usesDatabaseProjects } from '@/services/projects';
-import { ProjectSyncDialog } from './mod/project-sync-dialog';
+import { workbenchHost } from '@/services/projects';
+import { ProjectExportDialog } from './mod/project-export-dialog';
 import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';
 import { FolderOpen, FolderPlus, LogOut, Settings, User } from 'lucide-react';
@@ -36,10 +36,10 @@ export const Sidebar = ({
 }: SidebarProps): React.JSX.Element => {
   const isTemporary = usePreferencesStore((state) => state.sidebarCollapsed);
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
-  const webProduct = usesDatabaseProjects();
-  const canCreateProject = supportsNativeProjectDirectories || webProduct;
+  const webHost = workbenchHost() === 'web';
+  const canCreateProject = supportsNativeProjectDirectories || webHost;
   const userProfile = usePreferencesStore((state) => state.userProfile);
-  const [syncProject, setSyncProject] = useState<ProjectItem | null>(null);
+  const [exportProject, setExportProject] = useState<ProjectItem | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [pageForm, setPageForm] = useState<{ projectId: string; page?: PageItem } | null>(null);
   const [lifecycleTarget, setLifecycleTarget] = useState<LifecycleTarget | null>(null);
@@ -119,7 +119,7 @@ export const Sidebar = ({
           <FolderPlus size={15} />
           新建项目
         </Button>
-        {!webProduct && (
+        {!webHost && (
           <Button
             variant='ghost'
             className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
@@ -147,11 +147,11 @@ export const Sidebar = ({
         <ProjectNavigation
           onCreatePage={openPageModal}
           onSelectPage={onSelectPage}
-          onSync={
-            webProduct
+          onExport={
+            webHost
               ? (project) => {
                   keepSidebarOpen();
-                  setSyncProject(project);
+                  setExportProject(project);
                 }
               : undefined
           }
@@ -195,12 +195,12 @@ export const Sidebar = ({
           )}
         </div>
       </aside>
-      {syncProject && (
-        <ProjectSyncDialog
-          projectId={syncProject.id}
-          name={syncProject.name}
+      {exportProject && (
+        <ProjectExportDialog
+          projectId={exportProject.id}
+          name={exportProject.name}
           flushEditor={flushEditor}
-          onClose={() => setSyncProject(null)}
+          onClose={() => setExportProject(null)}
         />
       )}
       {projectActions.pendingInitialization && (

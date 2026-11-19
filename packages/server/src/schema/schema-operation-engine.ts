@@ -1,9 +1,11 @@
 import {
   type OrigamixPageSchema,
-  type SchemaOperation,
+  type WorkingSchemaOperation,
+  EditorSchemaOperationSchema,
   validatePage,
   validateSchemaOperation,
 } from '@origamix/shared';
+import { Check } from '@sinclair/typebox/value';
 
 export type SchemaOperationErrorCode =
   | 'INVALID_OPERATION'
@@ -32,7 +34,7 @@ export class SchemaOperationError extends Error {
 
 export interface SchemaOperationResult {
   operationIndex: number;
-  operation: SchemaOperation['operation'];
+  operation: WorkingSchemaOperation['operation'];
   summary: string;
 }
 
@@ -133,7 +135,7 @@ const assertConnectedSubtree = (
 
 const executeOperation = (
   schema: OrigamixPageSchema,
-  operation: SchemaOperation,
+  operation: WorkingSchemaOperation,
   operationIndex: number,
 ): string => {
   if (operation.operation === 'addElement') {
@@ -276,20 +278,40 @@ const executeOperation = (
     return `设置事件绑定 ${operation.elementId}.${operation.event}`;
   }
 
+  if (operation.operation === 'reconcileElementTree') {
+    for (const id of operation.remove) delete schema.elements[id];
+    schema.elements = { ...schema.elements, ...structuredClone(operation.set) };
+    schema.layout = structuredClone(operation.layout);
+    return '更新页面元素树';
+  }
+
+  if (operation.operation === 'reconcileFlows') {
+    for (const id of operation.remove) delete schema.flows[id];
+    schema.flows = { ...schema.flows, ...structuredClone(operation.set) };
+    return '更新页面流程';
+  }
+
+  if (operation.operation === 'setFlowGraph') {
+    if (operation.graph === null) delete schema.extensions.flowGraph;
+    else schema.extensions.flowGraph = structuredClone(operation.graph);
+    return '更新流程图布局';
+  }
+
   schema.context.globalVariables = structuredClone(operation.globalVariables);
   return '更新页面上下文';
 };
 
 export const applySchemaOperationBatch = (
   source: OrigamixPageSchema,
-  operations: readonly SchemaOperation[],
+  operations: readonly WorkingSchemaOperation[],
 ): SchemaOperationBatchResult => {
   if (operations.length === 0) fail('INVALID_OPERATION', 'Operation Batch 不能为空', 0);
   const schema = structuredClone(source);
   const results: SchemaOperationResult[] = [];
   for (const [operationIndex, operation] of operations.entries()) {
     const validation = validateSchemaOperation(operation);
-    if (!validation.valid) fail('INVALID_OPERATION', 'Schema Operation 格式无效', operationIndex);
+    if (!validation.valid && !Check(EditorSchemaOperationSchema, operation))
+      fail('INVALID_OPERATION', 'Schema Operation 格式无效', operationIndex);
     results.push({
       operationIndex,
       operation: operation.operation,

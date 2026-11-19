@@ -1,5 +1,6 @@
+import { retainWorkingFixture } from '../helpers/retain-working-fixture';
 import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
-import { access, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
+import { access, cp, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,7 @@ import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
 import { ProjectSourceService } from '../../src/projects/project-source';
-import { getWorkingSchemaState, updateWorkingSchema } from '../../src/schema/schema-service';
+import { getWorkingSchemaState } from '../../src/schema/schema-service';
 import { deferred } from '../helpers/deferred';
 
 const directories: string[] = [];
@@ -67,7 +68,7 @@ it('preserves an external manifest edit made while saving project routing', asyn
 });
 
 describe('Project page persistence and recovery', () => {
-  it('keeps project roles unique, preserves layout, and recovers a manifest write without replaying it', async () => {
+  it('preserves the login role and layout, and recovers a manifest write without replaying it', async () => {
     const { database, project, page, service, projects } = await deletionFixture();
     try {
       const before = await service.getPageRoles(project.id);
@@ -96,14 +97,6 @@ describe('Project page persistence and recovery', () => {
       await expect(
         reopened.updatePageRoles({ ...input, clientRequestId: 'roles_stale' }),
       ).rejects.toThrow('已变化');
-      await expect(
-        reopened.updatePageRoles({
-          ...input,
-          clientRequestId: 'roles_invalid',
-          expectedManifestHash: current.manifestHash,
-          roles: { ...input.roles, assignments: { login: page.id, home: page.id } },
-        }),
-      ).rejects.toThrow('一一对应');
       const customRole = {
         ...input,
         clientRequestId: 'roles_custom',
@@ -123,17 +116,17 @@ describe('Project page persistence and recovery', () => {
       const home = await reopened.createPage(project.id, {
         name: 'Home',
         slug: 'new-home',
-        role: 'home',
+        role: 'login',
         expectedManifestHash: empty.manifestHash,
       });
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
-        home: home.id,
+        login: home.id,
       });
       await expect(
         reopened.createPage(project.id, {
           name: 'Stale',
           slug: 'stale',
-          role: 'home',
+          role: 'login',
           expectedManifestHash: empty.manifestHash,
         }),
       ).rejects.toThrow('已变化');
@@ -149,12 +142,12 @@ describe('Project page persistence and recovery', () => {
         reopened.createPage(project.id, {
           name: 'Conflict',
           slug: 'conflict',
-          role: 'home',
+          role: 'login',
           expectedManifestHash: latest.manifestHash,
         }),
       ).rejects.toThrow('已变化');
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
-        home: home.id,
+        login: home.id,
       });
       await expect(access(join(project.path, 'src/pages/conflict'))).rejects.toThrow();
       expect(projects.listPages(project.id)).toHaveLength(1);
@@ -177,7 +170,7 @@ describe('Project page persistence and recovery', () => {
       const working = await getWorkingSchemaState(pageRef);
       const written = vi.fn();
       const removed = vi.spyOn(ProjectSourceService.prototype, 'removePageDirectory');
-      const write = updateWorkingSchema(
+      const write = retainWorkingFixture(
         pageRef,
         {
           baseWorkingVersion: working.workingVersion,
@@ -462,7 +455,27 @@ it('reconciles the project without opening pages and imports only the page reque
     const first = await service.createPage(project.id, { name: 'First', slug: 'first' });
     const second = await service.createPage(project.id, { name: 'Second', slug: 'second' });
     await rm(join(project.path, '.origamix'), { recursive: true, force: true });
-    await service.reconcile(project.path);
+    const scaffold = join(directory, 'scaffold');
+    await cp(templatePath, scaffold, {
+      recursive: true,
+      filter: (path) => !path.endsWith('node_modules') && !path.endsWith('dist'),
+    });
+    service.registerGrant('raw-template', scaffold);
+    await expect(service.openProject({ directoryGrantId: 'raw-template' })).rejects.toThrow(
+      '基础模板',
+    );
+    const duplicate = join(directory, 'duplicate');
+    await cp(project.path, duplicate, { recursive: true });
+    service.registerGrant('duplicate', duplicate);
+    await expect(service.openProject({ directoryGrantId: 'duplicate' })).rejects.toThrow(
+      '另一目录',
+    );
+    expect(projects.getProject(project.id)?.path).toBe(project.path);
+    service.registerGrant('reopen', project.path);
+    expect(await service.openProject({ directoryGrantId: 'reopen' })).toMatchObject({
+      status: 'opened',
+      project: { id: project.id },
+    });
     await expect(access(join(project.path, '.origamix/pages'))).rejects.toThrow();
     const opened = await getWorkingSchemaState({
       projectPath: project.path,

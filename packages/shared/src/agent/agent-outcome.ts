@@ -1,4 +1,3 @@
-import { ProjectRoleOperationSchema } from './project-proposal.ts';
 import { strictObject, AgentRunIdSchema } from './agent-schema.ts';
 import { Type } from '@sinclair/typebox';
 import type { Static } from '@sinclair/typebox';
@@ -11,12 +10,6 @@ export const ClarificationCandidateSchema = strictObject({
 });
 
 export const CompletePageRunInputSchema = Type.Union([
-  strictObject({
-    outcome: Type.Literal('propose_project'),
-    projectOperations: Type.Array(ProjectRoleOperationSchema, { minItems: 1, maxItems: 20 }),
-    pageIntent: Type.Optional(Type.String({ minLength: 1, maxLength: 8000 })),
-    response: Type.String({ minLength: 1, maxLength: 40000 }),
-  }),
   strictObject({
     outcome: Type.Literal('apply_changes'),
     operations: Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 }),
@@ -51,17 +44,12 @@ export const CompletePageRunInputSchema = Type.Union([
  */
 export const CompletePageRunToolParametersSchema = strictObject({
   outcome: Type.Union([
-    Type.Literal('propose_project'),
     Type.Literal('apply_changes'),
     Type.Literal('answer_only'),
     Type.Literal('no_change_needed'),
     Type.Literal('needs_clarification'),
     Type.Literal('refused'),
   ]),
-  projectOperations: Type.Optional(
-    Type.Array(ProjectRoleOperationSchema, { minItems: 1, maxItems: 20 }),
-  ),
-  pageIntent: Type.Optional(Type.String({ minLength: 1, maxLength: 8000 })),
   operations: Type.Optional(Type.Array(SchemaOperationSchema, { minItems: 1, maxItems: 200 })),
   response: Type.Optional(Type.String({ minLength: 1, maxLength: 40_000 })),
   answeredQuestion: Type.Optional(Type.Boolean()),
@@ -72,7 +60,6 @@ export const CompletePageRunToolParametersSchema = strictObject({
 });
 
 export const PageAgentOutcomeSchema = Type.Union([
-  Type.Literal('needs_project_confirmation'),
   Type.Literal('changed'),
   Type.Literal('changed_and_answered'),
   Type.Literal('answered_only'),

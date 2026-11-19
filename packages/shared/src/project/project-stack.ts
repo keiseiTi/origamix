@@ -4,7 +4,6 @@ import { Value } from '@sinclair/typebox/value';
 import {
   MATERIAL_CONTRACT_VERSION,
   SEMVER_PATTERN,
-  SUPPORTED_MATERIAL_VERSIONS,
   contractCompatibilityIssue,
 } from '../version.ts';
 
@@ -45,7 +44,7 @@ export const projectStackCompatibilityIssue = (stack: ProjectStack): string | nu
   return contractCompatibilityIssue(
     '物料契约',
     stack.materialSet.version,
-    SUPPORTED_MATERIAL_VERSIONS,
+    MATERIAL_CONTRACT_VERSION,
   );
 };
 export const validateResolvedProjectStack = (value: unknown): ProjectStack => {

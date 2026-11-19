@@ -2,7 +2,6 @@ import { defineConfig } from 'tsdown';
 
 const options: import('tsdown').UserConfig = {
   entry: {
-    index: 'src/index.ts',
     'antd/editor': 'antd/editor.ts',
   },
   format: ['esm'],

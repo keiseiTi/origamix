@@ -18,7 +18,7 @@ import { ApplicationDatabase } from '../../src/database/database';
 import { ProjectRepository } from '../../src/projects/project-repository';
 import { ProjectService } from '../../src/projects/project-service';
 import { ProjectApplyService } from '../../src/schema/project-apply-service';
-import { getSchema, getWorkingSchemaState } from '../../src/schema/schema-service';
+import { getWorkingSchemaState } from '../../src/schema/schema-service';
 import { AgentRunRepository } from '../../src/agent/run-repository';
 import { AgentRunService } from '../../src/agent/run-service';
 import { AgentService } from '../../src/agent/agent-service';
@@ -54,7 +54,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     const page = await projectService.createPage(project.id, { name: 'Home', slug: 'home' });
     const pageRef = { projectPath: project.path, pageId: page.id, slug: page.slug };
-    const before = await getSchema(pageRef);
+    const before = await getWorkingSchemaState(pageRef);
     const target = join(project.path, 'src', 'pages', page.slug, 'schema.json');
     const originalTarget = await readFile(target, 'utf8');
     const runs = new AgentRunRepository(database);
@@ -156,6 +156,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     const start = vi.spyOn(service, 'start');
     server = createHttpServer({
+      host: 'desktop',
       desktopToken: 'fake-desktop-token',
       serviceInstanceId: 'test-instance',
       projects,
@@ -220,7 +221,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     expect(foreignUsage.statusCode).toBe(404);
 
-    const edited = await getSchema(pageRef);
+    const edited = await getWorkingSchemaState(pageRef);
     expect(edited.revisionId).toBe(before.revisionId);
     expect(edited.schema.flows.flow_agent).toEqual(flow);
     expect(edited.schema.bindElements).toEqual([
@@ -303,7 +304,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     expect(applied.statusCode).toBe(200);
     expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(edited.schema);
-    expect((await getSchema(pageRef)).revisionId).toBe(saved.revisionId);
+    expect((await getWorkingSchemaState(pageRef)).revisionId).toBe(saved.revisionId);
     expect(await readdir(revisions)).toHaveLength(2);
   } finally {
     await server?.close();

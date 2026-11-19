@@ -66,7 +66,7 @@ pnpm build:web
 pnpm start:web
 ```
 
-默认访问地址为 `http://127.0.0.1:9685`。通过 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 数据库。Web 项目和桌面项目独立管理，Web 导出的应用源码用于运行和部署。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
+默认访问地址为 `http://127.0.0.1:9685`。通过 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 数据库。Web 项目和桌面项目独立管理，Web 导出的应用源码可以独立部署，也可解压后在桌面打开并继续编辑。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
 
 ## 仓库检查
 

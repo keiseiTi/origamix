@@ -16,7 +16,6 @@ import { conflict, invalid, notFound } from '../errors';
 
 type ProjectManifestInput = Pick<ProjectManifest, 'projectId' | 'name' | 'pageDirectory'> & {
   code: string;
-  product?: ProjectManifest['product'];
   runtime?: ProjectManifest['runtime'];
   layout?: ProjectManifest['layout'];
   routing?: ProjectManifest['routing'];
@@ -54,7 +53,7 @@ export class ProjectManifestStore {
   }
 
   async initializeManifest(projectPath: string, input: ProjectManifestInput): Promise<void> {
-    await this.writeManifest(projectPath, createProjectManifest({ ...input, product: 'desktop' }));
+    await this.writeManifest(projectPath, createProjectManifest(input));
   }
 
   async readSource(projectPath: string): Promise<string> {
@@ -79,8 +78,6 @@ export class ProjectManifestStore {
       throw invalid('项目清单不是有效的 JSON');
     }
     if (!isProjectManifest(manifest)) throw invalid('项目清单字段无效或不受支持');
-    if (manifest.product !== 'desktop')
-      throw invalid('此目录不是桌面端项目，无法打开 Web 产物或未标记的项目');
     this.resolveStack(manifest);
     const ids = new Set<string>();
     const slugs = new Set<string>();

@@ -3,19 +3,16 @@ import {
   ApplyWorkingOperationsSchema,
   RestoreWorkingRevisionSchema,
   SaveWorkingRevisionSchema,
-  UpdateWorkingSchemaSchema,
   RevisionIdSchema,
 } from '@origamix/shared';
 
 import {
   applyWorkingSchemaOperations,
-  getSchema,
   getSchemaRevision,
   getWorkingSchemaState,
   listRevisionHistory,
   restoreRevisionToWorking,
   saveWorkingRevision,
-  updateWorkingSchema,
   fileSchemaPageResolver,
 } from '../schema/schema-service';
 import { invalid } from '../errors';
@@ -27,7 +24,6 @@ const RevisionScopeSchema = Type.Object(
   { additionalProperties: false },
 );
 const WorkingOperationsBodySchema = withPageScope(ApplyWorkingOperationsSchema);
-const WorkingUpdateBodySchema = withPageScope(UpdateWorkingSchemaSchema);
 const SaveRevisionBodySchema = withPageScope(SaveWorkingRevisionSchema);
 const RestoreRevisionBodySchema = Type.Object(
   { ...withPageScope(RestoreWorkingRevisionSchema).properties, revisionId: RevisionIdSchema },
@@ -37,13 +33,6 @@ const RestoreRevisionBodySchema = Type.Object(
 export const registerSchemaRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   const resolvePage = input.resolveSchemaPage ?? fileSchemaPageResolver(input.projects);
 
-  server.post(
-    '/api/v1/pages/schema/get',
-    { schema: { body: PageScopeSchema } },
-    route<Static<typeof PageScopeSchema>>((request) =>
-      getSchema(resolvePage(request.body.projectId, request.body.pageId)),
-    ),
-  );
   server.post(
     '/api/v1/pages/working-operations/apply',
     { schema: { body: WorkingOperationsBodySchema } },
@@ -56,14 +45,6 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
           throw invalid(error.message);
         throw error;
       }
-    }),
-  );
-  server.post(
-    '/api/v1/pages/working-state/update',
-    { schema: { body: WorkingUpdateBodySchema } },
-    route<Static<typeof WorkingUpdateBodySchema>>((request) => {
-      const { projectId, pageId, ...body } = request.body;
-      return updateWorkingSchema(resolvePage(projectId, pageId), body);
     }),
   );
   server.post(

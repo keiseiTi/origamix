@@ -5,7 +5,7 @@ import type { Material } from './material';
 import {
   type MaterialManifestCatalog,
   type OrigamixPageSchema,
-  type SchemaOperation,
+  type WorkingSchemaOperation,
 } from '@origamix/shared';
 
 import type { PropertyEditorRegistration } from './property-editor';
@@ -26,15 +26,8 @@ export type EditorWorkingState = Readonly<{
 export type EditorTransaction = Readonly<{
   scope: EditorPageScope;
   baseWorkingVersion: number;
-}> &
-  (
-    | Readonly<{ kind: 'operations'; operations: readonly [SchemaOperation, ...SchemaOperation[]] }>
-    | Readonly<{
-        kind: 'candidate';
-        reason: 'operation-protocol-gap';
-        schema: OrigamixPageSchema;
-      }>
-  );
+  operations: readonly [WorkingSchemaOperation, ...WorkingSchemaOperation[]];
+}>;
 
 /** App owns HTTP, version checks and recovery. Rejection must leave the local draft intact. */
 export type CommitEditorTransaction = (

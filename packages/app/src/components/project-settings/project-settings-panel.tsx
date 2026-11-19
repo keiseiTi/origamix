@@ -1,6 +1,4 @@
-import { usesDatabaseProjects } from '@/services/projects';
 import { useProjectSettingsSession } from './use-project-settings-session';
-import { ProjectSettingsChat } from './project-settings-chat';
 import { useState } from 'react';
 import { EditorToolbar } from '@origamix/editor';
 import { LayoutEffect } from './layout-effect';
@@ -16,29 +14,16 @@ import {
   FieldLabel,
   Input,
   Switch,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
 } from '@origamix/ui';
 import { Save } from 'lucide-react';
 import { SettingsChoice } from './settings-choice';
 import { SettingsMenu } from './settings-menu';
 import { RoutingFields } from './routing-fields';
 
-export const ProjectSettingsPanel = ({
-  projectId,
-  onConfigureModel,
-}: {
-  projectId: string;
-  onConfigureModel: () => void;
-}) => {
+export const ProjectSettingsPanel = ({ projectId }: { projectId: string }) => {
   const session = useProjectSettingsSession(projectId);
   const { draft, setDraft, error, busy, saved, save } = session;
   const [selectedPage, setSelectedPage] = useState('');
-  const [mode, setMode] = useState<'assistant' | 'form'>(() =>
-    usesDatabaseProjects() ? 'form' : 'assistant',
-  );
   const pageItems = [
     { value: '', label: '模板默认' },
     ...(draft?.pages ?? []).map((page) => ({ value: page.pageId, label: page.name })),
@@ -77,7 +62,7 @@ export const ProjectSettingsPanel = ({
           <Button
             size='sm'
             variant='outline'
-            disabled={busy || session.running}
+            disabled={busy}
             onClick={() => void session.reviewLatest()}
           >
             读取最新配置并核对草稿
@@ -88,7 +73,7 @@ export const ProjectSettingsPanel = ({
           variant='secondary'
           className='shrink-0 px-2 text-xs'
           aria-busy={busy}
-          disabled={!draft || busy || session.running || session.stale}
+          disabled={!draft || busy || session.stale}
           onClick={() => void save()}
         >
           <Save size={14} />
@@ -174,171 +159,142 @@ export const ProjectSettingsPanel = ({
               </div>
             </LayoutEffect>
           </div>
-          <Tabs
-            value={mode}
-            onValueChange={(value) => {
-              if (value === 'assistant' || value === 'form') setMode(value);
-            }}
-            className='min-h-0 min-w-0 gap-3'
+          <fieldset
+            disabled={busy}
+            className='grid min-h-0 min-w-0 content-start gap-5 overflow-y-auto pb-2 disabled:opacity-60'
           >
-            <TabsList aria-label='布局配置方式'>
-              <TabsTrigger value='assistant' disabled={usesDatabaseProjects()}>
-                AI 助手
-              </TabsTrigger>
-              <TabsTrigger value='form'>表单配置</TabsTrigger>
-            </TabsList>
-            <TabsContent
-              value='assistant'
-              keepMounted
-              className='min-h-96 flex-col not-data-hidden:flex lg:min-h-0'
-            >
-              <ProjectSettingsChat
-                session={session}
-                onConfigureModel={onConfigureModel}
-                onViewChanges={() => setMode('form')}
-              />
-            </TabsContent>
-            <TabsContent
-              value='form'
-              keepMounted
-              render={<fieldset disabled={busy} />}
-              className='content-start gap-5 overflow-y-auto pb-2 not-data-hidden:grid disabled:opacity-60'
-            >
-              {draft.layout.enabled && (
-                <>
-                  <div role='group' aria-label='布局样式' className='grid grid-cols-3 gap-2'>
-                    {(
-                      [
-                        { value: 'side', label: '左右布局' },
-                        { value: 'top', label: '顶部布局' },
-                        { value: 'mix', label: '混合布局' },
-                      ] as const
-                    ).map((item) => (
-                      <Button
-                        key={item.value}
-                        type='button'
-                        variant={
-                          draft.layout.initialVariant === item.value ? 'secondary' : 'outline'
-                        }
-                        aria-pressed={draft.layout.initialVariant === item.value}
-                        onClick={() =>
-                          setDraft({
-                            ...draft,
-                            layout: { ...draft.layout, initialVariant: item.value },
-                          })
-                        }
-                      >
-                        {item.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <Field>
-                    <FieldLabel htmlFor='shell-title'>标题</FieldLabel>
-                    <Input
-                      id='shell-title'
-                      maxLength={80}
-                      placeholder={draft.name}
-                      value={draft.shell.title}
-                      onChange={(event) =>
+            {draft.layout.enabled && (
+              <>
+                <div role='group' aria-label='布局样式' className='grid grid-cols-3 gap-2'>
+                  {(
+                    [
+                      { value: 'side', label: '左右布局' },
+                      { value: 'top', label: '顶部布局' },
+                      { value: 'mix', label: '混合布局' },
+                    ] as const
+                  ).map((item) => (
+                    <Button
+                      key={item.value}
+                      type='button'
+                      variant={draft.layout.initialVariant === item.value ? 'secondary' : 'outline'}
+                      aria-pressed={draft.layout.initialVariant === item.value}
+                      onClick={() =>
                         setDraft({
                           ...draft,
-                          shell: { ...draft.shell, title: event.target.value },
+                          layout: { ...draft.layout, initialVariant: item.value },
                         })
                       }
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor='shell-logo'>Logo 地址</FieldLabel>
-                    <Input
-                      id='shell-logo'
-                      placeholder='/logo.png 或 https://…'
-                      value={draft.shell.logo}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          shell: { ...draft.shell, logo: event.target.value },
-                        })
-                      }
-                    />
-                  </Field>
-                  <SettingsMenu
-                    navigation={draft.shell.navigation}
-                    pages={draft.pages}
-                    onChange={(navigation) =>
-                      setDraft(
-                        (current) =>
-                          current && { ...current, shell: { ...current.shell, navigation } },
-                      )
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+                <Field>
+                  <FieldLabel htmlFor='shell-title'>标题</FieldLabel>
+                  <Input
+                    id='shell-title'
+                    maxLength={80}
+                    placeholder={draft.name}
+                    value={draft.shell.title}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        shell: { ...draft.shell, title: event.target.value },
+                      })
                     }
                   />
-                </>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor='shell-logo'>Logo 地址</FieldLabel>
+                  <Input
+                    id='shell-logo'
+                    placeholder='/logo.png 或 https://…'
+                    value={draft.shell.logo}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        shell: { ...draft.shell, logo: event.target.value },
+                      })
+                    }
+                  />
+                </Field>
+                <SettingsMenu
+                  navigation={draft.shell.navigation}
+                  pages={draft.pages}
+                  onChange={(navigation) =>
+                    setDraft(
+                      (current) =>
+                        current && { ...current, shell: { ...current.shell, navigation } },
+                    )
+                  }
+                />
+              </>
+            )}
+            <SettingsChoice
+              label='首页'
+              value={draft.shell.homePageId ?? ''}
+              items={pageItems}
+              onChange={(homePageId) =>
+                setDraft({
+                  ...draft,
+                  shell: { ...draft.shell, homePageId: homePageId || undefined },
+                })
+              }
+            />
+            <SettingsChoice
+              label='404 页面'
+              value={draft.shell.notFoundPageId ?? ''}
+              items={pageItems}
+              onChange={(notFoundPageId) =>
+                setDraft({
+                  ...draft,
+                  shell: { ...draft.shell, notFoundPageId: notFoundPageId || undefined },
+                })
+              }
+            />
+            <p className='text-xs text-muted-foreground'>
+              未知地址保留原路径，显示指定页面；未选择时使用模板默认 404。
+            </p>
+            <section className='grid gap-2'>
+              <h3 className='text-sm font-medium'>页面使用应用布局</h3>
+              {!draft.pages.length && (
+                <p className='text-xs text-muted-foreground'>创建页面后可单独关闭页面布局。</p>
               )}
-              <SettingsChoice
-                label='首页'
-                value={draft.shell.homePageId ?? ''}
-                items={pageItems}
-                onChange={(homePageId) =>
-                  setDraft({
-                    ...draft,
-                    shell: { ...draft.shell, homePageId: homePageId || undefined },
-                  })
-                }
-              />
-              <SettingsChoice
-                label='404 页面'
-                value={draft.shell.notFoundPageId ?? ''}
-                items={pageItems}
-                onChange={(notFoundPageId) =>
-                  setDraft({
-                    ...draft,
-                    shell: { ...draft.shell, notFoundPageId: notFoundPageId || undefined },
-                  })
-                }
-              />
-              <p className='text-xs text-muted-foreground'>
-                未知地址保留原路径，显示指定页面；未选择时使用模板默认 404。
-              </p>
-              <section className='grid gap-2'>
-                <h3 className='text-sm font-medium'>页面使用应用布局</h3>
-                {!draft.pages.length && (
-                  <p className='text-xs text-muted-foreground'>创建页面后可单独关闭页面布局。</p>
-                )}
-                {draft.pages.map((page) => (
-                  <Field key={page.pageId} orientation='horizontal'>
-                    <Switch
-                      id={`page-layout-${page.pageId}`}
-                      checked={!draft.shell.standalonePageIds.includes(page.pageId)}
-                      onCheckedChange={(enabled) =>
-                        setDraft({
-                          ...draft,
-                          shell: {
-                            ...draft.shell,
-                            standalonePageIds: enabled
-                              ? draft.shell.standalonePageIds.filter((id) => id !== page.pageId)
-                              : [...draft.shell.standalonePageIds, page.pageId],
-                          },
-                        })
-                      }
-                    />
-                    <FieldLabel htmlFor={`page-layout-${page.pageId}`}>{page.name}</FieldLabel>
-                    <Button
-                      size='sm'
-                      variant='ghost'
-                      type='button'
-                      onClick={() => setSelectedPage(page.pageId)}
-                    >
-                      查看效果
-                    </Button>
-                  </Field>
-                ))}
-              </section>
-              <RoutingFields
-                value={draft.routing}
-                onChange={(routing) => setDraft({ ...draft, routing })}
-                disabled={busy}
-              />
-            </TabsContent>
-          </Tabs>
+              {draft.pages.map((page) => (
+                <Field key={page.pageId} orientation='horizontal'>
+                  <Switch
+                    id={`page-layout-${page.pageId}`}
+                    checked={!draft.shell.standalonePageIds.includes(page.pageId)}
+                    onCheckedChange={(enabled) =>
+                      setDraft({
+                        ...draft,
+                        shell: {
+                          ...draft.shell,
+                          standalonePageIds: enabled
+                            ? draft.shell.standalonePageIds.filter((id) => id !== page.pageId)
+                            : [...draft.shell.standalonePageIds, page.pageId],
+                        },
+                      })
+                    }
+                  />
+                  <FieldLabel htmlFor={`page-layout-${page.pageId}`}>{page.name}</FieldLabel>
+                  <Button
+                    size='sm'
+                    variant='ghost'
+                    type='button'
+                    onClick={() => setSelectedPage(page.pageId)}
+                  >
+                    查看效果
+                  </Button>
+                </Field>
+              ))}
+            </section>
+            <RoutingFields
+              value={draft.routing}
+              onChange={(routing) => setDraft({ ...draft, routing })}
+              disabled={busy}
+            />
+          </fieldset>
         </div>
       )}
     </section>

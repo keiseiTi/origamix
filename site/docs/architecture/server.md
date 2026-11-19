@@ -11,7 +11,7 @@ description: Server：本地后端的职责、使用与开发说明
 
 ## 关键入口
 
-`src/server.ts` 启动桌面文件项目的后端；`src/hosts/utility-process.ts` 是 Electron Utility Process 适配器。`src/http/` 适配请求，`src/projects/` 管理项目，`src/schema/` 管理编辑与应用，`src/agent/` 执行 Run，`src/database/` 管理 SQLite；测试及辅助代码归入 `test/`。`@origamix/server/runtime` 导出的 `startServer` 返回端口、目录授权注册和关闭方法。Web 开发和生产通过 `@origamix/server/web-runtime` 启动 MySQL 后端。桌面只打开标记为 `product: desktop` 的项目，Web 同步和导出的文件标记为 `product: web`。
+`src/server.ts` 启动桌面文件项目的后端；`src/hosts/utility-process.ts` 是 Electron Utility Process 适配器。`src/http/` 适配请求，`src/projects/` 管理项目，`src/schema/` 管理编辑与应用，`src/agent/` 执行 Run，`src/database/` 管理 SQLite；测试及辅助代码归入 `test/`。`@origamix/server/runtime` 导出的 `startServer` 返回端口、目录授权注册和关闭方法。Web 开发和生产通过 `@origamix/server/web-runtime` 启动 MySQL 后端。桌面和 Web 使用同一种项目清单。
 
 ## 协作边界
 
@@ -41,4 +41,4 @@ pnpm --filter @origamix/server build
 
 ## 项目设置
 
-`ProjectService.getSettings` 和 `updateSettings` 管理项目清单的 `shell`、`layout`、`routing`，保存时校验页面引用和清单哈希。`ProjectSettingsAgentService` 只返回配置草稿建议。详见[项目布局契约](/architecture/layout)。
+`ProjectService.getSettings` 和 `updateSettings` 管理项目清单的 `shell`、`layout`、`routing`，保存时校验页面引用和清单哈希。首页和 404 由布局表单保存。详见[项目布局契约](/architecture/layout)。
