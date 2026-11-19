@@ -1,12 +1,5 @@
-import { schemaVersionOf } from './schema-compatibility';
 import { nanoid } from 'nanoid';
-import {
-  type ChangeSource,
-  type OrigamixPageSchema,
-  SCHEMA_VERSION,
-  isSemanticVersion,
-  validatePage,
-} from '@origamix/shared';
+import { type ChangeSource, type OrigamixPageSchema, validatePage } from '@origamix/shared';
 
 import { invalid } from '../errors';
 import { hashSchema } from './schema-hash';
@@ -32,10 +25,7 @@ export const validateSnapshot = (snapshot: RevisionSnapshot): void => {
     hashSchema(snapshot.schema) !== snapshot.schemaHash
   )
     throw invalid('Revision 内容校验失败');
-  const version = schemaVersionOf(snapshot.schema);
-  if (!isSemanticVersion(version)) throw invalid('Revision Schema 版本无效');
-  if (version === SCHEMA_VERSION && !validatePage(snapshot.schema).valid)
-    throw invalid('Revision Schema 校验失败');
+  if (!validatePage(snapshot.schema).valid) throw invalid('Revision Schema 校验失败');
 };
 export const createRevisionSnapshot = (
   schema: OrigamixPageSchema,

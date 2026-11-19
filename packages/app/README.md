@@ -31,7 +31,7 @@ pnpm build:web
 pnpm --filter @origamix/app test:web
 ```
 
-`dev:web` 先编译并启动本地 Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认 `.origamix-web/` 数据位置。代理只为同源浏览器请求注入认证信息，并要求 `Sec-Fetch-Site: same-origin`。`test:web` 使用 Electron 提供 Chromium 图形会话，运行临时项目验证预览隔离。
+`dev:web` 先编译并启动连接 MySQL 的 Web Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认的 `.origamix-web/` 模板暂存目录。代理只为同源浏览器请求注入认证信息，并要求 `Sec-Fetch-Site: same-origin`。`test:web` 使用 Electron 提供 Chromium 图形会话，运行临时项目验证预览隔离。
 
 浏览器开发模式没有原生目录选择器和凭据存储。Desktop 通过 Shared 中的命名桥提供这些能力。修改可见界面需实际验证亮暗主题；修改开发进程管理还需 Server `test:dev`。
 
@@ -41,15 +41,15 @@ pnpm --filter @origamix/app test:web
 
 启动前，在宿主环境中设置下列变量；前端不读取或保存 API Key。
 
-| 变量                       | 用途                                                                   |
-| -------------------------- | ---------------------------------------------------------------------- |
-| `ORIGAMIX_WEB_PROJECT_DIR` | 授权一个已有项目的绝对路径；浏览器没有原生目录选择器                   |
-| `ORIGAMIX_WEB_STATE_DIR`   | Web 宿主数据目录，默认仓库根目录 `.origamix-web/`                      |
-| `DEEPSEEK_API_KEY`         | Web 宿主执行 Agent 时使用的凭据；未配置时 Agent 报错，普通编辑仍可使用 |
+| 变量                     | 用途                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `ORIGAMIX_WEB_MYSQL_URL` | 必填，仅由后端读取的开发 MySQL 数据库连接地址                          |
+| `ORIGAMIX_WEB_STATE_DIR` | Web 模板暂存目录，默认仓库根目录 `.origamix-web/`                      |
+| `DEEPSEEK_API_KEY`       | Web 宿主执行 Agent 时使用的凭据；未配置时 Agent 报错，普通编辑仍可使用 |
 
 ```sh
-# 在当前 shell 中先配置 DEEPSEEK_API_KEY，再启动；不要把 Key 放入 VITE_*。
-ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
+# 先通过进程环境配置 ORIGAMIX_WEB_MYSQL_URL。
+pnpm dev:web
 ```
 
 Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepseek-flash` 或 `deepseek-v4-pro`。环境变量配置见 [dev-server.ts](dev-server.ts)，桌面模型配置见 [Desktop README](../../apps/desktop/README.md)。
@@ -62,40 +62,39 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 ## 部署正式 Web 宿主
 
-从仓库根目录构建并运行。启动前通过部署环境注入访问密码，再执行启动命令。
+从仓库根目录构建并运行。启动前通过部署环境注入访问密码和 MySQL 连接地址，再执行启动命令。
 
 ```sh
 pnpm build:web
 pnpm start:web
 ```
 
-| 变量                       | 用途                                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `ORIGAMIX_WEB_PASSWORD`    | 必填。单用户实例的访问密码，有效长度至少 16 字符，上限 512 字符。                                         |
-| `ORIGAMIX_WEB_PORT`        | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
-| `ORIGAMIX_WEB_ORIGIN`      | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
-| `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根目录的 `.origamix-web/production/`。                                                  |
-| `ORIGAMIX_WEB_PROJECT_DIR` | 本地文件模式可选，经部署者授权的现有项目目录。                                                            |
-| `ORIGAMIX_WEB_MYSQL_URL`   | MySQL 模式的专用数据库连接地址，仅由 Web 宿主读取。勿与 `ORIGAMIX_WEB_PROJECT_DIR` 同时设置。             |
-| `DEEPSEEK_API_KEY`         | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
+| 变量                     | 用途                                                                                                      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `ORIGAMIX_WEB_PASSWORD`  | 必填。单用户实例的访问密码，有效长度至少 16 字符，上限 512 字符。                                         |
+| `ORIGAMIX_WEB_PORT`      | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
+| `ORIGAMIX_WEB_ORIGIN`    | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
+| `ORIGAMIX_WEB_STATE_DIR` | 模板暂存目录，默认仓库根目录的 `.origamix-web/production/`。                                              |
+| `ORIGAMIX_WEB_MYSQL_URL` | 必填。专用 MySQL 数据库连接地址，仅由 Web 宿主读取。                                                      |
+| `DEEPSEEK_API_KEY`       | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
 
-远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。备份时保存 MySQL 数据库，或一并保存本地文件模式的数据目录和受管理项目目录。
+远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。项目备份以 MySQL 数据库为准。
 
 打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
 
-当前部署模型是单用户自托管。设置 MySQL 地址后，在网页登录并创建项目和页面即可使用编辑器、预览和版本历史，无需授权本机目录。未设置 MySQL 地址时，原有文件模式仍使用 SQLite 和宿主授权的目录。
+当前部署模型是单用户自托管。在网页登录并创建项目和页面即可使用编辑器、预览和版本历史。Web 项目存放在 MySQL。同步和 ZIP 导出生成可独立运行的 Web 产物，桌面工作台不能打开这些产物。
 
 ### 使用本机 MySQL
 
 先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。随后执行 `pnpm start:web`。
 
-首次启动自动初始化 Web 表，并为原有 MySQL 项目库增加 Agent 所需的表。MySQL 模式持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。数据库项目可以生成并同步到用户授权的本机目录。布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
+首次启动初始化当前版本的 Web 表。MySQL 持久化项目、页面、Working、Revision、页面 Agent 的会话、消息、Run 和工具审计。启动前设置 `DEEPSEEK_API_KEY` 即可使用页面 Agent。每个数据库运行一个 Web 宿主。重启后宿主根据提交回执确认已提交的修改，未提交的运行标为中断。数据库项目可以生成并同步到用户授权的本机目录。布局 AI 助手属于后续能力。桌面继续使用原有项目目录、SQLite 与 Apply 流程。
 
 目录同步和 ZIP 导出共用 [文件清单校验](src/services/project-sync-files.ts)。目录同步先生成变更清单，再核对本地文件基线并写入，复核结果后才提交完成回执。
 
 用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL`，从仓库根运行 `pnpm test:web:mysql` 验证正式宿主下的项目创建、版本冲突、保存、重启恢复和 Chromium 预览。运行 `pnpm test:agent:mysql` 使用确定性模型验证过期写入冲突与中断恢复。
 
-根目录运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
+根目录使用独立测试库设置 `ORIGAMIX_TEST_MYSQL_URL` 后运行 `pnpm test:web` 验证开发和正式宿主，覆盖登录、会话撤销、模板下载、Agent 事件流、直接打开工作台路径及亮暗主题下的预览隔离。
 
 ## Web 项目目录和同步
 
@@ -151,7 +150,6 @@ MySQL 模式下，新建项目可以选择「本机父目录」。Web 宿主提�
 # packages/app/.env.local 示例
 ORIGAMIX_RENDERER_PORT=5174
 ORIGAMIX_WEB_STATE_DIR=/absolute/path/to/development-state
-ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/authorized-project
 ```
 
 Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默认 ORIGAMIX_DESKTOP=0。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；不会把整个环境对象或 VITE_* 配置注入前端。正式 Web 宿主使用单独的启动入口和会话。
@@ -160,7 +158,7 @@ Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默�
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目。发布前本地归档验证不等同于 npm registry 已可安装。
 
-后端默认监听 `127.0.0.1:1029`，可通过宿主的 `ORIGAMIX_SERVER_PORT` 配置覆盖；`0` 表示系统分配端口，供隔离检查使用。网页开发入口默认使用 `9685`，`/api/v1` 继续由开发宿主代理并注入认证信息。固定端口被占用时启动失败，不自动连接或终止占用进程。
+网页开发入口默认使用 `9685`。Web 后端绑定回环地址，由系统分配端口，开发宿主通过同源 `/api/v1` 代理并注入认证信息。
 
 工作台通过 `backend.onStatusChanged` 接收后端状态；App 持有并清理一个订阅，通知只更新内存连接。后端恢复后重新读取项目、Agent 状态和 Apply 状态，SSE 使用新认证重连。传输层以连接代次拒绝旧响应，重启前的连接查询也不能覆盖新缓存；不自动重放不确定的写操作，不重挂载编辑器或替换已有草稿。
 

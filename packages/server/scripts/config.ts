@@ -25,7 +25,7 @@ export const loadServerConfig = () => {
   };
   const token = process.env.ORIGAMIX_SERVER_TOKEN?.trim();
   if (!token) throw new Error('请通过 ORIGAMIX_SERVER_TOKEN 注入本地服务访问令牌');
-  const stateDir = directory('ORIGAMIX_WEB_STATE_DIR');
+  const stateDir = directory('ORIGAMIX_LOCAL_STATE_DIR');
   const serverPort = env.ORIGAMIX_SERVER_PORT ?? '1029';
   if (!/^\d+$/.test(serverPort) || Number(serverPort) > 65535)
     throw new Error('ORIGAMIX_SERVER_PORT 必须为 0 到 65535 的整数');
@@ -35,8 +35,8 @@ export const loadServerConfig = () => {
     templatePath: env.ORIGAMIX_TEMPLATE_DIR?.trim()
       ? resolve(packageRoot, env.ORIGAMIX_TEMPLATE_DIR.trim())
       : resolve(stateDir, 'template'),
-    projectPath: env.ORIGAMIX_WEB_PROJECT_DIR?.trim()
-      ? resolve(packageRoot, env.ORIGAMIX_WEB_PROJECT_DIR.trim())
+    projectPath: env.ORIGAMIX_LOCAL_PROJECT_DIR?.trim()
+      ? resolve(packageRoot, env.ORIGAMIX_LOCAL_PROJECT_DIR.trim())
       : undefined,
     token,
     serviceInstanceId: process.env.ORIGAMIX_SERVICE_ID?.trim(),

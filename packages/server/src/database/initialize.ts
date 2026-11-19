@@ -1,9 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { deepStrictEqual } from 'node:assert';
 
-const usageColumns = ['reported_input_tokens', 'reported_output_tokens', 'fully_reported_calls'];
-const usageColumn = (name: string) => `${name} INTEGER NOT NULL DEFAULT 0`;
-
 export const schemaSql = `
 CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_opened_at TEXT NOT NULL);
 CREATE TABLE pages (id INTEGER PRIMARY KEY AUTOINCREMENT, page_id TEXT NOT NULL, project_id INTEGER NOT NULL, slug TEXT NOT NULL, name TEXT NOT NULL, relative_path TEXT NOT NULL, status INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -98,17 +95,13 @@ export const assertCurrentSchema = (connection: DatabaseSync): void => {
 };
 
 export const DATABASE_VERSION = 2;
-/** Create, validate or transactionally upgrade the supported SQLite schema. */
+/** Create or validate the current SQLite schema. */
 export const initializeDatabase = (connection: DatabaseSync): void => {
   const version = (connection.prepare('PRAGMA user_version').get() as { user_version: number })
     .user_version;
   const empty = currentUserTables(connection).length === 0;
   if (!empty) {
     if (version === 0) throw new Error('数据库缺少版本信息');
-    if (version === 1) {
-      upgradeUsageColumns(connection);
-      return;
-    }
     if (version !== DATABASE_VERSION) throw new Error('数据库版本不受当前应用支持');
     assertCurrentSchema(connection);
     return;
@@ -118,27 +111,6 @@ export const initializeDatabase = (connection: DatabaseSync): void => {
   try {
     connection.exec(schemaSql);
     connection.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
-    assertCurrentSchema(connection);
-    connection.exec('COMMIT');
-  } catch (error) {
-    connection.exec('ROLLBACK');
-    throw error;
-  }
-};
-
-const upgradeUsageColumns = (connection: DatabaseSync): void => {
-  connection.exec('BEGIN IMMEDIATE');
-  try {
-    // Another process may have completed the upgrade while this connection waited.
-    const current = connection.prepare('PRAGMA user_version').get()?.['user_version'];
-    if (current === 1) {
-      for (const name of usageColumns)
-        connection.exec(`ALTER TABLE agent_runs ADD COLUMN ${usageColumn(name)}`);
-      connection.exec('CREATE INDEX idx_agent_runs_created ON agent_runs(created_at)');
-      connection.exec(`PRAGMA user_version = ${DATABASE_VERSION}`);
-    } else if (current !== DATABASE_VERSION) {
-      throw new Error('数据库版本不受当前应用支持');
-    }
     assertCurrentSchema(connection);
     connection.exec('COMMIT');
   } catch (error) {

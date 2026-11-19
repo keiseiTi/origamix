@@ -31,8 +31,6 @@ type ProjectCommands = Pick<
   | 'getSettings'
   | 'updateSettings'
   | 'getNavigation'
-  | 'getRouting'
-  | 'updateRouting'
   | 'getPageRoles'
   | 'updatePageRoles'
   | 'getStack'

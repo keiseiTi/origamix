@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 describe('ApplicationDatabase', () => {
-  it('creates current tables and upgrades an existing v1 database without losing data', async () => {
+  it('creates current tables and rejects an existing v1 database without changing it', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
@@ -41,14 +41,14 @@ describe('ApplicationDatabase', () => {
       "PRAGMA user_version = 1; INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
     );
     legacy.close();
-    const reopened = new ApplicationDatabase(legacyPath);
-    expect(reopened.connection.prepare('PRAGMA user_version').get()).toEqual({
-      user_version: DATABASE_VERSION,
-    });
-    expect(reopened.connection.prepare('SELECT name FROM projects').get()).toEqual({
-      name: 'Keep me',
-    });
-    reopened.close();
+    expect(() => new ApplicationDatabase(legacyPath)).toThrow('数据库版本不受当前应用支持');
+    const unchanged = new DatabaseSync(legacyPath, { readOnly: true });
+    try {
+      expect(unchanged.prepare('PRAGMA user_version').get()).toEqual({ user_version: 1 });
+      expect(unchanged.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
+    } finally {
+      unchanged.close();
+    }
   });
 
   it('contains no foreign keys in generated current-schema SQL or the database', async () => {

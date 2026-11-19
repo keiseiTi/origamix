@@ -34,7 +34,7 @@ export const projectNavigation = (manifest: ProjectManifest): ProjectNavigationI
   pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
 });
 
-export const sameProjectRouting = (left: ProjectRouting, right: ProjectRouting): boolean =>
+const sameProjectRouting = (left: ProjectRouting, right: ProjectRouting): boolean =>
   left.mode === right.mode && left.basePath === right.basePath;
 
 export const prepareProjectSettings = (manifest: ProjectManifest, input: ProjectSettingsUpdate) => {

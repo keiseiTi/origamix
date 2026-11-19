@@ -62,7 +62,7 @@ pnpm --filter @origamix/runtime build
 
 ```tsx
 import { OrigamixPage } from '@origamix/runtime';
-import materials from '@origamix/materials/antd/runtime';
+import materials from '@origamix/materials/antd';
 import schema from './schema.json';
 
 const Page = (): React.JSX.Element => (
@@ -110,7 +110,7 @@ React 按元素订阅不可变的 Engine 节点，更新输出文本不会重建
 
 工作区与发布包统一从 `dist` 消费 JavaScript 和类型声明。单独构建时先构建 Shared，再构建 Runtime；根 `pnpm build:libs` 按依赖顺序准备这些产物。
 
-Runtime 包随应用统一发布。运行态和设计态要求页面结构和语义与当前渲染器兼容，Schema 的版本号可以不同。Runtime 不会自动转换旧页面。
+Runtime 包随应用统一发布。运行态和设计态只接受声明当前 Schema 版本的页面，旧版本页面需要先用对应版本的工具处理。
 
 ## 布局与页面组合
 

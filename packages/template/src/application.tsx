@@ -2,7 +2,7 @@
 import { useSyncExternalStore, useMemo, useCallback } from 'react';
 import { Outlet, useMatches, useNavigate, useHref } from 'react-router';
 import { PageNavigationProvider } from '@origamix/runtime';
-import { RuntimeProvider } from '@origamix/materials/antd/runtime';
+import { RuntimeProvider } from '@origamix/materials/antd';
 import { projectConfig } from './project-config';
 import { projectPages } from './project-pages';
 import { ApplicationShell } from './application-shell';

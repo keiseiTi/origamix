@@ -16,6 +16,7 @@ it('retains manifest uniqueness checks after structural validation', async () =>
         join(directory, 'origamix.project.json'),
         JSON.stringify({
           shell: { title: '', logo: '', standalonePageIds: [] },
+          product: 'desktop' as const,
           runtime: 'origamix' as const,
           layout: { enabled: false, initialVariant: 'side' as const },
           routing: { mode: 'browser' as const, basePath: '/' },
@@ -51,6 +52,29 @@ it('rejects missing material contract versions without inferring or rewriting th
     await writeFile(path, source);
     await expect(new ProjectManifestStore().readManifest(directory)).rejects.toThrow();
     expect(await readFile(path, 'utf8')).toBe(source);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it('keeps Web exports and unmarked project data outside the Desktop manifest store', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'origamix-product-'));
+  try {
+    const store = new ProjectManifestStore();
+    await store.initializeManifest(directory, {
+      projectId: 'project_test',
+      name: 'Product isolation',
+      code: 'product-isolation',
+      pageDirectory: 'pages',
+    });
+    const manifest = await store.readManifest(directory);
+    for (const product of ['web', undefined]) {
+      const source = JSON.stringify({ ...manifest, product });
+      const path = join(directory, 'origamix.project.json');
+      await writeFile(path, source);
+      await expect(store.readManifest(directory)).rejects.toThrow('不是桌面端项目');
+      expect(await readFile(path, 'utf8')).toBe(source);
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

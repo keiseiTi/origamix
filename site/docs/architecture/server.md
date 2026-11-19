@@ -11,7 +11,7 @@ description: Server：本地后端的职责、使用与开发说明
 
 ## 关键入口
 
-`src/server.ts` 是宿主无关的启动入口；`src/hosts/utility-process.ts` 是 Electron Utility Process 适配器。`src/http/` 适配请求，`src/projects/` 管理项目，`src/schema/` 管理编辑与应用，`src/agent/` 执行 Run，`src/database/` 管理 SQLite；测试及辅助代码归入 `test/`。公开 `@origamix/server/runtime` 仍导出 `startServer`，返回端口、目录授权注册和关闭方法。
+`src/server.ts` 启动桌面文件项目的后端；`src/hosts/utility-process.ts` 是 Electron Utility Process 适配器。`src/http/` 适配请求，`src/projects/` 管理项目，`src/schema/` 管理编辑与应用，`src/agent/` 执行 Run，`src/database/` 管理 SQLite；测试及辅助代码归入 `test/`。`@origamix/server/runtime` 导出的 `startServer` 返回端口、目录授权注册和关闭方法。Web 开发和生产通过 `@origamix/server/web-runtime` 启动 MySQL 后端。桌面只打开标记为 `product: desktop` 的项目，Web 同步和导出的文件标记为 `product: web`。
 
 ## 协作边界
 
@@ -19,7 +19,7 @@ description: Server：本地后端的职责、使用与开发说明
 
 ## 版本与恢复
 
-Server 打开页面时校验 Schema 与物料契约，打开项目时校验项目清单。SQLite 初始化创建版本 1 的新库，或严格校验已有数据库的版本和表结构。当前没有迁移流程。页面会话和 Run 按项目及页面归属保存。
+Server 打开页面时校验 Schema 与物料契约，打开项目时校验项目清单。SQLite 只接受数据库 v2，MySQL 只接受数据库 v3。现有数据库版本不符时会拒绝启动，原数据保留。页面会话和 Run 按项目及页面归属保存。
 
 ## 开发与验证
 

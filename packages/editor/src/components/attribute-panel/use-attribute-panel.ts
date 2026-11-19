@@ -29,13 +29,6 @@ export const useAttributePanel = (focusTarget: EventFocusProps['focusTarget']) =
   const catalog = useMaterialCatalog();
   const element = activeElement ? schema.elements[activeElement.id] : undefined;
   const values = element?.props ?? {};
-  const propsSchema = catalog.find((item) => item.type === element?.type)?.propsSchema;
-  const declared = propsSchema?.properties as Record<string, unknown> | undefined;
-  const obsoleteFields =
-    propsSchema?.additionalProperties === false && !propsSchema.patternProperties && declared
-      ? Object.keys(values).filter((field) => !Object.hasOwn(declared, field))
-      : [];
-
   const parentTabsId = activeElement
     ? SchemaUtils.getParents(schema, activeElement.id).find(
         (id) => schema.elements[id]?.type === 'tabs',
@@ -140,22 +133,11 @@ export const useAttributePanel = (focusTarget: EventFocusProps['focusTarget']) =
     setSchema(result.schema, { historyGroup: `props:${activeElement.id}:${field}` });
   };
 
-  const removeObsoleteFields = (): void => {
-    if (!element || !activeElement) return;
-    const props = Object.fromEntries(
-      Object.entries(values).filter(([field]) => !obsoleteFields.includes(field)),
-    );
-    setSchema({
-      ...schema,
-      elements: { ...schema.elements, [activeElement.id]: { ...element, props } },
-    });
-  };
   return {
     activeElement,
     schema,
     material,
     values,
-    obsoleteFields,
     hiddenBindings,
     panels,
     parents,
@@ -163,6 +145,5 @@ export const useAttributePanel = (focusTarget: EventFocusProps['focusTarget']) =
     setActivePanel,
     setActiveElement,
     update,
-    removeObsoleteFields,
   };
 };

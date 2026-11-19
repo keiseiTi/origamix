@@ -4,7 +4,6 @@ import type { EventFocusProps } from '../editor-layout/event-focus-target';
 import type { EventTarget } from '../flow-editor/flow-graph';
 import { AttributeField } from './attribute-field';
 import { EventFields } from './event-fields';
-import { ObsoleteFields } from './obsolete-fields';
 import { useAttributePanel } from './use-attribute-panel';
 interface AttributePanelProps extends EventFocusProps {
   onEditEvent: (target: EventTarget) => void;
@@ -19,7 +18,6 @@ export const AttributePanel = ({
     schema,
     material,
     values,
-    obsoleteFields,
     hiddenBindings,
     panels,
     parents,
@@ -27,7 +25,6 @@ export const AttributePanel = ({
     setActivePanel,
     setActiveElement,
     update,
-    removeObsoleteFields,
   } = useAttributePanel(focusTarget);
   return (
     <aside
@@ -80,7 +77,6 @@ export const AttributePanel = ({
               )}
             </span>
           </div>
-          <ObsoleteFields fields={obsoleteFields} onRemove={removeObsoleteFields} />
           {panels.length === 0 ? (
             <p className='p-4 text-xs text-zinc-500'>此物料没有可编辑属性。</p>
           ) : (

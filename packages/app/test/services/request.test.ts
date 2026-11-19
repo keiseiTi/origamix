@@ -253,7 +253,7 @@ describe('renderer transport', () => {
     expect(fetch.mock.calls[0]![1].signal.aborted).toBe(true);
     notify('ready');
     await vi.waitFor(() => expect(onOpen).toHaveBeenCalledTimes(2));
-    expect(fetch.mock.calls[1]![0]).toContain('afterEventId=-1');
+    expect(fetch.mock.calls[1]![1].headers).not.toHaveProperty('last-event-id');
     expect(fetch.mock.calls[1]![1].headers.Authorization).toBe('Bearer new');
     oldStream.enqueue(event(10));
     newStream.enqueue(event(0));

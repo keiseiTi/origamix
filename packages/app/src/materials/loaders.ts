@@ -4,7 +4,7 @@ import type { ProjectStack } from '@origamix/shared';
 // Literal imports are an allowlist, never module paths supplied by project files.
 const builtinLoaders = {
   editor: () => import('@origamix/materials/antd/editor'),
-  runtime: () => import('@origamix/materials/antd/runtime'),
+  runtime: () => import('@origamix/materials/antd'),
 };
 const editorLoads = new Map<string, Promise<EditorMaterialRegistration>>();
 const runtimeLoads = new Map<string, ReturnType<typeof builtinLoaders.runtime>>();

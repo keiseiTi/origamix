@@ -300,12 +300,9 @@ export const useAgentChat = (
         if (!current()) return;
         conversationId.current = created.conversationId;
         const replayEvents = isRunActive(created.status);
-        // A renderer can briefly outlive an older desktop Server during a dev
-        // rebuild. Recover the Run snapshot instead of silently skipping SSE.
-        const run = created.run ?? (await getAgentRun(projectId, created.runId)).run;
-        if (!current()) return;
         // The create response includes the Run snapshot, so subscribe before
         // loading message history or making another backend state request.
+        const { run } = created;
         if (replayEvents) dispatch({ type: 'run.queued', run });
         const history = await listAllMessages(projectId, pageId, created.conversationId);
         // A terminal SSE event may have started a newer backend state reload while

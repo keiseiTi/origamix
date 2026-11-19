@@ -3,14 +3,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { previewDocument } from './preview-document.ts';
-import { localWebServer } from './dev-server.ts';
+import { mysqlWebDevelopment } from './dev-server.ts';
 
 export default defineConfig(() => {
   const config = loadAppConfig();
   return {
     base: './',
     envDir: false as const,
-    plugins: [tailwindcss(), react(), previewDocument(), localWebServer()],
+    plugins: [tailwindcss(), react(), previewDocument(), mysqlWebDevelopment(config)],
     server: {
       host: config.host,
       port: config.port,

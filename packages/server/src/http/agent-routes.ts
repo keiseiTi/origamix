@@ -200,11 +200,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
         const { projectId, runId } = request.params as { projectId: string; runId: string };
         const durable = await requireOwnedRun(projectId, runId);
         if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
-        const cursor = Number(
-          request.headers['last-event-id'] ??
-            (request.query as { afterEventId?: string }).afterEventId ??
-            -1,
-        );
+        const cursor = Number(request.headers['last-event-id'] ?? -1);
         const after =
           Number.isSafeInteger(cursor) && cursor < Number.MAX_SAFE_INTEGER
             ? Math.max(-1, cursor)

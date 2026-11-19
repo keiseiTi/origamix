@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
   bindMaterialEventPayloads,
@@ -19,7 +20,7 @@ const schema: Schema = {
     modal: { type: 'modal', props: {} },
   },
   layout: { root: 'root', structure: { root: ['button', 'form', 'modal'] } },
-  extensions: {},
+  extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
   flows: {},
   bindElements: [],
   context: { globalVariables: [] },

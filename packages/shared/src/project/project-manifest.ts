@@ -20,6 +20,7 @@ export const ProjectLayoutConfigSchema = Type.Object(
 
 export const ProjectManifestSchema = Type.Object(
   {
+    product: Type.Optional(Type.Union([Type.Literal('desktop'), Type.Literal('web')])),
     shell: ProjectShellSchema,
     runtime: Type.Union([Type.Literal('origamix'), Type.Literal('external')]),
     code: Type.Optional(Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })),

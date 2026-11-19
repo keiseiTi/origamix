@@ -4,7 +4,6 @@ import {
   projectNavigation,
   projectSettings,
   requireProjectName,
-  sameProjectRouting,
 } from './project-settings';
 import {
   ProjectSettingsUpdateSchema,
@@ -17,7 +16,6 @@ import {
   DEFAULT_PROJECT_ROUTING,
   type ProjectRouting,
   type InitialLayoutVariant,
-  type ProjectRoutingUpdate,
 } from '@origamix/shared';
 import { Check } from '@sinclair/typebox/value';
 import { PageRoleIdSchema, type PageRoleId } from '@origamix/shared';
@@ -251,50 +249,6 @@ export class ProjectService {
         const manifest = await this.manifest.readManifest(project.path);
         if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
         return projectNavigation(manifest);
-      });
-    });
-
-  getRouting = (projectId: string) =>
-    withProjectQueue(projectId, async () => {
-      const project = this.projects.getProject(projectId);
-      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-      return withProjectActivity(project.path, async () => {
-        const source = await this.manifest.readSource(project.path);
-        const manifest = this.manifest.parseManifest(source);
-        if (manifest.projectId !== projectId) throw invalid('项目清单归属无效');
-        if (manifest.runtime !== 'origamix') throw conflict('此项目的应用运行由项目自行管理');
-        return {
-          routing: manifest.routing,
-          manifestHash: manifestHash(source),
-        };
-      });
-    });
-
-  updateRouting = (input: ProjectRoutingUpdate) =>
-    withProjectQueue(input.projectId, async () => {
-      if (!Check(ProjectRoutingSchema, input.routing)) throw invalid('路由配置无效');
-      const project = this.projects.getProject(input.projectId);
-      if (!project || project.status !== 0) throw notFound('项目不存在或不可用');
-      return withExclusiveProjectActivity(project.path, async () => {
-        const source = await this.manifest.readSource(project.path);
-        const manifest = this.manifest.parseManifest(source);
-        if (manifest.projectId !== input.projectId) throw invalid('项目清单归属无效');
-        if (manifest.runtime !== 'origamix') throw conflict('此项目的应用运行由项目自行管理');
-        const same = sameProjectRouting(manifest.routing, input.routing);
-        // Retrying an already completed deterministic update is safe; never overwrite newer settings.
-        if (manifestHash(source) !== input.expectedManifestHash && !same)
-          throw conflict('项目配置已变化，请重新打开运行设置');
-        if (!same)
-          await this.manifest.writeManifest(
-            project.path,
-            { ...manifest, routing: input.routing },
-            source,
-          );
-        const next = await this.manifest.readSource(project.path);
-        return {
-          routing: this.manifest.parseManifest(next).routing,
-          manifestHash: manifestHash(next),
-        };
       });
     });
 

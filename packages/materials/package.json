@@ -10,7 +10,7 @@
       "types": "./dist/public/antd/manifest.d.ts",
       "import": "./dist/public/antd/manifest.js"
     },
-    "./antd/runtime": {
+    "./antd": {
       "types": "./dist/public/antd/runtime.d.ts",
       "import": "./dist/public/antd/runtime.js"
     },
@@ -30,7 +30,7 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./antd/runtime": {
+      "./antd": {
         "types": "./dist/public/antd/runtime.d.ts",
         "import": "./dist/public/antd/runtime.js"
       },

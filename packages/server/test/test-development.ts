@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { stopChild } from '../scripts/dev-supervisor.ts';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
+const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
+if (!mysqlUrl) throw new Error('Set ORIGAMIX_TEST_MYSQL_URL to a disposable MySQL database');
 
 // Test real compilers in a throwaway workspace, without touching source mtimes or user data.
 const original = fileURLToPath(new URL('../../../', import.meta.url));
@@ -34,10 +36,11 @@ const start = (entry: string, cwd: string, args: string[] = []) => {
     env: {
       ...process.env,
       ORIGAMIX_DESKTOP: '0',
+      ORIGAMIX_WEB_MYSQL_URL: mysqlUrl,
       ORIGAMIX_SERVER_PORT: '0',
       ORIGAMIX_SERVER_TOKEN: 'development-smoke-token',
-      ORIGAMIX_WEB_PROJECT_DIR: '',
-      ORIGAMIX_WEB_STATE_DIR: join(root, 'state'),
+      ORIGAMIX_LOCAL_PROJECT_DIR: '',
+      ORIGAMIX_LOCAL_STATE_DIR: join(root, 'state'),
     },
     silent: true,
   });
@@ -72,7 +75,7 @@ try {
           .split(sep)
           .some(
             (part) =>
-              ['.vite', '.origamix-web', '.env.local'].includes(part) ||
+              ['.vite', '.origamix-local', '.origamix-web', '.env.local'].includes(part) ||
               (part === 'dist' && ['server', 'app'].includes(name)),
           ),
     });
@@ -80,7 +83,7 @@ try {
   const serverRoot = join(root, 'packages/server');
   const appRoot = join(root, 'packages/app');
   await writeFile(join(appRoot, '.env.local'), 'ORIGAMIX_RENDERER_PORT=invalid');
-  await writeFile(join(serverRoot, '.env.local'), 'ORIGAMIX_WEB_STATE_DIR=');
+  await writeFile(join(serverRoot, '.env.local'), 'ORIGAMIX_LOCAL_STATE_DIR=');
   // App starts without any server dist files. An authenticated proxy must become ready.
   start(join(appRoot, 'scripts/dev.ts'), appRoot, [
     '--host',

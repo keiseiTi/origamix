@@ -76,6 +76,7 @@ describe('Project and Schema HTTP flows', () => {
       JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
     ).toMatchObject({
       shell: { title: '', logo: '', standalonePageIds: [] },
+      product: 'desktop' as const,
       runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'mix' as const },
       routing: { mode: 'browser' as const, basePath: '/' },

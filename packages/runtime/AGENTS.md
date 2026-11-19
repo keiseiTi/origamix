@@ -17,7 +17,7 @@ Applies to `packages/runtime/`. Read the [root guide](../../AGENTS.md) first.
 
 - DesignRenderer never creates an execution engine or binds business events, evaluates code, initializes runtime variables or provides runtime state/method callbacks. Editor owns selection, dragging, history and Schema mutations. Runtime cannot import Editor or Materials. Runtime sessions abort requests and ignore late writes on disposal; async event invocations own separate payload/result context.
 
-- Run and design renderers accept Schema with a compatible structure and semantics regardless of the declared version. Runtime never migrates project data.
+- Run and design renderers require the current Schema version. Runtime never migrates project data.
 
 - MaterialView owns the same layout frame in design/run modes, reading serializable origamixLayout metadata attached to registry components. It consumes validated layout-prefixed instance props before forwarding business props. Root frames include scoped baseline sizing CSS so generated projects need no editor stylesheet. Design renderMaterial accepts frame attributes/ref separately from material props.
 

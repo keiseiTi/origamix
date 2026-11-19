@@ -8,7 +8,7 @@ Origamix 页面物料包，当前只提供 Ant Design。它拥有页面组件、
 
 | 入口                                  | 消费方与用途                         |
 | ------------------------------------- | ------------------------------------ |
-| `@origamix/materials/antd/runtime`    | Runtime/生成页面使用的组件注册表     |
+| `@origamix/materials/antd`            | Runtime/生成页面使用的组件注册表     |
 | `@origamix/materials/antd/editor`     | 编辑器使用的分组、清单与扩展注册     |
 | `@origamix/materials`                 | `src/` 的公共类型与辅助函数          |
 | `@origamix/materials/antd/manifest`   | Server、Agent 使用的纯数据物料清单   |
@@ -97,7 +97,7 @@ Materials 包与应用统一发布；物料集及各物料 Manifest 的契约版
 
 ## 单包与入口隔离
 
-Materials 保持一个包，通过 `antd/runtime`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd/runtime`，Server 只导入 Manifest 与 validation；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
+Materials 保持一个包，通过 `antd`、`antd/editor`、`antd/manifest` 区分页面运行、内部编辑集成和纯数据校验。运行项目只导入 `antd`，Server 只导入 Manifest 与 validation；不得从运行入口反向加载编辑配置。`@origamix/ui` 保持私有，只由 Origamix 内部编辑宿主提供，不作为用户运行项目的安装要求。可选编辑 peer 不代表 UI 对外发布。
 
 归档和入口隔离规则见[包产物契约](../../site/docs/architecture/development.md)。内部编辑入口不作为 npm 公共接口。
 

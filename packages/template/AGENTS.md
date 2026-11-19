@@ -26,7 +26,9 @@ Applies to `packages/template/` in this workspace. Read the [root guide](../../A
 
 ## Verification
 
-Generated page shells consume `@origamix/materials/antd/runtime`. Template smoke verifies that standalone installation does not pull editor engines. Ant Design provides the scaffold UI controls.
+The base scaffold carries the Desktop product marker. Web snapshots supply their own project manifest with the Web product marker.
+
+Generated page shells consume `@origamix/materials/antd`. Template smoke verifies that standalone installation does not pull editor engines. Ant Design provides the scaffold UI controls.
 
 The scaffold manifest records framework and materialSet { id, version }; no project version or uiLibrary. Artifact preparation checks Runtime/Materials/template package release alignment separately from the material contract. Opening/checking a project never changes dependencies. Existing page shells are never rewritten to implement stack selection.
 

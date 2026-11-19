@@ -2,7 +2,6 @@ import { Type, type Static } from '@sinclair/typebox';
 import {
   ProjectSettingsUpdateSchema,
   UpdatePageRolesSchema,
-  ProjectRoutingUpdateSchema,
   CreatePageSchema,
   CreateProjectSchema,
   DeleteDesktopRecordSchema,
@@ -50,20 +49,6 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
     { schema: { body: ProjectScopeSchema } },
     route<Static<typeof ProjectScopeSchema>>(({ body }) =>
       input.projectService.getNavigation(body.projectId),
-    ),
-  );
-  server.post(
-    '/api/v1/projects/routing/get',
-    { schema: { body: ProjectScopeSchema } },
-    route<Static<typeof ProjectScopeSchema>>((request) =>
-      input.projectService.getRouting(request.body.projectId),
-    ),
-  );
-  server.post(
-    '/api/v1/projects/routing/update',
-    { schema: { body: ProjectRoutingUpdateSchema } },
-    route<Static<typeof ProjectRoutingUpdateSchema>>((request) =>
-      input.projectService.updateRouting(request.body),
     ),
   );
   server.post(

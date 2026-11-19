@@ -23,10 +23,9 @@ export class ApplicationDatabase {
   }
 
   private configure(connection: DatabaseSync): void {
-    connection.exec(
-      'PRAGMA foreign_keys = OFF; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;',
-    );
+    connection.exec('PRAGMA foreign_keys = OFF; PRAGMA busy_timeout = 5000;');
     initializeDatabase(connection);
+    connection.exec('PRAGMA journal_mode = WAL;');
   }
 
   transaction<T>(action: (tx: TransactionClient) => TransactionResult<T>): T {

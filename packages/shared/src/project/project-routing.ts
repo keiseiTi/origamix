@@ -19,13 +19,3 @@ export const InitialLayoutVariantSchema = Type.Union([
   Type.Literal('mix'),
 ]);
 export type InitialLayoutVariant = Static<typeof InitialLayoutVariantSchema>;
-export const ProjectRoutingUpdateSchema = Type.Object(
-  {
-    projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
-    expectedManifestHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
-    routing: ProjectRoutingSchema,
-  },
-  { additionalProperties: false },
-);
-export type ProjectRoutingUpdate = Static<typeof ProjectRoutingUpdateSchema>;
-export type ProjectRoutingState = { routing: ProjectRouting; manifestHash: string };

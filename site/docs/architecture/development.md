@@ -51,10 +51,11 @@ Desktop、App 和独立 Server 各自在包目录维护 `.env`，可选个人覆
 
 ```sh
 # 在当前 shell 中配置 DEEPSEEK_API_KEY，不要写入 VITE_*。
-ORIGAMIX_WEB_PROJECT_DIR=/absolute/path/to/project pnpm dev:web
+# 先通过进程环境配置 ORIGAMIX_WEB_MYSQL_URL。
+pnpm dev:web
 ```
 
-把示例路径替换为已有项目的绝对路径。文件模式由宿主提供目录授权。默认开发数据在 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。独立 Web 开发启动器监听 Shared、Runtime、Materials 和 Server 的源码，构建成功后重启宿主。
+Web 开发连接专用 MySQL 数据库，项目在工作台创建。模板暂存默认使用 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。独立 Web 开发启动器监听 Shared、Runtime、Materials 和 Server 的源码，构建成功后重启宿主。
 
 ### 正式 Web 宿主
 
@@ -65,7 +66,7 @@ pnpm build:web
 pnpm start:web
 ```
 
-默认访问地址为 `http://127.0.0.1:9685`。文件模式可用 `ORIGAMIX_WEB_PROJECT_DIR` 指定授权目录。数据库模式使用 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 库，两种配置互斥。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
+默认访问地址为 `http://127.0.0.1:9685`。通过 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 数据库。Web 项目和桌面项目独立管理，Web 导出的应用源码用于运行和部署。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
 
 ## 仓库检查
 
@@ -82,20 +83,20 @@ pnpm build
 
 单包 `build` 只构建本包，调用前需准备其上游产物；根命令负责依赖顺序。Desktop 的 `build` 还组装已有 Server 与模板产物，包内 `package:*` 只消费已有资源。
 
-| 根命令               | 用途                                                    |
-| -------------------- | ------------------------------------------------------- |
-| `pnpm build:libs`    | 构建 Shared、Runtime、Materials                         |
-| `pnpm build:web`     | 构建库、Server、App 静态资源和模板 ZIP                  |
-| `pnpm build`         | 库 → Server → App → Desktop 编译与资源组装              |
-| `pnpm pack:npm`      | 构建 Shared、Runtime、Materials 的本地 npm 归档，不发布 |
-| `pnpm package:dir`   | 构建 macOS arm64 应用目录                               |
-| `pnpm package:mac`   | 检查、构建并制作 macOS arm64 DMG／ZIP                   |
-| `pnpm package`       | 等同于 `package:mac`                                    |
-| `pnpm test:dev`      | Desktop／Server 开发更新与监听清理验证                  |
-| `pnpm test:desktop`  | 构建并验证真实 Main、IPC、后端与预览隔离                |
-| `pnpm test:web`      | 准备产物并验证 Web 宿主与认证代理                       |
-| `pnpm test:template` | 准备产物并验证生成项目的独立安装、类型检查与构建        |
-| `pnpm gate:internal` | 固定评测数据及门槛检查，不证明真实模型质量              |
+| 根命令               | 用途                                                               |
+| -------------------- | ------------------------------------------------------------------ |
+| `pnpm build:libs`    | 构建 Shared、Runtime、Materials                                    |
+| `pnpm build:web`     | 构建库、Server、App 静态资源和模板 ZIP                             |
+| `pnpm build`         | 库 → Server → App → Desktop 编译与资源组装                         |
+| `pnpm pack:npm`      | 构建 Shared、Runtime、Materials 的本地 npm 归档，不发布            |
+| `pnpm package:dir`   | 构建 macOS arm64 应用目录                                          |
+| `pnpm package:mac`   | 检查、构建并制作 macOS arm64 DMG／ZIP                              |
+| `pnpm package`       | 等同于 `package:mac`                                               |
+| `pnpm test:dev`      | Desktop／Server 开发更新与监听清理验证，需配置测试 MySQL           |
+| `pnpm test:desktop`  | 构建并验证真实 Main、IPC、后端与预览隔离                           |
+| `pnpm test:web`      | 使用 `ORIGAMIX_TEST_MYSQL_URL` 指定的测试库验证 Web 宿主与认证代理 |
+| `pnpm test:template` | 准备产物并验证生成项目的独立安装、类型检查与构建                   |
+| `pnpm gate:internal` | 固定评测数据及门槛检查，不证明真实模型质量                         |
 
 桌面集成检查需要图形会话；生成项目检查需要依赖缓存或 registry 网络。本地 macOS 构建使用 ad-hoc 签名，没有 Developer ID 签名或 Apple 公证；官网仍以源码获取和本地启动为入口，不提供安装器下载。
 

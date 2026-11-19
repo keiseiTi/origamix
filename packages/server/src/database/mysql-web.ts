@@ -109,12 +109,12 @@ export const openWebDatabase = async (uri: string): Promise<Pool> => {
     const [rows] = await pool.query<(RowDataPacket & { version: number })[]>(
       'SELECT version FROM origamix_web_version WHERE id = 1',
     );
-    if (rows.length && ![1, 2, version].includes(rows[0].version))
+    if (rows.length && rows[0].version !== version)
       throw new Error('Web MySQL 数据库版本不受当前应用支持');
     for (const sql of tables) await pool.query(sql);
     await pool.execute(
-      'INSERT INTO origamix_web_version (id, version) VALUES (1, ?) ON DUPLICATE KEY UPDATE version = GREATEST(version, ?)',
-      [version, version],
+      'INSERT INTO origamix_web_version (id, version) VALUES (1, ?) ON DUPLICATE KEY UPDATE id = id',
+      [version],
     );
   } catch (error) {
     await pool.end();

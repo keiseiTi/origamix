@@ -15,7 +15,7 @@ pnpm preview
 
 ## 职责与入口
 
-`src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面，`src/application.tsx` 负责项目公共布局、主题和导航。页面入口使用 `@origamix/runtime` 和 `@origamix/materials/antd/runtime` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
+`src/main.tsx` 启动 React，`src/router.ts` 根据 `origamix.project.json` 注册页面，`src/application.tsx` 负责项目公共布局、主题和导航。页面入口使用 `@origamix/runtime` 和 `@origamix/materials/antd` 渲染自身的 `schema.json`。项目不依赖 Origamix App、Server 或 Electron；普通保存不会重新生成页面源码，Apply 只更新目标 Schema。
 
 项目清单记录 `framework: react` 与 `materialSet: { id: "official-antd", version: "1.0.0" }`，不记录项目 version 或 uiLibrary。页面 Schema 与物料契约采用独立 SemVer；包版本跟随应用发布。打开页面仅检查兼容性，不转换数据或更新依赖。
 

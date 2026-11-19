@@ -6,13 +6,13 @@
 
 在仓库根目录使用 Node.js 24.15.0 至 24.x 和 pnpm 10，先执行 `pnpm install --frozen-lockfile`。只做可视化编辑时可以跳过模型配置。
 
-| 使用场景         | 启动方式                                                               | 项目内容如何交付                                                   |
-| ---------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                                           | 保存页面版本后，点击「应用到项目」                                 |
-| 浏览器开发       | `pnpm dev:web`，可用 `ORIGAMIX_WEB_PROJECT_DIR` 指定授权项目的绝对路径 | 文件项目使用同一套页面 Apply                                       |
-| 单用户自托管 Web | 配置访问密码后执行 `pnpm build:web`、`pnpm start:web`                  | 文件模式使用宿主授权目录。MySQL 模式从项目菜单同步到本机或下载 ZIP |
+| 使用场景         | 启动方式                                                       | 项目内容如何交付                   |
+| ---------------- | -------------------------------------------------------------- | ---------------------------------- |
+| 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                                   | 保存页面版本后，点击「应用到项目」 |
+| 浏览器开发       | 配置 `ORIGAMIX_WEB_MYSQL_URL` 后执行 `pnpm dev:web`            | 保存版本后同步到本机或下载 ZIP     |
+| 单用户自托管 Web | 配置 MySQL 和访问密码后执行 `pnpm build:web`、`pnpm start:web` | 保存版本后同步到本机或下载 ZIP     |
 
-桌面与浏览器开发默认使用前端端口 9685、后端端口 1029，请分别启动。Web 开发数据默认位于 `.origamix-web/`。生产环境的密码要求、数据库与 HTTPS 反向代理配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
+桌面与 Web 开发默认使用前端端口 9685，请分别启动。桌面项目使用本地目录和 SQLite，Web 项目保存在 MySQL。Web 同步和 ZIP 是独立部署产物，无法作为桌面项目打开。桌面只打开清单标记为 `"product": "desktop"` 的项目，已有无标记目录不会自动转换。生产环境的密码要求、数据库与 HTTPS 反向代理配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
 
 ## 首次使用
 
@@ -32,7 +32,7 @@
 
 工作台重构的依赖方向、公开契约与迁移归属见 [架构边界](site/docs/architecture/index.md)。Editor 已承接画布、FlowEditor 与通用编辑组件，公共 UI 已独立为工作区包。
 
-项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd/runtime` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。复杂属性使用物料自带的结构化编辑器；普通字段和协议由同一物料定义生成。
+项目技术栈由 Shared 契约统一解析；当前固定支持 React + Antd，物料通过 `antd/manifest`、`antd/editor`、`antd` 三入口分别供 Server、编辑器与页面运行使用。编辑和预览按需加载，显式未知版本不会回退。复杂属性使用物料自带的结构化编辑器；普通字段和协议由同一物料定义生成。
 
 | 包                                        | 唯一职责                                         | 对外接口                              |
 | ----------------------------------------- | ------------------------------------------------ | ------------------------------------- |
@@ -76,7 +76,7 @@ pnpm build
 
 包内 `build` 只构建本包，所需上游产物须先准备；根命令负责依赖顺序，避免重复构建。Desktop 的 `build` 还组装已构建的 Server 和模板资源，包内 `package:*` 只消费这些产物。Shared、Runtime 在工作区与发布包统一使用 dist 出口；Materials 始终使用 dist；Editor、UI 保持私有源码出口以支持 HMR。
 
-集成入口：`pnpm test:template` 验证独立模板，`pnpm test:web` 验证浏览器宿主，`pnpm test:desktop` 验证真实 Main，`pnpm test:dev` 验证 Desktop／Server 开发更新。前三项自动准备构建输入，开发更新检查使用临时工作区。Web 和桌面预览检查均需要图形会话。
+集成入口：`pnpm test:template` 验证独立模板，`pnpm test:web` 使用 `ORIGAMIX_TEST_MYSQL_URL` 指定的独立测试库验证浏览器宿主，`pnpm test:desktop` 验证真实 Main，`pnpm test:dev` 验证 Desktop／Server 开发更新，Server 开发检查也使用该测试库。前三项自动准备构建输入，开发更新检查使用临时工作区。Web 和桌面预览检查均需要图形会话。
 
 桌面构建包当前仅面向 macOS 13+ 的 Apple Silicon（arm64）。`release/` 中的 `OrigaMix-<version>-macOS-arm64.dmg` 用于拖入 Applications，ZIP 提供同一应用的归档；`release/mac-arm64/OrigaMix.app` 为解包目录。本地 ad-hoc 签名不等于 Developer ID 签名或 Apple 公证，当前构建属于本地试用交付；官网尚未提供公开下载。详细验证与限制见 [Desktop README](apps/desktop/README.md#macos-构建包)。
 

@@ -11,3 +11,4 @@ _doc
 .pnpm-store
 release
 .origamix-web
+.origamix-local

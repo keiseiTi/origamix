@@ -39,7 +39,7 @@ afterEach(async () => {
 it('preserves an external manifest edit made while saving project routing', async () => {
   const { database, project, service } = await deletionFixture();
   try {
-    const before = await service.getRouting(project.id);
+    const before = await service.getSettings(project.id);
     const path = join(project.path, 'origamix.project.json');
     const external = JSON.parse(await readFile(path, 'utf8'));
     external.shell.title = 'External title';
@@ -52,9 +52,11 @@ it('preserves an external manifest edit made while saving project routing', asyn
       },
     );
     await expect(
-      service.updateRouting({
+      service.updateSettings({
         projectId: project.id,
         expectedManifestHash: before.manifestHash,
+        shell: before.shell,
+        layout: before.layout,
         routing: { mode: 'hash', basePath: '/admin/' },
       }),
     ).rejects.toThrow('项目文件已被修改');
@@ -534,7 +536,7 @@ it('initializes a project manifest when opening an uninitialized directory', asy
   });
   await expect(access(join(directory, 'vite.config.ts'))).rejects.toMatchObject({ code: 'ENOENT' });
   await expect(service.getSettings(project.id)).rejects.toThrow('不支持');
-  await expect(service.getRouting(project.id)).rejects.toThrow('自行管理');
+  await expect(service.getSettings(project.id)).rejects.toThrow('不支持应用设置');
   database.close();
 });
 

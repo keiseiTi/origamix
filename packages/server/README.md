@@ -54,7 +54,7 @@ test/                       核心流与架构测试；fixtures/ 放假引擎和
 | `src/infrastructure/` | 业务复用的按 key 串行队列和原子文件写入；对应测试覆盖失败与恢复                                                                                                                             |
 | `scripts/`            | 构建、开发监听、模板与启动集成检查                                                                                                                                                          |
 
-数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。启动从初始化 SQL 推导列和唯一索引的预期结构。[初始化](src/database/initialize.ts)创建版本 1 的新库，或严格校验已有数据库的版本和结构。当前没有自动迁移，检查失败时保留原数据。
+数据库六张业务表均以自增整数 `id` 为主键，表间以整数键关联。`projects.project_id`、`pages.page_id`、`agent_runs.run_id` 是独立的唯一字符串标识，供项目清单、`.origamix` 文件与外部请求使用；会话和消息的接口标识由整数主键编码生成。启动从初始化 SQL 推导列和唯一索引的预期结构。[初始化](src/database/initialize.ts)创建 SQLite v2 新库，并严格校验已有数据库的版本和结构。MySQL 只接受 v3。旧数据库会被拒绝并保留原数据。
 
 业务目录内部保留 Service → Repository/Store 的职责边界，不再为每个技术层建立子目录。目录位置不代表允许绕过服务写入。
 
@@ -140,7 +140,7 @@ Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origa
 
 `AgentService.start(request)` 是唯一运行启动入口。HTTP 立即返回 Run 标识；进程内测试可等待返回对象的 `completion`。同一请求的并发调用共享一次执行；已完成 Run 的重放返回持久化记录，不会重新路由或执行模型。
 
-Agent SSE 只发布共享协议定义的阶段进度、脱敏工具活动、Working 提交、结构化澄清与 Run 终态事件。阶段变化立即发布安全固定文案，活动 Run 每 4 秒可重复发布当前中性状态；这些心跳不写入消息、不调用模型，也不参与恢复或成功判定。断线后的权威状态来自持久化 Run、Message 与 Working，而不是进程内事件重放。
+Agent SSE 通过 `Last-Event-ID` 请求头恢复订阅。Agent SSE 只发布共享协议定义的阶段进度、脱敏工具活动、Working 提交、结构化澄清与 Run 终态事件。阶段变化立即发布安全固定文案，活动 Run 每 4 秒可重复发布当前中性状态；这些心跳不写入消息、不调用模型，也不参与恢复或成功判定。断线后的权威状态来自持久化 Run、Message 与 Working，而不是进程内事件重放。
 
 `needs_clarification` 的候选必须存在于该 Run 基线 Working Schema。后续选择请求携带来源 Run、`clarificationId` 和 Element ID；Server 会再次核对项目、页面、会话、Working Version 与候选集合，过期或跨页面选择不会启动新 Run。
 
@@ -221,7 +221,7 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 根 `pnpm test:template` 自动准备库与 Server 产物；包内 `test:template`、`gate:agent` 消费已构建产物，`build` 只构建 Server，不隐式重建依赖。
 
-`test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建项目和页面，编辑包含按钮的 Working 草稿，重启后端确认恢复，再显式保存并 Apply，最后独立安装、类型检查和构建。它同时确认编辑和保存版本不写目标、Apply 不重写页面入口，并检查生成项目不安装编辑引擎，需要依赖缓存或 registry 网络。
+配置独立的 `ORIGAMIX_TEST_MYSQL_URL` 后，`test:dev` 在临时工作区验证缺少产物时的启动、源码变化后的重启和监听器清理。`test:template` 使用公开启动/HTTP 接口创建项目和页面，编辑包含按钮的 Working 草稿，重启后端确认恢复，再显式保存并 Apply，最后独立安装、类型检查和构建。它同时确认编辑和保存版本不写目标、Apply 不重写页面入口，并检查生成项目不安装编辑引擎，需要依赖缓存或 registry 网络。
 
 设置 `ORIGAMIX_KEEP_TEMPLATE_SMOKE=1` 可保留本次新建的临时目录，结束时输出项目路径，便于后续浏览器交互验证。默认总会清理；该选项不接受或操作已有用户项目。构建通过不代表页面已经渲染，仍需在生成项目中确认实际运行结果。
 
@@ -231,15 +231,15 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 推荐通过根 `pnpm dev` 或 `pnpm dev:web` 启动完整宿主。单独调试 API 时，先在 shell 设置 `ORIGAMIX_SERVER_TOKEN`，再运行 `pnpm --filter @origamix/server dev`；监督器准备构建并启动 worker。
 
-| 环境变量                   | 单独 Server dev 的行为                                     |
-| -------------------------- | ---------------------------------------------------------- |
-| `ORIGAMIX_SERVER_TOKEN`    | 必填，作为 bearer token；完整 Desktop/Web 宿主自行生成凭据 |
-| `ORIGAMIX_SERVICE_ID`      | 可选，固定服务实例标识；默认随机生成                       |
-| `ORIGAMIX_WEB_STATE_DIR`   | 数据目录，默认仓库根 `.origamix-web/`                      |
-| `ORIGAMIX_WEB_PROJECT_DIR` | 可选，宿主授权的项目路径                                   |
-| `DEEPSEEK_API_KEY`         | 可选，Agent 与真实模型探测使用的 Key                       |
+| 环境变量                     | 单独 Server dev 的行为                                     |
+| ---------------------------- | ---------------------------------------------------------- |
+| `ORIGAMIX_SERVER_TOKEN`      | 必填，作为 bearer token；完整 Desktop/Web 宿主自行生成凭据 |
+| `ORIGAMIX_SERVICE_ID`        | 可选，固定服务实例标识；默认随机生成                       |
+| `ORIGAMIX_LOCAL_STATE_DIR`   | 数据目录，默认仓库根 `.origamix-local/`                    |
+| `ORIGAMIX_LOCAL_PROJECT_DIR` | 可选，宿主授权的项目路径                                   |
+| `DEEPSEEK_API_KEY`           | 可选，Agent 与真实模型探测使用的 Key                       |
 
-变量读取见 [dev-worker.ts](scripts/dev-worker.ts)。端口由启动时分配，worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
+变量读取见 [dev-worker.ts](scripts/dev-worker.ts)。端口默认是 1029，可通过 `ORIGAMIX_SERVER_PORT` 覆盖。worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
 
 ```sh
 curl --fail-with-body "$ORIGAMIX_API_URL/pages/working-state/get" \
@@ -284,19 +284,21 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 ## 契约校验与恢复
 
+独立路由设置接口已移除。通过项目设置接口读取与保存 `routing`。Revision 列表、读取和恢复统一校验当前 Schema 版本。
+
 页面打开时校验 Schema 版本，再初始化或读取 Working。历史快照可按原文查看，恢复时校验快照。
 
 项目清单记录框架及 `materialSet: { id, version }`。清单丢失会阻止写入，已登记或含 `.origamix` 的目录会保留现有文件。Working、Revision 和 Apply 的未完成写入由各自服务按恢复协议处理。
 
-`database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 1`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
+`database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 2`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
 
 发布时执行 `pnpm release:version --set <版本>` 同步包版本。`pnpm release:version --check` 检查包版本、契约 SemVer 和模板物料声明。
 
 ## 独立开发环境配置
 
-只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为默认文件 → 个人文件 → 进程环境变量；相对路径以 Server 包目录解析。Desktop/Web 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
+只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为默认文件 → 个人文件 → 进程环境变量；相对路径以 Server 包目录解析。Desktop 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
 
-ORIGAMIX_WEB_STATE_DIR 控制独立开发数据目录，ORIGAMIX_WEB_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-web/template`），先通过 Web 开发宿主准备，或显式指定已组装的 Desktop `dist/template` 绝对路径。
+ORIGAMIX_LOCAL_STATE_DIR 控制独立开发数据目录，ORIGAMIX_LOCAL_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-local/template`），可显式指定已组装的 Desktop `dist/template` 绝对路径。
 
 ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。
 

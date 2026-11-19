@@ -8,7 +8,7 @@ import {
 } from '@origamix/shared';
 import { invalid } from '../errors';
 
-export const schemaVersionOf = (value: unknown): string => {
+const schemaVersionOf = (value: unknown): string => {
   const version = (value as { extensions?: { origamix?: { schemaVersion?: unknown } } } | null)
     ?.extensions?.origamix?.schemaVersion;
   if (!isSemanticVersion(version)) throw invalid('Schema 缺少有效的语义化版本');

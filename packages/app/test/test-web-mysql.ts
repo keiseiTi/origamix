@@ -141,6 +141,15 @@ try {
 
   const target = { projectId, targetId: 'target_integration_fixture' };
   const pending = await post<ProjectSyncSnapshot>('/projects/sync/prepare', target);
+  const exportedManifest = pending.files.find(({ path }) => path === 'origamix.project.json');
+  assert.ok(exportedManifest);
+  assert.equal(JSON.parse(exportedManifest.text).product, 'web');
+  const desktopOpen = await fetch(new URL('/api/v1/projects/open', origin), {
+    method: 'POST',
+    headers: { Cookie: cookie, Origin: origin.origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ directoryGrantId: 'desktop-only' }),
+  });
+  assert.equal(desktopOpen.status, 404);
   assert.ok(pending.files.some(({ path }) => path === 'src/pages/editing/schema.json'));
   const draft = await post<Working>(
     '/pages/working-operations/apply',

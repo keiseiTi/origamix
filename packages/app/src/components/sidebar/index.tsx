@@ -36,7 +36,8 @@ export const Sidebar = ({
 }: SidebarProps): React.JSX.Element => {
   const isTemporary = usePreferencesStore((state) => state.sidebarCollapsed);
   const supportsNativeProjectDirectories = Boolean(window.api?.dialog);
-  const canCreateProject = supportsNativeProjectDirectories || usesDatabaseProjects();
+  const webProduct = usesDatabaseProjects();
+  const canCreateProject = supportsNativeProjectDirectories || webProduct;
   const userProfile = usePreferencesStore((state) => state.userProfile);
   const [syncProject, setSyncProject] = useState<ProjectItem | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -118,26 +119,28 @@ export const Sidebar = ({
           <FolderPlus size={15} />
           新建项目
         </Button>
-        <Button
-          variant='ghost'
-          className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
-          onClick={() => {
-            keepSidebarOpen();
-            setActionError(null);
-            void projectActions
-              .openProject()
-              .catch((reason: unknown) =>
-                setActionError(reason instanceof Error ? reason.message : '项目打开失败'),
-              );
-          }}
-          disabled={!supportsNativeProjectDirectories}
-          aria-label={
-            supportsNativeProjectDirectories ? '打开项目' : '打开项目；从左侧列表选择已有项目'
-          }
-        >
-          <FolderOpen size={15} />
-          打开项目
-        </Button>
+        {!webProduct && (
+          <Button
+            variant='ghost'
+            className='mt-1 h-9 w-full justify-start gap-2 px-2.5 hover:bg-white dark:hover:bg-zinc-900'
+            onClick={() => {
+              keepSidebarOpen();
+              setActionError(null);
+              void projectActions
+                .openProject()
+                .catch((reason: unknown) =>
+                  setActionError(reason instanceof Error ? reason.message : '项目打开失败'),
+                );
+            }}
+            disabled={!supportsNativeProjectDirectories}
+            aria-label={
+              supportsNativeProjectDirectories ? '打开项目' : '打开项目；从左侧列表选择已有项目'
+            }
+          >
+            <FolderOpen size={15} />
+            打开项目
+          </Button>
+        )}
         <div className='mx-2 mt-4 mb-1.5 text-[11px] font-semibold tracking-[0.04em] text-zinc-500 uppercase dark:text-zinc-400'>
           项目
         </div>
@@ -145,7 +148,7 @@ export const Sidebar = ({
           onCreatePage={openPageModal}
           onSelectPage={onSelectPage}
           onSync={
-            usesDatabaseProjects()
+            webProduct
               ? (project) => {
                   keepSidebarOpen();
                   setSyncProject(project);

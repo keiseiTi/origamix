@@ -13,7 +13,7 @@ export const pageComponentSource = (slug: string, stack: ProjectStack): string =
   validateResolvedProjectStack(stack);
   // Explicit built-in module paths; project files never choose executable imports.
   const runtimeEntry = '@origamix/runtime';
-  const materialEntry = '@origamix/materials/antd/runtime';
+  const materialEntry = '@origamix/materials/antd';
   const componentName = pageComponentName(slug);
   return `import { OrigamixPage } from '${runtimeEntry}';\nimport materials from '${materialEntry}';\nimport schema from './schema.json';\n\nconst ${componentName} = (): React.JSX.Element => {\n  return <OrigamixPage schema={schema} materials={materials} />;\n};\n\nexport default ${componentName};\n`;
 };

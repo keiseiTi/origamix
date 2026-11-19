@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@origamix/shared';
 // @vitest-environment happy-dom
 import { act, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -27,8 +28,7 @@ it('isolates failed preview elements, retains sibling state and clears diagnosti
     context: { globalVariables: [] },
     flows: {},
     bindElements: [],
-    // A compatible page can reach either renderer with a different version tag.
-    extensions: { origamix: { schemaVersion: '0.9.0' } },
+    extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
   };
   const Healthy = () => {
     const [count, setCount] = useState(0);

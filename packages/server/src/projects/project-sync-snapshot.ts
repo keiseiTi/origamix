@@ -38,6 +38,8 @@ export const buildProjectSnapshot = async (
     );
   }
   if (unsaved.length) throw conflict(`请先保存页面版本：${unsaved.join('、')}`);
-  files.push(file('origamix.project.json', `${JSON.stringify(manifest, null, 2)}\n`));
+  files.push(
+    file('origamix.project.json', `${JSON.stringify({ ...manifest, product: 'web' }, null, 2)}\n`),
+  );
   return { projectId: manifest.projectId, code, template, files };
 };

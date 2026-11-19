@@ -389,16 +389,10 @@ export type {
 export {
   ProjectRoutingSchema,
   isProjectRouting,
-  ProjectRoutingUpdateSchema,
   InitialLayoutVariantSchema,
   DEFAULT_PROJECT_ROUTING,
 } from './project/project-routing.ts';
-export type {
-  ProjectRouting,
-  InitialLayoutVariant,
-  ProjectRoutingState,
-  ProjectRoutingUpdate,
-} from './project/project-routing.ts';
+export type { ProjectRouting, InitialLayoutVariant } from './project/project-routing.ts';
 
 export { applicationPages } from './project/application-pages.ts';
 

@@ -22,7 +22,7 @@
 | `src/plugins/`      | 插件生命周期、物料扩展与工具栏插件                                                       |
 | `src/prototype/`    | 隔离实验画布                                                                             |
 
-功能目录以 `index.tsx` 作为组件入口，专属 Hooks、规则和子组件就近放置。属性面板拆分字段规则、控件、事件入口和失效属性清理；流程画布的生命周期在 `components/flow-editor/hooks/use-flow-canvas.ts`，视图仍动态加载。`session/editor-store.ts` 保留每个 Provider 独立的草稿与历史，`editor-instance.ts` 管理较长生命周期的实例和受保护命令，`editor-context.ts` 提供显式 selector 订阅。
+功能目录以 `index.tsx` 作为组件入口，专属 Hooks、规则和子组件就近放置。属性面板拆分字段规则、控件和事件入口；流程画布的生命周期在 `components/flow-editor/hooks/use-flow-canvas.ts`，视图仍动态加载。`session/editor-store.ts` 保留每个 Provider 独立的草稿与历史，`editor-instance.ts` 管理较长生命周期的实例和受保护命令，`editor-context.ts` 提供显式 selector 订阅。
 
 这是私有工作区包，声明出口指向源码以支持 HMR；构建生成 ESM 与类型声明供集成验证。
 

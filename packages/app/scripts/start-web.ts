@@ -25,6 +25,9 @@ const password = process.env.ORIGAMIX_WEB_PASSWORD;
 if (!password || password.trim().length < 16 || password.length > 512)
   throw new Error('ORIGAMIX_WEB_PASSWORD 必须设置为 16 至 512 字符的访问密码');
 
+const mysqlUrl = process.env.ORIGAMIX_WEB_MYSQL_URL?.trim();
+if (!mysqlUrl) throw new Error('Web 宿主需要配置 ORIGAMIX_WEB_MYSQL_URL');
+
 const host = await startProductionWeb({
   origin,
   password,
@@ -35,10 +38,7 @@ const host = await startProductionWeb({
   ),
   rendererDirectory: resolve(appRoot, 'dist'),
   templateDirectory: resolve(appRoot, '../../dist/web-template'),
-  projectPath: process.env.ORIGAMIX_WEB_PROJECT_DIR
-    ? resolve(process.env.ORIGAMIX_WEB_PROJECT_DIR)
-    : undefined,
-  mysqlUrl: process.env.ORIGAMIX_WEB_MYSQL_URL?.trim() || undefined,
+  mysqlUrl,
   modelKey: process.env.DEEPSEEK_API_KEY?.trim() || undefined,
 });
 console.info(`Origamix Web: ${origin.origin} (127.0.0.1:${host.port})`);

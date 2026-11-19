@@ -4,7 +4,6 @@ import {
   projectNavigation,
   projectSettings,
   requireProjectName,
-  sameProjectRouting,
 } from './project-settings';
 import { nanoid } from 'nanoid';
 import type { Pool, PoolConnection } from 'mysql2/promise';
@@ -15,7 +14,6 @@ import {
   validateResolvedProjectStack,
   type InitialLayoutVariant,
   type ProjectRouting,
-  type ProjectRoutingUpdate,
   type ProjectSettingsUpdate,
   type ProjectManifest,
   type ProjectExportSnapshot,
@@ -435,23 +433,6 @@ export class MysqlProjectService {
         await writeConfiguration(repository, next.manifest);
       }
       return projectSettings(next.manifest, hashJson(next.manifest));
-    });
-
-  getRouting = (projectId: string) =>
-    this.withProject(projectId, (_repository, { manifest }) => ({
-      routing: manifest.routing,
-      manifestHash: hashJson(manifest),
-    }));
-
-  updateRouting = (input: ProjectRoutingUpdate) =>
-    this.withProject(input.projectId, async (repository, { manifest }) => {
-      const next = { ...manifest, routing: input.routing };
-      if (!sameProjectRouting(manifest.routing, input.routing)) {
-        if (hashJson(manifest) !== input.expectedManifestHash)
-          throw conflict('项目配置已变化，请重新读取');
-        await writeConfiguration(repository, next);
-      }
-      return { routing: next.routing, manifestHash: hashJson(next) };
     });
 
   getPageRoles = (projectId: string) =>

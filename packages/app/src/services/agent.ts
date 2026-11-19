@@ -1,3 +1,4 @@
+import { validateCreateAgentRunResponse } from '@origamix/shared';
 import { observeWebSession } from './web-session';
 import { notifyPageRolesChanged } from './page-role-events';
 import type {
@@ -119,7 +120,11 @@ export const listAllMessages = async (
 };
 
 export const createAgentRun = (input: CreateAgentRunRequest) =>
-  request<CreateAgentRunResponse>('/agent/runs/create', input);
+  request<CreateAgentRunResponse>(
+    '/agent/runs/create',
+    input,
+    (value): value is CreateAgentRunResponse => validateCreateAgentRunResponse(value).valid,
+  );
 
 export const getAgentRun = (projectId: string, runId: string) =>
   request<GetAgentRunResponse>('/agent/runs/get', { projectId, runId });
@@ -157,7 +162,7 @@ export const subscribeAgentEvents = (
     const current = refresh ? await refreshBackendConnection() : await getApiConnection();
     if (!active()) return;
     const response = await fetch(
-      `${current.baseUrl}/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/events?afterEventId=${lastEventId}`,
+      `${current.baseUrl}/projects/${encodeURIComponent(projectId)}/agent/runs/${encodeURIComponent(runId)}/events`,
       {
         signal: ownedController.signal,
         headers: {

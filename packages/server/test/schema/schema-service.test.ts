@@ -98,6 +98,7 @@ const createPageFixture = async (): Promise<{
     join(projectPath, 'origamix.project.json'),
     JSON.stringify({
       shell: { title: '', logo: '', standalonePageIds: [] },
+      product: 'desktop' as const,
       runtime: 'origamix' as const,
       layout: { enabled: false, initialVariant: 'side' as const },
       routing: { mode: 'browser' as const, basePath: '/' },
