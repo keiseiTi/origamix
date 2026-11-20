@@ -25,7 +25,7 @@ export const startServer = async (input: {
   serviceInstanceId: string;
   projectPath?: string;
   allowedOrigins?: readonly string[];
-  getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
+  getModelCredential?: (provider: string) => Promise<string | undefined>;
   getModelReference?: () => Promise<string | undefined>;
 }) => {
   const port = input.port ?? 1029;

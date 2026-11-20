@@ -32,7 +32,7 @@ export const ChatComposer = ({
       >
         <KeyRound size={16} className='shrink-0 text-amber-600 dark:text-amber-400' />
         <div className='min-w-0 flex-1'>
-          <strong className='block text-xs'>尚未配置 DeepSeek API Key</strong>
+          <strong className='block text-xs'>尚未配置 模型 API Key</strong>
           <span className='text-[11px] text-amber-700 dark:text-amber-300'>
             配置后即可开始 AI 对话。
           </span>

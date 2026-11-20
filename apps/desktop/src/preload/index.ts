@@ -24,6 +24,7 @@ const api: DesktopApi = {
   },
   settings: {
     getModel: (): Promise<ModelSettings> => ipcRenderer.invoke('settings:model:get'),
+    getModelProviders: () => ipcRenderer.invoke('settings:model:providers'),
     saveModel: (
       input: Omit<ModelSettings, 'hasApiKey'> & { apiKey?: string },
     ): Promise<{ hasApiKey: boolean }> => ipcRenderer.invoke('settings:model:save', input),

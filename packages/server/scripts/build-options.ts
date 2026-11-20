@@ -6,6 +6,7 @@ export const options = {
   entry: {
     server: `${root}src/hosts/utility-process.ts`,
     'web-runtime': `${root}src/hosts/mysql-web-server.ts`,
+    'model-catalog': `${root}src/agent/pi-runtime.ts`,
     runtime: `${root}src/server.ts`,
     tooling: `${root}src/tooling.ts`,
   },

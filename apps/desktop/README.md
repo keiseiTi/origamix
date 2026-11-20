@@ -46,7 +46,9 @@ pnpm --filter @origamix/desktop test:resources /absolute/path/to/OrigaMix.app/Co
 
 ## 模型与本地数据
 
-设置支持 DeepSeek 的 `deepseek-flash`（默认）与 `deepseek-v4-pro`。保存模型设置后，下一次 Agent Run 使用新选择，正在执行的 Run 保留启动时模型。Key 由 Main 使用 Electron `safeStorage` 加密；系统加密不可用时，保存新 Key 会报错。
+桌面模型设置提供 DeepSeek、Z.AI Coding Plan、MiniMax 和 Qwen Token Plan。后三家可选择中国站或国际站。选择站点后，从当前 Pi AI 版本的内置目录选择模型，并填写该站点签发的 API Key。Key 由 Main 使用 Electron `safeStorage` 按供应商和站点分别加密保存。系统加密不可用时，保存新 Key 会报错。
+
+首次启动默认选择 DeepSeek 的 `deepseek-flash`。已有 DeepSeek 密钥可继续使用。保存后，下一次 Agent Run 使用新选择，正在执行的 Run 保留启动时的模型。部署版 Web 由部署者配置模型凭据。
 
 应用数据位于 Electron 的 `app.getPath('userData')`，实际位置取决于操作系统与应用名称：
 
@@ -67,11 +69,11 @@ pnpm --filter @origamix/desktop test:resources /absolute/path/to/OrigaMix.app/Co
 
 ```sh
 pnpm --filter @origamix/desktop evaluate:agent
-# 可选：仅运行一个样本，或指定这轮模型（不修改原设置）
+# 可选：仅运行一个样本。当前供应商为 DeepSeek 时可临时指定模型
 pnpm --filter @origamix/desktop evaluate:agent --case customer-form --model deepseek-flash
 ```
 
-此命令会调用真实 DeepSeek 并产生供应商费用，不属于默认 `pnpm test`。它通过真实 Main 注入凭据；只把现有加密设置复制到临时应用目录，明文 Key 不离开既有 Main → Utility Process 通道。默认按当前包名查找系统应用数据目录的 `model-settings.json`；不同应用名称可通过 `--settings /absolute/path/to/model-settings.json` 指定加密设置文件。模型选择和真实用户数据库不会被修改。
+此命令会调用当前选择的真实模型 并产生供应商费用，不属于默认 `pnpm test`。它通过真实 Main 注入凭据；只把现有加密设置复制到临时应用目录，明文 Key 不离开既有 Main → Utility Process 通道。默认按当前包名查找系统应用数据目录的 `model-settings.json`；不同应用名称可通过 `--settings /absolute/path/to/model-settings.json` 指定加密设置文件。模型选择和真实用户数据库不会被修改。
 
 样本定义在 [agent-quality-cases.ts](test/agent-quality-cases.ts)，覆盖客户表单、表格和详情三个公开合成任务。验收在仓库外临时项目中执行，检查 Agent 修改、通过同一 Operation 管线进行的非 Agent 修改及后续局部修改、后端重启恢复、明暗主题预览中的实际按钮交互、显式保存／历史恢复／幂等 Apply，以及独立安装、类型检查、构建和产物页面实际点击。非 Agent 修改通过 HTTP 管线模拟，不能当作可视化拖拽和属性面板的人工验收。内容检查以实际可见字段与交互结果为准，不强制某种文本组件拆分数量。
 

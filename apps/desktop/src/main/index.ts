@@ -6,8 +6,10 @@ import { resolveDesktopConfig } from './config';
 import { installApplicationMenu } from './menu';
 import { pathToFileURL } from 'node:url';
 import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from './workbench-security';
-import { writeFile, readFile } from 'fs/promises';
-import type { BackendStatus, ModelSettings } from '@origamix/shared';
+import { writeFile, readFile, rename, rm } from 'fs/promises';
+import { randomUUID } from 'node:crypto';
+import { defaultModelReference, modelProviders } from '@origamix/server/model-catalog';
+import type { BackendStatus } from '@origamix/shared';
 
 let desktopConfig: ReturnType<typeof resolveDesktopConfig>;
 const workbenchEntryUrl = (): string =>
@@ -107,13 +109,15 @@ const notifyBackendStatus = (status: BackendStatus): void => {
 };
 
 interface StoredModelSettings {
-  provider: 'deepseek';
-  model: ModelSettings['model'];
-  encryptedApiKey?: string;
+  provider: string;
+  model: string;
+  encryptedApiKeys: Record<string, string>;
 }
 
-const defaultModel: ModelSettings['model'] = 'deepseek-flash';
-const supportedModels = new Set<ModelSettings['model']>(['deepseek-flash', 'deepseek-v4-pro']);
+const isSupportedModel = (provider: unknown, model: unknown): boolean =>
+  modelProviders.some(
+    (entry) => entry.id === provider && entry.models.some(({ id }) => id === model),
+  );
 
 interface UserProfileSettings {
   name: string;
@@ -169,56 +173,83 @@ const saveUserProfile = async (input: {
 };
 
 const readModelSettings = async (): Promise<StoredModelSettings> => {
+  const encryptedApiKeys: Record<string, string> = {};
   try {
-    const value = JSON.parse(await readFile(modelSettingsPath(), 'utf8')) as StoredModelSettings;
-    return {
-      provider: 'deepseek',
-      model: supportedModels.has(value.model) ? value.model : defaultModel,
-      encryptedApiKey: value.encryptedApiKey,
+    const value = JSON.parse(
+      await readFile(modelSettingsPath(), 'utf8'),
+    ) as Partial<StoredModelSettings> & {
+      encryptedApiKey?: unknown;
     };
+    for (const { id } of modelProviders) {
+      const key = value.encryptedApiKeys?.[id];
+      if (typeof key === 'string' && key) encryptedApiKeys[id] = key;
+    }
+    if (!encryptedApiKeys.deepseek && typeof value.encryptedApiKey === 'string')
+      encryptedApiKeys.deepseek = value.encryptedApiKey;
+    if (value.provider && value.model && isSupportedModel(value.provider, value.model))
+      return { provider: value.provider, model: value.model, encryptedApiKeys };
   } catch {
-    return { provider: 'deepseek', model: defaultModel };
+    // A missing or malformed settings file starts with the default model.
   }
+  return { ...defaultModelReference, encryptedApiKeys };
 };
 
-const readModelApiKey = async (provider?: string): Promise<string | undefined> => {
-  if (provider !== 'deepseek' || !safeStorage.isEncryptionAvailable()) return undefined;
-  const settings = await readModelSettings();
-  if (!settings.encryptedApiKey) return undefined;
+const decryptModelApiKey = (encryptedKey?: string): string | undefined => {
+  if (!encryptedKey || !safeStorage.isEncryptionAvailable()) return undefined;
   try {
-    return safeStorage.decryptString(Buffer.from(settings.encryptedApiKey, 'base64'));
+    return safeStorage.decryptString(Buffer.from(encryptedKey, 'base64'));
   } catch {
     return undefined;
   }
 };
 
-const saveModelSettings = async (input: {
-  provider: string;
-  model: string;
-  apiKey?: string;
-}): Promise<{ hasApiKey: boolean }> => {
-  if (
-    input.provider !== 'deepseek' ||
-    !supportedModels.has(input.model as ModelSettings['model'])
-  ) {
-    throw new Error('暂不支持该模型配置');
-  }
-  const current = await readModelSettings();
-  const apiKey = input.apiKey?.trim();
-  if (!current.encryptedApiKey && !apiKey) throw new Error('请输入 DeepSeek API Key');
-  if (apiKey && apiKey.length < 8) throw new Error('API Key 格式无效');
-  if (apiKey && !safeStorage.isEncryptionAvailable())
-    throw new Error('当前系统无法安全保存 API Key');
+const readModelApiKey = async (provider?: string): Promise<string | undefined> => {
+  if (!provider || !modelProviders.some(({ id }) => id === provider)) return undefined;
+  const { encryptedApiKeys } = await readModelSettings();
+  return decryptModelApiKey(encryptedApiKeys[provider]);
+};
 
-  const encryptedApiKey = apiKey
-    ? safeStorage.encryptString(apiKey).toString('base64')
-    : current.encryptedApiKey;
-  await writeFile(
-    modelSettingsPath(),
-    `${JSON.stringify({ provider: 'deepseek', model: input.model, encryptedApiKey }, null, 2)}\n`,
-    { mode: 0o600 },
-  );
-  return { hasApiKey: Boolean(encryptedApiKey) };
+let pendingModelSave: Promise<unknown> = Promise.resolve();
+
+const saveModelSettings = (input: unknown): Promise<{ hasApiKey: boolean }> => {
+  const save = pendingModelSave.then(async () => {
+    if (!input || typeof input !== 'object') throw new Error('暂不支持该模型配置');
+    const { provider, model, apiKey: rawKey } = input as Record<string, unknown>;
+    if (
+      typeof provider !== 'string' ||
+      typeof model !== 'string' ||
+      !isSupportedModel(provider, model)
+    )
+      throw new Error('暂不支持该模型配置');
+    if (rawKey !== undefined && typeof rawKey !== 'string') throw new Error('API Key 格式无效');
+    const apiKey = rawKey?.trim();
+    const { encryptedApiKeys } = await readModelSettings();
+    if (!apiKey && !decryptModelApiKey(encryptedApiKeys[provider]))
+      throw new Error('请输入此站点的 API Key');
+    if (apiKey && apiKey.length < 8) throw new Error('API Key 格式无效');
+    if (apiKey && !safeStorage.isEncryptionAvailable())
+      throw new Error('当前系统无法安全保存 API Key');
+    if (apiKey) encryptedApiKeys[provider] = safeStorage.encryptString(apiKey).toString('base64');
+
+    const path = modelSettingsPath();
+    const temporaryPath = `${path}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(
+        temporaryPath,
+        `${JSON.stringify({ provider, model, encryptedApiKeys }, null, 2)}\n`,
+        {
+          mode: 0o600,
+          flag: 'wx',
+        },
+      );
+      await rename(temporaryPath, path);
+    } finally {
+      await rm(temporaryPath, { force: true });
+    }
+    return { hasApiKey: true };
+  });
+  pendingModelSave = save.catch(() => undefined);
+  return save;
 };
 
 // This method will be called when Electron has finished
@@ -285,8 +316,15 @@ app
       return {
         provider: settings.provider,
         model: settings.model,
-        hasApiKey: Boolean(settings.encryptedApiKey),
+        hasApiKey: Boolean(decryptModelApiKey(settings.encryptedApiKeys[settings.provider])),
       };
+    });
+    handleWorkbench('settings:model:providers', async () => {
+      const { encryptedApiKeys } = await readModelSettings();
+      return modelProviders.map((provider) => ({
+        ...provider,
+        hasApiKey: Boolean(decryptModelApiKey(encryptedApiKeys[provider.id])),
+      }));
     });
     handleWorkbench('settings:model:save', (_event, input) => saveModelSettings(input));
     handleWorkbench('settings:profile:get', () => readUserProfile());

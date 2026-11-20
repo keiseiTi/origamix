@@ -23,7 +23,7 @@ const modelReferenceRequests = new Map<
   { resolve: (modelRef: string | undefined) => void; timeout: NodeJS.Timeout }
 >();
 
-const requestCredential = (provider: 'deepseek'): Promise<string | undefined> => {
+const requestCredential = (provider: string): Promise<string | undefined> => {
   const requestId = `credential_${nanoid()}`;
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
@@ -63,11 +63,7 @@ controlPort.on('message', async ({ data }) => {
     if (!pending) return;
     modelReferenceRequests.delete(input.requestId);
     clearTimeout(pending.timeout);
-    const modelRef =
-      input.modelRef === 'deepseek/deepseek-flash' || input.modelRef === 'deepseek/deepseek-v4-pro'
-        ? input.modelRef
-        : undefined;
-    pending.resolve(modelRef);
+    pending.resolve(typeof input.modelRef === 'string' ? input.modelRef : undefined);
     return;
   }
   if (input.kind === 'shutdown') {

@@ -291,6 +291,13 @@ for (const [name, paths] of Object.entries(sourceGroups)) {
           dirty.add(name);
           if (
             name === 'server' &&
+            ((path === 'packages/server/src' &&
+              filename?.toString().replaceAll('\\', '/') === 'agent/pi-runtime.ts') ||
+              path === 'packages/server/package.json')
+          )
+            dirty.add('desktop');
+          if (
+            name === 'server' &&
             filename?.toString().replaceAll('\\', '/').startsWith('templates/')
           )
             dirty.add('template');

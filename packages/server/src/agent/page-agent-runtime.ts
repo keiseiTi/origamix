@@ -27,14 +27,13 @@ import { loadProjectMaterials } from '../projects/project-materials';
 import type { RuntimeDiagnosticService } from '../diagnostics/diagnostic-service';
 
 export const createPageAgentEngine = (
-  getCredential?: (provider: 'deepseek') => Promise<string | undefined>,
+  getCredential?: (provider: string) => Promise<string | undefined>,
 ) => {
   const pi = createPiModels();
   return new PiAgentEngine({
     resolveModel: (provider, model) => pi.models.getModel(provider, model),
     stream: pi.models.streamSimple.bind(pi.models),
-    getCredential: async (provider) =>
-      provider === 'deepseek' ? getCredential?.(provider) : undefined,
+    getCredential: async (provider) => getCredential?.(provider),
   });
 };
 

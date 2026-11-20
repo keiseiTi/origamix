@@ -320,6 +320,7 @@ export type {
   DirectoryGrant,
   UserProfile,
   ModelSettings,
+  ModelProviderOption,
   DesktopApi,
 } from './transport/desktop-api.ts';
 

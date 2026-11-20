@@ -230,7 +230,7 @@ describe('PiAgentEngine', () => {
       engine.run({ modelId: DEEPSEEK_FLASH_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
-      message: '请先在设置中配置 DeepSeek API Key',
+      message: '请先在设置中配置模型 API Key',
     });
   });
 
@@ -331,7 +331,7 @@ describe('PiAgentEngine', () => {
       engine.run({ modelId: DEEPSEEK_FLASH_MODEL_ID, systemPrompt: 'test', prompt: 'ping' }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
-      message: 'DeepSeek 服务暂时不可用，请稍后重试',
+      message: '模型服务暂时不可用，请稍后重试',
     });
 
     const invalidRequest = setup([
@@ -348,7 +348,7 @@ describe('PiAgentEngine', () => {
       }),
     ).rejects.toMatchObject({
       code: 'PROVIDER_ERROR',
-      message: 'DeepSeek 拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
+      message: '模型供应商拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
       retryable: false,
     });
   });

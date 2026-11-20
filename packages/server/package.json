@@ -8,6 +8,10 @@
       "types": "./src/hosts/mysql-web-server.ts",
       "default": "./dist/web-runtime.cjs"
     },
+    "./model-catalog": {
+      "types": "./src/agent/pi-runtime.ts",
+      "default": "./dist/model-catalog.cjs"
+    },
     "./runtime": {
       "types": "./src/server.ts",
       "default": "./dist/runtime.cjs"

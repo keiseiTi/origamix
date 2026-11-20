@@ -56,7 +56,11 @@ export const startMysqlWebServer = async (input: {
       diagnostics,
       loadMaterials,
       getPageRoles: projects.getPageRoles,
-      engine: input.agentEngine ?? createPageAgentEngine(input.getModelCredential),
+      engine:
+        input.agentEngine ??
+        createPageAgentEngine(async (provider) =>
+          provider === 'deepseek' ? input.getModelCredential?.(provider) : undefined,
+        ),
       audit: (event) => runs.appendAudit(event),
       recordReportedUsage: usageRepository.record,
       budget: resolveAgentRunBudget(

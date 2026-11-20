@@ -1,4 +1,5 @@
 import type { TSchema } from '@sinclair/typebox';
+import { modelProviders } from './pi-runtime';
 
 export const DEEPSEEK_FLASH_MODEL_ID = 'deepseek/deepseek-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL_ID = 'deepseek/deepseek-v4-pro' as const;
@@ -50,24 +51,15 @@ const models = new Map<string, AgentModelDefinition>([
       capabilities: { streaming: true, tools: true, abort: true },
     },
   ],
-  [
-    DEEPSEEK_FLASH_MODEL_ID,
-    {
-      id: DEEPSEEK_FLASH_MODEL_ID,
-      provider: 'deepseek',
-      model: 'deepseek-flash',
-      capabilities: { streaming: true, tools: true, abort: true },
-    },
-  ],
-  [
-    DEEPSEEK_V4_PRO_MODEL_ID,
-    {
-      id: DEEPSEEK_V4_PRO_MODEL_ID,
-      provider: 'deepseek',
-      model: 'deepseek-v4-pro',
-      capabilities: { streaming: true, tools: true, abort: true },
-    },
-  ],
+  ...modelProviders.flatMap(({ id: provider, models }) =>
+    models.map(({ id: model }): [string, AgentModelDefinition] => {
+      const id = `${provider}/${model}`;
+      return [
+        id,
+        { id, provider, model, capabilities: { streaming: true, tools: true, abort: true } },
+      ];
+    }),
+  ),
 ]);
 
 export const getAgentModel = (modelId: string): AgentModelDefinition => {

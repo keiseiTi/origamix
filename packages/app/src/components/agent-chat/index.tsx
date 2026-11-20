@@ -258,7 +258,7 @@ export const ChatWorkspace = ({
           placeholder={
             unavailableReason ??
             (modelConfigurationRequired
-              ? '请先配置 DeepSeek API Key'
+              ? '请先配置 模型 API Key'
               : activity === 'unknown'
                 ? '正在确认页面状态…'
                 : active

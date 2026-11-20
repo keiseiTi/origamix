@@ -17,9 +17,15 @@ export interface UserProfile {
 }
 
 export interface ModelSettings {
-  provider: 'deepseek';
-  model: 'deepseek-flash' | 'deepseek-v4-pro';
+  provider: string;
+  model: string;
   hasApiKey: boolean;
+}
+
+export interface ModelProviderOption {
+  id: string;
+  name: string;
+  models: readonly { id: string; name: string }[];
 }
 
 export interface DesktopApi {
@@ -34,6 +40,7 @@ export interface DesktopApi {
   };
   settings: {
     getModel(): Promise<ModelSettings>;
+    getModelProviders(): Promise<readonly (ModelProviderOption & { hasApiKey: boolean })[]>;
     saveModel(
       input: Omit<ModelSettings, 'hasApiKey'> & { apiKey?: string },
     ): Promise<{ hasApiKey: boolean }>;

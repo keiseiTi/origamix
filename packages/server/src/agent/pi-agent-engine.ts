@@ -38,7 +38,7 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
     message.includes('authentication') ||
     message.includes('invalid api key')
   ) {
-    return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek API Key 无效或已失效');
+    return new AgentEngineError('PROVIDER_ERROR', '模型 API Key 无效或已失效');
   }
   if (
     message.includes('fetch failed') ||
@@ -48,7 +48,7 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
     message.includes('socket') ||
     message.includes('connection')
   ) {
-    return new AgentEngineError('PROVIDER_ERROR', '无法连接 DeepSeek，请检查网络后重试', true);
+    return new AgentEngineError('PROVIDER_ERROR', '无法连接模型供应商，请检查网络后重试', true);
   }
   if (
     message.includes('400') ||
@@ -58,10 +58,10 @@ const normalizeError = (error: unknown, timedOut: boolean, aborted: boolean): Ag
   ) {
     return new AgentEngineError(
       'PROVIDER_ERROR',
-      'DeepSeek 拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
+      '模型供应商拒绝了 Agent 请求参数，请检查模型与工具协议兼容性',
     );
   }
-  return new AgentEngineError('PROVIDER_ERROR', 'DeepSeek 服务暂时不可用，请稍后重试', true);
+  return new AgentEngineError('PROVIDER_ERROR', '模型服务暂时不可用，请稍后重试', true);
 };
 
 const adaptTool = (
@@ -111,8 +111,7 @@ export class PiAgentEngine implements AgentEngine {
       throw request.signal.reason instanceof AgentEngineError
         ? request.signal.reason
         : new AgentEngineError('CANCELLED', '模型请求已取消');
-    if (!credential)
-      throw new AgentEngineError('PROVIDER_ERROR', '请先在设置中配置 DeepSeek API Key');
+    if (!credential) throw new AgentEngineError('PROVIDER_ERROR', '请先在设置中配置模型 API Key');
 
     const controller = new AbortController();
     let timedOut = false;

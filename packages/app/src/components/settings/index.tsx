@@ -9,6 +9,11 @@ import {
   Input,
   RadioGroup,
   RadioGroupItem,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@origamix/ui';
 
 import {
@@ -28,28 +33,11 @@ import {
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore, type AppTheme } from '@/store/preferences';
-import type { AgentUsageScope, ModelSettings } from '@origamix/shared';
+import type { AgentUsageScope, ModelProviderOption } from '@origamix/shared';
 
 const DailyUsage = lazy(() =>
   import('@/components/usage/daily-usage').then(({ DailyUsage }) => ({ default: DailyUsage })),
 );
-
-const modelOptions: Array<{
-  value: ModelSettings['model'];
-  name: string;
-  description: string;
-}> = [
-  {
-    value: 'deepseek-flash',
-    name: 'DeepSeek Flash',
-    description: '响应更快，适合日常页面生成与调整',
-  },
-  {
-    value: 'deepseek-v4-pro',
-    name: 'DeepSeek V4 Pro',
-    description: '能力更强，适合复杂页面和多步骤任务',
-  },
-];
 
 const sections = [
   { value: 'profile', label: '个人资料', icon: User },
@@ -110,7 +98,13 @@ export const SettingsPage = ({
     productionWeb && initialSection === 'profile' ? 'appearance' : initialSection,
   );
   const [apiKey, setApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState<ModelSettings['model']>('deepseek-flash');
+  const [providers, setProviders] = useState<
+    readonly (ModelProviderOption & { hasApiKey: boolean })[]
+  >([]);
+  const [providerId, setProviderId] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
+  const provider = providers.find(({ id }) => id === providerId);
+  const hasSavedKey = provider?.hasApiKey ?? false;
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -118,7 +112,6 @@ export const SettingsPage = ({
     kind: 'success' | 'error';
     message: string;
   } | null>(null);
-  const [hasSavedKey, setHasSavedKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -127,15 +120,13 @@ export const SettingsPage = ({
   useEffect(() => {
     if (productionWeb) return;
     let active = true;
-    Promise.resolve(window.api?.settings?.getModel?.())
-      .then((settings) => {
-        if (!active) return;
-        const configured = settings?.hasApiKey ?? false;
-        setHasSavedKey(configured);
-        if (settings) {
-          setSelectedModel(settings.model);
-          setHasModelApiKey(configured);
-        }
+    Promise.all([window.api?.settings.getModel(), window.api?.settings.getModelProviders()])
+      .then(([settings, available]) => {
+        if (!active || !settings || !available) return;
+        setProviders(available);
+        setProviderId(settings.provider);
+        setSelectedModel(settings.model);
+        setHasModelApiKey(settings.hasApiKey);
       })
       .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
       .finally(() => active && setIsLoading(false));
@@ -149,12 +140,16 @@ export const SettingsPage = ({
     setStatus(null);
     try {
       const result = await window.api?.settings?.saveModel?.({
-        provider: 'deepseek',
+        provider: providerId,
         model: selectedModel,
         apiKey: apiKey || undefined,
       });
       if (!result) throw new Error('当前环境不支持保存模型设置，请在桌面应用中操作。');
-      setHasSavedKey(result.hasApiKey);
+      setProviders((current) =>
+        current.map((entry) =>
+          entry.id === providerId ? { ...entry, hasApiKey: result.hasApiKey } : entry,
+        ),
+      );
       setHasModelApiKey(result.hasApiKey);
       setApiKey('');
       setStatus({ kind: 'success', message: '模型设置已安全保存。' });
@@ -368,7 +363,7 @@ export const SettingsPage = ({
                 <div>
                   <h2 className='m-0 text-base font-semibold'>模型设置</h2>
                   <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
-                    先选择模型，再配置对应的 API Key。
+                    选择供应商和站点，再填写该站点的 API Key。
                   </p>
                 </div>
                 {hasSavedKey && (
@@ -379,55 +374,68 @@ export const SettingsPage = ({
                 )}
               </div>
 
-              <div className='mb-3 flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400'>
-                <span className='grid h-5 w-5 place-items-center rounded-full bg-zinc-900 text-[10px] text-white dark:bg-zinc-100 dark:text-zinc-900'>
-                  1
-                </span>
-                选择模型
+              <div className='mb-4 grid gap-3 sm:grid-cols-2'>
+                <div className='min-w-0 space-y-1.5'>
+                  <label htmlFor='model-provider' className='block text-xs font-medium'>
+                    供应商与站点
+                  </label>
+                  <Select
+                    value={providerId || null}
+                    disabled={isLoading || isSaving || !providers.length}
+                    onValueChange={(value) => {
+                      const next = providers.find(({ id }) => id === value);
+                      if (!next) return;
+                      setProviderId(next.id);
+                      setSelectedModel(next.models[0]?.id ?? '');
+                      setApiKey('');
+                      setShowApiKey(false);
+                      setStatus(null);
+                    }}
+                  >
+                    <SelectTrigger id='model-provider' className='w-full'>
+                      <SelectValue>
+                        {provider?.name ?? (isLoading ? '正在加载…' : '无可用供应商')}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      {providers.map(({ id, name }) => (
+                        <SelectItem key={id} value={id}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='min-w-0 space-y-1.5'>
+                  <label htmlFor='model-choice' className='block text-xs font-medium'>
+                    模型
+                  </label>
+                  <Select
+                    value={selectedModel || null}
+                    disabled={isLoading || isSaving || !provider?.models.length}
+                    onValueChange={(value) => setSelectedModel(value ?? '')}
+                  >
+                    <SelectTrigger id='model-choice' className='w-full'>
+                      <SelectValue>
+                        {provider?.models.find(({ id }) => id === selectedModel)?.name ??
+                          '选择模型'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      {provider?.models.map(({ id, name }) => (
+                        <SelectItem key={id} value={id}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <RadioGroup
-                value={selectedModel}
-                onValueChange={(value) => setSelectedModel(value as ModelSettings['model'])}
-                className='mb-6 grid gap-3 sm:grid-cols-2'
-                aria-label='DeepSeek 模型'
-              >
-                {modelOptions.map((option) => {
-                  const selected = selectedModel === option.value;
-                  return (
-                    <label
-                      key={option.value}
-                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
-                        selected
-                          ? 'border-blue-500 bg-blue-50/60 dark:border-blue-700 dark:bg-blue-950/20'
-                          : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600'
-                      }`}
-                    >
-                      <RadioGroupItem value={option.value} className='mt-1' />
-                      <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-600 text-white'>
-                        <Bot size={18} />
-                      </span>
-                      <span className='min-w-0'>
-                        <strong className='block'>{option.name}</strong>
-                        <span className='mt-1 block text-xs text-zinc-500 dark:text-zinc-400'>
-                          {option.description}
-                        </span>
-                        <code className='mt-2 block text-[11px] text-zinc-400 dark:text-zinc-500'>
-                          {option.value}
-                        </code>
-                      </span>
-                    </label>
-                  );
-                })}
-              </RadioGroup>
 
-              <div className='mb-3 flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400'>
-                <span className='grid h-5 w-5 place-items-center rounded-full bg-zinc-900 text-[10px] text-white dark:bg-zinc-100 dark:text-zinc-900'>
-                  2
-                </span>
-                设置 API Key
-              </div>
               <Card className='p-4'>
-                <label className='mb-2 block text-xs font-medium'>DeepSeek API Key</label>
+                <label htmlFor='model-api-key' className='mb-2 block text-xs font-medium'>
+                  API Key
+                </label>
                 <div className='flex items-center gap-2'>
                   <div className='relative min-w-0 flex-1'>
                     <KeyRound
@@ -435,15 +443,15 @@ export const SettingsPage = ({
                       className='pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-zinc-400'
                     />
                     <Input
+                      id='model-api-key'
                       type={showApiKey ? 'text' : 'password'}
                       value={apiKey}
                       onChange={(event) => setApiKey(event.target.value)}
                       placeholder={
-                        hasSavedKey ? '已保存密钥，输入新值可替换' : '输入 DeepSeek API Key'
+                        hasSavedKey ? '已保存密钥，输入新值可替换' : '输入所选站点的 API Key'
                       }
                       className='w-full pl-9 pr-9'
-                      disabled={isLoading}
-                      aria-label='DeepSeek API Key'
+                      disabled={isLoading || isSaving || !provider}
                     />
                     <Button
                       size='icon-sm'
@@ -458,7 +466,9 @@ export const SettingsPage = ({
                   <Button
                     className='gap-1.5'
                     onClick={save}
-                    disabled={isLoading || isSaving || (!apiKey && !hasSavedKey)}
+                    disabled={
+                      isLoading || isSaving || !selectedModel || (!apiKey.trim() && !hasSavedKey)
+                    }
                   >
                     <Save size={14} />
                     {isSaving ? '保存中…' : '保存'}

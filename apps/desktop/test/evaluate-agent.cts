@@ -141,10 +141,14 @@ try {
   copyFileSync(settingsPath, join(state, 'model-settings.json'));
   chmodSync(join(state, 'model-settings.json'), 0o600);
   const settings = JSON.parse(readFileSync(join(state, 'model-settings.json'), 'utf8'));
-  assert.ok(settings.encryptedApiKey, 'MODEL_CREDENTIAL_MISSING');
+  assert.ok(
+    settings.encryptedApiKeys?.[settings.provider] ?? settings.encryptedApiKey,
+    'MODEL_CREDENTIAL_MISSING',
+  );
   const model = argument('--model');
   if (model) {
     assert.ok(['deepseek-flash', 'deepseek-v4-pro'].includes(model), 'MODEL_UNSUPPORTED');
+    assert.equal(settings.provider, 'deepseek', 'MODEL_OVERRIDE_REQUIRES_DEEPSEEK');
     settings.model = model;
     writeFileSync(join(state, 'model-settings.json'), JSON.stringify(settings), { mode: 0o600 });
   }
