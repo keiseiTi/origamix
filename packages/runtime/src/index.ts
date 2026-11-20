@@ -13,3 +13,4 @@ export type { ProjectShell } from '@origamix/shared';
 export { readProjectShell } from '@origamix/shared';
 
 export { PageNavigationProvider } from './page-navigation';
+export type { RuntimeObservation } from './observation';

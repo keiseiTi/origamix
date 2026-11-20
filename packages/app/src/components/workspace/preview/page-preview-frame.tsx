@@ -1,3 +1,6 @@
+import type { RuntimeObservation } from '@origamix/runtime';
+import { PreviewDiagnostics } from './preview-diagnostics';
+import { parsePreviewObservation } from '@/preview/observation-protocol';
 import { nanoid } from 'nanoid';
 import { Button } from '@origamix/ui';
 import { EyeOff, RefreshCw } from 'lucide-react';
@@ -35,7 +38,13 @@ export const PagePreviewFrame = ({
   const [frameKey, setFrameKey] = useState<string | null>(active ? '' : null);
   if (active && frameKey === null) setFrameKey('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [hasSnapshot, setHasSnapshot] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [observation, setObservation] = useState<{
+    records: RuntimeObservation[];
+    dropped: number;
+  }>({ records: [], dropped: 0 });
+  const [renderDiagnostics, setRenderDiagnostics] = useState<PagePreviewReport['diagnostics']>([]);
+  const [displayedSnapshot, setDisplayedSnapshot] = useState<PagePreviewSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
@@ -82,7 +91,9 @@ export const PagePreviewFrame = ({
       const hasRetainedSnapshot = currentSnapshot.current !== null;
       currentSnapshot.current = next;
       reportSequence.current = 0;
-      setHasSnapshot(true);
+      setObservation({ records: [], dropped: 0 });
+      setRenderDiagnostics([]);
+      setDisplayedSnapshot(next);
       if (hasRetainedSnapshot) {
         // Ignore messages from the old frame while React mounts its replacement.
         iframeRef.current = null;
@@ -160,6 +171,7 @@ export const PagePreviewFrame = ({
       )
         return;
       reportSequence.current = report.reportSequence;
+      setRenderDiagnostics(report.diagnostics);
       observedAt.current = Math.max(Date.now(), observedAt.current + 1);
       const isCurrent = () => {
         const latest = currentSnapshot.current;
@@ -208,7 +220,46 @@ export const PagePreviewFrame = ({
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       if (event.data.type === 'origamix.preview.ready') {
         if (snapshotPort.current || event.ports.length !== 1) return;
-        snapshotPort.current = event.ports[0];
+        const port = event.ports[0];
+        snapshotPort.current = port;
+        let lastSequence = 0;
+        let runtimeSessionId: string | undefined;
+        port.onmessage = ({ data }: MessageEvent<unknown>) => {
+          const snapshot = currentSnapshot.current;
+          if (snapshotPort.current !== port || !snapshot) return;
+          const record = parsePreviewObservation(data, snapshot.snapshotId);
+          if (
+            !record ||
+            (runtimeSessionId && record.runtimeSessionId !== runtimeSessionId) ||
+            record.sequence <= lastSequence
+          )
+            return;
+          if (
+            record.kind === 'flow' &&
+            (!Object.hasOwn(snapshot.schema.elements, record.elementId) ||
+              !Object.hasOwn(snapshot.schema.flows, record.flowId))
+          )
+            return;
+          runtimeSessionId = record.runtimeSessionId;
+          const gap = record.sequence - lastSequence - 1;
+          lastSequence = record.sequence;
+          setObservation((current) => {
+            // The validated field lengths bound each entry by a fixed worst-case JSON size.
+            const records = [
+              ...current.records.filter(
+                (entry) => record.kind !== 'render' || entry.kind !== 'render',
+              ),
+              record,
+            ];
+            const excess = Math.max(0, records.length - 100);
+            if (excess)
+              records.splice(
+                records.findIndex((entry) => entry.kind !== 'render'),
+                excess,
+              );
+            return { records, dropped: current.dropped + gap + excess };
+          });
+        };
         const retained = currentSnapshot.current;
         if (retained) publishSnapshot(retained);
       } else if (snapshotPort.current) {
@@ -267,13 +318,40 @@ export const PagePreviewFrame = ({
       >
         <RefreshCw size={17} className={refreshing ? 'animate-spin' : undefined} />
       </Button>
+      <Button
+        size='sm'
+        variant='secondary'
+        className='absolute top-3 right-24 z-50'
+        aria-pressed={showDiagnostics}
+        onClick={() => setShowDiagnostics((open) => !open)}
+      >
+        运行诊断
+      </Button>
+      {showDiagnostics && (
+        <PreviewDiagnostics
+          records={observation.records}
+          dropped={observation.dropped}
+          snapshot={displayedSnapshot}
+          diagnostics={renderDiagnostics}
+          locate={(elementId) => {
+            const snapshot = currentSnapshot.current;
+            if (!snapshot || !Object.hasOwn(snapshot.schema.elements, elementId)) return;
+            snapshotPort.current?.postMessage({
+              type: 'origamix.preview.locate',
+              snapshotId: snapshot.snapshotId,
+              elementId,
+            });
+            setShowDiagnostics(false);
+          }}
+        />
+      )}
       {error && (
         <div
           role='alert'
           className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-danger/10 p-4 text-sm text-danger backdrop-blur'
         >
           <span>
-            {error}。{hasSnapshot ? '保留上次应用快照。' : '请重试。'}
+            {error}。{displayedSnapshot ? '保留上次应用快照。' : '请重试。'}
           </span>
           <Button
             size='icon-sm'

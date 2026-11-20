@@ -112,6 +112,11 @@ const handlers: NodeHandlers = {
   closeModalDrawer: portal(false),
   condition: async (context) => Boolean(await executeHyperValue(context, context.data.judgment)),
   interfaceRequest: async (context) => {
+    let started: number | undefined;
+    let timeout: AbortSignal | undefined;
+    let requestSignal: AbortSignal | undefined;
+    let requestMethod: string | undefined;
+    const configuredAt = context.observeRequest ? performance.now() : 0;
     try {
       const { data } = context;
       const url = new URL(String(await executeHyperValue(context, data.url)));
@@ -134,19 +139,27 @@ const handlers: NodeHandlers = {
       const body = await executeHyperValue(context, data.bodyParams);
       if (method !== 'GET' && body !== null && body !== undefined && !headers.has('content-type'))
         headers.set('content-type', 'application/json');
+      timeout = AbortSignal.timeout(10000);
+      requestSignal = context.signal ? AbortSignal.any([context.signal, timeout]) : timeout;
+      requestMethod = method;
+      if (context.observeRequest) started = performance.now();
       const response = await fetch(url.toString(), {
         method,
         headers,
         credentials: data.credentials ?? 'omit',
         redirect: 'error',
-        signal: context.signal
-          ? AbortSignal.any([context.signal, AbortSignal.timeout(10000)])
-          : AbortSignal.timeout(10000),
+        signal: requestSignal,
         ...(method !== 'GET' && body !== null && body !== undefined
           ? { body: JSON.stringify(body) }
           : {}),
       });
       const text = await response.text();
+      context.observeRequest?.({
+        status: response.ok ? 'completed' : 'http_error',
+        statusCode: response.status,
+        method,
+        durationMs: performance.now() - (started ?? configuredAt),
+      });
       let result: unknown = text;
       try {
         result = text ? JSON.parse(text) : null;
@@ -160,6 +173,19 @@ const handlers: NodeHandlers = {
         error: response.ok ? null : `HTTP ${response.status}`,
       };
     } catch (error) {
+      const status =
+        timeout?.aborted && requestSignal?.reason === timeout.reason
+          ? 'timeout'
+          : context.signal?.aborted
+            ? 'cancelled'
+            : requestSignal
+              ? 'network_error'
+              : 'configuration_error';
+      context.observeRequest?.({
+        status,
+        method: requestMethod,
+        durationMs: performance.now() - (started ?? configuredAt),
+      });
       return {
         ok: false,
         status: 0,

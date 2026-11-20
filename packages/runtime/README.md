@@ -137,3 +137,9 @@ import { OrigamixApplicationPage } from '@origamix/runtime';
 `resolveApplicationLayout(projectId, enabled, document)` 为应用外壳验证布局契约及项目归属；关闭时无需加载布局文档。系统节点 `PageNavigation` 根据受限导航适配器的 pages 描述符渲染链接，按 currentPageId 标记当前项。只有允许的 pageId 与项目 slug 路径会展示，设计态没有跳转能力；普通点击走宿主导航，修饰键点击使用 href。Template 负责路由，Runtime 不依赖 react-router。
 
 布局与页面嵌套时共用最外层诊断集合和结果回调，避免页面成功覆盖布局失败；独立 `OrigamixLayout` 与 `DesignLayoutRenderer` 也接受诊断及展示钩子。`PageOutlet` 内的元素标记为 `page`，布局元素标记为 `layout`，即使元素 ID 相同也分别保留与清理。嵌套渲染时结果回调仅由最外层诊断提供方发送。
+
+## 运行观测
+
+给 `OrigamixPage` 传入可选的 `onObservation(record)`，可接收版本化的渲染状态、流程执行、节点结果和 HTTP 请求结果。同一次流程执行使用相同的 `runtimeSessionId` 和 `executionId`。渲染耗时以 Runtime 开始装配到首次 React 提交后的报告为口径。请求返回 HTTP 错误但流程继续时，请求和流程分别记录各自的结果。
+
+观测回调异步交付。字段包含稳定标识、耗时、结果和固定错误码。现有 `onDiagnosticsChange` 继续提供当前物料与页面诊断。是否展示或保存记录由宿主决定。

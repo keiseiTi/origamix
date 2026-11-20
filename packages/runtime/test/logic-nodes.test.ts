@@ -1,3 +1,4 @@
+import { createObservation, type RuntimeObservation } from '@/observation';
 import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   installMaterialState,
@@ -90,7 +91,12 @@ describe('declarative event execution', () => {
         },
       },
     });
+    const records: RuntimeObservation[] = [];
     withFlowEngine({
+      observer: createObservation((record) => {
+        records.push(record);
+        throw new Error('observer failure');
+      }),
       engine,
       schema: source,
       logicNodes: { ...logicNodes, start: captureRuntimeEvent },
@@ -128,6 +134,18 @@ describe('declarative event execution', () => {
     await interrupted;
     expect(captured).toEqual(['second', 'first']);
     expect(engine.signal.aborted).toBe(true);
+    expect(
+      records.flatMap((record) =>
+        record.kind === 'flow' && record.status !== 'started'
+          ? [[record.executionId, record.status]]
+          : [],
+      ),
+    ).toEqual([
+      [2, 'completed'],
+      [1, 'completed'],
+      [3, 'cancelled'],
+    ]);
+    expect(JSON.stringify(records)).not.toContain('disposed');
   });
 
   // Runtime owns page execution; Server cannot verify resolved bindings or code results.
@@ -334,6 +352,29 @@ describe('declarative event execution', () => {
       }),
     ).toMatchObject({ ok: false, status: 0 });
     expect(request).toHaveBeenCalledTimes(1);
+    request.mockResolvedValueOnce(new Response('internal payload', { status: 429 }));
+    const observeRequest = vi.fn();
+    expect(
+      await logicNodes.interfaceRequest!({
+        engine,
+        observeRequest,
+        data: {
+          ...getFlowNodeManifest('interfaceRequest')!.defaultProps,
+          url: { type: 'string', value: 'https://example.test/data?secret=private' },
+        },
+      }),
+    ).toMatchObject({ ok: false, status: 429 });
+    expect(observeRequest.mock.calls).toEqual([
+      [
+        {
+          status: 'http_error',
+          statusCode: 429,
+          method: 'GET',
+          durationMs: expect.any(Number),
+        },
+      ],
+    ]);
+
     expect(
       await logicNodes.customJS!({
         engine,

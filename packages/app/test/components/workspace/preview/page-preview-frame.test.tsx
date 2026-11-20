@@ -121,6 +121,31 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   } as unknown as MessagePort;
   send({ type: 'origamix.preview.ready' }, replacement, replacementPort);
   expect(replacementPost.mock.calls.at(-1)![0].snapshot.workingVersion).toBe(3);
+  fireEvent.click(view.getByRole('button', { name: '运行诊断' }));
+  const renderObservation = {
+    type: 'origamix.preview.observation',
+    snapshotId: replacementPost.mock.calls.at(-1)![0].snapshot.snapshotId,
+    record: {
+      kind: 'render',
+      status: 'ready',
+      durationMs: 42,
+      version: 1,
+      runtimeSessionId: 'test_runtime',
+      sequence: 1,
+    },
+  };
+  const observe = (target: MessagePort, data: unknown) =>
+    act(() => target.onmessage?.(new MessageEvent('message', { data })));
+  observe(port, renderObservation);
+  observe(replacementPort, { ...renderObservation, snapshotId: current.snapshotId });
+  observe(replacementPort, {
+    ...renderObservation,
+    record: { ...renderObservation.record, secret: 'untrusted data' },
+  });
+  expect(view.queryByText('42 ms')).toBeNull();
+  observe(replacementPort, renderObservation);
+  expect(view.getByText('42 ms')).toBeTruthy();
+
   await act(async () => report.reject(new Error('obsolete report failure')));
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
   mocks.workingState.mockRejectedValueOnce(new Error('page unavailable'));

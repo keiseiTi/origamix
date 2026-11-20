@@ -1,3 +1,4 @@
+import type { RuntimeObservationData } from '../observation';
 import type { OrigamixPageSchema } from '@origamix/shared';
 import type { ComponentType, LazyExoticComponent, ReactNode } from 'react';
 
@@ -51,6 +52,12 @@ export interface FlowExecuteContext<T> {
   engine: RuntimeEngine;
   lastReturnedVal?: Record<string, unknown>;
   signal?: AbortSignal;
+  observeRequest?: (
+    record: Omit<
+      Extract<RuntimeObservationData, { kind: 'request' }>,
+      'kind' | 'executionId' | 'nodeId'
+    >,
+  ) => void;
 }
 export type LogicNodes = Record<
   string,

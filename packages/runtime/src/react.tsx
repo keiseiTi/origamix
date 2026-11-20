@@ -1,3 +1,4 @@
+import { createObservation, type RuntimeObservation, type RuntimeObserver } from './observation';
 import { bindPageNavigation, usePageNavigation } from './page-navigation';
 import {
   installMaterialState,
@@ -161,10 +162,12 @@ const RuntimeTree = ({
 const RuntimeCanvas = ({
   schema,
   materials,
+  observer,
   onFlowError,
 }: {
   schema: Schema;
   materials: MaterialRegistry;
+  observer?: RuntimeObserver;
   onFlowError?: (error: unknown) => void;
 }): React.JSX.Element => {
   const navigation = usePageNavigation();
@@ -192,6 +195,7 @@ const RuntimeCanvas = ({
     withFlowEngine({
       engine: instance,
       schema,
+      observer,
       logicNodes: { start: captureRuntimeEvent, ...createLogicNodes() },
       onError: (error) => {
         if (activeSchema.current !== schema) return;
@@ -201,7 +205,7 @@ const RuntimeCanvas = ({
     });
     bindMaterialEventPayloads(instance);
     return instance;
-  }, [schema, materials, navigation]);
+  }, [schema, materials, navigation, observer]);
 
   useLayoutEffect(() => {
     engine.activate();
@@ -225,6 +229,7 @@ const RuntimeCanvas = ({
 };
 
 export interface OrigamixPageProps extends RuntimeDiagnosticsProps {
+  onObservation?: (record: RuntimeObservation) => void;
   schema: Schema;
   materials: MaterialRegistry;
   onFlowError?: (error: unknown) => void;
@@ -236,20 +241,58 @@ export const OrigamixPage = ({
   materials,
   onFlowError,
   onOutcome,
+  onObservation,
   renderError,
   onDiagnosticsChange,
   onRenderError,
   renderElementError,
 }: OrigamixPageProps): React.JSX.Element => {
+  const observationSink = useRef(onObservation);
+  useLayoutEffect(() => {
+    observationSink.current = onObservation;
+  }, [onObservation]);
+  const enabled = Boolean(onObservation);
+  const observation = useMemo(() => {
+    if (!enabled) return null;
+    const started = performance.now();
+    const observer = createObservation((record) => observationSink.current?.(record));
+    let status: 'ready' | 'degraded' | 'failed' | undefined;
+    let durationMs: number | undefined;
+    return {
+      observer,
+      report: (diagnostics: RuntimeDiagnostic[]) => {
+        const renderDiagnostics = diagnostics.filter((entry) => entry.stage !== 'event');
+        const next = renderDiagnostics.some(
+          (entry) => !entry.elementId || entry.elementId === schema.layout.root,
+        )
+          ? 'failed'
+          : renderDiagnostics.length
+            ? 'degraded'
+            : 'ready';
+        if (next === status) return;
+        status = next;
+        durationMs ??= performance.now() - started;
+        observer.emit({ kind: 'render', status, durationMs });
+      },
+    };
+  }, [enabled, schema, materials]);
   return (
     <DiagnosticsProvider
       onOutcome={onOutcome}
-      onDiagnosticsChange={onDiagnosticsChange}
+      onDiagnosticsChange={(diagnostics) => {
+        observation?.report(diagnostics);
+        onDiagnosticsChange?.(diagnostics);
+      }}
       onRenderError={onRenderError}
       renderElementError={renderElementError}
     >
       <RuntimeErrorBoundary renderError={renderError}>
-        <RuntimeCanvas schema={schema} materials={materials} onFlowError={onFlowError} />
+        <RuntimeCanvas
+          schema={schema}
+          materials={materials}
+          onFlowError={onFlowError}
+          observer={observation?.observer}
+        />
       </RuntimeErrorBoundary>
     </DiagnosticsProvider>
   );

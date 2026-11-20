@@ -7,7 +7,7 @@ import {
 } from '@origamix/shared';
 import { useEffect, useMemo, useState } from 'react';
 
-import { OrigamixPage, type RuntimeOutcome } from '@origamix/runtime';
+import { OrigamixPage, type RuntimeOutcome, type RuntimeObservation } from '@origamix/runtime';
 import type { OrigamixPageSchema as Schema } from '@origamix/shared';
 
 type RenderOutcome =
@@ -15,10 +15,10 @@ type RenderOutcome =
   | { outcome: 'failed'; diagnostics: PreviewRenderDiagnostic[] };
 
 const toPreviewOutcome = (outcome: RuntimeOutcome): RenderOutcome => {
-  return {
-    outcome: outcome.outcome,
-    diagnostics: outcome.diagnostics.map((diagnostic) => ({ ...diagnostic, severity: 'error' })),
-  };
+  const diagnostics = outcome.diagnostics
+    .filter((diagnostic) => diagnostic.stage !== 'event')
+    .map((diagnostic) => ({ ...diagnostic, severity: 'error' as const }));
+  return { outcome: diagnostics.length ? 'failed' : 'success', diagnostics };
 };
 
 export const RuntimePreview = ({
@@ -27,12 +27,14 @@ export const RuntimePreview = ({
   revisionId,
   theme,
   onOutcome,
+  onObservation,
 }: {
   schema: OrigamixPageSchema;
   pageId: string;
   stack: ProjectStack;
   revisionId: string;
   theme: 'light' | 'dark';
+  onObservation?: (record: RuntimeObservation) => void;
   onOutcome?: (outcome: RenderOutcome) => void;
 }): React.JSX.Element => {
   const key = JSON.stringify(stack.materialSet);
@@ -87,6 +89,7 @@ export const RuntimePreview = ({
           key={revisionId}
           schema={schema as Schema}
           materials={current.materials.components}
+          onObservation={onObservation}
           onOutcome={(outcome) => onOutcome?.(toPreviewOutcome(outcome))}
           renderError={(error, retry) => (
             <div

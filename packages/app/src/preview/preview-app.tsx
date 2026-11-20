@@ -14,14 +14,34 @@ export const PreviewApp = (): React.JSX.Element => {
   const projectId = params.get('projectId') ?? '';
   const pageId = params.get('pageId') ?? '';
   const [snapshot, setSnapshot] = useState<PagePreviewSnapshot | null>(null);
+  const observationPort = useRef<MessagePort | null>(null);
   const reportSequence = useRef(0);
   useEffect(() => {
     if (!projectId || !pageId) return;
     const channel = new MessageChannel();
+    observationPort.current = channel.port1;
+    let currentSnapshotId: string | undefined;
     channel.port1.onmessage = (event: MessageEvent): void => {
+      if (
+        event.data?.type === 'origamix.preview.locate' &&
+        event.data.snapshotId === currentSnapshotId &&
+        typeof event.data.elementId === 'string' &&
+        event.data.elementId.length <= 128
+      ) {
+        const element = document.querySelector(
+          `[data-element-id="${CSS.escape(event.data.elementId)}"]`,
+        );
+        element?.scrollIntoView({ block: 'center', inline: 'nearest' });
+        element?.animate(
+          [{ outline: '3px solid #2563eb' }, { outline: '3px solid transparent' }],
+          1400,
+        );
+        return;
+      }
       if (!isHostToPreviewMessage(event.data)) return;
       if (event.data.projectId !== projectId || event.data.pageId !== pageId) return;
       const next = event.data.snapshot;
+      currentSnapshotId = next.snapshotId;
       setSnapshot((current) =>
         current?.snapshotId === next.snapshotId ? { ...current, theme: next.theme } : next,
       );
@@ -32,7 +52,10 @@ export const PreviewApp = (): React.JSX.Element => {
     window.parent.postMessage({ type: 'origamix.preview.ready', projectId, pageId }, target, [
       channel.port2,
     ]);
-    return () => channel.port1.close();
+    return () => {
+      observationPort.current = null;
+      channel.port1.close();
+    };
   }, [pageId, projectId]);
 
   if (!projectId || !pageId)
@@ -57,6 +80,13 @@ export const PreviewApp = (): React.JSX.Element => {
           schema={snapshot.schema}
           pageId={pageId}
           revisionId={`${snapshot.snapshotId}:${pageId}`}
+          onObservation={(record) =>
+            observationPort.current?.postMessage({
+              type: 'origamix.preview.observation',
+              snapshotId: snapshot.snapshotId,
+              record,
+            })
+          }
           onOutcome={({ outcome, diagnostics }) =>
             postToHost({
               type: 'origamix.preview.outcome',
