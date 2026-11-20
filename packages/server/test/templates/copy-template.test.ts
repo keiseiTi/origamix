@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { expect, it } from 'vitest';
-import { copyTemplate } from '../../src/templates/copy-template';
+import { copyTemplate } from '@/templates/copy-template';
 
 it('copies only portable source files and excludes workspace dependencies and symlinks', async () => {
   const root = await mkdtemp(join(tmpdir(), 'origamix-template-'));

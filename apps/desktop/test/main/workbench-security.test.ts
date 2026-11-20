@@ -3,8 +3,8 @@ import { expect, it, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveDesktopConfig } from '../../src/main/config';
-import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from '../../src/main/workbench-security';
+import { resolveDesktopConfig } from '@/main/config';
+import { assertWorkbenchCaller, isTrustedWorkbenchUrl } from '@/main/workbench-security';
 
 it('authorizes only the workbench main frame at the trusted document', () => {
   const entry = 'file:///Applications/Origamix/index.html';

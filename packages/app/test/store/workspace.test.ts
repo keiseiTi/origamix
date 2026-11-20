@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { parseWorkspaceSession, useWorkspaceStore } from '../../src/store/workspace';
+import { parseWorkspaceSession, useWorkspaceStore } from '@/store/workspace';
 
 const projects = [
   {

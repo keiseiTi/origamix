@@ -1,9 +1,9 @@
-import { validateAntdMaterialProps, validateAntdMaterialSemantics } from '../../antd/validation';
+import { validateAntdMaterialProps, validateAntdMaterialSemantics } from 'antd/validation';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
-import { materialGroups, rootMaterials, createAntdFormPlugin } from '../../antd/editor';
+import { materialGroups, rootMaterials, createAntdFormPlugin } from 'antd/editor';
 import { describe, expect, it } from 'vitest';
-import materialComponents, { materialSet } from '../../antd/runtime';
-import { antdMaterialManifest, antdValidationMaterialRegistry } from '../../antd/manifest';
+import materialComponents, { materialSet } from 'antd/runtime';
+import { antdMaterialManifest, antdValidationMaterialRegistry } from 'antd/manifest';
 
 describe('material boundary used by editing and preview', () => {
   it('publishes serializable materials that validation and rendering both recognize', () => {

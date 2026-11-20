@@ -1,8 +1,8 @@
 import { SCHEMA_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import { SchemaUtils } from '../../src/schema/schema-utils';
-import { deriveSchemaOperations } from '../../src/transactions/derive-schema-operations';
+import { SchemaUtils } from '@/schema/schema-utils';
+import { deriveSchemaOperations } from '@/transactions/derive-schema-operations';
 
 const schema = (): OrigamixPageSchema => ({
   elements: {

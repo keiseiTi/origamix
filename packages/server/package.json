@@ -39,8 +39,8 @@
     "check:database-schema": "node --import tsx scripts/check-database-schema.ts"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "1.1.0",
-    "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-agent-core": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
     "@origamix/materials": "workspace:*",
     "@origamix/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.52",

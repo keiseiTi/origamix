@@ -3,9 +3,9 @@ import {
   BUILTIN_PROJECT_STACK,
   resolveProjectStack,
   validateResolvedProjectStack,
-} from '../../src/project/project-stack.ts';
+} from '@/project/project-stack';
 
-import { isProjectManifest, isProjectLayoutEnabled } from '../../src/project/project-manifest.ts';
+import { isProjectManifest, isProjectLayoutEnabled } from '@/project/project-manifest';
 
 const manifest = () => ({
   shell: { title: '', logo: '', standalonePageIds: [] },

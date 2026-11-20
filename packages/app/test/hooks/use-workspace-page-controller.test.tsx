@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useWorkspacePageController } from '../../src/hooks/use-workspace-page-controller';
-import { editorRefForPage, useWorkspaceStore } from '../../src/store/workspace';
+import { useWorkspacePageController } from '@/hooks/use-workspace-page-controller';
+import { editorRefForPage, useWorkspaceStore } from '@/store/workspace';
 
 afterEach(() => {
   cleanup();

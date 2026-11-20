@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { loadProjectMaterials } from '../../../src/projects/project-materials';
-import { createCompletePageRunTool } from '../../../src/agent/tools/complete-page-run';
+import { loadProjectMaterials } from '@/projects/project-materials';
+import { createCompletePageRunTool } from '@/agent/tools/complete-page-run';
 
 it('reports the invalid terminal field so a rejected reset can be repaired', async () => {
   const tool = createCompletePageRunTool(

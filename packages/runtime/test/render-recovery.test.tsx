@@ -3,8 +3,8 @@ import { SCHEMA_VERSION } from '@origamix/shared';
 import { act, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { OrigamixPage } from '../src/react';
-import { DesignRenderer } from '../src/design';
+import { OrigamixPage } from '@/react';
+import { DesignRenderer } from '@/design';
 import type { RuntimeOutcome, RuntimeSchema, MaterialRegistry } from '../src';
 
 // Core preview/edit recovery: render failures must retain a usable sibling and cannot

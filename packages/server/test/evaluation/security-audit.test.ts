@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkAgentSecurityEvidence,
   type AgentSecurityEvidence,
-} from '../../src/evaluation/security-audit';
+} from '@/evaluation/security-audit';
 
 const evidence = (): AgentSecurityEvidence => ({
   logs: ['Authorization=[REDACTED]'],

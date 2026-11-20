@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ORIGAMIX_VERSION } from '@origamix/shared';
-import { DesignRenderer } from '../src/design';
+import { DesignRenderer } from '@/design';
 import { expect, it } from 'vitest';
-import type { RuntimeSchema as Schema } from '../src/core/types';
+import type { RuntimeSchema as Schema } from '@/core/types';
 
 // Editor must never bind executable page events in the trusted workbench.
 it('renders design materials without event execution, runtime authority or source mutation', () => {

@@ -5,12 +5,12 @@ import { BUILTIN_PROJECT_STACK } from '@origamix/shared';
 import type { EditorMaterialRegistration } from '@origamix/editor';
 
 const mocks = vi.hoisted(() => ({ stack: vi.fn(), load: vi.fn(), runtime: vi.fn() }));
-vi.mock('../../src/services/projects', () => ({ projectsService: { stack: mocks.stack } }));
-vi.mock('../../src/materials/loaders', () => ({
+vi.mock('@/services/projects', () => ({ projectsService: { stack: mocks.stack } }));
+vi.mock('@/materials/loaders', () => ({
   loadEditorMaterials: mocks.load,
   loadRuntimeMaterials: mocks.runtime,
 }));
-import { useEditorMaterials } from '../../src/materials/use-editor-materials';
+import { useEditorMaterials } from '@/materials/use-editor-materials';
 
 afterEach(() => {
   cleanup();

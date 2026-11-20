@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRequest, isReply, type Scope } from '../../src/prototype/protocol';
+import { isRequest, isReply, type Scope } from '@/prototype/protocol';
 import { sample } from './sample';
 const scope: Scope = {
   protocol: 1,

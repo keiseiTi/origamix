@@ -1,10 +1,7 @@
 import { SCHEMA_VERSION } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
 import type { OrigamixPageSchema } from '@origamix/shared';
-import {
-  applySchemaOperationBatch,
-  SchemaOperationError,
-} from '../../src/schema/schema-operation-engine';
+import { applySchemaOperationBatch, SchemaOperationError } from '@/schema/schema-operation-engine';
 
 const createPage = (): OrigamixPageSchema => ({
   elements: {

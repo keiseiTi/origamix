@@ -1,4 +1,4 @@
-import { resolveAgentRunBudget } from '../../../src/agent/run-budget';
+import { resolveAgentRunBudget } from '@/agent/run-budget';
 import { Type } from '@sinclair/typebox';
 import { describe, expect, it } from 'vitest';
 import type { RunBudget } from '@origamix/shared';
@@ -7,7 +7,7 @@ import {
   RunBudgetController,
   createDefaultAgentToolEntries,
   type ToolAuditEvent,
-} from '../../../src/agent/tools/registry';
+} from '@/agent/tools/registry';
 
 const budget: RunBudget = {
   maxModelCalls: 1,

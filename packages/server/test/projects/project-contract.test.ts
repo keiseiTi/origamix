@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../src/database/database';
-import { ProjectRepository } from '../../src/projects/project-repository';
-import { ProjectService } from '../../src/projects/project-service';
-import { getWorkingSchemaState } from '../../src/schema/schema-service';
-import { hashSchema } from '../../src/schema/schema-hash';
+import { ApplicationDatabase } from '@/database/database';
+import { ProjectRepository } from '@/projects/project-repository';
+import { ProjectService } from '@/projects/project-service';
+import { getWorkingSchemaState } from '@/schema/schema-service';
+import { hashSchema } from '@/schema/schema-hash';
 
 // Unsupported contracts and interrupted writes must preserve existing drafts and targets.
 it('rejects unsupported project data and interrupted writes without replacing retained drafts', async () => {

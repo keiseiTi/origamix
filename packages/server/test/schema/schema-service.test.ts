@@ -1,8 +1,8 @@
 import { retainWorkingFixture } from '../helpers/retain-working-fixture';
-import { createValidatePageOperationsTool } from '../../src/agent/tools/validate-page-operations';
+import { createValidatePageOperationsTool } from '@/agent/tools/validate-page-operations';
 import { instantiateBlock } from '@origamix/shared';
 import { antdBlocks } from '@origamix/materials/antd/manifest';
-import { hashSchema } from '../../src/schema/schema-hash';
+import { hashSchema } from '@/schema/schema-hash';
 import { SCHEMA_VERSION } from '@origamix/shared';
 import {
   mkdtemp,
@@ -31,7 +31,7 @@ import {
   listRevisionHistory,
   restoreRevisionToWorking,
   saveWorkingRevision,
-} from '../../src/schema/schema-service';
+} from '@/schema/schema-service';
 
 const directories: string[] = [];
 
@@ -1049,7 +1049,7 @@ it('opens the current page repeatedly without migration or additional checkpoint
 it('rejects unsupported or missing Schema versions without rewriting Working', async () => {
   const page = await createPageFixture();
   await initializePageSchema(page, schema);
-  const { hashSchema } = await import('../../src/schema/schema-hash');
+  const { hashSchema } = await import('@/schema/schema-hash');
   const path = join(page.projectPath, '.origamix/pages', page.pageId, 'working.json');
   const working = JSON.parse(await readFile(path, 'utf8'));
   for (const candidate of [

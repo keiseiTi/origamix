@@ -5,8 +5,8 @@ import {
   type ValidationMaterialManifest,
 } from '@origamix/shared';
 import { describe, expect, it } from 'vitest';
-import { validatePageAgainstMaterials } from '../../src/schema/validation/material-validation';
-import type { MaterialValidationRuntime } from '../../src/schema/validation/validation-contracts';
+import { validatePageAgainstMaterials } from '@/schema/validation/material-validation';
+import type { MaterialValidationRuntime } from '@/schema/validation/validation-contracts';
 
 // Stable protocol fixtures: material UI configuration must not change generic validator tests.
 const manifest = (type: string, acceptsChildren = false): ValidationMaterialManifest => ({

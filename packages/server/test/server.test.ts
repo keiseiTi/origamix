@@ -3,18 +3,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startServer } from '../src/server';
-import { ProjectService } from '../src/projects/project-service';
-import { PiAgentEngine } from '../src/agent/pi-agent-engine';
-import { AgentEngineError } from '../src/agent/agent-engine';
+import { startServer } from '@/server';
+import { ProjectService } from '@/projects/project-service';
+import { PiAgentEngine } from '@/agent/pi-agent-engine';
+import { AgentEngineError } from '@/agent/agent-engine';
 
 const http = vi.hoisted(() => ({
   server: undefined as import('fastify').FastifyInstance | undefined,
   subscribers: (): number => 0,
 }));
 // Replace only OS listening; lifecycle hooks, HTTP handlers, Agent and SQLite are real.
-vi.mock('../src/http/server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/http/server')>();
+vi.mock('@/http/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/http/server')>();
   return {
     createHttpServer: (...args: Parameters<typeof actual.createHttpServer>) => {
       const server = actual.createHttpServer(...args);
@@ -30,12 +30,12 @@ vi.mock('../src/http/server', async (importOriginal) => {
     },
   };
 });
-import { ApplicationDatabase } from '../src/database/database';
-import { AgentRunRepository } from '../src/agent/run-repository';
-import { ConversationRepository } from '../src/conversations/conversation-repository';
-import { ProjectRepository } from '../src/projects/project-repository';
-import { ConversationService } from '../src/conversations/conversation-service';
-import { recoverAgentRunsOnStartup } from '../src/agent/run-recovery';
+import { ApplicationDatabase } from '@/database/database';
+import { AgentRunRepository } from '@/agent/run-repository';
+import { ConversationRepository } from '@/conversations/conversation-repository';
+import { ProjectRepository } from '@/projects/project-repository';
+import { ConversationService } from '@/conversations/conversation-service';
+import { recoverAgentRunsOnStartup } from '@/agent/run-recovery';
 
 const directories: string[] = [];
 

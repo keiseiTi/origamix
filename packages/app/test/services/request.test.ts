@@ -35,7 +35,7 @@ describe('renderer transport', () => {
       });
     vi.stubGlobal('fetch', fetch);
 
-    const { request } = await import('../../src/services/request');
+    const { request } = await import('@/services/request');
     await expect(request('/agent/runs/get')).resolves.toEqual({
       recovered: true,
     });
@@ -77,7 +77,7 @@ describe('renderer transport', () => {
       });
     vi.stubGlobal('fetch', fetch);
 
-    const { request } = await import('../../src/services/request');
+    const { request } = await import('@/services/request');
     const data = { clientRequestId: 'stable-id' };
     await expect(request('/agent/runs/create', data)).rejects.toThrow('socket closed');
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -120,7 +120,7 @@ describe('renderer transport', () => {
         json: async () => ({ success: true, code: 200, data: { recovered: true } }),
       });
     vi.stubGlobal('fetch', fetch);
-    const transport = await import('../../src/services/request');
+    const transport = await import('@/services/request');
     const stop = transport.watchBackendConnection();
     const input = { clientRequestId: 'retained-identity' };
     const write = transport.request('/pages/apply', input);
@@ -170,7 +170,7 @@ describe('renderer transport', () => {
         },
       },
     });
-    const transport = await import('../../src/services/request');
+    const transport = await import('@/services/request');
     const stop = transport.watchBackendConnection();
     const pending = transport.getApiConnection();
     const check = expect(pending).rejects.toBeInstanceOf(transport.BackendConnectionChangedError);
@@ -223,9 +223,9 @@ describe('renderer transport', () => {
         }),
       });
     vi.stubGlobal('fetch', fetch);
-    const transport = await import('../../src/services/request');
+    const transport = await import('@/services/request');
     const stopWatch = transport.watchBackendConnection();
-    const { subscribeAgentEvents } = await import('../../src/services/agent');
+    const { subscribeAgentEvents } = await import('@/services/agent');
     const onEvent = vi.fn();
     const onOpen = vi.fn();
     const onError = vi.fn();

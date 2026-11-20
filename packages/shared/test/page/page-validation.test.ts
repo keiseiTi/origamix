@@ -5,7 +5,7 @@ import {
   isPageSchema,
   validateSchemaOperation,
   validateSchemaOperationBatch,
-} from '../../src/page/page-validation.ts';
+} from '@/page/page-validation';
 
 const emptyPage = {
   elements: { element_root: { type: 'container', props: {} } },

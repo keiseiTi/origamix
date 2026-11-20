@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { HyperValueSchema } from '../../src/flow/hyper-value.ts';
+import { HyperValueSchema } from '@/flow/hyper-value';
 
 import { Value } from '@sinclair/typebox/value';
-import { getFlowNodeManifest } from '../../src/flow/flow-node-manifest.ts';
+import { getFlowNodeManifest } from '@/flow/flow-node-manifest';
 
 describe('flow node configuration contract', () => {
   it('accepts request configuration and rejects unsupported methods and fields', () => {

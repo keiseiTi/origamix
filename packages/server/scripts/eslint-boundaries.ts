@@ -73,6 +73,10 @@ export const serverBoundaries: Rule.RuleModule = {
         return;
       }
       const specifier = source.value;
+      if (specifier === '@' || specifier.startsWith('@/')) {
+        report(node, 'The @ alias is reserved for Server Vitest tests.');
+        return;
+      }
       if (
         /^(electron|react|react-dom)(\/|$)/.test(specifier) ||
         /^@origamix\/(app|desktop)(\/|$)/.test(specifier)

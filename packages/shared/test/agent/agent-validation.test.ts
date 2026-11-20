@@ -1,4 +1,4 @@
-import { resolveAgentTarget } from '../../src/agent/agent-target.ts';
+import { resolveAgentTarget } from '@/agent/agent-target';
 import { describe, expect, it } from 'vitest';
 import {
   validateAgentEvent,
@@ -15,9 +15,9 @@ import {
   validateSubscribeAgentEventsRequest,
   validateCompletePageRunInput,
   validateClarificationResult,
-} from '../../src/agent/agent-validation.ts';
+} from '@/agent/agent-validation';
 
-import { CompletePageRunToolParametersSchema } from '../../src/agent/agent-outcome.ts';
+import { CompletePageRunToolParametersSchema } from '@/agent/agent-outcome';
 
 const timestamp = '2026-09-04T00:00:00.000Z';
 const content = { version: '1', blocks: [{ type: 'text', text: '创建客户表单' }] };

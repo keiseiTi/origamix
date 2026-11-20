@@ -116,3 +116,5 @@ pnpm build
 - Custom Node command entrypoints and integration launchers use TypeScript executed by tsx. Declare tsx in each invoking package, including public packages that invoke root packing tools; root scripts are checked by tsconfig.scripts.json. Preserve loader arguments for Node child scripts and keep Electron runtime fixtures distinct from Node launchers.
 
 - Project settings and Template use required manifest shell/layout/routing. Template owns the generated application shell. Layout effects are configuration feedback only. Page previews show Working in an isolated iframe. Layout settings are saved through ProjectService.
+
+- Vitest tests use package-local `@/…` imports for their own `src/`. App reuses its Vite config. Materials maps its local editor, manifest, runtime and validation entries under `antd/`; dependency imports such as `antd` and `antd/locale/…` keep their package resolution. Keep real file paths and standalone runner entrypoints relative. Server production imports must use relative paths or declared package exports.

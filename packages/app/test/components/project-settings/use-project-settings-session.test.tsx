@@ -3,9 +3,9 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ProjectSettings } from '@origamix/shared';
 const mocks = vi.hoisted(() => ({ settings: vi.fn(), updateSettings: vi.fn() }));
-vi.mock('../../../src/services/projects', () => ({ projectsService: mocks }));
-import { ApiRequestError } from '../../../src/services/request';
-import { useProjectSettingsSession } from '../../../src/components/project-settings/use-project-settings-session';
+vi.mock('@/services/projects', () => ({ projectsService: mocks }));
+import { ApiRequestError } from '@/services/request';
+import { useProjectSettingsSession } from '@/components/project-settings/use-project-settings-session';
 
 afterEach(() => {
   cleanup();

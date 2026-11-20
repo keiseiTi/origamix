@@ -1,15 +1,15 @@
 import { retainWorkingFixture } from '../helpers/retain-working-fixture';
-import { hashSchema } from '../../src/schema/schema-hash';
+import { hashSchema } from '@/schema/schema-hash';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../src/database/database';
-import { ProjectRepository } from '../../src/projects/project-repository';
-import { getWorkingSchemaState, saveWorkingRevision } from '../../src/schema/schema-service';
-import { ProjectApplyService } from '../../src/schema/project-apply-service';
-import { ProjectService } from '../../src/projects/project-service';
+import { ApplicationDatabase } from '@/database/database';
+import { ProjectRepository } from '@/projects/project-repository';
+import { getWorkingSchemaState, saveWorkingRevision } from '@/schema/schema-service';
+import { ProjectApplyService } from '@/schema/project-apply-service';
+import { ProjectService } from '@/projects/project-service';
 
 const templatePath = fileURLToPath(new URL('../../../template', import.meta.url));
 const directories: string[] = [];

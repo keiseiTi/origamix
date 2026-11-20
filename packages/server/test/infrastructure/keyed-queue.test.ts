@@ -1,6 +1,6 @@
 import { deferred } from '../helpers/deferred';
 import { expect, it } from 'vitest';
-import { KeyedQueue } from '../../src/infrastructure/keyed-queue';
+import { KeyedQueue } from '@/infrastructure/keyed-queue';
 
 it('preserves same-key order and releases waiters after a rejected action', async () => {
   const queue = new KeyedQueue();

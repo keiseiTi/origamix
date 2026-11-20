@@ -5,8 +5,8 @@ import {
   ApplyPageSchema,
   isApplyPageResult,
   isPageApplyState,
-} from '../../src/page/page-api.ts';
-import { ApiResultSchema, isApiResultEnvelope } from '../../src/transport/api-result.ts';
+} from '@/page/page-api';
+import { ApiResultSchema, isApiResultEnvelope } from '@/transport/api-result';
 
 describe('API result protocol', () => {
   it('accepts the success and failure envelopes', () => {

@@ -1,16 +1,16 @@
 import { retainWorkingFixture } from '../helpers/retain-working-fixture';
-import { ProjectManifestStore } from '../../src/projects/project-manifest-store';
+import { ProjectManifestStore } from '@/projects/project-manifest-store';
 import { access, cp, mkdtemp, readFile, rm, writeFile, rename, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApplicationDatabase } from '../../src/database/database';
-import { ProjectRepository } from '../../src/projects/project-repository';
-import { ProjectService } from '../../src/projects/project-service';
-import { ProjectApplyService } from '../../src/schema/project-apply-service';
-import { ProjectSourceService } from '../../src/projects/project-source';
-import { getWorkingSchemaState } from '../../src/schema/schema-service';
+import { ApplicationDatabase } from '@/database/database';
+import { ProjectRepository } from '@/projects/project-repository';
+import { ProjectService } from '@/projects/project-service';
+import { ProjectApplyService } from '@/schema/project-apply-service';
+import { ProjectSourceService } from '@/projects/project-source';
+import { getWorkingSchemaState } from '@/schema/schema-service';
 import { deferred } from '../helpers/deferred';
 
 const directories: string[] = [];
@@ -439,7 +439,7 @@ describe('Project page persistence and recovery', () => {
 });
 
 it('reconciles the project without opening pages and imports only the page requested later', async () => {
-  const { getWorkingSchemaState } = await import('../../src/schema/schema-service');
+  const { getWorkingSchemaState } = await import('@/schema/schema-service');
   const directory = await mkdtemp(join(tmpdir(), 'origamix-lazy-page-'));
   directories.push(directory);
   const database = new ApplicationDatabase(join(directory, 'application.db'));

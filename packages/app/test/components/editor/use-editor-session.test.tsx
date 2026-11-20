@@ -10,8 +10,8 @@ const schemaMocks = vi.hoisted(() => ({
   applyWorkingOperations: vi.fn(),
 }));
 
-vi.mock('../../../src/services/schema', () => ({ schemaService: schemaMocks }));
-import { useEditorSession } from '../../../src/components/editor/use-editor-session';
+vi.mock('@/services/schema', () => ({ schemaService: schemaMocks }));
+import { useEditorSession } from '@/components/editor/use-editor-session';
 
 const schema: OrigamixPageSchema = {
   elements: { element_root: { type: 'container', props: {} } },

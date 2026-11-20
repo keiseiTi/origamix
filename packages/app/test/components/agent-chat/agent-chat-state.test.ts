@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentEvent, AgentRun } from '@origamix/shared';
-import {
-  agentChatReducer,
-  initialAgentChatState,
-} from '../../../src/components/agent-chat/agent-chat-state';
+import { agentChatReducer, initialAgentChatState } from '@/components/agent-chat/agent-chat-state';
 
 const run: AgentRun = {
   version: '1',

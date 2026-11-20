@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ApplicationDatabase } from '../../src/database/database';
-import { assertSchemaSafety, DATABASE_VERSION, schemaSql } from '../../src/database/initialize';
+import { ApplicationDatabase } from '@/database/database';
+import { assertSchemaSafety, DATABASE_VERSION, schemaSql } from '@/database/initialize';
 
 const directories: string[] = [];
 afterEach(async () => {

@@ -1,8 +1,8 @@
 import { createProjectStackFixture } from '../../fixtures/project-stack-fixture';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { ProductDocsProvider } from '../../../src/agent/product-docs-provider';
-import type { RuntimeDiagnosticService } from '../../../src/diagnostics/diagnostic-service';
-import { createDomainAgentTools } from '../../../src/agent/tools/domain-tools';
+import { ProductDocsProvider } from '@/agent/product-docs-provider';
+import type { RuntimeDiagnosticService } from '@/diagnostics/diagnostic-service';
+import { createDomainAgentTools } from '@/agent/tools/domain-tools';
 
 let projectFixture: Awaited<ReturnType<typeof createProjectStackFixture>>;
 beforeAll(async () => {

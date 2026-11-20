@@ -3,14 +3,14 @@ import {
   installMaterialState,
   bindMaterialEventPayloads,
   captureRuntimeEvent,
-} from '../src/material-state';
-import { createEngine } from '../src/core/engine';
-import { withFlowEngine } from '../src/core/flow';
-import type { RuntimeSchema as Schema } from '../src/core/types';
+} from '@/material-state';
+import { createEngine } from '@/core/engine';
+import { withFlowEngine } from '@/core/flow';
+import type { RuntimeSchema as Schema } from '@/core/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flowNodeManifests, getFlowNodeManifest } from '@origamix/shared';
-import { createLogicNodes, logicNodes } from '../src/logic-nodes';
-import { executeHyperValue, resolveHyperContext } from '../src/execute';
+import { createLogicNodes, logicNodes } from '@/logic-nodes';
+import { executeHyperValue, resolveHyperContext } from '@/execute';
 
 const schema: Schema = {
   elements: {

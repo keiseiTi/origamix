@@ -1,9 +1,6 @@
 import type { OrigamixPageSchema } from '@origamix/shared';
-import type { SchemaPageRef, WorkingDraftWriteOptions } from '../../src/schema/schema-contracts';
-import {
-  applyWorkingSchemaOperations,
-  getWorkingSchemaState,
-} from '../../src/schema/schema-service';
+import type { SchemaPageRef, WorkingDraftWriteOptions } from '@/schema/schema-contracts';
+import { applyWorkingSchemaOperations, getWorkingSchemaState } from '@/schema/schema-service';
 
 /** Retain a test fixture through the same operation pipeline as a visual editor. */
 export const retainWorkingFixture = async (

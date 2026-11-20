@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, renderHook, waitFor, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePendingOperations } from '../../../src/store/pending-operations';
+import { usePendingOperations } from '@/store/pending-operations';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -12,11 +12,11 @@ const mocks = vi.hoisted(() => ({
   subscribeAgentEvents: vi.fn(),
   workingState: vi.fn(),
 }));
-vi.mock('../../../src/services/agent', () => mocks);
-vi.mock('../../../src/services/schema', () => ({
+vi.mock('@/services/agent', () => mocks);
+vi.mock('@/services/schema', () => ({
   schemaService: { workingState: mocks.workingState },
 }));
-import { useAgentChat } from '../../../src/components/agent-chat/use-agent-chat';
+import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;

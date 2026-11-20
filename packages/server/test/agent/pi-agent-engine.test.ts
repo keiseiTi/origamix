@@ -6,10 +6,10 @@ import {
   fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux';
 import { describe, expect, it, vi } from 'vitest';
-import { RunBudgetController } from '../../src/agent/tools/registry';
-import { DEFAULT_AGENT_RUN_BUDGET } from '../../src/agent/agent-service';
-import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '../../src/agent/agent-engine';
-import { PiAgentEngine } from '../../src/agent/pi-agent-engine';
+import { RunBudgetController } from '@/agent/tools/registry';
+import { DEFAULT_AGENT_RUN_BUDGET } from '@/agent/agent-service';
+import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '@/agent/agent-engine';
+import { PiAgentEngine } from '@/agent/pi-agent-engine';
 
 const setup = (responses: ReturnType<typeof fauxAssistantMessage>[], tokensPerSecond = 10_000) => {
   const faux = fauxProvider({ provider: 'deepseek', tokensPerSecond });

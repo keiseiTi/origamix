@@ -3,7 +3,7 @@ import {
   type AgentEngine,
   type AgentEngineRequest,
   type AgentEngineResult,
-} from '../../src/agent/agent-engine';
+} from '@/agent/agent-engine';
 
 export class FakeAgentEngine implements AgentEngine {
   constructor(

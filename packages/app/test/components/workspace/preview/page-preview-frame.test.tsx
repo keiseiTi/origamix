@@ -8,10 +8,10 @@ const mocks = vi.hoisted(() => ({
   stack: vi.fn(),
   report: vi.fn(),
 }));
-vi.mock('../../../../src/services/schema', () => ({ schemaService: mocks }));
-vi.mock('../../../../src/services/projects', () => ({ projectsService: mocks }));
-vi.mock('../../../../src/services/runtime', () => ({ runtimeService: mocks }));
-import { PagePreviewFrame } from '../../../../src/components/workspace/preview/page-preview-frame';
+vi.mock('@/services/schema', () => ({ schemaService: mocks }));
+vi.mock('@/services/projects', () => ({ projectsService: mocks }));
+vi.mock('@/services/runtime', () => ({ runtimeService: mocks }));
+import { PagePreviewFrame } from '@/components/workspace/preview/page-preview-frame';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void, reject!: (error: unknown) => void;

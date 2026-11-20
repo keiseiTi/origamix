@@ -11,10 +11,10 @@ const schemaMocks = vi.hoisted(() => ({
   reloadFromProject: vi.fn(),
 }));
 
-vi.mock('../../../../src/services/schema', () => ({ schemaService: schemaMocks }));
+vi.mock('@/services/schema', () => ({ schemaService: schemaMocks }));
 
-import { usePendingOperations } from '../../../../src/store/pending-operations';
-import { usePageApplyState } from '../../../../src/components/workspace/hooks/use-page-apply-state';
+import { usePendingOperations } from '@/store/pending-operations';
+import { usePageApplyState } from '@/components/workspace/hooks/use-page-apply-state';
 
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;

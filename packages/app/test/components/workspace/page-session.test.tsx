@@ -9,8 +9,8 @@ import type {
   EditorPlugin,
 } from '@origamix/editor';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePendingOperations } from '../../../src/store/pending-operations';
-import { useWorkspaceStore } from '../../../src/store/workspace';
+import { usePendingOperations } from '@/store/pending-operations';
+import { useWorkspaceStore } from '@/store/workspace';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -104,12 +104,12 @@ const editedSchema = {
   ...schema,
   elements: { element_root: { type: 'container', props: { padding: 24 } } },
 };
-vi.mock('../../../src/materials/use-editor-materials', () => ({
+vi.mock('@/materials/use-editor-materials', () => ({
   useEditorMaterials: () => ({ registration: {} }),
 }));
-vi.mock('../../../src/services/agent', () => mocks);
-vi.mock('../../../src/services/schema', () => ({ schemaService: mocks }));
-vi.mock('../../../src/components/editor/index', () => ({
+vi.mock('@/services/agent', () => mocks);
+vi.mock('@/services/schema', () => ({ schemaService: mocks }));
+vi.mock('@/components/editor/index', () => ({
   PageEditor: ({
     readOnly,
     readOnlyMessage,
@@ -118,9 +118,7 @@ vi.mock('../../../src/components/editor/index', () => ({
     editor,
   }: {
     visible: boolean;
-    working: ReturnType<
-      typeof import('../../../src/components/editor/use-editor-session').useEditorSession
-    >;
+    working: ReturnType<typeof import('@/components/editor/use-editor-session').useEditorSession>;
     editor: TestEditor;
     readOnly: boolean;
     readOnlyMessage?: string;
@@ -171,12 +169,11 @@ vi.mock('../../../src/components/editor/index', () => ({
     );
   },
 }));
-import { PageSession } from '../../../src/components/workspace/page-session';
+import { PageSession } from '@/components/workspace/page-session';
 
 const editorRef = { current: null };
-vi.mock('../../../src/components/editor/use-editor-session', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../src/components/editor/use-editor-session')>();
+vi.mock('@/components/editor/use-editor-session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/editor/use-editor-session')>();
   return {
     useEditorSession: (...args: Parameters<typeof actual.useEditorSession>) => {
       const working = actual.useEditorSession(...args);
