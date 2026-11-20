@@ -2,6 +2,7 @@ import { agentTarget, requireAgentTarget } from './agent-target';
 import {
   type ClarificationResult,
   type CreateAgentRunRequest,
+  type RuntimeRepairEvidence,
   type RunBudget,
   type OrigamixPageSchema,
 } from '@origamix/shared';
@@ -53,8 +54,8 @@ export class AgentService {
         projectId: string,
         pageId: string | undefined,
       ) =>
-        | { workingVersion: number; schema?: OrigamixPageSchema }
-        | Promise<{ workingVersion: number; schema?: OrigamixPageSchema }>;
+        | { workingVersion: number; workingHash?: string; schema?: OrigamixPageSchema }
+        | Promise<{ workingVersion: number; workingHash?: string; schema?: OrigamixPageSchema }>;
       modelRef?: string;
       getModelRef?: () => string | Promise<string>;
       budget?: RunBudget;
@@ -88,6 +89,33 @@ export class AgentService {
         this.assertOpen();
         if (current.workingVersion !== request.baseWorkingVersion) {
           throw conflict('页面版本已变化，请刷新后重试');
+        }
+        const evidenceBlocks = request.content.blocks.filter(
+          (block) => block.type === 'runtime_repair',
+        );
+        const evidence = evidenceBlocks[0];
+        if (evidence) {
+          const schema = current.schema;
+          const flow =
+            schema && Object.hasOwn(schema.flows, evidence.flowId)
+              ? schema.flows[evidence.flowId]
+              : undefined;
+          if (
+            evidenceBlocks.length !== 1 ||
+            evidence.workingHash !== current.workingHash ||
+            !schema ||
+            !Object.hasOwn(schema.elements, evidence.elementId) ||
+            !schema.bindElements.some(
+              (binding) => binding.id === evidence.elementId && binding.flowId === evidence.flowId,
+            ) ||
+            !flow ||
+            !Object.hasOwn(flow.nodes, evidence.nodeId) ||
+            !evidence.visited.every((id) => Object.hasOwn(flow.nodes, id)) ||
+            (evidence.failure.code !== 'NODE_EXECUTION_ERROR' &&
+              flow.nodes[evidence.nodeId]?.type !== 'interfaceRequest')
+          ) {
+            throw conflict('预览运行证据已过期或与当前页面流程不匹配，请刷新预览后重现。');
+          }
         }
         if (request.clarification) {
           const source = await this.dependencies.runs.get(request.clarification.runId);
@@ -155,7 +183,7 @@ export class AgentService {
           });
           // HTTP and synchronous callers share this single dispatch and completion.
           const completion = Promise.resolve()
-            .then(() => this.executeAndPublish(started, message))
+            .then(() => this.executeAndPublish(started, message, evidence))
             .finally(() => {
               this.executing.delete(started.run.id);
             });
@@ -224,10 +252,11 @@ export class AgentService {
   private async executeAndPublish(
     started: ReturnType<ConversationService['startRun']>,
     message: string,
+    evidence?: RuntimeRepairEvidence,
   ): Promise<RunResult> {
     let result: RunResult;
     try {
-      result = await this.dependencies.executor.execute(started, message);
+      result = await this.dependencies.executor.execute(started, message, evidence);
     } catch {
       // A rejected setup must settle durable state as well as notify subscribers.
       const current = await this.dependencies.runService.get(started.run.id);

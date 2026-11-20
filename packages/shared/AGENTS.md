@@ -63,3 +63,5 @@ pnpm --filter @origamix/shared build
 - project-navigation.ts defines read-only page navigation metadata. navigatePage accepts only pageId; no application-state nodes or context namespace. ProjectManifest rejects removed applicationState/access fields through its current strict shape.
 
 - project-settings-agent.ts defines read-only proposal requests and streamed events with project/draft-version identity. This does not extend page Run/Session targets or persisted page protocols.
+
+- Runtime repair evidence is a bounded, structured Agent message block. Its shape permits execution IDs, Working hash, node path, duration and fixed error categories. Server verifies page and Working ownership before starting the Run. The structured block participates in existing request identity checks.

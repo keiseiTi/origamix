@@ -1,3 +1,4 @@
+import type { RuntimeRepairEvidence } from '@origamix/shared';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared';
 import {
@@ -32,7 +33,9 @@ export const useAgentChat = (
   projectId: string,
   pageId: string,
   enabled = true,
-): AgentChatSession => {
+): AgentChatSession & {
+  repair: (evidence: RuntimeRepairEvidence, workingVersion: number) => Promise<void>;
+} => {
   const schema = schemaService;
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
@@ -213,6 +216,7 @@ export const useAgentChat = (
       submission: {
         text: string;
         retryOfRunId?: string;
+        repair?: { evidence: RuntimeRepairEvidence; workingVersion: number };
         clarification?: CreateAgentRunRequest['clarification'];
       },
       retryInput?: CreateAgentRunRequest,
@@ -247,6 +251,12 @@ export const useAgentChat = (
       try {
         const working = retryInput ? undefined : await schema.workingState(projectId, pageId);
         const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
+        if (
+          submission.repair &&
+          (working?.workingVersion !== submission.repair.workingVersion ||
+            working.workingHash !== submission.repair.evidence.workingHash)
+        )
+          throw new Error('预览已过期，请刷新后重现故障。');
         const latest = usePendingOperations.getState().agents[pageKey];
         if (latest?.inFlight || (!retryInput && latest))
           throw new Error('请求仍在处理中，请稍后重试');
@@ -258,7 +268,13 @@ export const useAgentChat = (
           ...(conversationId.current ? { conversationId: conversationId.current } : {}),
           clientRequestId: requestId(),
           baseWorkingVersion,
-          content: { version: '1', blocks: [{ type: 'text', text: content }] },
+          content: {
+            version: '1',
+            blocks: [
+              { type: 'text', text: content },
+              ...(submission.repair ? [submission.repair.evidence] : []),
+            ],
+          },
           ...(submission.clarification ? { clarification: submission.clarification } : {}),
           ...(submission.retryOfRunId ? { retryOfRunId: submission.retryOfRunId } : {}),
         };
@@ -356,11 +372,16 @@ export const useAgentChat = (
     else if (
       lastSubmittedText.current &&
       state.run &&
+      !state.messages.some(
+        (message) =>
+          message.messageId === state.run?.userMessageId &&
+          message.content.blocks.some((block) => block.type === 'runtime_repair'),
+      ) &&
       ['failed', 'cancelled', 'interrupted'].includes(state.run.status)
     )
       await submit({ text: lastSubmittedText.current, retryOfRunId: state.run.runId });
     else await loadAuthority();
-  }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
+  }, [pageKey, verifiedPageKey, loadAuthority, state.run, state.messages, submit]);
 
   const activity = !enabled
     ? 'idle'
@@ -379,6 +400,11 @@ export const useAgentChat = (
       latestWorking.version !== clarification.baseWorkingVersion,
     ),
     send,
+    repair: (evidence: RuntimeRepairEvidence, workingVersion: number) =>
+      submit({
+        text: '分析并修复这次预览交互中选中的节点故障。',
+        repair: { evidence, workingVersion },
+      }),
     selectClarification,
     cancel,
     retry,

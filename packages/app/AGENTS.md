@@ -111,3 +111,5 @@ pnpm --filter @origamix/app build
 - `src/services/project-export-files.ts` validates template and snapshot paths and contents. `project-export.ts` assembles and downloads the source ZIP.
 
 - Local sync retries reuse the prepared snapshot and the browser’s file-creation checkpoint. Verify managed files against both the last baseline and the prepared output before writes. Complete the receipt only after verification. Preserve Desktop Apply, template user files and unrelated local page files.
+
+- Preview repair sends the selected execution through the existing page Agent session. Confirm a replay only on the repair Run's result Working version and hash, with a complete new execution that reached the target node and explicit user confirmation of the result.

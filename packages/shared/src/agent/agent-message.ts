@@ -12,8 +12,10 @@ import {
   IsoDateTimeSchema,
 } from './agent-schema.ts';
 import { RuntimeDiagnosticSchema } from './runtime-report.ts';
+import { RuntimeRepairEvidenceSchema } from './runtime-repair.ts';
 
 export const MessageContentBlockSchema = Type.Union([
+  RuntimeRepairEvidenceSchema,
   strictObject({ type: Type.Literal('text'), text: Type.String() }),
   strictObject({
     type: Type.Literal('page_reference'),

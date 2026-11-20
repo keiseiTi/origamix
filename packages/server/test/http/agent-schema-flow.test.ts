@@ -221,7 +221,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     expect(foreignUsage.statusCode).toBe(404);
 
-    const edited = await getWorkingSchemaState(pageRef);
+    let edited = await getWorkingSchemaState(pageRef);
     expect(edited.revisionId).toBe(before.revisionId);
     expect(edited.schema.flows.flow_agent).toEqual(flow);
     expect(edited.schema.bindElements).toEqual([
@@ -241,6 +241,38 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       payload: { ...request, clientRequestId: 'stale-agent-edit' },
     });
     expect(staleAgent.statusCode).toBe(409);
+    const evidence = {
+      type: 'runtime_repair',
+      snapshotId: 'preview',
+      runtimeSessionId: 'runtime',
+      executionId: 1,
+      workingHash: edited.workingHash,
+      elementId: buttonId,
+      flowId: 'flow_agent',
+      nodeId: 'action',
+      visited: ['start'],
+      durationMs: 1,
+      failure: { code: 'NODE_EXECUTION_ERROR' },
+    };
+    const evidenceVersion = edited.workingVersion;
+    const attemptRepair = (block: typeof evidence) =>
+      server!.inject({
+        method: 'POST',
+        url: '/api/v1/agent/runs/create',
+        headers,
+        payload: {
+          ...request,
+          baseWorkingVersion: evidenceVersion,
+          clientRequestId: 'runtime-repair',
+          content: { version: '1', blocks: [...request.content.blocks, block] },
+        },
+      });
+    expect((await attemptRepair({ ...evidence, workingHash: '0'.repeat(64) })).statusCode).toBe(
+      409,
+    );
+    expect((await attemptRepair({ ...evidence, nodeId: 'foreign-node' })).statusCode).toBe(409);
+    expect((await getWorkingSchemaState(pageRef)).workingVersion).toBe(edited.workingVersion);
+
     const staleCanvas = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-operations/apply',
@@ -260,6 +292,32 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     expect(staleCanvas.statusCode).toBe(409);
     expect((await getWorkingSchemaState(pageRef)).schema).toEqual(edited.schema);
+
+    faux.setResponses([
+      fauxAssistantMessage(
+        fauxToolCall('complete_page_run', {
+          outcome: 'apply_changes',
+          operations: [
+            { operation: 'updateElementProps', elementId: buttonId, set: { text: '已修复' } },
+          ],
+          response: '已更新故障按钮的草稿配置',
+        }),
+        { stopReason: 'toolUse' },
+      ),
+    ]);
+    const repairedResponse = await attemptRepair(evidence);
+    expect(repairedResponse.statusCode).toBe(202);
+    const repairStarted = await start.mock.results.at(-1)!.value;
+    await repairStarted.completion;
+    const repaired = await getWorkingSchemaState(pageRef);
+    expect(repaired.workingVersion).toBe(edited.workingVersion + 1);
+    expect(repaired.schema.elements[buttonId]?.props.text).toBe('已修复');
+    expect(await readFile(target, 'utf8')).toBe(originalTarget);
+    expect((await attemptRepair(evidence)).json().data.runId).toBe(
+      repairedResponse.json().data.runId,
+    );
+    expect((await attemptRepair({ ...evidence, durationMs: 2 })).statusCode).toBe(409);
+    edited = repaired;
 
     const working = await getWorkingSchemaState(pageRef);
     const checkpoint = await server.inject({

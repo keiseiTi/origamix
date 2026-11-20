@@ -1,8 +1,10 @@
+import { repairFailure } from '@/preview/runtime-repair';
 import type { RuntimeObservation } from '@origamix/runtime';
 import {
   getElementLabel,
   type PagePreviewReport,
   type PagePreviewSnapshot,
+  type RuntimeRepairEvidence,
 } from '@origamix/shared';
 
 const statusLabels: Record<RuntimeObservation['status'], string> = {
@@ -26,12 +28,18 @@ export const PreviewDiagnostics = ({
   snapshot,
   dropped,
   locate,
+  onRepair,
+  repairDisabled,
+  repairStatus,
 }: {
   records: RuntimeObservation[];
   diagnostics: PagePreviewReport['diagnostics'];
   snapshot: PagePreviewSnapshot | null;
   dropped: number;
   locate: (elementId: string) => void;
+  onRepair?: (evidence: RuntimeRepairEvidence, workingVersion: number) => void;
+  repairDisabled?: boolean;
+  repairStatus?: React.ReactNode;
 }) => {
   const render = records.find((record) => record.kind === 'render');
   const flows = new Map<number, FlowRecord>();
@@ -46,6 +54,7 @@ export const PreviewDiagnostics = ({
       className='absolute inset-y-0 right-0 z-40 w-full max-w-md overflow-auto border-l border-border bg-background p-4 pt-14 text-sm text-foreground shadow-xl'
     >
       <h2 className='font-semibold'>运行诊断</h2>
+      {repairStatus}
       <dl className='my-3 grid grid-cols-2 gap-2'>
         <dt>Working 版本</dt>
         <dd>{snapshot ? `v${snapshot.workingVersion}` : '—'}</dd>
@@ -122,6 +131,7 @@ export const PreviewDiagnostics = ({
               {steps.map((step) => {
                 if (step.kind !== 'node' && step.kind !== 'request') return null;
                 const node = definition?.nodes[step.nodeId];
+                const failure = repairFailure(step);
                 return (
                   <li key={step.sequence} className='break-all'>
                     {step.kind === 'request' ? 'HTTP 请求' : (node?.type ?? '逻辑节点')}
@@ -133,6 +143,47 @@ export const PreviewDiagnostics = ({
                     {step.kind === 'node' && step.code ? ` · ${step.code}` : ''}
                     {' · '}
                     {Math.round(step.durationMs)} ms
+                    {snapshot &&
+                      onRepair &&
+                      failure &&
+                      node &&
+                      (flow.status === 'failed' || flow.status === 'completed') && (
+                        <button
+                          type='button'
+                          disabled={repairDisabled}
+                          className='ml-2 rounded underline focus-visible:outline-2 disabled:opacity-50'
+                          onClick={() =>
+                            onRepair(
+                              {
+                                type: 'runtime_repair',
+                                snapshotId: snapshot.snapshotId,
+                                runtimeSessionId: flow.runtimeSessionId,
+                                executionId: flow.executionId,
+                                workingHash: snapshot.hash,
+                                flowId: flow.flowId,
+                                elementId: flow.elementId,
+                                nodeId: step.nodeId,
+                                visited: steps
+                                  .filter(
+                                    (
+                                      entry,
+                                    ): entry is Extract<RuntimeObservation, { kind: 'node' }> =>
+                                      entry.kind === 'node' &&
+                                      entry.status === 'completed' &&
+                                      entry.sequence < step.sequence,
+                                  )
+                                  .map((entry) => entry.nodeId)
+                                  .slice(0, 32),
+                                durationMs: Math.min(step.durationMs, 86400000),
+                                failure,
+                              },
+                              snapshot.workingVersion,
+                            )
+                          }
+                        >
+                          交给 Agent 修复
+                        </button>
+                      )}
                   </li>
                 );
               })}

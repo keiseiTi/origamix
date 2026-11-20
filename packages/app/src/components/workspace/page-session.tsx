@@ -191,6 +191,12 @@ const PageSessionContent = ({
           pageName={page.name}
           externalWorkingChange={externalWorkingChange}
           theme={theme}
+          repairAgent={{
+            activity: agent.activity,
+            run: agent.state.run,
+            messages: agent.state.messages,
+            submit: agent.repair,
+          }}
         />
       </div>
     </section>

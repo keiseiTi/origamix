@@ -415,3 +415,4 @@ export type {
   AgentUsageProject,
   AgentDailyUsage,
 } from './agent/agent-usage.ts';
+export type { RuntimeRepairEvidence } from './agent/runtime-repair.ts';

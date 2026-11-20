@@ -1,3 +1,10 @@
+import {
+  equalJson as sameEvidence,
+  type AgentMessage,
+  type AgentRun,
+  type RuntimeRepairEvidence,
+} from '@origamix/shared';
+import { findRepairReplay } from '@/preview/runtime-repair';
 import type { RuntimeObservation } from '@origamix/runtime';
 import { PreviewDiagnostics } from './preview-diagnostics';
 import { parsePreviewObservation } from '@/preview/observation-protocol';
@@ -18,6 +25,12 @@ interface PagePreviewFrameProps {
   pageName: string;
   externalWorkingChange: number | symbol | null;
   theme: AppTheme;
+  repairAgent?: {
+    activity: 'idle' | 'running' | 'unknown';
+    run: AgentRun | null;
+    messages: AgentMessage[];
+    submit: (evidence: RuntimeRepairEvidence, version: number) => Promise<void>;
+  };
 }
 export const PagePreviewFrame = ({
   active,
@@ -26,6 +39,7 @@ export const PagePreviewFrame = ({
   pageName,
   externalWorkingChange,
   theme,
+  repairAgent,
 }: PagePreviewFrameProps): React.JSX.Element | null => {
   const changePageMode = useWorkspaceStore((state) => state.changePageMode);
   const mode = useWorkspaceStore(
@@ -38,6 +52,15 @@ export const PagePreviewFrame = ({
   const [frameKey, setFrameKey] = useState<string | null>(active ? '' : null);
   if (active && frameKey === null) setFrameKey('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [repair, setRepair] = useState<RuntimeRepairEvidence | null>(null);
+  const [linkedRun, setLinkedRun] = useState<AgentRun | null>(null);
+  const [repairError, setRepairError] = useState<string | null>(null);
+  const [repairSubmitting, setRepairSubmitting] = useState(false);
+  const [verifiedReplay, setVerifiedReplay] = useState<{
+    evidence: RuntimeRepairEvidence;
+    snapshotId: string;
+    executionId: number;
+  } | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [observation, setObservation] = useState<{
     records: RuntimeObservation[];
@@ -287,6 +310,52 @@ export const PagePreviewFrame = ({
     publishSnapshot(next);
   }, [publishSnapshot, theme]);
 
+  const agentRun = repairAgent?.run;
+  const matchingRun =
+    repair &&
+    agentRun &&
+    repairAgent?.messages.some(
+      (message) =>
+        message.messageId === agentRun.userMessageId &&
+        message.content.blocks.some(
+          (block) => block.type === 'runtime_repair' && sameEvidence(block, repair),
+        ),
+    )
+      ? agentRun
+      : null;
+  if (matchingRun && matchingRun !== linkedRun) setLinkedRun(matchingRun);
+  const repairRun = matchingRun ?? linkedRun;
+  const repairedVersion = repairRun?.resultWorkingVersion;
+  const onRepairedSnapshot = Boolean(
+    repairedVersion &&
+    displayedSnapshot &&
+    displayedSnapshot.snapshotId !== repair?.snapshotId &&
+    displayedSnapshot.workingVersion === repairedVersion &&
+    displayedSnapshot.hash === repairRun?.resultWorkingHash,
+  );
+  const replay =
+    repair && onRepairedSnapshot ? findRepairReplay(repair, observation.records) : undefined;
+  const verified = Boolean(
+    verifiedReplay && verifiedReplay.evidence === repair && onRepairedSnapshot,
+  );
+  const submitRepair = async (evidence: RuntimeRepairEvidence, version: number) => {
+    if (!repairAgent || repairSubmitting || repairAgent.activity !== 'idle') return;
+    setRepair(evidence);
+    setLinkedRun(null);
+    setRepairError(null);
+    setVerifiedReplay(null);
+    setRepairSubmitting(true);
+    try {
+      await repairAgent.submit(evidence, version);
+    } catch (reason) {
+      setRepairError(
+        reason instanceof Error ? reason.message : '修复请求待确认，请查看 Agent 对话。',
+      );
+    } finally {
+      setRepairSubmitting(false);
+    }
+  };
+
   if (frameKey === null) return null;
 
   return (
@@ -333,6 +402,85 @@ export const PagePreviewFrame = ({
           dropped={observation.dropped}
           snapshot={displayedSnapshot}
           diagnostics={renderDiagnostics}
+          onRepair={
+            repairAgent ? (evidence, version) => void submitRepair(evidence, version) : undefined
+          }
+          repairDisabled={repairSubmitting || refreshing || repairAgent?.activity !== 'idle'}
+          repairStatus={
+            repair && (
+              <div className='my-3 space-y-2 rounded-md border border-border p-3'>
+                <p role='status'>
+                  {verified
+                    ? '已验证'
+                    : repairedVersion
+                      ? '草稿已更新 · 待复验'
+                      : repairSubmitting
+                        ? '正在提交修复请求…'
+                        : repairRun?.status === 'completed'
+                          ? '分析完成 · 请查看 Agent 结论'
+                          : repairRun &&
+                              ['failed', 'cancelled', 'interrupted'].includes(repairRun.status)
+                            ? '修复未完成'
+                            : '请在 Agent 对话查看修复进度'}
+                </p>
+                <p className='break-all text-muted-foreground'>
+                  流程 {repair.flowId} · 节点 {repair.nodeId}
+                  {verified ? ` · 复验 #${verifiedReplay?.executionId}` : ''}
+                </p>
+                {repairError && (
+                  <p role='alert' className='text-danger'>
+                    {repairError}
+                  </p>
+                )}
+                <div className='flex flex-wrap gap-2'>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    onClick={() => void changePageMode(pageId, 'chat')}
+                  >
+                    查看 Agent 对话
+                  </Button>
+                  {repairedVersion && !onRepairedSnapshot && !verified && (
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      disabled={refreshing}
+                      onClick={() => void refresh()}
+                    >
+                      加载修复后的预览
+                    </Button>
+                  )}
+                </div>
+                {repairedVersion &&
+                  displayedSnapshot &&
+                  displayedSnapshot.workingVersion > repairedVersion && (
+                    <p className='text-muted-foreground'>
+                      草稿已有后续修改。请在当前草稿重新采集故障记录。
+                    </p>
+                  )}
+                {onRepairedSnapshot && !verified && (
+                  <p className='text-muted-foreground'>
+                    请用相同输入重现交互并检查预期结果。有副作用的操作请使用测试环境或模拟请求。
+                  </p>
+                )}
+                {replay !== undefined && !verified && displayedSnapshot && (
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    onClick={() =>
+                      setVerifiedReplay({
+                        evidence: repair,
+                        snapshotId: displayedSnapshot.snapshotId,
+                        executionId: replay,
+                      })
+                    }
+                  >
+                    确认本次结果符合预期
+                  </Button>
+                )}
+              </div>
+            )
+          }
           locate={(elementId) => {
             const snapshot = currentSnapshot.current;
             if (!snapshot || !Object.hasOwn(snapshot.schema.elements, elementId)) return;
