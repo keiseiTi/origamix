@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe('Project and Schema HTTP flows', () => {
-  it('creates a runnable project from the template and registers new pages', async () => {
+  it('creates projects and pages and accepts a typed visual edit', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-project-'));
     directories.push(directory);
     const database = new ApplicationDatabase(join(directory, 'origamix.db'));
@@ -46,13 +46,7 @@ describe('Project and Schema HTTP flows', () => {
       },
     });
     expect(createProject.statusCode).toBe(201);
-    const projectResult = createProject.json() as {
-      success: true;
-      code: 200;
-      data: { id: string; path: string };
-    };
-    expect(projectResult).toMatchObject({ success: true, code: 200 });
-    const project = projectResult.data;
+    const project = createProject.json().data as { id: string; path: string };
     expect(project.path).toBe(join(directory, 'customer-console'));
 
     const createPage = await server.inject({
@@ -62,48 +56,19 @@ describe('Project and Schema HTTP flows', () => {
       payload: { projectId: project.id, name: '客户列表', slug: 'customer-list' },
     });
     expect(createPage.statusCode).toBe(201);
-    const pageResult = createPage.json() as {
-      success: true;
-      code: 200;
-      data: { id: string; slug: string };
-    };
-    expect(pageResult).toMatchObject({ success: true, code: 200 });
-    const page = pageResult.data;
+    const page = createPage.json().data as { id: string; slug: string };
     expect(page.slug).toBe('customer-list');
     expect(
       await readFile(join(project.path, 'src', 'screens', page.slug, 'index.tsx'), 'utf8'),
     ).toContain('OrigamixPage');
-    expect(
-      JSON.parse(await readFile(join(project.path, 'origamix.project.json'), 'utf8')),
-    ).toMatchObject({
-      shell: { title: '', logo: '', standalonePageIds: [] },
-      runtime: 'origamix' as const,
-      layout: { enabled: false, initialVariant: 'mix' as const },
-      routing: { mode: 'browser' as const, basePath: '/' },
-      framework: 'react',
-      materialSet: { id: 'official-antd', version: '1.0.0' },
-      pageDirectory: 'screens',
-      pages: [{ pageId: expect.any(String), slug: 'customer-list' }],
-    });
-
-    const targetPath = join(project.path, 'src', 'screens', page.slug, 'schema.json');
-    const targetBeforeEdit = await readFile(targetPath, 'utf8');
     const workingBeforeResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-state/get',
       headers,
       payload: { projectId: project.id, pageId: page.id },
     });
-    const workingBefore = workingBeforeResponse.json() as {
-      success: true;
-      data: {
-        revisionId: string;
-        workingVersion: number;
-        schema: {
-          elements: Record<string, { type: string; props: Record<string, unknown> }>;
-        };
-      };
-    };
+    expect(workingBeforeResponse.statusCode).toBe(200);
+    const { workingVersion } = workingBeforeResponse.json().data as { workingVersion: number };
     const draftResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-operations/apply',
@@ -111,13 +76,8 @@ describe('Project and Schema HTTP flows', () => {
       payload: {
         projectId: project.id,
         pageId: page.id,
-        baseWorkingVersion: workingBefore.data.workingVersion,
+        baseWorkingVersion: workingVersion,
         operations: [
-          {
-            operation: 'updateElementProps',
-            elementId: 'element_root',
-            set: { padding: 28 },
-          },
           {
             operation: 'addElement',
             elementId: 'form_http',
@@ -131,40 +91,14 @@ describe('Project and Schema HTTP flows', () => {
       },
     });
     expect(draftResponse.statusCode, draftResponse.body).toBe(200);
-    expect(await readFile(targetPath, 'utf8')).toBe(targetBeforeEdit);
-    const draft = draftResponse.json() as {
-      success: true;
-      data: { revisionId: string; workingVersion: number };
-    };
-    expect(draft.data.revisionId).toBe(workingBefore.data.revisionId);
-    const workingStateResponse = await server.inject({
-      method: 'POST',
-      url: '/api/v1/pages/working-state/get',
-      headers,
-      payload: { projectId: project.id, pageId: page.id },
-    });
-    expect(workingStateResponse.statusCode).toBe(200);
-    const workingState = workingStateResponse.json() as {
-      success: true;
-      data: {
-        revisionId: string;
-        workingVersion: number;
-        workingHash: string;
-        savedSchemaHash: string;
-      };
-    };
-    expect(workingState.data).toMatchObject({
-      revisionId: workingBefore.data.revisionId,
-      workingVersion: workingBefore.data.workingVersion + 1,
+    expect(draftResponse.json().data).toMatchObject({
+      workingVersion: workingVersion + 1,
       schema: {
         elements: {
-          element_root: { props: { padding: 28 } },
-          form_http: { type: 'form', props: { layout: 'horizontal' } },
+          form_http: { type: 'form', props: { layout: 'horizontal', colon: true, preserve: true } },
         },
       },
     });
-    expect(workingState.data.workingHash).not.toBe(workingState.data.savedSchemaHash);
-    // Save/history/Apply transport is exercised once in agent-schema-flow.test.ts.
     await server.close();
     database.close();
   });

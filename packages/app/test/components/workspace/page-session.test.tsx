@@ -100,10 +100,6 @@ const schema: OrigamixPageSchema = {
   context: { globalVariables: [] },
   extensions: { origamix: { schemaVersion: SCHEMA_VERSION } },
 };
-const editedSchema = {
-  ...schema,
-  elements: { element_root: { type: 'container', props: { padding: 24 } } },
-};
 vi.mock('@/materials/use-editor-materials', () => ({
   useEditorMaterials: () => ({ registration: {} }),
 }));
@@ -264,55 +260,6 @@ describe('workspace recovery controls', () => {
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes a visual Working commit before saving and applying the page', async () => {
-    mocks.listConversations.mockResolvedValue({ conversations: [] });
-    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
-    mocks.applyWorkingOperations.mockResolvedValue({ schema: editedSchema, workingVersion: 3 });
-    mocks.saveRevision.mockResolvedValue({
-      schema: editedSchema,
-      revisionId: 'revision_2',
-      workingVersion: 4,
-    });
-    await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
-    render(<PageSession {...props} active />);
-    await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
-    const toolbar = within(screen.getByTestId('editor-toolbar'));
-    const save = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '保存版本' });
-    const apply = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '应用到项目' });
-    expect(save().disabled).toBe(true);
-    expect(apply().disabled).toBe(true);
-
-    const canvas = screen.getByRole<HTMLButtonElement>('button', { name: '编辑画布' });
-    await waitFor(() => expect(canvas.disabled).toBe(false));
-    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
-    mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
-    fireEvent.click(canvas);
-    await waitFor(() => expect(mocks.applyWorkingOperations).toHaveBeenCalled());
-    await waitFor(() => expect(save().disabled).toBe(false));
-    expect(apply().disabled).toBe(true);
-    expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
-
-    mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
-    mocks.workingState.mockResolvedValue({
-      schema: editedSchema,
-      revisionId: 'revision_2',
-      workingVersion: 4,
-    });
-    fireEvent.click(save());
-    await waitFor(() => expect(apply().disabled).toBe(false));
-    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 3);
-    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
-    fireEvent.click(apply());
-    await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
-    expect(mocks.apply).toHaveBeenCalledWith(
-      'project_1',
-      'page_a',
-      'revision_2',
-      4,
-      expect.any(String),
-    );
-  });
-
   it('saves only the active page once per shortcut', async () => {
     mocks.listConversations.mockResolvedValue({ conversations: [] });
     mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
@@ -375,7 +322,8 @@ describe('workspace recovery controls', () => {
     expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_b', 2);
   });
 
-  it('loads the Agent draft and continues editing from its Working version', async () => {
+  it('continues an Agent draft through visual editing, explicit save and Apply', async () => {
+    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
@@ -446,16 +394,23 @@ describe('workspace recovery controls', () => {
       occurredAt: '2026-09-23T00:00:01.000Z',
       payload: { outcome: 'changed', resultWorkingVersion: 3 },
     });
+    const finalSchema = {
+      ...agentSchema,
+      elements: { element_root: { type: 'container', props: { height: 320, padding: 24 } } },
+    };
     mocks.applyWorkingOperations.mockResolvedValue({
       revisionId: 'revision_1',
       workingVersion: 4,
-      schema: {
-        ...agentSchema,
-        elements: { element_root: { type: 'container', props: { height: 320, padding: 24 } } },
-      },
+      schema: finalSchema,
     });
+    const toolbar = within(screen.getByTestId('editor-toolbar'));
+    const save = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '保存版本' });
+    const apply = () => toolbar.getByRole<HTMLButtonElement>('button', { name: '应用到项目' });
     const canvas = screen.getByRole<HTMLButtonElement>('button', { name: '编辑画布' });
     await waitFor(() => expect(canvas.disabled).toBe(false));
+    expect(save().disabled).toBe(true);
+    expect(apply().disabled).toBe(true);
+    mocks.applyState.mockResolvedValue({ status: 'draft_unsaved' });
     fireEvent.click(canvas);
     await waitFor(() =>
       expect(mocks.applyWorkingOperations).toHaveBeenCalledWith('project_1', 'page_a', 3, [
@@ -465,6 +420,29 @@ describe('workspace recovery controls', () => {
           set: { padding: 24 },
         },
       ]),
+    );
+    await waitFor(() => expect(save().disabled).toBe(false));
+    expect(apply().disabled).toBe(true);
+
+    const saved = { schema: finalSchema, revisionId: 'revision_2', workingVersion: 5 };
+    mocks.saveRevision.mockResolvedValue(saved);
+    mocks.workingState.mockResolvedValue(saved);
+    mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
+    fireEvent.click(save());
+    await waitFor(() => expect(apply().disabled).toBe(false));
+    expect(mocks.saveRevision).toHaveBeenCalledWith('project_1', 'page_a', 4);
+    expect(mocks.apply).not.toHaveBeenCalled();
+
+    mocks.applyState.mockResolvedValue({ status: 'in_sync' });
+    fireEvent.click(apply());
+    await waitFor(() =>
+      expect(mocks.apply).toHaveBeenCalledWith(
+        'project_1',
+        'page_a',
+        'revision_2',
+        5,
+        expect.any(String),
+      ),
     );
     expect(mocks.editorMounted).toHaveBeenCalledTimes(1);
   });

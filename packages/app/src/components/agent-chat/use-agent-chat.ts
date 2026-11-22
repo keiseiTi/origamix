@@ -42,7 +42,7 @@ export const useAgentChat = (
   const generation = useRef(0);
   const sending = useRef(false);
   const authorityRequest = useRef(0);
-  const lastSubmittedText = useRef('');
+  const lastSubmission = useRef<{ runId: string; text: string; repair: boolean } | null>(null);
   const pageKey = pageOperationKey(projectId, pageId);
   const pending = usePendingOperations((value) => value.agents[pageKey]);
   const preparing = usePendingOperations((value) => value.agentPreparations[pageKey]);
@@ -94,6 +94,7 @@ export const useAgentChat = (
     generation.current += 1;
     mounted.current = true;
     conversationId.current = null;
+    lastSubmission.current = null;
     dispatch({ type: 'reset' });
     // Cancel the initial load when StrictMode immediately disposes the mount.
     const initial = window.setTimeout(() => {
@@ -223,6 +224,9 @@ export const useAgentChat = (
     ): Promise<void> => {
       if (!enabled) throw new Error('请先开启项目布局配置');
       const content = submission.text.trim();
+      const isRepair =
+        Boolean(submission.repair) ||
+        (retryInput?.content.blocks.some((block) => block.type === 'runtime_repair') ?? false);
       const operations = usePendingOperations.getState();
       if (
         !content ||
@@ -243,7 +247,6 @@ export const useAgentChat = (
       authorityRequest.current += 1;
       const submissionAuthorityRequest = authorityRequest.current;
       setVerifiedPageKey(null);
-      lastSubmittedText.current = content;
       const currentGeneration = generation.current;
       const current = () => mounted.current && generation.current === currentGeneration;
       let input: CreateAgentRunRequest | undefined;
@@ -284,6 +287,11 @@ export const useAgentChat = (
         accepted = true;
         operations.finishAgent(pageKey, input.clientRequestId, true);
         if (!current()) return;
+        lastSubmission.current = {
+          runId: created.runId,
+          text: content,
+          repair: isRepair,
+        };
         conversationId.current = created.conversationId;
         const replayEvents = isRunActive(created.status);
         // The create response includes the Run snapshot, so subscribe before
@@ -307,8 +315,8 @@ export const useAgentChat = (
           preserveStream: replayEvents,
         });
       } catch (error) {
-        if (input && !accepted)
-          operations.finishAgent(pageKey, input.clientRequestId, isMutationRejected(error));
+        const rejected = !input || isMutationRejected(error);
+        if (input && !accepted) operations.finishAgent(pageKey, input.clientRequestId, rejected);
         if (current()) {
           setVerifiedPageKey(null);
           dispatch({
@@ -319,7 +327,7 @@ export const useAgentChat = (
                 ? error.message
                 : '发送失败，请重试。',
           });
-          if (accepted) void loadAuthority();
+          if (accepted || (isRepair && rejected)) void loadAuthority();
         }
         if (accepted) return;
         throw error;
@@ -368,20 +376,19 @@ export const useAgentChat = (
         .map((block) => block.text)
         .join('\n');
       await submit({ text }, request.input);
-    } else if (verifiedPageKey !== pageKey) await loadAuthority();
-    else if (
-      lastSubmittedText.current &&
+      return;
+    }
+    const submitted = lastSubmission.current;
+    if (
+      verifiedPageKey === pageKey &&
       state.run &&
-      !state.messages.some(
-        (message) =>
-          message.messageId === state.run?.userMessageId &&
-          message.content.blocks.some((block) => block.type === 'runtime_repair'),
-      ) &&
+      submitted?.runId === state.run.runId &&
+      !submitted.repair &&
       ['failed', 'cancelled', 'interrupted'].includes(state.run.status)
-    )
-      await submit({ text: lastSubmittedText.current, retryOfRunId: state.run.runId });
-    else await loadAuthority();
-  }, [pageKey, verifiedPageKey, loadAuthority, state.run, state.messages, submit]);
+    ) {
+      await submit({ text: submitted.text, retryOfRunId: state.run.runId });
+    } else await loadAuthority();
+  }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
 
   const activity = !enabled
     ? 'idle'

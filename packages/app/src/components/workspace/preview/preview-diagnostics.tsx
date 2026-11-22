@@ -1,4 +1,4 @@
-import { repairFailure } from '@/preview/runtime-repair';
+import { readExecutionSteps, repairFailure } from '@/preview/runtime-repair';
 import type { RuntimeObservation } from '@origamix/runtime';
 import {
   getElementLabel,
@@ -41,10 +41,11 @@ export const PreviewDiagnostics = ({
   repairDisabled?: boolean;
   repairStatus?: React.ReactNode;
 }) => {
-  const render = records.find((record) => record.kind === 'render');
+  let render: Extract<RuntimeObservation, { kind: 'render' }> | undefined;
   const flows = new Map<number, FlowRecord>();
   for (const record of records) {
-    if (record.kind === 'flow') flows.set(record.executionId, record);
+    if (record.kind === 'render') render = record;
+    else if (record.kind === 'flow') flows.set(record.executionId, record);
   }
   const executions = [...flows.values()].reverse();
   const requests = records.filter((record) => record.kind === 'request');
@@ -132,6 +133,7 @@ export const PreviewDiagnostics = ({
                 if (step.kind !== 'node' && step.kind !== 'request') return null;
                 const node = definition?.nodes[step.nodeId];
                 const failure = repairFailure(step);
+                const trace = failure && readExecutionSteps(records, flow, step.sequence);
                 return (
                   <li key={step.sequence} className='break-all'>
                     {step.kind === 'request' ? 'HTTP 请求' : (node?.type ?? '逻辑节点')}
@@ -146,6 +148,7 @@ export const PreviewDiagnostics = ({
                     {snapshot &&
                       onRepair &&
                       failure &&
+                      trace &&
                       node &&
                       (flow.status === 'failed' || flow.status === 'completed') && (
                         <button
@@ -163,7 +166,7 @@ export const PreviewDiagnostics = ({
                                 flowId: flow.flowId,
                                 elementId: flow.elementId,
                                 nodeId: step.nodeId,
-                                visited: steps
+                                visited: trace
                                   .filter(
                                     (
                                       entry,

@@ -1,7 +1,7 @@
 import type { RuntimeObservation } from '@origamix/runtime';
 import type { RuntimeRepairEvidence } from '@origamix/shared';
 import { expect, it } from 'vitest';
-import { findRepairReplay } from '@/preview/runtime-repair';
+import { findRepairReplay, readExecutionSteps } from '@/preview/runtime-repair';
 
 it('requires a complete replay that reached the selected repair node', () => {
   const evidence: RuntimeRepairEvidence = {
@@ -38,6 +38,13 @@ it('requires a complete replay that reached the selected repair node', () => {
       status: 'completed',
     },
   ];
+  const flow = records[3]!;
+  if (flow.kind !== 'flow') throw new Error('Expected the fixture flow');
+  expect(readExecutionSteps(records, flow, 3)?.map(({ nodeId }) => nodeId)).toEqual([
+    'start',
+    'check',
+  ]);
+  expect(readExecutionSteps([records[0]!, records[2]!, flow], flow, 3)).toBeUndefined();
   expect(findRepairReplay(evidence, records)).toBe(1);
   expect(findRepairReplay(evidence, records.slice(1))).toBeUndefined();
   expect(

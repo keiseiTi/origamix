@@ -268,18 +268,15 @@ export const PagePreviewFrame = ({
           lastSequence = record.sequence;
           setObservation((current) => {
             // The validated field lengths bound each entry by a fixed worst-case JSON size.
-            const records = [
-              ...current.records.filter(
-                (entry) => record.kind !== 'render' || entry.kind !== 'render',
-              ),
-              record,
-            ];
+            const records = [...current.records, record];
             const excess = Math.max(0, records.length - 100);
-            if (excess)
-              records.splice(
-                records.findIndex((entry) => entry.kind !== 'render'),
-                excess,
-              );
+            if (excess) {
+              // Preserve the latest render status while keeping intervening records for trace checks.
+              const preserveFirst =
+                records[0]?.kind === 'render' &&
+                !records.some((entry, index) => index > 0 && entry.kind === 'render');
+              records.splice(preserveFirst ? 1 : 0, excess);
+            }
             return { records, dropped: current.dropped + gap + excess };
           });
         };
@@ -336,7 +333,10 @@ export const PagePreviewFrame = ({
   const replay =
     repair && onRepairedSnapshot ? findRepairReplay(repair, observation.records) : undefined;
   const verified = Boolean(
-    verifiedReplay && verifiedReplay.evidence === repair && onRepairedSnapshot,
+    verifiedReplay &&
+    verifiedReplay.evidence === repair &&
+    verifiedReplay.snapshotId === displayedSnapshot?.snapshotId &&
+    onRepairedSnapshot,
   );
   const submitRepair = async (evidence: RuntimeRepairEvidence, version: number) => {
     if (!repairAgent || repairSubmitting || repairAgent.activity !== 'idle') return;

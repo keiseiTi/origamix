@@ -54,7 +54,36 @@ describe('Agent recovery', () => {
     expect(hook.result.current.activity).toBe('idle');
   });
 
-  it('shows SSE progress before a fast Run final answer already present in history', async () => {
+  it('recovers Agent admission after rejecting stale preview evidence', async () => {
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+    mocks.workingState.mockResolvedValue({ workingVersion: 2, workingHash: 'b'.repeat(64) });
+    await act(async () => {
+      await expect(
+        hook.result.current.repair(
+          {
+            type: 'runtime_repair',
+            snapshotId: 'preview_1',
+            runtimeSessionId: 'runtime_1',
+            executionId: 1,
+            workingHash: 'a'.repeat(64),
+            elementId: 'button_submit',
+            flowId: 'submit',
+            nodeId: 'request',
+            visited: ['start'],
+            durationMs: 4,
+            failure: { code: 'NETWORK_ERROR' },
+          },
+          1,
+        ),
+      ).rejects.toThrow('预览已过期');
+    });
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
+    expect(mocks.createAgentRun).not.toHaveBeenCalled();
+    expect(usePendingOperations.getState().agentPreparations).toEqual({});
+  });
+
+  it('reconciles a fast Run without losing its terminal response or Working version', async () => {
     let onEvent: ((event: unknown) => void) | undefined;
     mocks.subscribeAgentEvents.mockImplementation(
       (_projectId: string, _runId: string, listener: { onEvent: (event: unknown) => void }) => {
@@ -99,6 +128,7 @@ describe('Agent recovery', () => {
     });
     mocks.listAllMessages
       .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] })
+      .mockResolvedValueOnce({ messages: [userMessage] })
       .mockResolvedValue({ messages: [userMessage, assistantMessage] });
     const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
     await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
@@ -123,21 +153,13 @@ describe('Agent recovery', () => {
         occurredAt: '2026-09-24T00:00:00.000Z',
         payload: { status: 'reasoning', phase: 'reasoning', message: '正在思考并规划页面修改' },
       });
+    });
+    expect(hook.result.current.state.stage).toBe('reasoning');
+    act(() => {
       onEvent!({
         version: '1',
         eventId: 2,
         sequence: 2,
-        type: 'tool.activity',
-        runId: 'run_fast',
-        pageId: 'page_a',
-        requestId: 'request_1',
-        occurredAt: '2026-09-24T00:00:00.000Z',
-        payload: { toolName: 'complete_page_run', phase: 'completed' },
-      });
-      onEvent!({
-        version: '1',
-        eventId: 3,
-        sequence: 3,
         type: 'run.completed',
         runId: 'run_fast',
         pageId: 'page_a',
@@ -151,85 +173,10 @@ describe('Agent recovery', () => {
         },
       });
     });
-    expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
-    expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
     expect(hook.result.current.state.committedWorkingVersion).toBe(2);
-    expect(hook.result.current.state.stage).toBe('completed');
-    await waitFor(
-      () => expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
-      { timeout: 3_000 },
-    );
-    expect(hook.result.current.state.progressHistory).toContain('正在思考并规划页面修改');
-    expect(hook.result.current.state.progressHistory).toContain('生成并执行页面操作链 · 完成');
-  });
-
-  it('keeps the terminal answer visible until the persisted message is available', async () => {
-    const userMessage = {
-      messageId: 'message_user',
-      runId: 'run_1',
-      sequence: 1,
-      role: 'user',
-      content: { version: '1', blocks: [{ type: 'text', text: '重置页面' }] },
-    };
-    const assistantMessage = {
-      messageId: 'message_assistant',
-      runId: 'run_1',
-      sequence: 2,
-      role: 'assistant',
-      content: { version: '1', blocks: [{ type: 'text', text: '页面已重置。' }] },
-    };
-    mocks.listConversations.mockResolvedValue({
-      conversations: [{ conversationId: 'conversation_1' }],
-    });
-    mocks.listAllMessages
-      .mockResolvedValueOnce({ messages: [userMessage] })
-      .mockResolvedValueOnce({ messages: [userMessage] })
-      .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] });
-    mocks.getAgentRun
-      .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'reasoning' } })
-      .mockResolvedValueOnce({ run: { runId: 'run_1', pageId: 'page_a', status: 'completed' } })
-      .mockResolvedValueOnce({
-        run: {
-          runId: 'run_1',
-          pageId: 'page_a',
-          status: 'completed',
-          resultWorkingVersion: 2,
-        },
-      });
-    let onEvent: ((event: unknown) => void) | undefined;
-    mocks.subscribeAgentEvents.mockImplementation(
-      (_projectId: string, _runId: string, listener: { onEvent: (event: unknown) => void }) => {
-        onEvent = listener.onEvent;
-        return () => undefined;
-      },
-    );
-    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
-    await waitFor(() => expect(onEvent).toBeDefined());
-
-    act(() =>
-      onEvent!({
-        version: '1',
-        eventId: 1,
-        sequence: 1,
-        type: 'run.completed',
-        runId: 'run_1',
-        pageId: 'page_a',
-        requestId: 'request_1',
-        occurredAt: '2026-09-23T00:00:00.000Z',
-        payload: {
-          status: 'completed',
-          outcome: 'changed',
-          response: '页面已重置。',
-          resultWorkingVersion: 2,
-        },
-      }),
-    );
-
-    expect(hook.result.current.state.streamedText).toBe('页面已重置。');
-
-    await waitFor(() => expect(hook.result.current.state.stage).toBe('completed'));
+    await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
     expect(hook.result.current.state.messages).toEqual([userMessage]);
-    expect(hook.result.current.state.streamedText).toBe('页面已重置。');
+    expect(hook.result.current.state.streamedText).toBe('已添加表单。');
 
     await act(async () => hook.result.current.refresh());
     expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]);

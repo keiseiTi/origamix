@@ -22,6 +22,35 @@ export const repairFailure = (step: Step): RuntimeRepairEvidence['failure'] | un
   }
 };
 
+type FlowRecord = Extract<RuntimeObservation, { kind: 'flow' }>;
+
+export const readExecutionSteps = (
+  records: readonly RuntimeObservation[],
+  flow: FlowRecord,
+  throughSequence: number,
+): Step[] | undefined => {
+  const start = records.find(
+    (record) =>
+      record.kind === 'flow' &&
+      record.status === 'started' &&
+      record.runtimeSessionId === flow.runtimeSessionId &&
+      record.executionId === flow.executionId,
+  );
+  if (!start || start.sequence >= throughSequence) return;
+  const interval = records.filter(
+    (record) =>
+      record.runtimeSessionId === flow.runtimeSessionId &&
+      record.sequence > start.sequence &&
+      record.sequence <= throughSequence,
+  );
+  if (interval.length !== throughSequence - start.sequence) return;
+  return interval.filter(
+    (record): record is Step =>
+      (record.kind === 'node' || record.kind === 'request') &&
+      record.executionId === flow.executionId,
+  );
+};
+
 export const findRepairReplay = (
   evidence: RuntimeRepairEvidence,
   records: RuntimeObservation[],
@@ -36,28 +65,8 @@ export const findRepairReplay = (
   );
   for (const run of executions.reverse()) {
     if (run.kind !== 'flow') continue;
-    const start = records.find(
-      (record) =>
-        record.kind === 'flow' &&
-        record.status === 'started' &&
-        record.executionId === run.executionId &&
-        record.runtimeSessionId === run.runtimeSessionId,
-    );
-    if (!start || start.sequence >= run.sequence) continue;
-    const interval = records.filter(
-      (record) =>
-        record.runtimeSessionId === run.runtimeSessionId &&
-        record.sequence > start.sequence &&
-        record.sequence < run.sequence,
-    );
-    if (interval.length !== run.sequence - start.sequence - 1) continue;
-    const steps = interval.filter(
-      (record): record is Step =>
-        (record.kind === 'node' || record.kind === 'request') &&
-        record.executionId === run.executionId &&
-        record.runtimeSessionId === run.runtimeSessionId,
-    );
-    if (steps.some((step) => step.status !== 'completed')) continue;
+    const steps = readExecutionSteps(records, run, run.sequence);
+    if (!steps || steps.some((step) => step.status !== 'completed')) continue;
     const nodes = steps.filter((step) => step.kind === 'node');
     if (!evidence.visited.every((id, index) => nodes[index]?.nodeId === id)) continue;
     const target = steps.some(

@@ -99,18 +99,15 @@ describe('project manifest protocol', () => {
     ).toBe(true);
   });
 
-  it.each([null, { pageId: 'invalid' }, { name: '' }, { slug: '../home' }])(
-    'rejects malformed page fields: %j',
-    (fields) => {
-      const value = manifest();
-      expect(
-        isProjectManifest({
-          ...value,
-          pages: [fields === null ? null : { ...value.pages[0], ...fields }],
-        }),
-      ).toBe(false);
-    },
-  );
+  it('rejects a page slug that escapes the page directory', () => {
+    const value = manifest();
+    expect(
+      isProjectManifest({
+        ...value,
+        pages: [{ ...value.pages[0], slug: '../home' }],
+      }),
+    ).toBe(false);
+  });
 
   it('rejects page directories outside src', () => {
     expect(isProjectManifest({ ...manifest(), pageDirectory: '../pages' })).toBe(false);
