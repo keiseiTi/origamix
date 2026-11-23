@@ -296,7 +296,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 ## 独立开发环境配置
 
-只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为默认文件 → 个人文件 → 进程环境变量；相对路径以 Server 包目录解析。Desktop 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
+只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为代码默认值 → `.env` → `.env.local` → 进程环境变量，两个配置文件均可省略。相对路径以 Server 包目录解析。Desktop 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
 
 ORIGAMIX_LOCAL_STATE_DIR 控制独立开发数据目录，ORIGAMIX_LOCAL_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-local/template`），可显式指定已组装的 Desktop `dist/template` 绝对路径。
 

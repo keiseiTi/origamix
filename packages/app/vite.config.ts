@@ -5,8 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { previewDocument } from './preview-document.ts';
 import { mysqlWebDevelopment } from './dev-server.ts';
 
-export default defineConfig(() => {
-  const config = loadAppConfig();
+export default defineConfig(({ command }) => {
+  const config = loadAppConfig(command === 'serve' ? 'development' : 'production');
   return {
     base: './',
     envDir: false as const,

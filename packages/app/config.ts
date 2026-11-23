@@ -1,25 +1,29 @@
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
-import { resolve } from 'node:path';
 
-const readEnvironment = (path: string, optional = false): Record<string, string | undefined> => {
+const readEnvFile = (path: string): Record<string, string | undefined> => {
   try {
     return parseEnv(readFileSync(path, 'utf8'));
   } catch (error) {
-    if (optional && (error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
     throw error;
   }
 };
 
 const packageRoot = fileURLToPath(new URL('./', import.meta.url));
 
-export const loadAppConfig = () => {
-  const env = {
-    ...readEnvironment(resolve(packageRoot, '.env')),
-    ...(process.env.ORIGAMIX_ENV_LOCAL === '0'
-      ? {}
-      : readEnvironment(resolve(packageRoot, '.env.local'), true)),
+export const loadAppConfig = (mode: 'development' | 'production') => {
+  const env: NodeJS.ProcessEnv = {
+    ORIGAMIX_DESKTOP: '0',
+    ORIGAMIX_RENDERER_HOST: '127.0.0.1',
+    ORIGAMIX_RENDERER_PORT: '9685',
+    ORIGAMIX_WEB_STATE_DIR: '../../.origamix-web',
+    ...readEnvFile(resolve(packageRoot, '.env')),
+    ...(mode === 'development' && process.env.ORIGAMIX_ENV_LOCAL !== '0'
+      ? readEnvFile(resolve(packageRoot, '.env.local'))
+      : {}),
     ...process.env,
   };
   const desktop = env.ORIGAMIX_DESKTOP;

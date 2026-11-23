@@ -116,7 +116,7 @@ hdiutil verify release/OrigaMix-1.0.0-macOS-arm64.dmg
 
 ## 启动环境配置
 
-包内 `.env` 保存非敏感默认值，个人覆盖放同目录 `.env.local`（Git 忽略）。`pnpm dev` 在启动时按 `.env` → `.env.local` → 进程环境变量读取；修改后重启。相对路径以 Desktop 包目录为基准，与命令执行目录无关。
+`pnpm dev` 按代码默认值 → 包内 `.env` → 同目录 `.env.local` → 进程环境变量读取，两个文件均可省略。个人覆盖文件由 Git 忽略。相对路径以 Desktop 包目录为基准，与命令执行目录无关。
 
 ```dotenv
 # apps/desktop/.env.local 示例
@@ -126,7 +126,7 @@ ORIGAMIX_DEBUG=1
 
 开发启动器将页面 host/port 传给 App，无须在两个包重复修改；调试端口由 ORIGAMIX_INSPECT_PORT / ORIGAMIX_DEBUG_PORT 配置。ELECTRON_RENDERER_URL 由启动器生成并与本机配置地址核对。`0` 表示关闭、`1` 表示开启。
 
-构建只将受版本管理的 `.env` 复制到 `dist/.env`，不复制 `.env.local`。正式安装包忽略开发进程环境覆盖，按自身 resourcesPath 解析 ORIGAMIX_PACKAGED_RENDERER_FILE 和 ORIGAMIX_PACKAGED_TEMPLATE_DIR；preload 与 Server 程序位置固定在构建布局中。用户数据库仍使用 Electron userData。
+构建用包内 `.env` 生成 `dist/.env`，源文件缺失时生成空文件，运行时使用代码默认值。正式安装包忽略开发进程环境覆盖，按自身 resourcesPath 解析 ORIGAMIX_PACKAGED_RENDERER_FILE 和 ORIGAMIX_PACKAGED_TEMPLATE_DIR；preload 与 Server 程序位置固定在构建布局中。用户数据库仍使用 Electron userData。
 
 配置不保存 API Key、后端令牌或服务实例 ID；桌面凭据仍由 safeStorage 管理。测试启动器用 ORIGAMIX_ENV_LOCAL=0 隔离个人文件。
 

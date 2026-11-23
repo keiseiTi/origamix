@@ -104,7 +104,7 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 ## 开发环境文件
 
-Desktop、App 和独立 Server 各自在包目录提供 `.env`；本机非敏感覆盖放同目录 `.env.local`，不在仓库根目录维护另一份配置。默认值 < 个人覆盖 < 进程环境变量。Desktop 开发启动器监听自身环境文件并自动重启开发实例；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
+Desktop、App 和独立 Server 在代码中提供默认值。开发命令按代码默认值 → 包内 `.env` → 同目录 `.env.local` → 进程环境变量合并。配置文件可省略，生产构建跳过 `.env.local`。Desktop 开发启动器监听自身环境文件并自动重启开发实例；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
 
 公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 在隔离目录安装实际归档并加载公开入口。`pnpm publish:npm` 执行发布。模板使用的版本必须先在 npm 可安装。
 

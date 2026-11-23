@@ -1,6 +1,6 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import { expect, it, vi } from 'vitest';
-import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveDesktopConfig } from '@/main/config';
@@ -36,7 +36,6 @@ it('keeps packaged IPC authority on its shipped document despite development ove
   const root = mkdtempSync(join(tmpdir(), 'origamix-entry-config-'));
   const mainDirectory = join(root, 'dist/main');
   mkdirSync(mainDirectory, { recursive: true });
-  copyFileSync(new URL('../../.env', import.meta.url), join(root, 'dist/.env'));
   writeFileSync(join(root, '.env.local'), 'ELECTRON_RENDERER_URL=https://untrusted.example/');
   vi.stubEnv('ELECTRON_RENDERER_URL', 'https://untrusted.example/');
   vi.stubEnv('ORIGAMIX_TEMPLATE_DIR', '/untrusted/template');

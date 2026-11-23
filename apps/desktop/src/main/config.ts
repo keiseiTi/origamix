@@ -1,23 +1,37 @@
+import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
-import { resolve } from 'node:path';
 
-const readEnvironment = (path: string, optional = false): Record<string, string | undefined> => {
+const readEnvFile = (path: string): Record<string, string | undefined> => {
   try {
     return parseEnv(readFileSync(path, 'utf8'));
   } catch (error) {
-    if (optional && (error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
     throw error;
   }
+};
+
+const desktopDefaults = {
+  ORIGAMIX_RENDERER_HOST: '127.0.0.1',
+  ORIGAMIX_RENDERER_PORT: '9685',
+  ORIGAMIX_SERVER_PORT: '1029',
+  ORIGAMIX_RENDERER_FILE: '../../packages/app/dist/index.html',
+  ORIGAMIX_TEMPLATE_DIR: 'dist/template',
+  ORIGAMIX_PACKAGED_RENDERER_FILE: 'app/index.html',
+  ORIGAMIX_PACKAGED_TEMPLATE_DIR: 'template',
+  ORIGAMIX_DEBUG: '0',
+  ORIGAMIX_INSPECT_PORT: '9229',
+  ORIGAMIX_DEBUG_PORT: '9222',
 };
 
 export const loadDesktopEnvironment = (
   packageRoot: string,
 ): Record<string, string | undefined> => ({
-  ...readEnvironment(resolve(packageRoot, '.env')),
+  ...desktopDefaults,
+  ...readEnvFile(resolve(packageRoot, '.env')),
   ...(process.env.ORIGAMIX_ENV_LOCAL === '0'
     ? {}
-    : readEnvironment(resolve(packageRoot, '.env.local'), true)),
+    : readEnvFile(resolve(packageRoot, '.env.local'))),
   ...process.env,
 });
 
@@ -54,8 +68,11 @@ export const resolveDesktopConfig = (input: {
   userDataPath: string;
 }) => {
   // Bundled defaults ship beside main/. Personal files are read only by the dev launcher.
-  const defaults = readEnvironment(resolve(input.mainDirectory, '../.env'));
-  const env = input.packaged ? defaults : { ...defaults, ...process.env };
+  const defaults = {
+    ...desktopDefaults,
+    ...readEnvFile(resolve(input.mainDirectory, '../.env')),
+  };
+  const env: NodeJS.ProcessEnv = input.packaged ? defaults : { ...defaults, ...process.env };
   const packageRoot = resolve(input.mainDirectory, '../..');
   const rendererPath = input.packaged
     ? resolve(input.resourcesPath, required(defaults, 'ORIGAMIX_PACKAGED_RENDERER_FILE'))
@@ -66,7 +83,7 @@ export const resolveDesktopConfig = (input: {
     if (url.origin !== desktopRendererUrl(env) || url.pathname !== '/' || url.search || url.hash)
       throw new Error('开发页面地址与 Desktop 配置不一致');
   }
-  const serverPort = env.ORIGAMIX_SERVER_PORT ?? '1029';
+  const serverPort = env.ORIGAMIX_SERVER_PORT ?? '';
   if (!/^\d+$/.test(serverPort) || Number(serverPort) > 65535)
     throw new Error('ORIGAMIX_SERVER_PORT 必须为 0 到 65535 的整数');
   return {
