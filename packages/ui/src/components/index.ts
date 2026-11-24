@@ -21,3 +21,4 @@ export * from './toast';
 export { createToastManager, useToastManager, toast } from '../lib/toast-manager';
 
 export * from './tabs';
+export * from './hover-card';

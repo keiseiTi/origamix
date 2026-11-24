@@ -13,8 +13,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '@/store/pending-operations';
 import { useWorkspaceStore } from '@/store/workspace';
 
-vi.mock('@/services/projects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/projects')>()),
+vi.mock('@/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils')>()),
   workbenchHost: () => 'desktop',
 }));
 

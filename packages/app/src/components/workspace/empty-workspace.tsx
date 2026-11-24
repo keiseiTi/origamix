@@ -1,4 +1,4 @@
-import { workbenchHost } from '@/services/projects';
+import { workbenchHost } from '@/utils';
 import { Button } from '@origamix/ui';
 import { Plus, Sparkles } from 'lucide-react';
 

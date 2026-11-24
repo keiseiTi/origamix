@@ -56,7 +56,7 @@ export const ChatComposer = ({
           }
         }}
         disabled={disabled}
-        className='block min-h-16 w-full resize-none border-0 bg-transparent px-2 py-1.5 shadow-none outline-none'
+        className='block min-h-16 w-full resize-none text-sm! border-0 bg-transparent px-2 py-1.5 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0'
         aria-label='发送消息'
         placeholder={placeholder}
       />

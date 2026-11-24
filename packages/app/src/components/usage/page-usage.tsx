@@ -1,7 +1,7 @@
 import { ErrorToast } from '@/components/error-toast';
 import { useEffect, useState } from 'react';
 import { Activity, ChevronUp } from 'lucide-react';
-import { Button } from '@origamix/ui';
+import { Button, HoverCard, HoverCardContent, HoverCardTrigger } from '@origamix/ui';
 import type { AgentPageUsage, AgentUsageScope } from '@origamix/shared';
 import { agentUsageService } from '@/services/agent-usage';
 import { compactTokens, formatTokens, totalTokens } from './format';
@@ -20,6 +20,7 @@ export const PageUsage = ({
   const [result, setResult] = useState<AgentPageUsage>();
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     let active = true;
     let requestVersion = 0;
@@ -47,8 +48,9 @@ export const PageUsage = ({
 
   const total = result && totalTokens(result.total);
   return (
-    <details>
-      <summary className='flex min-h-6 cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 text-[10px] text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden'>
+    <HoverCard open={open} onOpenChange={setOpen}>
+      <ErrorToast message={error} />
+      <HoverCardTrigger className='flex min-h-6 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-[10px] text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring'>
         <Activity size={12} />
         {error
           ? '页面用量读取失败'
@@ -58,18 +60,17 @@ export const PageUsage = ({
               ? '页面用量未记录'
               : `本页累计 ${compactTokens(total)} tokens`}
         <ChevronUp size={12} />
-      </summary>
-      <div className='absolute bottom-full left-1/2 z-10 mb-2 w-64 max-w-full -translate-x-1/2 rounded-lg border bg-popover p-3 text-left text-sm text-popover-foreground shadow-lg'>
+      </HoverCardTrigger>
+      <HoverCardContent aria-label='页面用量' className='w-64'>
         {error ? (
           <div className='flex items-center justify-between gap-2'>
-            <ErrorToast message={error} />
             <Button size='sm' variant='outline' onClick={() => setAttempt((value) => value + 1)}>
               重试
             </Button>
           </div>
         ) : result ? (
           <>
-            <dl className='grid grid-cols-2 gap-y-1.5 tabular-nums'>
+            <dl className='grid grid-cols-2 gap-y-1.5 text-xs tabular-nums'>
               <dt>已记录总量</dt>
               <dd className='text-right'>{formatTokens(totalTokens(result.total))}</dd>
               <dt>输入</dt>
@@ -91,12 +92,15 @@ export const PageUsage = ({
         <Button
           size='sm'
           variant='outline'
-          className='mt-3 w-full'
-          onClick={() => onOpenUsage({ projectId, pageId })}
+          className='mt-3 w-full text-xs!'
+          onClick={() => {
+            setOpen(false);
+            onOpenUsage({ projectId, pageId });
+          }}
         >
           查看明细
         </Button>
-      </div>
-    </details>
+      </HoverCardContent>
+    </HoverCard>
   );
 };

@@ -1,5 +1,5 @@
 import { ErrorToast } from '@/components/error-toast';
-import { workbenchHost } from '@/services/projects';
+import { workbenchHost } from '@/utils';
 import { ProjectExportDialog } from './mod/project-export-dialog';
 import { EditProjectModal } from './mod/edit-project-modal';
 import { Button } from '@origamix/ui';

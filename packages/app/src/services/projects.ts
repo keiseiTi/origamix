@@ -17,8 +17,6 @@ import {
 import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
-export const workbenchHost = () => __ORIGAMIX_WORKBENCH_HOST__;
-
 type WorkbenchProject = Omit<ProjectRecord, 'path'> & { path?: string };
 type WorkbenchProjectWithPages = WorkbenchProject & Pick<ProjectWithPages, 'pages'>;
 

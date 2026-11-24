@@ -121,12 +121,12 @@ export const ChatWorkspace = ({
       <div className='mx-auto flex min-h-full w-[min(780px,calc(100%-40px))] flex-col sm:w-[min(780px,calc(100%-64px))]'>
         <div className='flex-1 py-8 pb-7'>
           <div className='mb-7 flex gap-3 leading-relaxed'>
-            <span className='grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'>
+            <span className='grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-700 text-white dark:bg-zinc-100 dark:text-zinc-900'>
               <Sparkles size={14} />
             </span>
             <div>
               <strong className='text-sm'>准备好修改“{pageName}”</strong>
-              <p className='mt-1 max-w-155 text-zinc-600 dark:text-zinc-300'>
+              <p className='mt-1 max-w-165 text-zinc-600 dark:text-zinc-300'>
                 {unavailableReason ??
                   '以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。'}
               </p>

@@ -19,7 +19,8 @@ import {
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import { useWorkspaceStore } from '@/store/workspace';
-import { projectsService, workbenchHost } from '@/services/projects';
+import { projectsService } from '@/services/projects';
+import { workbenchHost } from '@/utils';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
