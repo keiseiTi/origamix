@@ -15,7 +15,7 @@ const desktopDefaults = {
   ORIGAMIX_RENDERER_HOST: '127.0.0.1',
   ORIGAMIX_RENDERER_PORT: '9685',
   ORIGAMIX_SERVER_PORT: '1029',
-  ORIGAMIX_RENDERER_FILE: '../../packages/app/dist/index.html',
+  ORIGAMIX_RENDERER_FILE: '../../packages/app/dist/desktop/index.html',
   ORIGAMIX_TEMPLATE_DIR: 'dist/template',
   ORIGAMIX_PACKAGED_RENDERER_FILE: 'app/index.html',
   ORIGAMIX_PACKAGED_TEMPLATE_DIR: 'template',

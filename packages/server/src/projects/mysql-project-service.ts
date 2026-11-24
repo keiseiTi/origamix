@@ -12,8 +12,6 @@ import {
   isProjectManifest,
   resolveProjectStack,
   validateResolvedProjectStack,
-  type InitialLayoutVariant,
-  type ProjectRouting,
   type ProjectSettingsUpdate,
   type ProjectManifest,
   type ProjectExportSnapshot,
@@ -50,8 +48,6 @@ export interface CreateDatabaseProject {
   code: string;
   pageDirectory: string;
   layoutEnabled?: boolean;
-  layoutVariant?: InitialLayoutVariant;
-  routing?: ProjectRouting;
 }
 type CreatePage = { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string };
 
@@ -272,9 +268,8 @@ export class MysqlProjectService {
       pageDirectory: normalizePageDirectory(input.pageDirectory),
       layout: {
         enabled: input.layoutEnabled ?? false,
-        initialVariant: input.layoutVariant ?? 'mix',
+        initialVariant: 'mix',
       },
-      routing: input.routing,
     });
     if (!isProjectManifest(manifest)) throw invalid('项目配置无效');
     const created_at = new Date().toISOString();
@@ -338,7 +333,7 @@ export class MysqlProjectService {
       this.insertPage(repository, connection, project, input, createInitialPageSchema()),
     );
 
-  duplicatePage = (projectId: string, pageId: string, name?: string) =>
+  duplicatePage = (projectId: string, pageId: string) =>
     this.withProject(projectId, async (repository, project, connection) => {
       const page = findPage(project, pageId);
       const { schema } = await getWorkingSchemaState(pageRef(connection, project, page));
@@ -350,7 +345,7 @@ export class MysqlProjectService {
         repository,
         connection,
         project,
-        { name: name?.trim() || `${page.name.slice(0, 77)} 副本`, slug },
+        { name: `${page.name.slice(0, 77)} 副本`, slug },
         schema,
       );
     });

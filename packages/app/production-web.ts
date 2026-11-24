@@ -133,7 +133,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
   if (!mysqlUrl) throw new Error('Web 宿主需要配置 ORIGAMIX_WEB_MYSQL_URL');
   const index = (await readFile(join(options.rendererDirectory, 'index.html'), 'utf8')).replace(
     '<head>',
-    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey)}"><meta name="origamix-host" content="web">`,
+    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey)}">`,
   );
   const preview = await readFile(join(options.rendererDirectory, 'preview.html'));
   await mkdir(options.stateDirectory, { recursive: true });

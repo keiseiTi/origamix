@@ -36,7 +36,7 @@ const host = await startProductionWeb({
   stateDirectory: resolve(
     process.env.ORIGAMIX_WEB_STATE_DIR || resolve(appRoot, '../../.origamix-web/production'),
   ),
-  rendererDirectory: resolve(appRoot, 'dist'),
+  rendererDirectory: resolve(appRoot, 'dist/web'),
   templateDirectory: resolve(appRoot, '../../dist/web-template'),
   mysqlUrl,
   modelKey: process.env.DEEPSEEK_API_KEY?.trim() || undefined,

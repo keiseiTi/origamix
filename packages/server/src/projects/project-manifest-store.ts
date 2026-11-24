@@ -2,6 +2,7 @@ import { writeFileAtomically } from '../infrastructure/atomic-file';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
+  DEFAULT_PROJECT_ROUTING,
   isProjectManifest,
   defaultProjectShell,
   type ProjectManifest,
@@ -29,7 +30,7 @@ export const createProjectManifest = (input: ProjectManifestInput): ProjectManif
   pages: [],
   shell: defaultProjectShell(),
   layout: input.layout ?? { enabled: false, initialVariant: 'mix' },
-  routing: input.routing ?? { mode: 'browser', basePath: '/' },
+  routing: input.routing ?? { ...DEFAULT_PROJECT_ROUTING },
 });
 
 export class ProjectManifestStore {

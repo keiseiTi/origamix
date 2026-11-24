@@ -24,7 +24,7 @@ const options = {
   port: 5193,
   mysqlUrl,
   stateDirectory,
-  rendererDirectory: join(root, 'dist'),
+  rendererDirectory: join(root, 'dist/web'),
   templateDirectory: join(root, '../../dist/web-template'),
 };
 let host: Awaited<ReturnType<typeof startProductionWeb>> | undefined;

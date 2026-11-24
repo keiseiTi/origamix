@@ -13,12 +13,8 @@ export const mysqlWebDevelopment = (config: ReturnType<typeof loadAppConfig>): P
   return {
     name: 'origamix-mysql-web-development',
     apply: 'serve',
-    transformIndexHtml: () =>
-      config.desktop
-        ? undefined
-        : [{ tag: 'meta', attrs: { name: 'origamix-host', content: 'web' } }],
     async configureServer(vite) {
-      if (config.desktop || process.env.VITEST) return;
+      if (config.workbenchHost === 'desktop' || process.env.VITEST) return;
       const { mysqlUrl } = config;
       if (!mysqlUrl) throw new Error('Web 开发需要配置 ORIGAMIX_WEB_MYSQL_URL');
       const { startMysqlWebServer } = await import('@origamix/server/web-runtime');

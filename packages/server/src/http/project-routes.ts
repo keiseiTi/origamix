@@ -4,7 +4,6 @@ import {
   UpdatePageRolesSchema,
   CreatePageSchema,
   CreateProjectSchema,
-  DuplicatePageSchema,
   OpenProjectSchema,
   RenamePageSchema,
   RenameProjectSchema,
@@ -25,7 +24,6 @@ const CreateDatabaseProjectSchema = Type.Omit(CreateProjectSchema, ['directoryGr
 const RenameProjectBodySchema = withProjectScope(RenameProjectSchema);
 const CreatePageBodySchema = withProjectScope(CreatePageSchema);
 const RenamePageBodySchema = withPageScope(RenamePageSchema);
-const DuplicatePageBodySchema = withPageScope(DuplicatePageSchema);
 
 export const registerProjectRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   server.post(
@@ -85,23 +83,22 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
         201,
       ),
     );
-  } else {
-    const { projectService } = input;
-    if (projectService.createProject && projectService.openProject) {
-      server.post(
-        '/api/v1/projects/create',
-        { schema: { body: CreateProjectSchema } },
-        route<Static<typeof CreateProjectSchema>>(
-          ({ body }) => projectService.createProject!(body),
-          201,
-        ),
-      );
-      server.post(
-        '/api/v1/projects/open',
-        { schema: { body: OpenProjectSchema } },
-        route<Static<typeof OpenProjectSchema>>(({ body }) => projectService.openProject!(body)),
-      );
-    }
+  } else if (input.host === 'desktop') {
+    server.post(
+      '/api/v1/projects/create',
+      { schema: { body: CreateProjectSchema } },
+      route<Static<typeof CreateProjectSchema>>(
+        ({ body }) => input.projectService.createProject!(body),
+        201,
+      ),
+    );
+    server.post(
+      '/api/v1/projects/open',
+      { schema: { body: OpenProjectSchema } },
+      route<Static<typeof OpenProjectSchema>>(({ body }) =>
+        input.projectService.openProject!(body),
+      ),
+    );
   }
   server.post(
     '/api/v1/projects/rename',
@@ -146,14 +143,9 @@ export const registerProjectRoutes = ({ server, input, route }: RouteRegistratio
   );
   server.post(
     '/api/v1/pages/duplicate',
-    { schema: { body: DuplicatePageBodySchema } },
-    route<Static<typeof DuplicatePageBodySchema>>(
-      (request) =>
-        input.projectService.duplicatePage(
-          request.body.projectId,
-          request.body.pageId,
-          request.body.name,
-        ),
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>(
+      (request) => input.projectService.duplicatePage(request.body.projectId, request.body.pageId),
       201,
     ),
   );

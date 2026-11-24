@@ -8,5 +8,5 @@ const config = loadAppConfig('development');
 runDevelopment({
   entry: join(dirname(require.resolve('vite/package.json')), 'bin/vite.js'),
   args: process.argv.slice(2),
-  watchServer: !config.desktop,
+  watchServer: config.workbenchHost === 'web',
 });

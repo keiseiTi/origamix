@@ -12,6 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingOperations } from '@/store/pending-operations';
 import { useWorkspaceStore } from '@/store/workspace';
 
+vi.mock('@/services/projects', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/projects')>()),
+  workbenchHost: () => 'desktop',
+}));
+
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
   listAllMessages: vi.fn(),

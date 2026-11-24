@@ -61,25 +61,27 @@ const ProjectNavigationRow = ({
       <div className='group flex h-8.5 items-center gap-2 rounded-lg px-2 text-zinc-700 hover:bg-white dark:text-zinc-300 dark:hover:bg-zinc-900'>
         <Folder size={14} />
         <span className='min-w-0 flex-1 truncate'>{project.name}</span>
-        <SidebarActionMenu
-          label={`${project.name} 项目操作`}
-          onExport={onExport && (() => onExport(project))}
-          onRename={() =>
-            onLifecycle({ kind: 'rename-project', id: project.id, name: project.name })
-          }
-          onDelete={() =>
-            onLifecycle({ kind: 'delete-project', id: project.id, name: project.name })
-          }
-        />
-        <Button
-          size='icon-xs'
-          variant='ghost'
-          className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-          onClick={() => onCreatePage(project.id)}
-          aria-label={`在 ${project.name} 中新建页面`}
-        >
-          <Plus size={14} />
-        </Button>
+        <div>
+          <SidebarActionMenu
+            label={`${project.name} 项目操作`}
+            onExport={onExport && (() => onExport(project))}
+            onRename={() =>
+              onLifecycle({ kind: 'rename-project', id: project.id, name: project.name })
+            }
+            onDelete={() =>
+              onLifecycle({ kind: 'delete-project', id: project.id, name: project.name })
+            }
+          />
+          <Button
+            size='icon-xs'
+            variant='ghost'
+            className='h-6 min-h-6 w-6 min-w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+            onClick={() => onCreatePage(project.id)}
+            aria-label={`在 ${project.name} 中新建页面`}
+          >
+            <Plus size={14} />
+          </Button>
+        </div>
       </div>
       {metadataError && (
         <div role='alert' className='px-3 py-1 text-xs text-destructive'>

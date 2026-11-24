@@ -83,7 +83,7 @@ export const DailyUsage = ({
     <section className='space-y-5'>
       <div>
         <h2 className='text-base font-semibold'>页面 Agent 用量</h2>
-        <p className='mt-1 text-xs text-muted-foreground'>按运行开始时间统计 · {timeZone}</p>
+        <p className='mt-1 text-xs text-muted-foreground'>按运行开始时间统计</p>
       </div>
 
       {scope && (

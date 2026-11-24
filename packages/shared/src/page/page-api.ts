@@ -126,10 +126,6 @@ export const RenamePageSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 80 }),
 });
 
-export const DuplicatePageSchema = Type.Object({
-  name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
-});
-
 export const isPageApplyState = (value: unknown): value is PageApplyState =>
   Value.Check(PageApplyStateSchema, value);
 

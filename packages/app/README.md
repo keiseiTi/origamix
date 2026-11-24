@@ -58,7 +58,7 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 `pnpm dev:web` 使用当前仓库的 Template 源码准备独立项目 ZIP。工作台同源请求 `GET /api/v1/templates/<version>/download` 可下载当前模板，响应包含 `Content-Disposition` 和 `X-Template-SHA256`。其中 `<version>` 为 Template 的 package.json 版本，其他版本返回 404。下载请求沿用开发代理的来源校验。
 
-`pnpm build:web` 构建工作台到 `packages/app/dist/`，另在仓库根目录的 `dist/web-template/` 输出版本化 ZIP 和 `manifest.json`。正式 Web 宿主启动时校验 ZIP，并通过同一个下载接口提供给已登录用户。解压后的模板从 npm 安装固定版本的 Origamix 依赖。对外交付前运行 `pnpm release:registry` 确认这些版本可安装。
+`pnpm build:web` 构建 Web 工作台到 `packages/app/dist/web/`，另在仓库根目录的 `dist/web-template/` 输出版本化 ZIP 和 `manifest.json`。正式 Web 宿主启动时校验 ZIP，并通过同一个下载接口提供给已登录用户。解压后的模板从 npm 安装固定版本的 Origamix 依赖。对外交付前运行 `pnpm release:registry` 确认这些版本可安装。
 
 ## 部署正式 Web 宿主
 
@@ -145,7 +145,7 @@ ORIGAMIX_RENDERER_PORT=5174
 ORIGAMIX_WEB_STATE_DIR=/absolute/path/to/development-state
 ```
 
-Desktop 启动时注入 ORIGAMIX_DESKTOP=1 及自身 host/port；Web 开发默认 ORIGAMIX_DESKTOP=0。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；不会把整个环境对象或 VITE_* 配置注入前端。正式 Web 宿主使用单独的启动入口和会话。
+Desktop 启动时注入 `ORIGAMIX_HOST=desktop` 及自身 host/port；Web 开发默认 `ORIGAMIX_HOST=web`。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；只将宿主类型注入前端。App 的 `build:desktop` 和 `build:web` 分别指定宿主，输出到 `dist/desktop/` 和 `dist/web/`。正式 Web 宿主使用单独的启动入口和会话。
 
 这些文件不保存凭据。Web 开发模型密钥仍通过进程环境 DEEPSEEK_API_KEY 注入，仅在后端凭据回调使用；不得写入 VITE_*、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
 

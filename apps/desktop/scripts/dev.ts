@@ -90,7 +90,7 @@ const startVite = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
     stdio: 'inherit',
     env: {
       ...process.env,
-      ORIGAMIX_DESKTOP: '1',
+      ORIGAMIX_HOST: 'desktop',
       ORIGAMIX_RENDERER_HOST: env.ORIGAMIX_RENDERER_HOST,
       ORIGAMIX_RENDERER_PORT: env.ORIGAMIX_RENDERER_PORT,
     },

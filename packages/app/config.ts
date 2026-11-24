@@ -16,7 +16,7 @@ const packageRoot = fileURLToPath(new URL('./', import.meta.url));
 
 export const loadAppConfig = (mode: 'development' | 'production') => {
   const env: NodeJS.ProcessEnv = {
-    ORIGAMIX_DESKTOP: '0',
+    ORIGAMIX_HOST: 'web',
     ORIGAMIX_RENDERER_HOST: '127.0.0.1',
     ORIGAMIX_RENDERER_PORT: '9685',
     ORIGAMIX_WEB_STATE_DIR: '../../.origamix-web',
@@ -26,8 +26,9 @@ export const loadAppConfig = (mode: 'development' | 'production') => {
       : {}),
     ...process.env,
   };
-  const desktop = env.ORIGAMIX_DESKTOP;
-  if (desktop !== '0' && desktop !== '1') throw new Error('ORIGAMIX_DESKTOP 只接受 0 或 1');
+  const workbenchHost = env.ORIGAMIX_HOST;
+  if (workbenchHost !== 'desktop' && workbenchHost !== 'web')
+    throw new Error('ORIGAMIX_HOST 只接受 desktop 或 web');
   const port = env.ORIGAMIX_RENDERER_PORT ?? '';
   if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535)
     throw new Error('ORIGAMIX_RENDERER_PORT 必须为有效端口');
@@ -36,7 +37,7 @@ export const loadAppConfig = (mode: 'development' | 'production') => {
   const stateDir = env.ORIGAMIX_WEB_STATE_DIR?.trim();
   if (!stateDir) throw new Error('缺少 ORIGAMIX_WEB_STATE_DIR');
   return {
-    desktop: desktop === '1',
+    workbenchHost,
     host,
     port: Number(port),
     stateDir: resolve(packageRoot, stateDir),

@@ -48,7 +48,6 @@ try {
   const created = await request('/projects/create', {
     name: 'Template smoke',
     layoutEnabled: true,
-    routing: { mode: 'hash', basePath: '/console/' },
     code: 'project',
     pageDirectory: 'pages',
     directoryGrantId: 'template-test-grant',
@@ -197,7 +196,7 @@ try {
     projectId: created.id,
     expectedManifestHash: settings.manifestHash,
     layout: { enabled: true, initialVariant: 'mix' },
-    routing: settings.routing,
+    routing: { mode: 'hash', basePath: '/console/' },
     shell: {
       title: 'Application settings',
       logo: '',

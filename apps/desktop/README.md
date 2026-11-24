@@ -126,7 +126,7 @@ ORIGAMIX_DEBUG=1
 
 开发启动器将页面 host/port 传给 App，无须在两个包重复修改；调试端口由 ORIGAMIX_INSPECT_PORT / ORIGAMIX_DEBUG_PORT 配置。ELECTRON_RENDERER_URL 由启动器生成并与本机配置地址核对。`0` 表示关闭、`1` 表示开启。
 
-构建用包内 `.env` 生成 `dist/.env`，源文件缺失时生成空文件，运行时使用代码默认值。正式安装包忽略开发进程环境覆盖，按自身 resourcesPath 解析 ORIGAMIX_PACKAGED_RENDERER_FILE 和 ORIGAMIX_PACKAGED_TEMPLATE_DIR；preload 与 Server 程序位置固定在构建布局中。用户数据库仍使用 Electron userData。
+根目录 `pnpm build` 将工作台构建到 `packages/app/dist/desktop/`，打包时复制到应用资源目录的 `app/`。构建用包内 `.env` 生成 `dist/.env`，源文件缺失时生成空文件，运行时使用代码默认值。正式安装包忽略开发进程环境覆盖，按自身 resourcesPath 解析 ORIGAMIX_PACKAGED_RENDERER_FILE 和 ORIGAMIX_PACKAGED_TEMPLATE_DIR；preload 与 Server 程序位置固定在构建布局中。用户数据库仍使用 Electron userData。
 
 配置不保存 API Key、后端令牌或服务实例 ID；桌面凭据仍由 safeStorage 管理。测试启动器用 ORIGAMIX_ENV_LOCAL=0 隔离个人文件。
 

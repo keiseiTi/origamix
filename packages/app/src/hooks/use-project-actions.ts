@@ -61,7 +61,6 @@ export const useProjectActions = (input: ProjectActionsInput) => {
     if (!grant) return;
     const result = await projectsService.open({
       directoryGrantId: grant.directoryGrantId,
-      pageDirectory: 'pages',
     });
     if (result.status === 'initialization_required') {
       setPendingInitialization({

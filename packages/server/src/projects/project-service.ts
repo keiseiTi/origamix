@@ -11,12 +11,7 @@ import {
   type ProjectSettings,
 } from '@origamix/shared';
 import { type ProjectNavigationInfo } from '@origamix/shared';
-import {
-  ProjectRoutingSchema,
-  DEFAULT_PROJECT_ROUTING,
-  type ProjectRouting,
-  type InitialLayoutVariant,
-} from '@origamix/shared';
+import {} from '@origamix/shared';
 import { Check } from '@sinclair/typebox/value';
 import { PageRoleIdSchema, type PageRoleId } from '@origamix/shared';
 import { PageRoleStore, manifestHash } from './page-role-store';
@@ -80,17 +75,11 @@ export class ProjectService {
 
   async createProject(input: {
     layoutEnabled?: boolean;
-    layoutVariant?: InitialLayoutVariant;
-    routing?: ProjectRouting;
     name: string;
     code: string;
     pageDirectory?: string;
     directoryGrantId: string;
   }): Promise<ProjectRecord> {
-    if (input.routing !== undefined && !Check(ProjectRoutingSchema, input.routing))
-      throw invalid('路由配置无效');
-    if (input.layoutVariant !== undefined && !['side', 'top', 'mix'].includes(input.layoutVariant))
-      throw invalid('初始布局无效');
     const name = requireProjectName(input.name.trim());
     const code = input.code.trim();
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
@@ -114,9 +103,8 @@ export class ProjectService {
         runtime: 'origamix',
         layout: {
           enabled: input.layoutEnabled ?? false,
-          initialVariant: input.layoutVariant ?? 'mix',
+          initialVariant: 'mix',
         },
-        routing: input.routing ?? { ...DEFAULT_PROJECT_ROUTING },
         name,
         code,
         pageDirectory,
@@ -357,11 +345,7 @@ export class ProjectService {
     });
   }
 
-  async duplicatePage(
-    projectId: string,
-    pageId: string,
-    requestedName?: string,
-  ): Promise<PageRecord> {
+  async duplicatePage(projectId: string, pageId: string): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
     const page = this.projects.getPage(projectId, pageId);
     if (!project || !page) throw notFound('页面不存在');
@@ -388,7 +372,7 @@ export class ProjectService {
     }
     return this.createPageWithSchema(
       projectId,
-      { name: requestedName?.trim() || `${page.name} 副本`, slug },
+      { name: `${page.name} 副本`, slug },
       current.schema,
     );
   }

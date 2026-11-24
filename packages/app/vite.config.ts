@@ -7,7 +7,10 @@ import { mysqlWebDevelopment } from './dev-server.ts';
 
 export default defineConfig(({ command }) => {
   const config = loadAppConfig(command === 'serve' ? 'development' : 'production');
+  const { workbenchHost } = config;
   return {
+    define: { __ORIGAMIX_WORKBENCH_HOST__: JSON.stringify(workbenchHost) },
+    build: { outDir: `dist/${workbenchHost}` },
     base: './',
     envDir: false as const,
     plugins: [tailwindcss(), react(), previewDocument(), mysqlWebDevelopment(config)],
@@ -15,15 +18,16 @@ export default defineConfig(({ command }) => {
       host: config.host,
       port: config.port,
       strictPort: true,
-      watch: config.desktop
-        ? {
-            ignored: [
-              '**/packages/materials/**',
-              '**/packages/shared/**',
-              '**/packages/runtime/**',
-            ],
-          }
-        : undefined,
+      watch:
+        workbenchHost === 'desktop'
+          ? {
+              ignored: [
+                '**/packages/materials/**',
+                '**/packages/shared/**',
+                '**/packages/runtime/**',
+              ],
+            }
+          : undefined,
     },
     resolve: {
       alias: {

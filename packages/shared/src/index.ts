@@ -205,7 +205,6 @@ export {
   PageApplyStateSchema,
   ApplyPageResultSchema,
   RenamePageSchema,
-  DuplicatePageSchema,
   isPageApplyState,
   isApplyPageResult,
 } from './page/page-api.ts';

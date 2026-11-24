@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:web:mysql": "tsx test/test-web-mysql.ts",
     "test:web": "tsx test/test-web.ts",
-    "build": "vite build",
+    "build": "pnpm run build:desktop",
+    "build:desktop": "node --import tsx scripts/build-renderer.ts desktop",
+    "build:web": "node --import tsx scripts/build-renderer.ts web",
     "build:template": "tsx scripts/build-template.ts"
   },
   "dependencies": {

@@ -38,6 +38,7 @@ export const PageFormModal = ({
   const [attempt, setAttempt] = useState(0);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const pending = useRef<UpdatePageRoles | null>(null);
+
   useEffect(() => {
     let current = true;
     void projectsService
@@ -59,6 +60,7 @@ export const PageFormModal = ({
       current = false;
     };
   }, [projectId, pageId, attempt]);
+
   const submit = async () => {
     if (!state || busy) return;
     if (!name.trim() || (!page && !slug.trim())) return setError('请填写页面名称和页面标识。');
@@ -110,6 +112,7 @@ export const PageFormModal = ({
       setBusy(false);
     }
   };
+
   const reload = async () => {
     setBusy(true);
     try {
@@ -134,6 +137,7 @@ export const PageFormModal = ({
       setBusy(false);
     }
   };
+
   return (
     <Dialog
       open

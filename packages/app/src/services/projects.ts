@@ -4,8 +4,6 @@ import {
   type PageRoleState,
   type ProjectSettings,
   type ProjectSettingsUpdate,
-  type ProjectRouting,
-  type InitialLayoutVariant,
   type PageRoleId,
   type UpdatePageRoles,
   type OpenProjectResult,
@@ -19,11 +17,7 @@ import {
 import { notifyPageRolesChanged } from './page-role-events';
 import { request } from './request';
 
-export const workbenchHost = (): 'desktop' | 'web' =>
-  typeof document !== 'undefined' &&
-  document.querySelector('meta[name="origamix-host"][content="web"]') !== null
-    ? 'web'
-    : 'desktop';
+export const workbenchHost = () => __ORIGAMIX_WORKBENCH_HOST__;
 
 type WorkbenchProject = Omit<ProjectRecord, 'path'> & { path?: string };
 type WorkbenchProjectWithPages = WorkbenchProject & Pick<ProjectWithPages, 'pages'>;
@@ -50,8 +44,6 @@ export const projectsService = {
     request<WorkbenchProjectWithPages[]>('/projects/list'),
   create: (input: {
     layoutEnabled: boolean;
-    layoutVariant?: InitialLayoutVariant;
-    routing?: ProjectRouting;
     name: string;
     code: string;
     pageDirectory: string;

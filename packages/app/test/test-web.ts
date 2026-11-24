@@ -19,7 +19,7 @@ const directory = await mkdtemp(join(tmpdir(), 'origamix-web-smoke-'));
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.env.ORIGAMIX_WEB_STATE_DIR = directory;
 delete process.env.DEEPSEEK_API_KEY;
-delete process.env.ORIGAMIX_DESKTOP;
+process.env.ORIGAMIX_HOST = 'web';
 let server;
 let production: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
 try {
@@ -109,7 +109,7 @@ try {
     host: '127.0.0.1',
     port: 5189,
     stateDirectory: join(directory, 'production'),
-    rendererDirectory: join(root, 'dist'),
+    rendererDirectory: join(root, 'dist/web'),
     templateDirectory: join(root, '../../dist/web-template'),
     mysqlUrl,
   });

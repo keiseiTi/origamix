@@ -39,9 +39,10 @@ export class ProjectSourceService {
     );
     await writeFileAtomically(
       join(path, 'index.html'),
-      (await readFile(join(path, 'index.html'), 'utf8'))
-        .replace('<html lang="en">', '<html lang="zh-CN">')
-        .replace('<title>template</title>', `<title>${input.name}</title>`),
+      (await readFile(join(path, 'index.html'), 'utf8')).replace(
+        '<title>template</title>',
+        `<title>${input.name}</title>`,
+      ),
     );
   }
 

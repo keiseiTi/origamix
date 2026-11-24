@@ -10,7 +10,7 @@ files:
   # Main, preload and Server are self-contained bundles.
   - '!node_modules/**'
 extraResources:
-  - from: ../../packages/app/dist
+  - from: ../../packages/app/dist/desktop
     to: app
   - from: dist/template
     to: template
