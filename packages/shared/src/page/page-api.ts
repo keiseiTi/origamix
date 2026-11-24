@@ -22,7 +22,6 @@ export const PageRecordSchema = Type.Object({
 
 export const CreatePageSchema = Type.Object({
   role: Type.Optional(PageRoleIdSchema),
-  expectedManifestHash: Type.Optional(Type.String({ pattern: '^[a-f0-9]{64}$' })),
   name: Type.String({ minLength: 1, maxLength: 80 }),
   slug: Type.String({ pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }),
 });

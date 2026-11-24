@@ -132,7 +132,7 @@ pnpm --filter @origamix/server gate:agent
 
 - Materials owns family-specific semantic rules through ProjectMaterials validation callbacks. Server owns generic hierarchy, safety, authorization and atomic writes. Material validator unit tests inject a stable test registry; actual catalog/default consistency belongs to Materials generation and a small integration boundary.
 
-- ProjectService serializes login-page purpose changes with project manifest edits. `projects/page-role-store.ts` owns hash-checked, idempotent receipts for page form changes. Home and not-found routes belong to the layout form. Page assignment changes do not write Working or create checkpoints.
+- ProjectService serializes login-page purpose changes with project manifest edits. `projects/page-role-store.ts` checks the manifest hash before writing page form changes. Home and not-found routes belong to the layout form. Page assignment changes do not write Working or create checkpoints.
 
 - Project manifests require runtime (`origamix` or `external`). Template creation declares origamix; initializing an existing directory declares external and writes no template/application files. Layout/routing mutations reject external projects.
 

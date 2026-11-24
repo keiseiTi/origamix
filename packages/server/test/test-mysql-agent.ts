@@ -29,9 +29,10 @@ const startInput = {
   desktopToken: 'mysql-agent-test-token',
   serviceInstanceId: 'mysql-agent-test-instance',
 };
+let rootElementId: string;
 const operation = (height: number): SchemaOperation => ({
   operation: 'updateElementProps',
-  elementId: 'element_root',
+  elementId: rootElementId,
   set: { height },
 });
 let calls = 0;
@@ -99,7 +100,8 @@ type Working = {
   workingHash: string;
   revisionId: string;
   schema: {
-    elements: { element_root: { props: { height?: number } } };
+    layout: { root: string };
+    elements: Record<string, { props: { height?: number } }>;
   };
 };
 let host: Awaited<ReturnType<typeof startMysqlWebServer>> | undefined;
@@ -150,6 +152,7 @@ try {
   const scope = { projectId, pageId: page.id };
   const working = () => post<Working>('/pages/working-state/get', scope);
   const draft = await working();
+  rootElementId = draft.schema.layout.root;
   const request = (clientRequestId: string, baseWorkingVersion: number): CreateAgentRunRequest => ({
     version: '1',
     ...scope,
@@ -189,7 +192,7 @@ try {
   const applied = await working();
   assert.equal(applied.workingVersion, canvas.workingVersion + 1);
   assert.equal(applied.revisionId, draft.revisionId);
-  assert.equal(applied.schema.elements.element_root.props.height, 64);
+  assert.equal(applied.schema.elements[rootElementId].props.height, 64);
   await post(
     '/pages/working-operations/apply',
     {

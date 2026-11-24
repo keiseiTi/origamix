@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useEffect, useState } from 'react';
 import {
   Button,
@@ -64,7 +65,6 @@ export const EditProjectModal = ({
         ? await projectsService.updateSettings({
             projectId,
             name: name.trim(),
-            expectedManifestHash: settings.manifestHash,
             shell: settings.shell,
             routing: settings.routing,
             layout: { ...settings.layout, enabled },
@@ -138,11 +138,7 @@ export const EditProjectModal = ({
               </p>
             </>
           )}
-          {error && (
-            <p role='alert' className='text-sm text-destructive'>
-              {error}
-            </p>
-          )}
+          {error && <ErrorToast message={error} />}
           <DialogFooter>
             <Button type='button' variant='outline' disabled={busy} onClick={onClose}>
               取消

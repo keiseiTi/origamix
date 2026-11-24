@@ -40,7 +40,10 @@ it('rejects unsupported project data and interrupted writes without replacing re
         ...initial.schema,
         elements: {
           ...initial.schema.elements,
-          element_root: { ...initial.schema.elements.element_root, props: { padding: 24 } },
+          [initial.schema.layout.root]: {
+            ...initial.schema.elements[initial.schema.layout.root],
+            props: { padding: 24 },
+          },
         },
       },
     });

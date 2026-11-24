@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { SYSTEM_PAGE_ROLES, type PageRoleState, type UpdatePageRoles } from '@origamix/shared';
+import { ErrorToast } from '@/components/error-toast';
+import { useEffect, useState } from 'react';
+import { SYSTEM_PAGE_ROLES, type PageRoleState } from '@origamix/shared';
 import {
   Button,
   Dialog,
@@ -10,11 +11,11 @@ import {
   Field,
   FieldLabel,
   Input,
+  toast,
 } from '@origamix/ui';
 import { useWorkspaceStore, type PageItem } from '@/store/workspace';
 import { projectsService } from '@/services/projects';
 import { PageRoleField, type PageRoleSelection } from '@/components/page-role/page-role-field';
-import { uniqueId } from '@/utils';
 
 export const PageFormModal = ({
   projectId,
@@ -35,9 +36,6 @@ export const PageFormModal = ({
   const [state, setState] = useState<PageRoleState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const pending = useRef<UpdatePageRoles | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -59,7 +57,7 @@ export const PageFormModal = ({
     return () => {
       current = false;
     };
-  }, [projectId, pageId, attempt]);
+  }, [projectId, pageId]);
 
   const submit = async () => {
     if (!state || busy) return;
@@ -72,15 +70,11 @@ export const PageFormModal = ({
           Object.entries(state.roles.assignments).filter(([, id]) => id !== page.id),
         );
         if (role !== 'none') assignments[role] = page.id;
-        pending.current ??= {
+        const result = await projectsService.updatePageRoles({
           projectId,
           roles: { assignments },
           page: { pageId: page.id, name: name.trim() },
-          expectedManifestHash: state.manifestHash,
-          clientRequestId: uniqueId(),
-        };
-        setUnconfirmed(true);
-        const result = await projectsService.updatePageRoles(pending.current);
+        });
         const saved = result.pages.find((item) => item.pageId === page.id);
         setProjects((projects) =>
           projects.map((project) =>
@@ -94,45 +88,24 @@ export const PageFormModal = ({
               : project,
           ),
         );
-        pending.current = null;
       } else {
-        setUnconfirmed(true);
         const created = await projectsService.createPage(projectId, {
           name: name.trim(),
           slug: slug.trim(),
           ...(role === 'none' ? {} : { role }),
-          expectedManifestHash: state.manifestHash,
         });
         onCreated(projectId, { id: created.id, name: created.name, fileName: created.slug });
       }
       onClose();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '保存失败，请重试或重新读取');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const reload = async () => {
-    setBusy(true);
-    try {
-      const pages = await projectsService.pages(projectId);
-      setProjects((projects) =>
-        projects.map((project) =>
-          project.id === projectId
-            ? {
-                ...project,
-                pages: pages.map((item) => ({ id: item.id, name: item.name, fileName: item.slug })),
-              }
-            : project,
-        ),
-      );
-      pending.current = null;
-      setUnconfirmed(false);
-      setState(null);
-      setAttempt((value) => value + 1);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '重新读取失败');
+      if (page) {
+        setError(reason instanceof Error ? reason.message : '保存失败，请重试');
+      } else {
+        toast.add({
+          title: reason instanceof Error ? reason.message : '创建页面失败',
+          type: 'error',
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -162,7 +135,7 @@ export const PageFormModal = ({
               id='page-name'
               value={name}
               onChange={(event) => setName(event.target.value)}
-              disabled={busy || unconfirmed}
+              disabled={busy}
               maxLength={80}
               required
               autoFocus
@@ -175,7 +148,7 @@ export const PageFormModal = ({
                 id='page-slug'
                 value={slug}
                 onChange={(event) => setSlug(event.target.value)}
-                disabled={busy || unconfirmed}
+                disabled={busy}
                 placeholder='例如：customer-list'
                 required
               />
@@ -187,40 +160,20 @@ export const PageFormModal = ({
               onChange={setRole}
               state={state}
               pageId={page?.id}
-              disabled={busy || unconfirmed}
+              disabled={busy}
             />
           ) : (
             <p className='text-sm text-muted-foreground'>
               {error ? '无法读取页面角色' : '正在读取页面角色…'}
             </p>
           )}
-          {error && (
-            <div role='alert' className='space-y-2 text-sm text-destructive'>
-              <p>{error}</p>
-              {unconfirmed && <p>请先重新读取确认保存结果；编辑页面也可以重试同一次保存。</p>}
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                disabled={busy}
-                onClick={() => void reload()}
-              >
-                重新读取配置
-              </Button>
-            </div>
-          )}
+          {error && <ErrorToast message={error} />}
           <DialogFooter>
             <Button type='button' variant='outline' disabled={busy} onClick={onClose}>
               取消
             </Button>
-            <Button type='submit' disabled={busy || !state || (!page && unconfirmed)}>
-              {busy
-                ? '处理中…'
-                : unconfirmed && page
-                  ? '重试同一次保存'
-                  : page
-                    ? '保存'
-                    : '创建页面'}
+            <Button type='submit' disabled={busy || !state}>
+              {busy ? '处理中…' : page ? '保存' : '创建页面'}
             </Button>
           </DialogFooter>
         </form>

@@ -19,15 +19,16 @@ const savePaddingRevision = async (
   padding: number,
 ) => {
   const working = await getWorkingSchemaState(page);
+  const root = working.schema.layout.root;
   const draft = await retainWorkingFixture(page, {
     baseWorkingVersion: working.workingVersion,
     schema: {
       ...working.schema,
       elements: {
         ...working.schema.elements,
-        element_root: {
-          ...working.schema.elements.element_root!,
-          props: { ...working.schema.elements.element_root!.props, padding },
+        [root]: {
+          ...working.schema.elements[root]!,
+          props: { ...working.schema.elements[root]!.props, padding },
         },
       },
     },
@@ -175,7 +176,7 @@ describe('ProjectApplyService', () => {
     const second = await fixture.apply.apply(fixture.project.id, fixture.page.id, input);
     expect(second).toEqual(first);
     expect(JSON.parse(await readFile(target, 'utf8'))).toMatchObject({
-      elements: { element_root: { props: { padding: 24 } } },
+      elements: { [workingState.schema.layout.root]: { props: { padding: 24 } } },
     });
     expect((await fixture.apply.getState(fixture.project.id, fixture.page.id)).status).toBe(
       'in_sync',
@@ -258,7 +259,7 @@ describe('ProjectApplyService', () => {
     const changed = await savePaddingRevision(ref, 24);
     const target = join(fixture.project.path, fixture.page.relativePath, 'schema.json');
     const external = structuredClone(current.schema);
-    external.elements.element_root!.props = { padding: 12 };
+    external.elements[external.layout.root]!.props = { padding: 12 };
     await writeFile(target, JSON.stringify(external));
     await expect(
       fixture.apply.apply(fixture.project.id, fixture.page.id, {
@@ -268,7 +269,7 @@ describe('ProjectApplyService', () => {
       }),
     ).rejects.toThrow('项目文件已变化');
     expect(JSON.parse(await readFile(target, 'utf8'))).toMatchObject({
-      elements: { element_root: { props: { padding: 12 } } },
+      elements: { [external.layout.root]: { props: { padding: 12 } } },
     });
     fixture.database.close();
   });
@@ -282,7 +283,7 @@ describe('ProjectApplyService', () => {
       slug: fixture.page.slug,
     });
     const external = structuredClone(current.schema);
-    external.elements.element_root!.props = { padding: 36 };
+    external.elements[external.layout.root]!.props = { padding: 36 };
     await writeFile(target, JSON.stringify(external));
 
     const scope = {
@@ -299,7 +300,7 @@ describe('ProjectApplyService', () => {
     const reload = (input: typeof expected) =>
       fixture.apply.reloadFromProject(fixture.project.id, fixture.page.id, input);
     const draftSchema = structuredClone(current.schema);
-    draftSchema.elements.element_root!.props = { padding: 24 };
+    draftSchema.elements[draftSchema.layout.root]!.props = { padding: 24 };
     const draft = await retainWorkingFixture(scope, {
       baseWorkingVersion: observed.workingVersion,
       schema: draftSchema,
@@ -359,7 +360,7 @@ describe('ProjectApplyService', () => {
     };
     const initial = await getWorkingSchemaState(ref);
     const draftSchema = structuredClone(initial.schema);
-    draftSchema.elements.element_root!.props = { padding: 52 };
+    draftSchema.elements[draftSchema.layout.root]!.props = { padding: 52 };
     const draft = await retainWorkingFixture(ref, {
       baseWorkingVersion: initial.workingVersion,
       schema: draftSchema,

@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import {
   equalJson as sameEvidence,
   type AgentMessage,
@@ -427,11 +428,7 @@ export const PagePreviewFrame = ({
                   流程 {repair.flowId} · 节点 {repair.nodeId}
                   {verified ? ` · 复验 #${verifiedReplay?.executionId}` : ''}
                 </p>
-                {repairError && (
-                  <p role='alert' className='text-danger'>
-                    {repairError}
-                  </p>
-                )}
+                {repairError && <ErrorToast message={repairError} />}
                 <div className='flex flex-wrap gap-2'>
                   <Button
                     size='sm'
@@ -494,13 +491,10 @@ export const PagePreviewFrame = ({
         />
       )}
       {error && (
-        <div
-          role='alert'
-          className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-danger/10 p-4 text-sm text-danger backdrop-blur'
-        >
-          <span>
-            {error}。{displayedSnapshot ? '保留上次应用快照。' : '请重试。'}
-          </span>
+        <div className='absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-popover p-2 shadow-sm'>
+          <ErrorToast
+            message={`${error}。${displayedSnapshot ? '保留上次应用快照。' : '请重试。'}`}
+          />
           <Button
             size='icon-sm'
             variant='secondary'

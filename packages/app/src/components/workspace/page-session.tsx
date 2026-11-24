@@ -138,16 +138,6 @@ const PageSessionContent = ({
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
-        {active && mode === 'chat' && onOpenUsage && (
-          <PageUsage
-            key={`${projectId}:${page.id}`}
-            projectId={projectId}
-            pageId={page.id}
-            runId={agent.state.run?.runId}
-            runStatus={isRunActive(agent.state.stage) ? 'active' : (agent.state.stage ?? undefined)}
-            onOpenUsage={onOpenUsage}
-          />
-        )}
         <ChatWorkspace
           pageId={page.id}
           pageName={page.name}
@@ -156,6 +146,22 @@ const PageSessionContent = ({
           session={agent}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
+          composerFooter={
+            active &&
+            mode === 'chat' &&
+            onOpenUsage && (
+              <PageUsage
+                key={`${projectId}:${page.id}`}
+                projectId={projectId}
+                pageId={page.id}
+                runId={agent.state.run?.runId}
+                runStatus={
+                  isRunActive(agent.state.stage) ? 'active' : (agent.state.stage ?? undefined)
+                }
+                onOpenUsage={onOpenUsage}
+              />
+            )
+          }
         />
       </div>
       <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>

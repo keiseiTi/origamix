@@ -57,7 +57,6 @@ it('retains local edits after a settings conflict and explicitly saves against t
   await act(async () => hook.result.current.save());
   expect(mocks.updateSettings).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      expectedManifestHash: latest.manifestHash,
       shell: expect.objectContaining({ title: '手工修改', logo: '/logo.svg' }),
     }),
   );

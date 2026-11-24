@@ -11,6 +11,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  toast,
 } from '@origamix/ui';
 
 import { Info } from 'lucide-react';
@@ -44,12 +45,12 @@ export const OpenProjectModal = ({
   const [name, setName] = useState(suggested.name);
   const [code, setCode] = useState(suggested.code);
   const [pageDirectory, setPageDirectory] = useState('pages');
-  const [error, setError] = useState<string | null>(null);
 
   const initialize = async (): Promise<void> => {
-    if (!name.trim() || !code.trim() || !pageDirectory.trim())
-      return setError('请填写所有必填项。');
-    setError(null);
+    if (!name.trim() || !code.trim() || !pageDirectory.trim()) {
+      toast.add({ title: '请填写所有必填项。', type: 'error' });
+      return;
+    }
     try {
       await onInitialize({
         name: name.trim(),
@@ -57,7 +58,7 @@ export const OpenProjectModal = ({
         pageDirectory: pageDirectory.trim(),
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '初始化失败');
+      toast.add({ title: reason instanceof Error ? reason.message : '初始化失败', type: 'error' });
     }
   };
 
@@ -136,7 +137,6 @@ export const OpenProjectModal = ({
               />
             </div>
           </Field>
-          {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>
             <Button variant='outline' type='button' onClick={onCancel}>
               取消

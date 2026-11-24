@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useState } from 'react';
 import { nanoid } from 'nanoid';
 import type { ProjectMenuItem, ProjectSettings } from '@origamix/shared';
@@ -99,9 +100,7 @@ const AddMenuDialog = ({
             <FieldLabel htmlFor='new-menu-hidden'>隐藏菜单及子菜单</FieldLabel>
           </Field>
           {(!validPage || !validParent) && (
-            <p role='alert' className='text-sm text-destructive'>
-              页面或父级菜单已变化，请重新选择。
-            </p>
+            <ErrorToast message='页面或父级菜单已变化，请重新选择。' />
           )}
           <DialogFooter>
             <DialogClose render={<Button type='button' variant='outline' />}>取消</DialogClose>

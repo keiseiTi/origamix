@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { Spinner } from '@origamix/ui';
 import { RuntimePreview } from '@/preview/runtime-preview';
 import { type PagePreviewSnapshot } from '@origamix/shared';
@@ -58,12 +59,7 @@ export const PreviewApp = (): React.JSX.Element => {
     };
   }, [pageId, projectId]);
 
-  if (!projectId || !pageId)
-    return (
-      <div role='alert' className='grid h-screen place-items-center p-6 text-sm text-danger'>
-        预览缺少项目或页面标识
-      </div>
-    );
+  if (!projectId || !pageId) return <ErrorToast message='预览缺少项目或页面标识' />;
   if (!snapshot)
     return (
       <div className='grid h-screen place-items-center'>

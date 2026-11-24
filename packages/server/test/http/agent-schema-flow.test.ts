@@ -79,12 +79,16 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       },
     };
     const operations: SchemaOperation[] = [
-      { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 16 } },
+      {
+        operation: 'updateElementProps',
+        elementId: before.schema.layout.root,
+        set: { padding: 16 },
+      },
       {
         operation: 'addElement',
         elementId: buttonId,
         element: { type: 'button', props: { text: '隐藏' } },
-        parentId: 'element_root',
+        parentId: before.schema.layout.root,
       },
       { operation: 'addFlow', flowId: 'flow_agent', flow },
       {

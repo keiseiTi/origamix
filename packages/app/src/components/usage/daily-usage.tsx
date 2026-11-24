@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, type BarRectangleItem } from 'recharts';
 import {
@@ -54,7 +55,7 @@ export const DailyUsage = ({
     queryKey: string;
     data: AgentDailyUsage;
   }>();
-  const [failedQuery, setFailedQuery] = useState<string>();
+  const [failure, setFailure] = useState<{ queryKey: string; message: string }>();
 
   useEffect(() => {
     let active = true;
@@ -62,8 +63,12 @@ export const DailyUsage = ({
       (data) => {
         if (active) setResponse({ chartKey, queryKey, data });
       },
-      () => {
-        if (active) setFailedQuery(queryKey);
+      (reason: unknown) => {
+        if (active)
+          setFailure({
+            queryKey,
+            message: reason instanceof Error ? reason.message : '无法读取用量。',
+          });
       },
     );
     return () => {
@@ -73,7 +78,7 @@ export const DailyUsage = ({
 
   const summary = response?.chartKey === chartKey ? response.data : undefined;
   const details = response?.queryKey === queryKey ? response.data.projects : undefined;
-  const failed = failedQuery === queryKey;
+  const error = failure?.queryKey === queryKey ? failure.message : undefined;
   const missingRuns = summary?.days.reduce((total, day) => total + day.incompleteRuns, 0) ?? 0;
   const hasUsage = summary?.days.some((day) => totalTokens(day) > 0);
   const selectBarDate = ({ originalDataIndex }: BarRectangleItem) => {
@@ -233,9 +238,9 @@ export const DailyUsage = ({
         )}
       </div>
 
-      {failed ? (
-        <div className='flex items-center gap-3 text-sm' role='alert'>
-          无法读取用量。
+      {error ? (
+        <div className='flex items-center gap-3 text-sm'>
+          <ErrorToast message={error} />
           <Button size='sm' variant='outline' onClick={() => setAttempt((value) => value + 1)}>
             重试
           </Button>

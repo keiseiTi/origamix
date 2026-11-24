@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { Toaster } from '@origamix/ui';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { SCHEMA_VERSION, type OrigamixPageSchema } from '@origamix/shared';
@@ -250,7 +251,7 @@ describe('workspace recovery controls', () => {
     mocks.applyState.mockResolvedValue({ status: 'in_sync' });
     await act(async () => useWorkspaceStore.getState().changePageMode('page_a', 'edit'));
     mocks.flush.mockRejectedValueOnce(new Error('草稿保存失败'));
-    render(<PageSession {...props} active />);
+    render(<PageSession {...props} active />, { wrapper: Toaster });
     await waitFor(() => expect(screen.getAllByText('与项目一致')).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: '逻辑' }));
     await waitFor(() => expect(screen.getByText('草稿保存失败')).toBeTruthy());

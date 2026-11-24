@@ -106,21 +106,6 @@ export class MysqlProjectRepository {
     return { ...page, name, updated_at };
   }
 
-  async readRoleRequest(projectId: string, requestId: string): Promise<string | undefined> {
-    const [rows] = await this.sql.execute<(RowDataPacket & { digest: string })[]>(
-      'SELECT digest FROM origamix_web_role_requests WHERE project_id = ? AND request_id = ?',
-      [projectId, requestId],
-    );
-    return rows[0]?.digest;
-  }
-
-  recordRoleRequest(projectId: string, requestId: string, digest: string) {
-    return this.sql.execute(
-      'INSERT INTO origamix_web_role_requests (project_id, request_id, digest) VALUES (?, ?, ?)',
-      [projectId, requestId, digest],
-    );
-  }
-
   deletePage(projectId: string, pageId: string) {
     return this.sql.execute('DELETE FROM origamix_web_pages WHERE project_id = ? AND id = ?', [
       projectId,
@@ -130,9 +115,6 @@ export class MysqlProjectRepository {
 
   /** Caller owns the project lock and transaction. */
   async deleteProject(projectId: string): Promise<void> {
-    await this.sql.execute('DELETE FROM origamix_web_role_requests WHERE project_id = ?', [
-      projectId,
-    ]);
     await this.sql.execute('DELETE FROM origamix_web_schema_records WHERE project_id = ?', [
       projectId,
     ]);

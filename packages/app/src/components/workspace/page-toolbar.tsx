@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useWorkspaceStore } from '@/store/workspace';
 import { EditorToolbar } from '@origamix/editor';
 import {
@@ -146,11 +147,7 @@ export const PageToolbarShell = ({
               重新检查状态
             </Button>
           )}
-          {error && (
-            <span role='alert' className='max-w-56 truncate text-xs text-danger' title={error}>
-              {error}
-            </span>
-          )}
+          {error && <ErrorToast message={error} />}
           {
             <Tooltip>
               <TooltipTrigger

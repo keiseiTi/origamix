@@ -4,7 +4,7 @@ Server 是不依赖 Electron 或 React 的本地后端，负责项目管理、Sc
 
 项目清单中的 `framework` 与 `materialSet: { id, version }` 通过 Shared 统一解析。`POST /api/v1/projects/stack/get` 接收 `projectId`，返回通过兼容检查的框架及物料契约；桌面清单由文件拥有，SQLite 不存第二份。数据库 Web 项目使用 MySQL 中的配置和页面记录组装清单。校验与 Agent 共用 [project-materials.ts](src/projects/project-materials.ts) 的纯数据装配，工具通过窄接口注入读取能力。清单字段必须完整，缺失字段或不支持的版本均拒绝，不自动补全。
 
-Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 两个宿主通过 [page-agent-runtime.ts](src/agent/page-agent-runtime.ts) 共用上下文、工具、执行器和 Run 恢复装配，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 ZIP 导出读取同一时点的项目清单和已保存 Schema。
+Web MySQL 宿主参见 [部署说明](../app/README.md#使用本机-mysql)。 当前数据库结构版本为 2，首次启动使用空数据库初始化。Working 和 Revision 沿用同一 [Schema 服务](src/schema/schema-service.ts)，[存储契约](src/schema/schema-storage.ts) 由桌面文件和 Web MySQL 分别实现。MySQL 页面初始化、版本校验和 Schema 写入在项目行锁保护下提交事务。 两个宿主通过 [page-agent-runtime.ts](src/agent/page-agent-runtime.ts) 共用上下文、工具、执行器和 Run 恢复装配，MySQL 持久化会话、消息和运行证据。提交回执与 Working 同一事务完成，重启时按回执确认结果。 ZIP 导出读取同一时点的项目清单和已保存 Schema。
 
 ## 代码组织
 
@@ -310,11 +310,11 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 
 ### 登录页用途
 
-`/projects/page-roles/get` reads role configuration plus the current manifest hash. `/projects/page-roles/update` accepts the complete role configuration, expected manifest hash and stable client request ID. The project queue preserves unrelated layout/manifest settings; durable receipts distinguish prepared and committed writes.
+`/projects/page-roles/get` reads the role configuration and page names. `/projects/page-roles/update` applies the submitted role configuration and optional page name to the latest manifest. The project queue preserves unrelated layout and manifest settings.
 
 ## 项目设置
 
-`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，检查预期哈希后原子替换清单。文件项目保存设置时会在写入前复核清单，Web 在 MySQL 事务中提交。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
+`/projects/settings/get` 返回项目名、页面列表、shell/layout/routing 和 manifestHash；`/projects/settings/update` 在项目队列与独占租约中校验配置及页面引用，在最新清单上应用提交的配置。文件项目保存设置时会在写入前复核清单，Web 在 MySQL 事务中提交。已完成的相同更新可安全重试。被菜单、首页、404 或独立页面引用的页面需先解除关联才能删除。
 
 模板读取项目配置并渲染应用布局。
 

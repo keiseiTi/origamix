@@ -217,8 +217,6 @@ export class ProjectService {
         if (manifest.projectId !== input.projectId || manifest.runtime !== 'origamix')
           throw invalid('项目不支持应用设置');
         const next = prepareProjectSettings(manifest, input);
-        if (manifestHash(source) !== input.expectedManifestHash && next.changed)
-          throw conflict('项目文件已被修改。输入已保留，请重新打开设置核对后保存');
         if (next.changed) {
           if (this.projects.hasActiveRuns(input.projectId))
             throw conflict('项目 Agent 正在运行，请停止后再保存项目设置');
@@ -243,14 +241,14 @@ export class ProjectService {
 
   async createPage(
     projectId: string,
-    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
+    input: { name: string; slug: string; role?: PageRoleId },
   ): Promise<PageRecord> {
     return this.createPageWithSchema(projectId, input, createInitialPageSchema());
   }
 
   private async createPageWithSchema(
     projectId: string,
-    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
+    input: { name: string; slug: string; role?: PageRoleId },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     return withProjectQueue(projectId, () =>
@@ -260,7 +258,7 @@ export class ProjectService {
 
   private async createPageWithSchemaUnlocked(
     projectId: string,
-    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
+    input: { name: string; slug: string; role?: PageRoleId },
     schema: OrigamixPageSchema,
   ): Promise<PageRecord> {
     const project = this.projects.getProject(projectId);
@@ -273,8 +271,6 @@ export class ProjectService {
     await this.manifest.requireEditable(project.path);
     if (input.role !== undefined && !Check(PageRoleIdSchema, input.role))
       throw invalid('页面角色无效');
-    if (input.expectedManifestHash && manifestHash(manifestSource) !== input.expectedManifestHash)
-      throw conflict('项目配置已变化，请重新读取后确认');
     const pages = manifest.pages;
     if (pages.some((item) => item.slug === input.slug)) throw conflict('页面标识已存在');
     const relativePath = join('src', manifest.pageDirectory, input.slug);

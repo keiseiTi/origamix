@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { Toaster } from '@origamix/ui';
 import { afterEach, expect, it, vi } from 'vitest';
 import { BUILTIN_PROJECT_STACK, SCHEMA_VERSION } from '@origamix/shared';
 
@@ -57,7 +58,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
     externalWorkingChange: 1,
     theme: 'light' as const,
   };
-  const view = render(<PagePreviewFrame {...props} active />);
+  const view = render(<PagePreviewFrame {...props} active />, { wrapper: Toaster });
   const frame = view.getByTitle('Test 预览') as HTMLIFrameElement;
   const post = vi.fn();
   const port = { postMessage: post, close: vi.fn() } as unknown as MessagePort;
@@ -150,7 +151,7 @@ it('ignores late snapshots, obsolete iframe reports and old report failures afte
   expect(view.queryByText(/obsolete report failure/)).toBeNull();
   mocks.workingState.mockRejectedValueOnce(new Error('page unavailable'));
   view.rerender(<PagePreviewFrame {...props} active externalWorkingChange={4} />);
-  await waitFor(() => expect(view.getByRole('alert').textContent).toContain('page unavailable'));
+  await waitFor(() => expect(view.getByText(/page unavailable/)).toBeTruthy());
   expect(view.getByTitle('Test 预览')).toBe(replacement);
 });
 

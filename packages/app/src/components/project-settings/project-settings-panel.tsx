@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useProjectSettingsSession } from './use-project-settings-session';
 import { useState } from 'react';
 import { EditorToolbar } from '@origamix/editor';
@@ -52,11 +53,7 @@ export const ProjectSettingsPanel = ({ projectId }: { projectId: string }) => {
               配置已保存
             </p>
           )}
-          {draft && error && (
-            <p role='alert' className='truncate text-danger' title={error}>
-              {error}
-            </p>
-          )}
+          {draft && error && <ErrorToast message={error} />}
         </div>
         {draft && session.stale && (
           <Button
@@ -128,9 +125,7 @@ export const ProjectSettingsPanel = ({ projectId }: { projectId: string }) => {
         <div className='grid justify-items-start gap-3 p-8'>
           {error ? (
             <>
-              <p role='alert' className='text-sm text-destructive'>
-                {error}
-              </p>
+              <ErrorToast message={error} />
               <Button variant='outline' onClick={session.reload}>
                 重试读取
               </Button>

@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { usePageNavigationMetadata } from './use-page-navigation-metadata';
 import { Editor as EditorView } from '@origamix/editor';
 import type { EditorInstance, EditorTargetSelection } from '@origamix/editor';
@@ -50,11 +51,8 @@ export const PageEditor = ({
   if (!visible) return null;
   if (materials.error)
     return (
-      <div
-        role='alert'
-        className='grid min-h-0 flex-1 place-content-center gap-3 p-6 text-sm text-destructive'
-      >
-        <span>{materials.error}。页面草稿已保留，请检查项目配置后重试。</span>
+      <div className='grid min-h-0 flex-1 place-content-center gap-3 p-6 text-sm'>
+        <ErrorToast message={`${materials.error}。页面草稿已保留，请检查项目配置后重试。`} />
         <div className='flex flex-wrap justify-center gap-2'>
           <Button variant='outline' onClick={materials.retry}>
             重试加载物料
@@ -71,11 +69,8 @@ export const PageEditor = ({
     );
   if (!session.snapshot)
     return (
-      <div
-        role='alert'
-        className='grid min-h-0 flex-1 place-content-center justify-items-center gap-3 p-6 text-sm text-destructive'
-      >
-        <span>{session.error ?? 'Schema 不可用'}</span>
+      <div className='grid min-h-0 flex-1 place-content-center justify-items-center gap-3 p-6 text-sm'>
+        <ErrorToast message={session.error ?? 'Schema 不可用'} />
         <Button variant='outline' onClick={session.retryLoad}>
           重试加载
         </Button>
@@ -85,11 +80,8 @@ export const PageEditor = ({
   return (
     <>
       {session.error && (
-        <div
-          role='alert'
-          className='flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-xs text-destructive'
-        >
-          <span>{session.error}；编辑内容已保留。</span>
+        <div className='flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-xs'>
+          <ErrorToast message={`${session.error}。编辑内容已保留。`} />
           <Button
             size='sm'
             variant='outline'
@@ -103,9 +95,9 @@ export const PageEditor = ({
         </div>
       )}
       {navigation?.error && (
-        <p role='alert' className='px-4 text-sm text-destructive'>
-          {navigation.error}；普通页面编辑可继续，页面跳转选项请重新打开页面后重试。
-        </p>
+        <ErrorToast
+          message={`${navigation.error}。普通页面编辑可继续，页面跳转选项请重新打开页面后重试。`}
+        />
       )}
       <MaterialProvider mode={theme}>
         <EditorView

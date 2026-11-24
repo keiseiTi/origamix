@@ -28,7 +28,6 @@ export const arePageRolesValid = (
 export const PageRoleStateSchema = Type.Object(
   {
     roles: ProjectPageRolesSchema,
-    manifestHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
     pages: Type.Array(Type.Object({ pageId: Type.String(), name: Type.String() })),
   },
   { additionalProperties: false },
@@ -47,8 +46,6 @@ export const UpdatePageRolesSchema = Type.Object(
         { additionalProperties: false },
       ),
     ),
-    expectedManifestHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
-    clientRequestId: Type.String({ pattern: '^[A-Za-z0-9_-]{1,100}$' }),
   },
   { additionalProperties: false },
 );

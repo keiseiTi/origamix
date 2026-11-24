@@ -49,7 +49,7 @@ export interface CreateDatabaseProject {
   pageDirectory: string;
   layoutEnabled?: boolean;
 }
-type CreatePage = { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string };
+type CreatePage = { name: string; slug: string; role?: PageRoleId };
 
 const configuration = ({
   runtime,
@@ -135,7 +135,6 @@ const writeConfiguration = async (
 
 const getRoles = (manifest: ProjectManifest) => ({
   roles: manifest.pageRoles ?? emptyPageRoles(),
-  manifestHash: hashJson(manifest),
   pages: manifest.pages.map(({ pageId, name }) => ({ pageId, name })),
 });
 
@@ -299,8 +298,6 @@ export class MysqlProjectService {
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug)
     )
       throw invalid('页面信息无效');
-    if (input.expectedManifestHash && input.expectedManifestHash !== hashJson(project.manifest))
-      throw conflict('项目配置已变化，请重新读取后确认');
     if (project.pages.some((page) => page.slug === input.slug)) throw conflict('页面标识已存在');
 
     const id = `page_${nanoid()}`;
@@ -367,8 +364,6 @@ export class MysqlProjectService {
     this.withProject(input.projectId, async (repository, { manifest }) => {
       const next = prepareProjectSettings(manifest, input);
       if (next.changed) {
-        if (hashJson(manifest) !== input.expectedManifestHash)
-          throw conflict('项目配置已变化，请重新读取');
         if (!(await repository.assertNoActiveRuns(input.projectId)))
           throw conflict('请先停止项目 Agent 再保存项目设置');
         await writeConfiguration(repository, next.manifest);
@@ -382,14 +377,6 @@ export class MysqlProjectService {
   updatePageRoles = (input: UpdatePageRoles) =>
     this.withProject(input.projectId, async (repository, project) => {
       const { manifest } = project;
-      const digest = hashJson(input);
-      const prior = await repository.readRoleRequest(input.projectId, input.clientRequestId);
-      if (prior) {
-        if (prior !== digest) throw conflict('请求标识已用于其他角色操作');
-        return getRoles(manifest);
-      }
-      if (input.expectedManifestHash !== hashJson(manifest))
-        throw conflict('项目配置已变化，请重新读取');
       const next = { ...manifest, pageRoles: input.roles };
       if (input.page) {
         const original = findPage(project, input.page.pageId);
@@ -401,7 +388,6 @@ export class MysqlProjectService {
         await repository.updatePageName(original, name);
       }
       await writeConfiguration(repository, next);
-      await repository.recordRoleRequest(input.projectId, input.clientRequestId, digest);
       return getRoles(next);
     });
 

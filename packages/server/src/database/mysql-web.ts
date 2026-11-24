@@ -2,7 +2,7 @@ import { createPool, type Pool, type PoolConnection, type RowDataPacket } from '
 
 import { createHash } from 'node:crypto';
 
-const version = 1;
+const version = 2;
 const versionTable = 'origamix_web_version';
 const versionDdl = `CREATE TABLE ${versionTable} (
   id TINYINT PRIMARY KEY, version INT NOT NULL, schema_digest CHAR(64) CHARACTER SET ascii NOT NULL
@@ -30,12 +30,6 @@ const tables = [
     record_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     document JSON NOT NULL,
     PRIMARY KEY (project_id, page_id, kind, record_id)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  `CREATE TABLE origamix_web_role_requests (
-    project_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    request_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    digest CHAR(64) CHARACTER SET ascii NOT NULL,
-    PRIMARY KEY (project_id, request_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE origamix_web_agent_runs (
     id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,

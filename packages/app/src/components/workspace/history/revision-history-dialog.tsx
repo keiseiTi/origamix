@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { CodeEditor } from '@origamix/editor';
 import { usePreferencesStore } from '@/store/preferences';
 import {
@@ -161,9 +162,7 @@ const RevisionHistoryContent = ({
               </div>
             ) : listError ? (
               <div className='flex h-full min-h-28 flex-col items-center justify-center gap-3 p-4'>
-                <p role='alert' className='text-sm text-danger'>
-                  {listError}
-                </p>
+                <ErrorToast message={listError} />
                 <Button
                   size='sm'
                   variant='outline'
@@ -247,14 +246,7 @@ const RevisionHistoryContent = ({
               </table>
             )}
           </div>
-          {restoreError && (
-            <p
-              role='alert'
-              className='shrink-0 border-t border-border px-4 py-3 text-xs text-danger'
-            >
-              {restoreError}
-            </p>
-          )}
+          {restoreError && <ErrorToast message={restoreError} />}
         </section>
         <section aria-label='版本 Schema' className='flex min-h-0 min-w-0 flex-col'>
           <div className='flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border px-4'>
@@ -277,9 +269,7 @@ const RevisionHistoryContent = ({
             </div>
           ) : viewError ? (
             <div className='flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4'>
-              <p role='alert' className='text-sm text-danger'>
-                {viewError}
-              </p>
+              <ErrorToast message={viewError} />
               <Button size='sm' variant='outline' onClick={() => selected && view(selected)}>
                 重试
               </Button>

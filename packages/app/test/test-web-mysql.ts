@@ -62,7 +62,10 @@ type Working = {
   workingVersion: number;
   workingHash: string;
   savedSchemaHash: string;
-  schema: { elements: { element_root: { props: { height?: number } } } };
+  schema: {
+    layout: { root: string };
+    elements: Record<string, { props: { height?: number } }>;
+  };
 };
 
 try {
@@ -79,16 +82,12 @@ try {
   );
   projectId = project.id;
   assert.equal(project.path, undefined);
-  const { manifestHash } = await post<{ manifestHash: string }>('/projects/page-roles/get', {
-    projectId,
-  });
   const page = await post<{ id: string }>(
     '/pages/create',
     {
       projectId,
       name: '编辑检查',
       slug: 'editing',
-      expectedManifestHash: manifestHash,
     },
     201,
   );
@@ -97,7 +96,9 @@ try {
   const update = (height: number, baseWorkingVersion: number) => ({
     ...scope,
     baseWorkingVersion,
-    operations: [{ operation: 'updateElementProps', elementId: 'element_root', set: { height } }],
+    operations: [
+      { operation: 'updateElementProps', elementId: initial.schema.layout.root, set: { height } },
+    ],
   });
   const edited = await post<Working>(
     '/pages/working-operations/apply',
@@ -114,7 +115,7 @@ try {
       operations: [
         {
           operation: 'addElement',
-          parentId: 'element_root',
+          parentId: initial.schema.layout.root,
           elementId: 'bad_material',
           element: { type: 'not_a_material', props: {} },
         },
@@ -189,7 +190,7 @@ try {
     ...scope,
     revisionId: saved.revisionId,
   });
-  assert.equal(revision.schema.elements.element_root.props.height, 321);
+  assert.equal(revision.schema.elements[revision.schema.layout.root].props.height, 321);
   const history = await post<{ revisions: { revisionId: string; isApplied: boolean }[] }>(
     '/pages/revisions/list',
     scope,
@@ -280,7 +281,8 @@ try {
       expectedWorkingVersion: checkpoint.workingVersion,
       clientRequestId: 'apply-extracted-zip',
     });
-    assert.equal(JSON.parse(await readFile(file, 'utf8')).elements.element_root.props.height, 632);
+    const applied = JSON.parse(await readFile(file, 'utf8')) as Working['schema'];
+    assert.equal(applied.elements[applied.layout.root].props.height, 632);
     assert.deepEqual(await post<Working>('/pages/working-state/get', scope), beforeExportEdit);
     assert.deepEqual(await post('/pages/revisions/list', scope), beforeExportHistory);
   } finally {

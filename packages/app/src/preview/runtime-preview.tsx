@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { Button, Spinner } from '@origamix/ui';
 import { loadRuntimeMaterials } from '@/materials/loaders';
 import {
@@ -65,11 +66,8 @@ export const RuntimePreview = ({
   const current = loaded?.scope === scope ? loaded : null;
   if (current?.error)
     return (
-      <div
-        role='alert'
-        className='grid h-screen place-content-center gap-3 p-6 text-sm text-danger'
-      >
-        <span>{current.error}。页面草稿已保留。</span>
+      <div className='grid h-screen place-content-center gap-3 p-6 text-sm'>
+        <ErrorToast message={`${current.error}。页面草稿已保留。`} />
         <Button variant='secondary' onClick={() => setAttempt((value) => value + 1)}>
           重试加载物料
         </Button>
@@ -92,12 +90,8 @@ export const RuntimePreview = ({
           onObservation={onObservation}
           onOutcome={(outcome) => onOutcome?.(toPreviewOutcome(outcome))}
           renderError={(error, retry) => (
-            <div
-              role='alert'
-              className='m-auto max-w-lg rounded-xl border border-danger/30 bg-danger/10 p-5 text-sm text-danger'
-            >
-              <strong className='block'>应用渲染失败</strong>
-              <span className='mt-1 block'>{error.message}</span>
+            <div className='m-auto max-w-lg rounded-xl border border-border bg-popover p-5 text-sm'>
+              <ErrorToast message={`应用渲染失败：${error.message}`} />
               <Button className='mt-4' size='sm' variant='secondary' onClick={retry}>
                 重试渲染
               </Button>

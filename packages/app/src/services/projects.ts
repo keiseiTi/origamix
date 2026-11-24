@@ -64,7 +64,7 @@ export const projectsService = {
     request<PageRecord[]>('/pages/list', { projectId }),
   createPage: async (
     projectId: string,
-    input: { name: string; slug: string; role?: PageRoleId; expectedManifestHash?: string },
+    input: { name: string; slug: string; role?: PageRoleId },
   ): Promise<PageRecord> => {
     try {
       return await request<PageRecord>('/pages/create', { projectId, ...input });

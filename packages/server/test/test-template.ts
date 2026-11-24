@@ -78,11 +78,15 @@ try {
     pageId: page.id,
     baseWorkingVersion: working.workingVersion,
     operations: [
-      { operation: 'updateElementProps', elementId: 'element_root', set: { height: 321 } },
+      {
+        operation: 'updateElementProps',
+        elementId: working.schema.layout.root,
+        set: { height: 321 },
+      },
       {
         operation: 'addElement',
         elementId: 'delivery_button',
-        parentId: 'element_root',
+        parentId: working.schema.layout.root,
         element: {
           type: 'button',
           props: { text: 'Migration delivery verified', type: 'primary' },
@@ -153,7 +157,7 @@ try {
     clientRequestId: 'template-test-apply',
   });
   const target = JSON.parse(await readFile(join(project, 'src/pages/home/schema.json'), 'utf8'));
-  assert.equal(target.elements.element_root.props.height, 321);
+  assert.equal(target.elements[target.layout.root].props.height, 321);
   assert.equal(target.elements.delivery_button.props.text, 'Migration delivery verified');
   assert.equal(await readFile(shellPath, 'utf8'), originalShell);
 
@@ -174,7 +178,7 @@ try {
       {
         operation: 'addElement',
         elementId: 'about_title',
-        parentId: 'element_root',
+        parentId: aboutWorking.schema.layout.root,
         element: { type: 'text', props: { type: 'h1', text: 'About application page' } },
       },
     ],
@@ -191,10 +195,8 @@ try {
     expectedWorkingVersion: aboutSaved.workingVersion,
     clientRequestId: 'about-apply',
   });
-  const settings = await request('/projects/settings/get', { projectId: created.id });
   await request('/projects/settings/update', {
     projectId: created.id,
-    expectedManifestHash: settings.manifestHash,
     layout: { enabled: true, initialVariant: 'mix' },
     routing: { mode: 'hash', basePath: '/console/' },
     shell: {

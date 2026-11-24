@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { Button, Spinner } from '@origamix/ui';
 
 import { useWorkspaceStore } from '@/store/workspace';
@@ -13,7 +14,7 @@ export const WorkspaceRecoveryView = (): React.JSX.Element => {
     >
       {error ? (
         <>
-          <p role='alert'>工作区恢复失败：{error}</p>
+          <ErrorToast message={`工作区恢复失败：${error}`} />
           <Button variant='secondary' onClick={() => window.location.reload()}>
             重新加载
           </Button>

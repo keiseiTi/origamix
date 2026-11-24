@@ -79,7 +79,6 @@ export const useProjectSettingsSession = (projectId: string) => {
     try {
       const next = await projectsService.updateSettings({
         projectId,
-        expectedManifestHash: snapshot.manifestHash,
         shell: snapshot.shell,
         layout: snapshot.layout,
         routing: snapshot.routing,

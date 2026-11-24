@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useWorkspaceStore } from '@/store/workspace';
 import { useWorkspaceRestore } from '@/hooks/use-workspace-restore';
 import { WorkspaceContent, type WorkspaceContentProps } from './workspace-content';
@@ -23,14 +24,9 @@ export const Workspace = ({
       </header>
       <div className='relative flex min-h-0 min-w-0 flex-1'>
         <WorkspaceContent {...contentProps} />
-        {transitionError && (
-          <div
-            role='alert'
-            className='fixed bottom-4 left-1/2 z-50 rounded-lg bg-danger p-3 text-danger-foreground'
-          >
-            操作未完成：{transitionError}。编辑内容已保留，请重试。
-          </div>
-        )}
+        <ErrorToast
+          message={transitionError && `操作未完成：${transitionError}。编辑内容已保留，请重试。`}
+        />
       </div>
     </section>
   );

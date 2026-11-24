@@ -10,6 +10,7 @@ import {
   Field,
   FieldLabel,
   Input,
+  toast,
 } from '@origamix/ui';
 
 import { useState } from 'react';
@@ -31,20 +32,24 @@ export const LifecycleModal = ({
 }): React.JSX.Element => {
   const [name, setName] = useState(target?.name ?? '');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const deleting = target?.kind.startsWith('delete') === true;
   const project = target?.kind.endsWith('project') === true;
 
   const submit = async (): Promise<void> => {
     if (!target) return;
-    if (!deleting && !name.trim()) return setError('名称不能为空');
+    if (!deleting && !name.trim()) {
+      toast.add({ title: '名称不能为空', type: 'error' });
+      return;
+    }
     setSubmitting(true);
-    setError(null);
     try {
       await onConfirm(target, deleting ? undefined : name.trim());
       onClose();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '操作失败，请重试');
+      toast.add({
+        title: reason instanceof Error ? reason.message : '操作失败，请重试',
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -98,11 +103,6 @@ export const LifecycleModal = ({
                 不会修改磁盘中的{project ? '项目文件夹' : '页面路径'}。
               </p>
             </Field>
-          )}
-          {error && (
-            <p role='alert' className='text-sm text-danger'>
-              {error}
-            </p>
           )}
           <DialogFooter>
             <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>

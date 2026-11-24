@@ -1,7 +1,8 @@
+import { ErrorToast } from '@/components/error-toast';
 import { ChatComposer } from './chat-composer';
 import { Button, Spinner } from '@origamix/ui';
 import { ChevronDown, ChevronUp, RotateCcw, Sparkles } from 'lucide-react';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useWorkspaceStore } from '@/store/workspace';
 import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
@@ -62,10 +63,12 @@ export const ChatWorkspace = ({
   onConfigureModel,
   onClarificationHover,
   unavailableReason,
+  composerFooter,
 }: {
   pageId: string;
   pageName: string;
   unavailableReason?: string;
+  composerFooter?: ReactNode;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
@@ -231,13 +234,9 @@ export const ChatWorkspace = ({
             </p>
           )}
           {(state.error || pendingSubmission) && (
-            <div
-              className='mt-4 flex items-center gap-2 rounded-xl bg-danger/10 p-3 text-danger'
-              role='alert'
-            >
-              <span className='min-w-0 flex-1'>
-                {state.error ?? '上次发送结果待确认，请重试确认结果。'}
-              </span>
+            <div className='mt-4 flex items-center gap-2 rounded-xl border border-border p-3'>
+              <ErrorToast message={state.error} />
+              {pendingSubmission && <span>上次发送结果待确认</span>}
               <Button size='sm' variant='ghost' onClick={() => void retry().catch(() => undefined)}>
                 <RotateCcw size={13} />
                 重试
@@ -255,6 +254,7 @@ export const ChatWorkspace = ({
           configurationRequired={modelConfigurationRequired}
           onConfigureModel={onConfigureModel}
           contextLabel='当前页面'
+          footerContent={composerFooter}
           placeholder={
             unavailableReason ??
             (modelConfigurationRequired

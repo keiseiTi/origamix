@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { workbenchHost } from '@/services/projects';
 import { ProjectExportDialog } from './mod/project-export-dialog';
 import { EditProjectModal } from './mod/edit-project-modal';
@@ -249,17 +250,7 @@ export const Sidebar = ({
           }}
         />
       )}
-      {actionError && (
-        <div
-          role='alert'
-          className='fixed bottom-4 left-4 z-50 rounded-lg bg-danger p-3 text-sm text-danger-foreground'
-        >
-          {actionError}
-          <Button size='sm' variant='ghost' onClick={() => setActionError(null)}>
-            关闭
-          </Button>
-        </div>
-      )}
+      <ErrorToast message={actionError} />
     </>
   );
 };

@@ -13,6 +13,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  toast,
 } from '@origamix/ui';
 
 import { Info } from 'lucide-react';
@@ -38,7 +39,6 @@ export const CreateProjectModal = ({
   const [pageDirectory, setPageDirectory] = useState('pages');
   const [directoryGrantId, setDirectoryGrantId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const close = (): void => {
     setName('');
@@ -47,15 +47,21 @@ export const CreateProjectModal = ({
     setDirectory('');
     setPageDirectory('pages');
     setDirectoryGrantId('');
-    setError(null);
     onClose();
   };
 
   const chooseDirectory = async (): Promise<void> => {
-    const selected = await window.api?.dialog?.chooseProjectParent?.();
-    if (selected) {
-      setDirectory(selected.displayPath);
-      setDirectoryGrantId(selected.directoryGrantId);
+    try {
+      const selected = await window.api?.dialog?.chooseProjectParent?.();
+      if (selected) {
+        setDirectory(selected.displayPath);
+        setDirectoryGrantId(selected.directoryGrantId);
+      }
+    } catch (reason) {
+      toast.add({
+        title: reason instanceof Error ? reason.message : '无法选择目录',
+        type: 'error',
+      });
     }
   };
 
@@ -66,10 +72,10 @@ export const CreateProjectModal = ({
       !pageDirectory.trim() ||
       (!databaseProject && !directoryGrantId)
     ) {
-      return setError('请填写所有必填项。');
+      toast.add({ title: '请填写所有必填项。', type: 'error' });
+      return;
     }
     setIsSubmitting(true);
-    setError(null);
     try {
       const project = await projectsService.create({
         name: name.trim(),
@@ -90,7 +96,10 @@ export const CreateProjectModal = ({
       ]);
       close();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '项目创建失败');
+      toast.add({
+        title: reason instanceof Error ? reason.message : '项目创建失败',
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -204,8 +213,6 @@ export const CreateProjectModal = ({
             />
             <FieldLabel htmlFor='create-layout-enabled'>启用应用布局</FieldLabel>
           </Field>
-
-          {error && <p className='text-sm text-danger'>{error}</p>}
           <DialogFooter>
             <DialogClose render={<Button variant='outline' type='button' />}>取消</DialogClose>
             <Button type='submit' disabled={isSubmitting}>

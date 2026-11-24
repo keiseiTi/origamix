@@ -79,7 +79,6 @@ export const ProjectSettingsUpdateSchema = Type.Object(
   {
     projectId: Type.String({ pattern: '^project_[A-Za-z0-9_-]+$' }),
     name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
-    expectedManifestHash: Type.String({ pattern: '^[a-f0-9]{64}$' }),
     shell: ProjectShellSchema,
     layout: Type.Object(
       { enabled: Type.Boolean(), initialVariant: InitialLayoutVariantSchema },
@@ -90,7 +89,7 @@ export const ProjectSettingsUpdateSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ProjectSettingsUpdate = Static<typeof ProjectSettingsUpdateSchema>;
-export interface ProjectSettings extends Omit<ProjectSettingsUpdate, 'expectedManifestHash'> {
+export interface ProjectSettings extends ProjectSettingsUpdate {
   name: string;
   pages: { pageId: string; name: string; slug: string }[];
   manifestHash: string;

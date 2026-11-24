@@ -135,7 +135,11 @@ describe('Agent Working commit receipt recovery', () => {
             outcome: 'apply_changes',
             response: 'update',
             operations: [
-              { operation: 'updateElementProps', elementId: 'element_root', set: { padding: 22 } },
+              {
+                operation: 'updateElementProps',
+                elementId: started.current.schema.layout.root,
+                set: { padding: 22 },
+              },
             ],
           },
           new AbortController().signal,

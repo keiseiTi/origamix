@@ -1,3 +1,4 @@
+import { ErrorToast } from '@/components/error-toast';
 import { useState } from 'react';
 import { projectsService } from '@/services/projects';
 import { useEffect } from 'react';
@@ -84,8 +85,8 @@ const ProjectNavigationRow = ({
         </div>
       </div>
       {metadataError && (
-        <div role='alert' className='px-3 py-1 text-xs text-destructive'>
-          {metadataError}
+        <div className='px-3 py-1 text-xs text-destructive'>
+          <ErrorToast message={metadataError} />
           <Button
             size='sm'
             variant='ghost'
@@ -107,8 +108,8 @@ const ProjectNavigationRow = ({
         </Button>
       )}
       {roles.error && (
-        <div role='alert' className='px-3 py-1 text-xs text-destructive'>
-          {roles.error}
+        <div className='px-3 py-1 text-xs text-destructive'>
+          <ErrorToast message={roles.error} />
           <Button size='sm' variant='ghost' onClick={roles.refresh}>
             重试读取角色
           </Button>

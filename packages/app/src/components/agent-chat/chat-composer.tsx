@@ -1,4 +1,5 @@
 import { Button, Textarea } from '@origamix/ui';
+import type { ReactNode } from 'react';
 import { CircleStop, KeyRound, LayoutPanelLeft, Send } from 'lucide-react';
 
 export const ChatComposer = ({
@@ -12,6 +13,7 @@ export const ChatComposer = ({
   onConfigureModel,
   placeholder,
   contextLabel,
+  footerContent,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -23,6 +25,7 @@ export const ChatComposer = ({
   onConfigureModel?: () => void;
   placeholder: string;
   contextLabel: string;
+  footerContent?: ReactNode;
 }) => (
   <div className='sticky bottom-0 z-10 bg-linear-to-t from-white from-85% to-white/0 pt-3 dark:from-zinc-950 dark:to-zinc-950/0'>
     {configurationRequired && (
@@ -80,8 +83,9 @@ export const ChatComposer = ({
         )}
       </footer>
     </div>
-    <p className='mt-2 mb-2.5 text-center text-[10px] text-zinc-400 dark:text-zinc-500'>
-      AI 可能会出错，请检查生成结果。
-    </p>
+    <div className='relative mb-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pt-2 text-center text-[10px] text-muted-foreground'>
+      <p>AI 可能会出错，请检查生成结果。</p>
+      {footerContent}
+    </div>
   </div>
 );

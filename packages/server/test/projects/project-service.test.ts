@@ -55,7 +55,6 @@ it('preserves an external manifest edit made while saving project routing', asyn
     await expect(
       service.updateSettings({
         projectId: project.id,
-        expectedManifestHash: before.manifestHash,
         shell: before.shell,
         layout: before.layout,
         routing: { mode: 'hash', basePath: '/admin/' },
@@ -68,14 +67,11 @@ it('preserves an external manifest edit made while saving project routing', asyn
 });
 
 describe('Project page persistence and recovery', () => {
-  it('preserves the login role and layout, and recovers a manifest write without replaying it', async () => {
+  it('preserves the login role and layout, and accepts a later page update after a manifest write', async () => {
     const { database, project, page, service, projects } = await deletionFixture();
     try {
-      const before = await service.getPageRoles(project.id);
       const input = {
         projectId: project.id,
-        clientRequestId: 'roles_recovery',
-        expectedManifestHash: before.manifestHash,
         page: { pageId: page.id, name: 'Login' },
         roles: {
           assignments: { login: page.id },
@@ -84,23 +80,25 @@ describe('Project page persistence and recovery', () => {
       const write = ProjectManifestStore.prototype.writeManifest;
       const injected = vi
         .spyOn(ProjectManifestStore.prototype, 'writeManifest')
-        .mockImplementationOnce(async function (this: ProjectManifestStore, path, manifest) {
-          await write.call(this, path, manifest);
+        .mockImplementationOnce(async function (
+          this: ProjectManifestStore,
+          path,
+          manifest,
+          expectedSource,
+        ) {
+          await write.call(this, path, manifest, expectedSource);
           throw new Error('interrupted after manifest write');
         });
       await expect(service.updatePageRoles(input)).rejects.toThrow('interrupted');
       injected.mockRestore();
       const reopened = new ProjectService(projects, templatePath);
-      expect((await reopened.updatePageRoles(input)).roles).toEqual(input.roles);
+      expect((await reopened.getPageRoles(project.id)).roles).toEqual(input.roles);
+      await reopened.reconcile(project.path);
       expect(projects.getPage(project.id, page.id)?.name).toBe('Login');
-      const current = await reopened.getPageRoles(project.id);
-      await expect(
-        reopened.updatePageRoles({ ...input, clientRequestId: 'roles_stale' }),
-      ).rejects.toThrow('已变化');
+      await reopened.updatePageRoles({ ...input, page: { pageId: page.id, name: 'New login' } });
+      expect(projects.getPage(project.id, page.id)?.name).toBe('New login');
       const customRole = {
         ...input,
-        clientRequestId: 'roles_custom',
-        expectedManifestHash: current.manifestHash,
         roles: { assignments: { login: page.id, settings: page.id } },
       };
       await expect(reopened.updatePageRoles(customRole)).rejects.toThrow('配置无效');
@@ -108,29 +106,17 @@ describe('Project page persistence and recovery', () => {
         reopened.updatePageRoles({ ...input, projectId: 'project_other' }),
       ).rejects.toThrow();
       await reopened.renameProject(project.id, 'Renamed');
-      await reopened.updatePageRoles(input);
       expect(projects.getProject(project.id)?.name).toBe('Renamed');
       await reopened.deletePage(project.id, page.id);
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({});
-      const empty = await reopened.getPageRoles(project.id);
       const home = await reopened.createPage(project.id, {
         name: 'Home',
         slug: 'new-home',
         role: 'login',
-        expectedManifestHash: empty.manifestHash,
       });
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
         login: home.id,
       });
-      await expect(
-        reopened.createPage(project.id, {
-          name: 'Stale',
-          slug: 'stale',
-          role: 'login',
-          expectedManifestHash: empty.manifestHash,
-        }),
-      ).rejects.toThrow('已变化');
-      const latest = await reopened.getPageRoles(project.id);
       const createEntry = ProjectSourceService.prototype.createPageEntry;
       vi.spyOn(ProjectSourceService.prototype, 'createPageEntry').mockImplementationOnce(
         async function (this: ProjectSourceService, ...args) {
@@ -143,7 +129,6 @@ describe('Project page persistence and recovery', () => {
           name: 'Conflict',
           slug: 'conflict',
           role: 'login',
-          expectedManifestHash: latest.manifestHash,
         }),
       ).rejects.toThrow('已变化');
       expect((await reopened.getPageRoles(project.id)).roles.assignments).toEqual({
@@ -178,7 +163,10 @@ describe('Project page persistence and recovery', () => {
             ...working.schema,
             elements: {
               ...working.schema.elements,
-              element_root: { ...working.schema.elements.element_root!, props: { padding: 22 } },
+              [working.schema.layout.root]: {
+                ...working.schema.elements[working.schema.layout.root]!,
+                props: { padding: 22 },
+              },
             },
           },
         },
@@ -563,7 +551,6 @@ it('saves project settings without layout drafts and preserves configuration on 
     const update = {
       name: 'Updated project',
       projectId: project.id,
-      expectedManifestHash: before.manifestHash,
       layout: { enabled: true, initialVariant: 'mix' as const },
       routing: { mode: 'hash' as const, basePath: '/admin/' },
       shell: {
@@ -592,20 +579,20 @@ it('saves project settings without layout drafts and preserves configuration on 
     expect(projects.listProjects().find((item) => item.id === project.id)?.name).toBe(update.name);
     await expect(access(join(project.path, '.origamix/layout/working.json'))).rejects.toThrow();
     await expect(access(join(project.path, 'src/origamix-layout/schema.json'))).rejects.toThrow();
-    await expect(
-      reopened.updateSettings({ ...update, shell: { ...update.shell, title: 'stale' } }),
-    ).rejects.toThrow('已被修改');
+    const later = await reopened.updateSettings({
+      ...update,
+      shell: { ...update.shell, title: 'Latest title' },
+    });
+    expect(later.shell.title).toBe('Latest title');
     await expect(
       reopened.updateSettings({
         ...update,
-        expectedManifestHash: saved.manifestHash,
         shell: { ...update.shell, homePageId: 'page_missing' },
       }),
     ).rejects.toThrow('页面不存在');
     await expect(
       reopened.updateSettings({
         ...update,
-        expectedManifestHash: saved.manifestHash,
         shell: {
           ...update.shell,
           navigation: [{ id: 'cycle', parentId: 'cycle', title: 'cycle', hidden: false }],
@@ -621,13 +608,11 @@ it('saves project settings without layout drafts and preserves configuration on 
     expect(renamed.shell.navigation?.[1]?.pageId).toBe(page.id);
     const disabled = await reopened.updateSettings({
       ...update,
-      expectedManifestHash: renamed.manifestHash,
       layout: { ...update.layout, enabled: false },
     });
     expect(disabled.shell).toEqual(update.shell);
     await reopened.updateSettings({
       ...update,
-      expectedManifestHash: disabled.manifestHash,
       shell: { title: '', logo: '', navigation: [], standalonePageIds: [] },
     });
     await reopened.deletePage(project.id, page.id);

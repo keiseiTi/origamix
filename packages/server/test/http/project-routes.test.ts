@@ -68,7 +68,11 @@ describe('Project and Schema HTTP flows', () => {
       payload: { projectId: project.id, pageId: page.id },
     });
     expect(workingBeforeResponse.statusCode).toBe(200);
-    const { workingVersion } = workingBeforeResponse.json().data as { workingVersion: number };
+    const { workingVersion, schema } = workingBeforeResponse.json().data as {
+      workingVersion: number;
+      schema: { layout: { root: string } };
+    };
+    expect(schema.layout.root).toMatch(/^container_[A-Za-z0-9_-]{8}$/);
     const draftResponse = await server.inject({
       method: 'POST',
       url: '/api/v1/pages/working-operations/apply',
@@ -85,7 +89,7 @@ describe('Project and Schema HTTP flows', () => {
               type: 'form',
               props: { layout: 'horizontal', colon: true, preserve: true },
             },
-            parentId: 'element_root',
+            parentId: schema.layout.root,
           },
         ],
       },

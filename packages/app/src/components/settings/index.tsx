@@ -14,6 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  toast,
 } from '@origamix/ui';
 
 import {
@@ -108,14 +109,11 @@ export const SettingsPage = ({
   const [userName, setUserName] = useState(userProfile.name);
   const [iconBackground, setIconBackground] = useState(userProfile.iconBackground);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [profileStatus, setProfileStatus] = useState<{
-    kind: 'success' | 'error';
-    message: string;
-  } | null>(null);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [status, setStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (productionWeb) return;
@@ -128,7 +126,13 @@ export const SettingsPage = ({
         setSelectedModel(settings.model);
         setHasModelApiKey(settings.hasApiKey);
       })
-      .catch(() => active && setStatus({ kind: 'error', message: '无法读取模型设置。' }))
+      .catch((reason: unknown) => {
+        if (active)
+          toast.add({
+            title: reason instanceof Error ? reason.message : '无法读取模型设置。',
+            type: 'error',
+          });
+      })
       .finally(() => active && setIsLoading(false));
     return () => {
       active = false;
@@ -152,12 +156,9 @@ export const SettingsPage = ({
       );
       setHasModelApiKey(result.hasApiKey);
       setApiKey('');
-      setStatus({ kind: 'success', message: '模型设置已安全保存。' });
+      setStatus('模型设置已安全保存。');
     } catch (reason) {
-      setStatus({
-        kind: 'error',
-        message: reason instanceof Error ? reason.message : '保存失败。',
-      });
+      toast.add({ title: reason instanceof Error ? reason.message : '保存失败。', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -174,12 +175,9 @@ export const SettingsPage = ({
       if (!profile) throw new Error('当前环境不支持保存用户资料，请在桌面应用中操作。');
       setUserProfile(profile);
       setUserName(profile.name);
-      setProfileStatus({ kind: 'success', message: '用户资料已保存。' });
+      setProfileStatus('用户资料已保存。');
     } catch (reason) {
-      setProfileStatus({
-        kind: 'error',
-        message: reason instanceof Error ? reason.message : '保存失败。',
-      });
+      toast.add({ title: reason instanceof Error ? reason.message : '保存失败。', type: 'error' });
     } finally {
       setIsSavingProfile(false);
     }
@@ -289,13 +287,9 @@ export const SettingsPage = ({
                         {profileStatus && (
                           <p
                             role='status'
-                            className={`m-0 text-xs ${
-                              profileStatus.kind === 'success'
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-red-600 dark:text-red-400'
-                            }`}
+                            className='m-0 text-xs text-emerald-600 dark:text-emerald-400'
                           >
-                            {profileStatus.message}
+                            {profileStatus}
                           </p>
                         )}
                       </div>
@@ -477,9 +471,9 @@ export const SettingsPage = ({
                 {status && (
                   <p
                     role='status'
-                    className={`mt-3 mb-0 text-xs ${status.kind === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+                    className='mt-3 mb-0 text-xs text-emerald-600 dark:text-emerald-400'
                   >
-                    {status.message}
+                    {status}
                   </p>
                 )}
               </Card>

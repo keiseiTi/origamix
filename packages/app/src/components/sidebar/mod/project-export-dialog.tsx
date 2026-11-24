@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  toast,
 } from '@origamix/ui';
 import { useState } from 'react';
 import { downloadProjectZip } from '@/services/project-export';
@@ -22,17 +23,18 @@ export const ProjectExportDialog = ({
   onClose: () => void;
 }) => {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
 
   const download = async () => {
     setBusy(true);
-    setError(undefined);
     try {
       await flushEditor();
       await downloadProjectZip(projectId);
       onClose();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '导出失败，请重试。');
+      toast.add({
+        title: reason instanceof Error ? reason.message : '导出失败，请重试。',
+        type: 'error',
+      });
     } finally {
       setBusy(false);
     }
@@ -52,11 +54,6 @@ export const ProjectExportDialog = ({
         <p className='text-sm text-muted-foreground'>
           {name} 的源码和已保存页面将打包下载。请先为修改过的页面保存版本。
         </p>
-        {error && (
-          <p role='alert' className='text-sm text-destructive'>
-            {error}
-          </p>
-        )}
         <DialogFooter>
           <DialogClose render={<Button variant='outline' disabled={busy} />}>取消</DialogClose>
           <Button disabled={busy} onClick={() => void download()}>
