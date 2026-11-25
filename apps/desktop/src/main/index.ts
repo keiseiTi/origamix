@@ -277,6 +277,7 @@ app
     });
     const lifecycle = createBackendLifecycle({
       config: desktopConfig,
+      logDirectory: app.getPath('logs'),
       workbenchOrigin: new URL(workbenchEntryUrl()).origin,
       notifyStatus: notifyBackendStatus,
       readModelApiKey,

@@ -1,3 +1,4 @@
+import { createDesktopLogDestination } from '../logging/desktop-destination';
 import { startServer } from '../server';
 import { nanoid } from 'nanoid';
 
@@ -12,6 +13,7 @@ const controlPort = (
 if (!controlPort) throw new Error('请使用 Server dev 命令或由 Electron Utility Process 启动');
 
 let backend: Awaited<ReturnType<typeof startServer>> | undefined;
+let logDestination: ReturnType<typeof createDesktopLogDestination> | undefined;
 let starting = false;
 let shuttingDown = false;
 const credentialRequests = new Map<
@@ -69,6 +71,7 @@ controlPort.on('message', async ({ data }) => {
   if (input.kind === 'shutdown') {
     shuttingDown = true;
     await backend?.close();
+    await logDestination?.close();
     process.exit(0);
   }
   if (
@@ -96,7 +99,12 @@ controlPort.on('message', async ({ data }) => {
   }
   starting = true;
   try {
+    logDestination =
+      typeof input.logDirectory === 'string'
+        ? createDesktopLogDestination(input.logDirectory, input.serviceInstanceId)
+        : undefined;
     backend = await startServer({
+      logDestination,
       port: typeof input.port === 'number' ? input.port : undefined,
       databasePath: input.databasePath,
       allowedOrigins:
@@ -113,6 +121,7 @@ controlPort.on('message', async ({ data }) => {
       serviceInstanceId: input.serviceInstanceId,
     });
   } catch (error) {
+    await logDestination?.close();
     controlPort.postMessage({
       kind: 'error',
       message: error instanceof Error ? error.message : '后台启动失败',

@@ -331,6 +331,9 @@ importers:
       nanoid:
         specifier: ^6.0.1
         version: 6.0.1
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
     devDependencies:
       drizzle-kit:
         specifier: 1.0.0-rc.5

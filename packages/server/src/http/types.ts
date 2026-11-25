@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../logging/logger';
 import type { ProjectExportSnapshot } from '@origamix/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ProjectRepository } from '../projects/project-repository';
@@ -47,6 +48,7 @@ type ProjectCommands = Pick<
 };
 
 interface HttpServerServices {
+  logger?: DiagnosticLogger;
   desktopToken: string;
   serviceInstanceId: string;
   projects: TreeQueries & Partial<ProjectQueries>;
@@ -79,6 +81,7 @@ export type HttpServerInput = HttpServerServices &
 
 export type RouteInput<T> = {
   body: T;
+  requestId: string;
 };
 
 export type RouteAdapter = <T>(

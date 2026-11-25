@@ -18,6 +18,7 @@ import { AgentRunService } from '@/agent/run-service';
 import { ConversationRepository } from '@/conversations/conversation-repository';
 import { ConversationService } from '@/conversations/conversation-service';
 import { recoverAgentRunsOnStartup } from '@/agent/run-recovery';
+import { createLogger } from '@/logging/logger';
 import { createCompletePageRunTool } from '@/agent/tools/complete-page-run';
 import { loadProjectMaterials } from '@/projects/project-materials';
 
@@ -174,8 +175,28 @@ describe('Agent Working commit receipt recovery', () => {
           },
         },
       );
-      await recoverAgentRunsOnStartup(fixture.runs, fixture.projects, fixture.conversations);
-      await recoverAgentRunsOnStartup(fixture.runs, fixture.projects, fixture.conversations);
+      const logLines: string[] = [];
+      const logger = createLogger('desktop', 'restarted-instance', {
+        write: (line) => logLines.push(line),
+      });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await recoverAgentRunsOnStartup(
+          fixture.runs,
+          fixture.projects,
+          fixture.conversations,
+          undefined,
+          logger,
+        );
+      }
+      expect(logLines.map((line) => JSON.parse(line) as unknown)).toEqual([
+        expect.objectContaining({
+          event: 'agent.run.recovered',
+          runId: started.run.id,
+          serviceInstanceId: 'restarted-instance',
+          recoveredCommit: true,
+          resultWorkingVersion: committed.workingVersion,
+        }),
+      ]);
       expect(fixture.runs.get(started.run.id)).toMatchObject({
         status: 'completed',
         outcome: 'changed',

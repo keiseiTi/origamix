@@ -321,3 +321,12 @@ ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只�
 ### 页面 Agent 用量
 
 `POST /api/v1/agent/usage/page` 返回指定项目和页面的累计用量与今日用量。`POST /api/v1/agent/usage/daily` 返回按日统计和项目、页面明细，支持 1、7、30 天以及可选的页面范围和明细日期。两者均使用请求指定的时区。历史预算估算不会进入用量总量，响应中的 `incompleteRuns` 标明记录缺失的运行数。
+
+## 诊断日志
+
+Desktop 和 Web 共用 Pino 结构化日志。Desktop 将 JSON Lines 写到 Electron 应用日志目录的 `server.jsonl`，单文件约 10 MiB，最多保留当前文件和四份归档，并在写入时删除七天未修改的日志文件。Web 将 JSON Lines 写到标准输出，由部署环境管理留存。默认级别为 `info`，`NODE_ENV=development` 时包含 `debug`。
+
+- HTTP 响应的 `X-Request-Id` 由 Server 生成，使用它查找 `http.request.completed`。生产 Web 代理透传该头，代理自己拒绝的请求使用 `web.proxy.request.failed` 的编号。
+- 用 `agent.run.accepted` 或 `agent.run.reused` 将编号关联到 `runId`，再查模型用量、Working 提交、Run 终态和恢复事件。
+- Working 提交的 `unconfirmed` 表示写入已进入提交阶段但结果未确认，应按现有 Working 和提交凭证检查。
+- 日志只包含诊断元数据。页面累计用量依然来自用量仓储，写入结果依然由业务持久化确认。

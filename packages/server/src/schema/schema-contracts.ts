@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../logging/logger';
 import type { OrigamixPageSchema, ProjectManifest } from '@origamix/shared';
 import type { RevisionCommitOptions } from './revision-commit';
 import type { WorkingSchemaPageRef, SchemaStorage } from './schema-storage';
@@ -15,6 +16,7 @@ export interface AgentWorkingCommitInput {
 export interface WorkingDraftWriteOptions extends Pick<SchemaWriteOptions, 'beforeWrite'> {
   validateCandidate?: (schema: OrigamixPageSchema) => void | Promise<void>;
   agentCommit?: AgentWorkingCommitInput;
+  diagnostics?: { logger?: DiagnosticLogger; requestId?: string };
   /** Test hook for deterministic interruption at a durable Agent write boundary. */
   afterWorkingStage?: (stage: WorkingDraftWriteStage) => void | Promise<void>;
 }

@@ -137,7 +137,7 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
         const target = resolveAgentTarget(request.body);
         if (!target || target.kind !== 'page')
           throw new ApiError('Agent 请求目标与接口不一致', 400);
-        const started = await agent.service.start(request.body);
+        const started = await agent.service.start(request.body, request.requestId);
         return {
           version: '1',
           runId: started.run.id,
@@ -228,6 +228,13 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
         }, 15_000);
         heartbeat.unref();
         reply.raw.on('close', () => {
+          input.logger?.debug({
+            event: 'agent.sse.closed',
+            requestId: request.id,
+            runId,
+            outcome: reply.raw.writableFinished ? 'ended' : 'disconnected',
+            durationMs: Math.round(reply.elapsedTime),
+          });
           streams.delete(reply.raw);
           clearInterval(heartbeat);
           subscription?.close();

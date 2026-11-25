@@ -40,13 +40,7 @@ const readLogin = async (request: IncomingMessage) => {
   return new URLSearchParams(Buffer.concat(chunks).toString('utf8')).get('password');
 };
 
-const requestHeaders = [
-  'accept',
-  'content-type',
-  'content-length',
-  'last-event-id',
-  'x-request-id',
-];
+const requestHeaders = ['accept', 'content-type', 'content-length', 'last-event-id'];
 const responseHeaders = [
   'content-type',
   'content-length',
@@ -56,11 +50,25 @@ const responseHeaders = [
   'x-template-sha256',
 ];
 
+type ReportProxyFailure = Awaited<ReturnType<typeof startMysqlWebServer>>['reportProxyFailure'];
+
+const sendProxyError = (
+  report: ReportProxyFailure,
+  response: ServerResponse,
+  status: number,
+  reason: Parameters<ReportProxyFailure>[1],
+  message: string,
+) => {
+  response.setHeader('X-Request-Id', report(status, reason));
+  sendError(response, status, message);
+};
+
 const proxyApi = (
   request: IncomingMessage,
   response: ServerResponse,
   target: { port: number; token: string; serviceInstanceId: string },
   session: AbortSignal,
+  report: ReportProxyFailure,
 ) => {
   const headers = {
     ...Object.fromEntries(
@@ -97,8 +105,8 @@ const proxyApi = (
     if (response.headersSent) response.destroy();
     else if (session.aborted) {
       response.setHeader('X-Origamix-Session-Required', '1');
-      sendError(response, 401, '会话已结束，请重新登录');
-    } else sendError(response, 503, '后端暂时不可用');
+      sendProxyError(report, response, 401, 'session', '会话已结束，请重新登录');
+    } else sendProxyError(report, response, 503, 'upstream', '后端暂时不可用');
   });
   response.once('close', () => upstream.destroy());
   request.pipe(upstream);
@@ -139,7 +147,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
   await mkdir(options.stateDirectory, { recursive: true });
   const staging = await mkdtemp(join(options.stateDirectory, 'template-'));
   const sessions = createWebSessions(options.password, origin.protocol === 'https:');
-  let backend: { port: number; close: () => Promise<void> } | undefined;
+  let backend: Awaited<ReturnType<typeof startMysqlWebServer>> | undefined;
 
   try {
     const templateDownload = await loadWebTemplate(options.templateDirectory, staging);
@@ -152,6 +160,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
       getModelCredential: async () => options.modelKey,
     });
     const target = { port: backend.port, token, serviceInstanceId };
+    const report = backend.reportProxyFailure;
     const handle = async (request: IncomingMessage, response: ServerResponse) => {
       response.setHeader('Cache-Control', 'no-store');
       response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -161,7 +170,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
         !request.url?.startsWith('/') ||
         request.url.startsWith('//')
       )
-        return sendError(response, 403, '请求来源不受信任');
+        return sendProxyError(report, response, 403, 'origin', '请求来源不受信任');
       const { pathname } = new URL(request.url, origin);
       const api = pathname === '/api/v1' || pathname.startsWith('/api/v1/');
       const auth = pathname.startsWith('/auth/');
@@ -174,7 +183,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
           (!safeMethod && source !== origin.origin) ||
           (site && site !== 'same-origin' && (api || !safeMethod))
         )
-          return sendError(response, 403, '请求来源不受信任');
+          return sendProxyError(report, response, 403, 'origin', '请求来源不受信任');
       }
 
       if (pathname === '/auth/login') {
@@ -207,9 +216,9 @@ export const startProductionWeb = async (options: WebHostOptions) => {
       if (api) {
         if (!session) {
           response.setHeader('X-Origamix-Session-Required', '1');
-          return sendError(response, 401, '会话已结束，请重新登录');
+          return sendProxyError(report, response, 401, 'session', '会话已结束，请重新登录');
         }
-        return proxyApi(request, response, target, session);
+        return proxyApi(request, response, target, session, report);
       }
       if (request.method !== 'GET' && request.method !== 'HEAD')
         return sendError(response, 405, '请求方式不受支持');
@@ -252,7 +261,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
     const server = createServer((request, response) => {
       void handle(request, response).catch(() => {
         if (response.headersSent) response.destroy();
-        else sendError(response, 500, 'Web 宿主请求失败');
+        else sendProxyError(report, response, 500, 'internal', 'Web 宿主请求失败');
       });
     });
     await new Promise<void>((resolve, reject) => {

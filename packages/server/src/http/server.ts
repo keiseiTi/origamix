@@ -1,5 +1,10 @@
 import { registerProjectExportRoutes } from './project-export-routes';
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import Fastify, {
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+  type FastifyServerOptions,
+} from 'fastify';
 import { nanoid } from 'nanoid';
 import type { ApiResult } from '@origamix/shared';
 import { ApiError } from '../errors';
@@ -10,10 +15,6 @@ import { registerProjectRoutes } from './project-routes';
 import { registerRuntimeRoutes } from './runtime-routes';
 import { registerSchemaRoutes } from './schema-routes';
 import type { HttpServerInput, RouteAdapter, RouteInput } from './types';
-
-const requestId = (value: unknown): string => {
-  return typeof value === 'string' && value.length <= 100 ? value : nanoid();
-};
 
 const errorStatus = (error: unknown): number => {
   if (error instanceof ApiError) return error.statusCode;
@@ -40,13 +41,12 @@ const failure = (error: unknown, fallbackStatus = 500): ApiResult<never> => {
 };
 
 const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput): void => {
+  const errors = new WeakMap<FastifyRequest, number>();
   const allowedOrigins = new Set(
     input.allowedOrigins ?? ['null', 'http://localhost:9685', 'http://127.0.0.1:9685'],
   );
   server.addHook('onRequest', async (request, reply) => {
-    const id = requestId(request.headers['x-request-id']);
-    request.headers['x-request-id'] = id;
-    reply.header('X-Request-Id', id);
+    reply.header('X-Request-Id', request.id);
     const origin = request.headers.origin;
     if (origin && !allowedOrigins.has(origin))
       return reply.code(403).send({
@@ -58,6 +58,7 @@ const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput)
     if (origin) {
       reply.header('Access-Control-Allow-Origin', origin);
       reply.header('Vary', 'Origin');
+      reply.header('Access-Control-Expose-Headers', 'X-Request-Id');
       reply.header(
         'Access-Control-Allow-Headers',
         'Authorization, Content-Type, Last-Event-ID, X-Origamix-Service, X-Request-Id',
@@ -76,8 +77,29 @@ const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput)
         message: '桌面会话无效',
       });
   });
-  server.setErrorHandler((error, _request, reply) => {
+  server.addHook('onResponse', async (request, reply) => {
+    const route = request.routeOptions.url ?? '<unmatched>';
+    const statusCode = reply.statusCode;
+    const level =
+      statusCode >= 500
+        ? 'error'
+        : statusCode >= 400
+          ? 'warn'
+          : route === '/api/v1/health'
+            ? 'debug'
+            : 'info';
+    input.logger?.[level]({
+      event: 'http.request.completed',
+      requestId: request.id,
+      route,
+      statusCode,
+      errorCode: statusCode >= 400 ? (errors.get(request) ?? statusCode) : undefined,
+      durationMs: Math.round(reply.elapsedTime),
+    });
+  });
+  server.setErrorHandler((error, request, reply) => {
     const statusCode = errorStatus(error);
+    if (error instanceof ApiError) errors.set(request, error.code);
     return reply.code(statusCode).send(failure(error, statusCode));
   });
 };
@@ -90,16 +112,21 @@ const route: RouteAdapter =
       code: 200,
       data: await handler({
         body: request.body as T,
+        requestId: request.id,
       }),
     });
   };
 
 export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
-  const server = Fastify({
+  const options: FastifyServerOptions = {
     bodyLimit: 2 * 1024 * 1024,
-    logger: false,
+    ...(input.logger ? { loggerInstance: input.logger } : { logger: false }),
+    logController: new Fastify.LogController({ disableRequestLogging: true }),
+    requestIdHeader: false,
+    genReqId: () => nanoid(),
     ajv: { customOptions: { removeAdditional: false } },
-  });
+  };
+  const server = Fastify(options);
   installRequestBoundary(server, input);
   server.get('/api/v1/health', async () => ({
     success: true,

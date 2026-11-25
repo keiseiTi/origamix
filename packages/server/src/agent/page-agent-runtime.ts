@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../logging/logger';
 import { AgentService } from './agent-service';
 import { agentTarget } from './agent-target';
 import { ContextAssembler } from './context-assembler';
@@ -38,6 +39,7 @@ export const createPageAgentEngine = (
 };
 
 export const createPageAgentRuntime = (input: {
+  logger?: DiagnosticLogger;
   projects: AgentProjects;
   resolvePage: AgentSchemaPage;
   runs: AgentRunStore;
@@ -51,14 +53,25 @@ export const createPageAgentRuntime = (input: {
   loadMaterials?: typeof loadProjectMaterials;
   getPageRoles: NonNullable<ConstructorParameters<typeof ContextAssembler>[4]>;
   recordReportedUsage: RunExecutorDependencies['recordReportedUsage'];
-  recordModelUsage?: RunExecutorDependencies['recordModelUsage'];
   audit: NonNullable<RunExecutorDependencies['audit']>;
 }) => {
-  const { projects, resolvePage, runs, conversations, diagnostics } = input;
+  const { projects, resolvePage, runs, conversations, diagnostics, logger } = input;
   const loadMaterials = input.loadMaterials ?? loadProjectMaterials;
   const runService = new AgentRunService(runs);
   const events = new AgentEventBroker();
   runService.setTransitionListener((run) => {
+    if (run.finishedAt) {
+      const level =
+        run.status === 'failed' ? 'error' : run.status === 'interrupted' ? 'warn' : 'info';
+      logger?.[level]({
+        event: 'agent.run.finished',
+        runId: run.id,
+        status: run.status,
+        failureStage: run.failureStage,
+        errorCode: run.errorCode,
+        durationMs: Date.parse(run.finishedAt) - Date.parse(run.createdAt),
+      });
+    }
     const payload = progressPayload(run.status);
     if (payload)
       events.publish({
@@ -88,7 +101,9 @@ export const createPageAgentRuntime = (input: {
     context,
     engine: input.engine,
     recordReportedUsage: input.recordReportedUsage,
-    recordModelUsage: input.recordModelUsage,
+    recordModelUsage: (runId, requestIndex, metrics) => {
+      logger?.info({ ...metrics, event: 'agent.model_usage', runId, requestIndex });
+    },
     createTools: (scope) => {
       const ids = createAgentElementIds();
       return createDefaultAgentToolEntries([
@@ -111,6 +126,7 @@ export const createPageAgentRuntime = (input: {
             loadMaterials,
             runs,
             runService,
+            logger,
           },
           scope,
           ids,
@@ -136,6 +152,7 @@ export const createPageAgentRuntime = (input: {
     },
   });
   const service = new AgentService({
+    logger,
     projects,
     runs,
     conversations,
@@ -148,6 +165,6 @@ export const createPageAgentRuntime = (input: {
   });
   return {
     http: { conversations, runs: runService, events, service },
-    recover: () => recoverAgentRunsOnStartup(runs, projects, conversations, resolvePage),
+    recover: () => recoverAgentRunsOnStartup(runs, projects, conversations, resolvePage, logger),
   };
 };

@@ -33,12 +33,21 @@ import { createCompletePageRunTool } from '@/agent/tools/complete-page-run';
 import { PiAgentEngine } from '@/agent/pi-agent-engine';
 import { createReadOnlyAgentTools } from '@/agent/tools/read-only-tools';
 import { createHttpServer } from '@/http/server';
+import { createLogger } from '@/logging/logger';
 
 it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies only explicitly', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'origamix-agent-flow-'));
   const database = new ApplicationDatabase(':memory:');
   let server: ReturnType<typeof createHttpServer> | undefined;
   try {
+    const logLines: string[] = [];
+    const logger = createLogger('desktop', 'test-instance', {
+      write(line) {
+        logLines.push(line);
+        if (line.includes('"event":"working.commit.completed"'))
+          throw new Error('simulated log destination failure');
+      },
+    });
     const projects = new ProjectRepository(database);
     const projectApplyService = new ProjectApplyService(projects);
     const projectService = new ProjectService(
@@ -142,13 +151,14 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
             elementIds,
           ),
           createCompletePageRunTool(
-            { projects, runs, runService, loadMaterials: loadProjectMaterials },
+            { projects, runs, runService, logger, loadMaterials: loadProjectMaterials },
             { ...scope, maxSchemaBytes: 256 * 1024 },
             elementIds,
           ),
         ]),
     });
     const service = new AgentService({
+      logger,
       projects,
       runs,
       runService,
@@ -160,6 +170,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     });
     const start = vi.spyOn(service, 'start');
     server = createHttpServer({
+      logger,
       host: 'desktop',
       desktopToken: 'fake-desktop-token',
       serviceInstanceId: 'test-instance',
@@ -184,7 +195,7 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
     const response = await server.inject({
       method: 'POST',
       url: '/api/v1/agent/runs/create',
-      headers,
+      headers: { ...headers, 'x-request-id': 'caller-controlled-id' },
       payload: request,
     });
     expect(response.statusCode).toBe(202);
@@ -194,6 +205,24 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       status: 'completed',
       resultWorkingVersion: expect.any(Number),
     });
+    const requestId = response.headers['x-request-id'];
+    expect(requestId).toEqual(expect.any(String));
+    expect(requestId).not.toBe('caller-controlled-id');
+    expect(logLines.map((line) => JSON.parse(line) as unknown)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ event: 'http.request.completed', requestId, statusCode: 202 }),
+        expect.objectContaining({ event: 'agent.run.accepted', requestId, runId: started.run.id }),
+        expect.objectContaining({
+          event: 'working.commit.completed',
+          runId: started.run.id,
+          result: 'committed',
+          resultWorkingVersion: result?.resultWorkingVersion,
+        }),
+      ]),
+    );
+    expect(logLines.join('')).not.toMatch(
+      /caller-controlled-id|fake-secret|fake-desktop-token|创建一个按钮/,
+    );
     const usageScope = { projectId: project.id, pageId: page.id };
     const usageResponse = await server.inject({
       method: 'POST',

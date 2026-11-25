@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../logging/logger';
 import type {
   AgentRunStore,
   AgentConversations,
@@ -23,6 +24,7 @@ export const recoverAgentRunsOnStartup = async (
   projects: AgentProjects,
   conversations: Pick<AgentConversations, 'finishAssistant' | 'failAssistant'>,
   resolvePage?: AgentSchemaPage,
+  logger?: DiagnosticLogger,
 ): Promise<void> => {
   const service = new AgentRunService(runs);
   const recovered = await service.recover(async (run) => {
@@ -73,6 +75,14 @@ export const recoverAgentRunsOnStartup = async (
     }
   });
   for (const run of recovered) {
+    logger?.[run.recoveredCommit ? 'info' : 'warn']({
+      event: 'agent.run.recovered',
+      runId: run.id,
+      status: run.status,
+      recoveredCommit: run.recoveredCommit,
+      resultWorkingVersion: run.resultWorkingVersion,
+      errorCode: run.errorCode,
+    });
     if (run.status === 'completed') {
       await conversations.finishAssistant(run.id, {
         version: '1',

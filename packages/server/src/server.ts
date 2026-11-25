@@ -1,3 +1,5 @@
+import { createLogger } from './logging/logger';
+import type { DestinationStream } from 'pino';
 import { createPageAgentEngine, createPageAgentRuntime } from './agent/page-agent-runtime';
 import { sqliteAgentUsage } from './agent/agent-usage-repository';
 import { AgentUsageService } from './agent/agent-usage-service';
@@ -18,6 +20,7 @@ import { AgentToolAuditRepository } from './agent/tool-audit-repository';
 
 export const startServer = async (input: {
   port?: number;
+  logDestination?: DestinationStream;
   databasePath: string;
   templatePath: string;
   templateDownload?: import('./http/types').TemplateDownload;
@@ -28,6 +31,7 @@ export const startServer = async (input: {
   getModelCredential?: (provider: string) => Promise<string | undefined>;
   getModelReference?: () => Promise<string | undefined>;
 }) => {
+  const logger = createLogger('desktop', input.serviceInstanceId, input.logDestination);
   const port = input.port ?? 1029;
   if (!Number.isInteger(port) || port < 0 || port > 65535)
     throw new Error('后端端口必须为 0 到 65535 的整数');
@@ -35,7 +39,14 @@ export const startServer = async (input: {
     process.env.ORIGAMIX_AGENT_BUDGET_PROFILE,
     process.env.ORIGAMIX_AGENT_BUDGET_JSON,
   );
-  const database = new ApplicationDatabase(input.databasePath);
+  const database = (() => {
+    try {
+      return new ApplicationDatabase(input.databasePath);
+    } catch (error) {
+      logger.error({ event: 'server.start.failed', stage: 'database' });
+      throw error;
+    }
+  })();
   let dispose: (() => Promise<void>) | undefined;
   try {
     const projects = new ProjectRepository(database);
@@ -62,6 +73,7 @@ export const startServer = async (input: {
     const engine = createPageAgentEngine(input.getModelCredential);
     const getModelRef = async () => (await input.getModelReference?.()) ?? DEEPSEEK_FLASH_MODEL_ID;
     const agent = createPageAgentRuntime({
+      logger,
       projects,
       resolvePage: resolveSchemaPage,
       runs,
@@ -77,11 +89,6 @@ export const startServer = async (input: {
         return getCurrentRevision(projectId, pageId);
       },
       recordReportedUsage: usageRepository.record,
-      recordModelUsage: (runId, requestIndex, metrics) => {
-        console.info(
-          JSON.stringify({ event: 'agent.model_usage', runId, requestIndex, ...metrics }),
-        );
-      },
       audit: (event) => {
         toolAudits.append(event);
       },
@@ -90,6 +97,7 @@ export const startServer = async (input: {
     const server = createHttpServer({
       ...input,
       host: 'desktop',
+      logger,
       projects,
       projectService,
       projectApplyService,
@@ -135,6 +143,7 @@ export const startServer = async (input: {
         }
         database.close();
       })().catch((error: unknown) => {
+        logger.error({ event: 'server.shutdown.failed' });
         closePromise = undefined;
         throw error;
       });
@@ -150,12 +159,14 @@ export const startServer = async (input: {
     await server.listen({ host: '127.0.0.1', port });
     const address = server.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');
+    logger.info({ event: 'server.started' });
     return {
       port: address.port,
       registerGrant: (id: string, path: string) => projectService.registerGrant(id, path),
       close,
     };
   } catch (error) {
+    logger.error({ event: 'server.start.failed', stage: 'startup' });
     if (dispose) await dispose();
     else database.close();
     throw error;

@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../../logging/logger';
 import { createAgentElementIds, type AgentElementIds } from './element-ids';
 import type { ProjectMaterialReader } from './material-reader';
 import { nanoid } from 'nanoid';
@@ -35,6 +36,7 @@ export interface CompletePageRunToolScope {
 }
 
 export interface CompletePageRunToolDependencies {
+  logger?: DiagnosticLogger;
   loadMaterials: ProjectMaterialReader;
   projects: AgentProjects;
   resolvePage?: AgentSchemaPage;
@@ -210,6 +212,7 @@ export const createCompletePageRunTool = (
             requireFileSchemaPage(project, page),
           { baseWorkingVersion: scope.baseWorkingVersion, operations },
           {
+            diagnostics: { logger: dependencies.logger },
             validateCandidate: (candidate) => {
               if (Buffer.byteLength(JSON.stringify(candidate), 'utf8') > scope.maxSchemaBytes)
                 throw new AgentEngineError('BUDGET_EXCEEDED', '最终 Schema 大小超过本次运行预算');

@@ -9,6 +9,7 @@ export const createBackendLifecycle = (options: {
     'backendPath' | 'serverPort' | 'databasePath' | 'templatePath'
   >;
   workbenchOrigin: string;
+  logDirectory?: string;
   notifyStatus: (status: BackendStatus) => void;
   readModelApiKey: (provider: string | undefined) => Promise<string | undefined>;
   readModelReference: () => Promise<string>;
@@ -114,6 +115,7 @@ export const createBackendLifecycle = (options: {
       backend.once('spawn', () => {
         backend.postMessage({
           kind: 'initialize',
+          logDirectory: options.logDirectory,
           port: options.config.serverPort,
           workbenchOrigin: options.workbenchOrigin,
           databasePath: options.config.databasePath,

@@ -1,3 +1,4 @@
+import type { DiagnosticLogger } from '../logging/logger';
 import { agentTarget, requireAgentTarget } from './agent-target';
 import {
   type ClarificationResult,
@@ -45,6 +46,7 @@ export class AgentService {
 
   constructor(
     private readonly dependencies: {
+      logger?: DiagnosticLogger;
       conversations: AgentConversations;
       runs: AgentRunStore;
       runService: AgentRunService;
@@ -64,7 +66,7 @@ export class AgentService {
     },
   ) {}
 
-  async start(request: CreateAgentRunRequest): Promise<StartedAgentRun> {
+  async start(request: CreateAgentRunRequest, requestId?: string): Promise<StartedAgentRun> {
     if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
     const project = await this.dependencies.projects.getProject(request.projectId);
     if (!project) throw notFound('项目不存在');
@@ -83,7 +85,7 @@ export class AgentService {
             ...request,
             ...this.runConfiguration(duplicate),
           });
-          return this.startResult(started);
+          return this.startResult(started, requestId);
         }
         const current = await this.dependencies.getCurrentState(request.projectId, request.pageId);
         this.assertOpen();
@@ -191,7 +193,7 @@ export class AgentService {
           // HTTP acknowledges before execution completes; still observe background rejection.
           void completion.catch(() => undefined);
         }
-        return this.startResult(started);
+        return this.startResult(started, requestId);
       });
     const pending = withProjectActivity(project.path, admit);
     this.starting.add(pending);
@@ -341,7 +343,19 @@ export class AgentService {
     return result;
   }
 
-  private startResult(started: ReturnType<ConversationService['startRun']>): StartedAgentRun {
+  private startResult(
+    started: ReturnType<ConversationService['startRun']>,
+    requestId?: string,
+  ): StartedAgentRun {
+    const { id, projectId, pageId, baseWorkingVersion } = started.run;
+    this.dependencies.logger?.info({
+      event: started.created ? 'agent.run.accepted' : 'agent.run.reused',
+      requestId,
+      runId: id,
+      projectId,
+      pageId,
+      baseWorkingVersion,
+    });
     return {
       run: started.run,
       conversationId: started.conversation.id,

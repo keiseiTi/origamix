@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+import { createLogger } from '../logging/logger';
 import { createPageAgentEngine, createPageAgentRuntime } from '../agent/page-agent-runtime';
 import { mysqlAgentUsage } from '../agent/agent-usage-repository';
 import { AgentUsageService } from '../agent/agent-usage-service';
@@ -23,7 +25,11 @@ export const startMysqlWebServer = async (input: {
   getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
   agentEngine?: AgentEngine;
 }) => {
-  const pool = await openWebDatabase(input.mysqlUrl);
+  const logger = createLogger('web', input.serviceInstanceId);
+  const pool = await openWebDatabase(input.mysqlUrl).catch((error: unknown) => {
+    logger.error({ event: 'server.start.failed', stage: 'database' });
+    throw error;
+  });
   let owner: Awaited<ReturnType<typeof pool.getConnection>> | undefined;
   let server: ReturnType<typeof createHttpServer> | undefined;
   try {
@@ -48,6 +54,7 @@ export const startMysqlWebServer = async (input: {
     const runs = new MysqlAgentRunRepository(pool);
     const conversations = new MysqlConversationService(pool, projects, runs);
     const agent = createPageAgentRuntime({
+      logger,
       projects: agentProjects,
       resolvePage,
       runs,
@@ -79,6 +86,7 @@ export const startMysqlWebServer = async (input: {
     };
     server = createHttpServer({
       host: 'web',
+      logger,
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,
       templateDownload: input.templateDownload,
@@ -110,21 +118,41 @@ export const startMysqlWebServer = async (input: {
         ownership.destroy();
         await pool.end();
       })().catch((error: unknown) => {
+        logger.error({ event: 'server.shutdown.failed' });
         closing = undefined;
         throw error;
       });
       return closing;
     };
     const leaseLost = () => {
-      void close().catch(() => console.error('MySQL Web Agent 宿主关闭失败'));
+      logger.error({ event: 'server.ownership.lost' });
+      void close().catch(() => undefined);
     };
     // The lock belongs to this connection. Keep it active and fence the listener if it is lost.
     ownership.on('error', leaseLost);
     const heartbeat = setInterval(() => {
       void ownership.ping().catch(leaseLost);
     }, 15_000).unref();
-    return { port: address.port, close };
+    logger.info({ event: 'server.started' });
+    return {
+      port: address.port,
+      close,
+      reportProxyFailure: (
+        statusCode: number,
+        reason: 'origin' | 'session' | 'upstream' | 'internal',
+      ) => {
+        const requestId = nanoid();
+        logger[statusCode >= 500 ? 'error' : 'warn']({
+          event: 'web.proxy.request.failed',
+          requestId,
+          statusCode,
+          reason,
+        });
+        return requestId;
+      },
+    };
   } catch (error) {
+    logger.error({ event: 'server.start.failed', stage: 'startup' });
     await server?.close();
     owner?.destroy();
     await pool.end();

@@ -39,7 +39,9 @@ export const registerSchemaRoutes = ({ server, input, route }: RouteRegistration
     route<Static<typeof WorkingOperationsBodySchema>>(async (request) => {
       const { projectId, pageId, ...body } = request.body;
       try {
-        return await applyWorkingSchemaOperations(resolvePage(projectId, pageId), body);
+        return await applyWorkingSchemaOperations(resolvePage(projectId, pageId), body, {
+          diagnostics: { logger: input.logger, requestId: request.requestId },
+        });
       } catch (error) {
         if (error instanceof Error && error.name === 'SchemaOperationError')
           throw invalid(error.message);

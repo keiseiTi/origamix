@@ -24,7 +24,7 @@ import {
   type ReloadFromProjectRequest,
 } from '@origamix/shared';
 
-import { conflict, invalid, notFound } from '../errors';
+import { ApiError, conflict, invalid, notFound } from '../errors';
 import {
   WORKING_SCHEMA_FILE_VERSION,
   type AgentWorkingCommitReceipt,
@@ -340,17 +340,6 @@ const readWorkingAtVersion = async (page: SchemaPageRef, baseWorkingVersion: num
   return current;
 };
 
-const commitWorkingCandidate = async (
-  page: SchemaPageRef,
-  current: WorkingSchemaFile,
-  candidate: OrigamixPageSchema,
-  options: WorkingDraftWriteOptions,
-) => {
-  await options.validateCandidate?.(candidate);
-  await options.beforeWrite?.();
-  return writeWorkingDraft(page, current, candidate, options);
-};
-
 interface WorkingOperationInput {
   baseWorkingVersion: number;
   operations: readonly WorkingSchemaOperation[];
@@ -415,16 +404,44 @@ export const applyWorkingSchemaOperations = async (
   input: WorkingOperationInput,
   options: WorkingDraftWriteOptions = {},
 ): Promise<WorkingSchemaReadResult> => {
-  return withSchemaPageQueue(page, async (page) => {
-    const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
-    const candidate = await prepareWorkingOperations(
-      page,
-      current,
-      input,
-      Boolean(options.agentCommit),
-    );
-    return commitWorkingCandidate(page, current, candidate, options);
-  });
+  const logFields = {
+    event: 'working.commit.completed',
+    source: options.agentCommit ? 'agent' : 'editor',
+    requestId: options.diagnostics?.requestId,
+    runId: options.agentCommit?.runId,
+    pageId: page.pageId,
+    baseWorkingVersion: input.baseWorkingVersion,
+  };
+  const logger = options.diagnostics?.logger;
+  let commitStarted = false;
+  try {
+    const result = await withSchemaPageQueue(page, async (page) => {
+      const current = await readWorkingAtVersion(page, input.baseWorkingVersion);
+      const candidate = await prepareWorkingOperations(
+        page,
+        current,
+        input,
+        Boolean(options.agentCommit),
+      );
+      await options.validateCandidate?.(candidate);
+      await options.beforeWrite?.();
+      commitStarted = true;
+      return writeWorkingDraft(page, current, candidate, options);
+    });
+    logger?.info({
+      ...logFields,
+      result: result.workingVersion === input.baseWorkingVersion ? 'unchanged' : 'committed',
+      resultWorkingVersion: result.workingVersion,
+    });
+    return result;
+  } catch (error) {
+    logger?.[commitStarted ? 'error' : 'warn']({
+      ...logFields,
+      result: commitStarted ? 'unconfirmed' : 'not_committed',
+      errorCode: error instanceof ApiError ? error.code : undefined,
+    });
+    throw error;
+  }
 };
 
 export const saveWorkingRevision = async (
