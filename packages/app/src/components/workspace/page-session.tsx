@@ -45,7 +45,6 @@ export const PageSession = ({
 
   return (
     <PageSessionContent
-      key={JSON.stringify([project.id, page.id])}
       active={active}
       page={page}
       projectId={project.id}
@@ -70,7 +69,7 @@ const PageSessionContent = ({
   projectId: string;
   projectName: string;
 }): React.JSX.Element => {
-  const databaseProject = workbenchHost() === 'web';
+  const isWeb = workbenchHost() === 'web';
   const { mode, draft, setPageDraft } = useWorkspaceStore(
     useShallow((state) => ({
       mode: state.openPages.find((tab) => tab.id === page.id)?.mode ?? 'chat',
@@ -85,7 +84,7 @@ const PageSessionContent = ({
     usePageSession({
       projectId,
       pageId: page.id,
-      databaseProject,
+      isWeb,
       active,
       editing: active && mode === 'edit',
     });
@@ -120,7 +119,7 @@ const PageSessionContent = ({
     onRestoreRevision: pageApply.restoreRevision,
     applyStatus: pageApply.applyStatus,
     canApply: capabilities.canApply,
-    databaseProject,
+    isWeb,
     canSaveVersion: capabilities.canSaveVersion,
     canReload: capabilities.canReload,
     canRestore: capabilities.canEdit,

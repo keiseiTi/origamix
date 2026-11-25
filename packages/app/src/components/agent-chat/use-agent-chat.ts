@@ -32,11 +32,9 @@ export type AgentChatSession = {
 export const useAgentChat = (
   projectId: string,
   pageId: string,
-  enabled = true,
 ): AgentChatSession & {
   repair: (evidence: RuntimeRepairEvidence, workingVersion: number) => Promise<void>;
 } => {
-  const schema = schemaService;
   const [state, dispatch] = useReducer(agentChatReducer, initialAgentChatState);
   const mounted = useRef(true);
   const generation = useRef(0);
@@ -55,7 +53,6 @@ export const useAgentChat = (
   } | null>(null);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
-    if (!enabled) return;
     const currentGeneration = generation.current;
     const request = ++authorityRequest.current;
     const current = () =>
@@ -88,7 +85,7 @@ export const useAgentChat = (
           message: error instanceof Error ? error.message : '无法加载对话记录',
         });
     }
-  }, [pageId, projectId, pageKey, enabled]);
+  }, [pageId, projectId, pageKey]);
 
   useEffect(() => {
     generation.current += 1;
@@ -138,11 +135,12 @@ export const useAgentChat = (
 
   const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
   const clarification = state.run?.clarification;
+
   useEffect(() => {
     if (!clarification) return;
     let disposed = false;
     const refresh = () => {
-      void schema
+      void schemaService
         .workingState(projectId, pageId)
         .then((working) => {
           if (!disposed) setLatestWorking({ pageKey, version: working.workingVersion });
@@ -153,7 +151,8 @@ export const useAgentChat = (
     return () => {
       disposed = true;
     };
-  }, [clarification, pageId, pageKey, projectId, schema]);
+  }, [clarification, pageId, pageKey, projectId]);
+
   useEffect(() => {
     if (!activeRunId) return;
     dispatch({ type: 'connection.changed', connection: 'connecting' });
@@ -222,7 +221,6 @@ export const useAgentChat = (
       },
       retryInput?: CreateAgentRunRequest,
     ): Promise<void> => {
-      if (!enabled) throw new Error('请先开启项目布局配置');
       const content = submission.text.trim();
       const isRepair =
         Boolean(submission.repair) ||
@@ -252,7 +250,9 @@ export const useAgentChat = (
       let input: CreateAgentRunRequest | undefined;
       let accepted = false;
       try {
-        const working = retryInput ? undefined : await schema.workingState(projectId, pageId);
+        const working = retryInput
+          ? undefined
+          : await schemaService.workingState(projectId, pageId);
         const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
         if (
           submission.repair &&
@@ -336,7 +336,7 @@ export const useAgentChat = (
         sending.current = false;
       }
     },
-    [pageId, projectId, pageKey, verifiedPageKey, state.stage, loadAuthority, enabled, schema],
+    [pageId, projectId, pageKey, verifiedPageKey, state.stage, loadAuthority],
   );
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
@@ -346,7 +346,7 @@ export const useAgentChat = (
       const clarification = state.run?.clarification;
       const candidate = clarification?.candidates?.find((item) => item.elementId === elementId);
       if (!state.run || !clarification || !candidate) throw new Error('澄清选项不存在');
-      const working = await schema.workingState(projectId, pageId);
+      const working = await schemaService.workingState(projectId, pageId);
       if (working.workingVersion !== clarification.baseWorkingVersion) {
         throw new Error('选项已过期，请重新描述你的需求');
       }
@@ -359,7 +359,7 @@ export const useAgentChat = (
         },
       });
     },
-    [pageId, projectId, state.run, submit, schema],
+    [pageId, projectId, state.run, submit],
   );
 
   const cancel = useCallback(async (): Promise<void> => {
@@ -390,13 +390,13 @@ export const useAgentChat = (
     } else await loadAuthority();
   }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
 
-  const activity = !enabled
-    ? 'idle'
-    : verifiedPageKey !== pageKey || pending || preparing
+  const activity =
+    verifiedPageKey !== pageKey || pending || preparing
       ? 'unknown'
       : isRunActive(state.stage)
         ? 'running'
         : 'idle';
+
   return {
     state,
     activity,

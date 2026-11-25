@@ -12,6 +12,7 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
     Provider?: Awaited<ReturnType<typeof loadRuntimeMaterials>>['Provider'];
     error?: string;
   } | null>(null);
+
   useEffect(() => {
     if (!enabled) return;
     let active = true;
@@ -37,6 +38,7 @@ export const useEditorMaterials = (projectId: string, enabled: boolean) => {
       active = false;
     };
   }, [scope, enabled]);
+
   return {
     registration: result?.scope === scope ? result.registration : undefined,
     Provider: result?.scope === scope ? result.Provider : undefined,

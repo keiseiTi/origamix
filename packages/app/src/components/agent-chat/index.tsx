@@ -62,12 +62,10 @@ export const ChatWorkspace = ({
   session,
   onConfigureModel,
   onClarificationHover,
-  unavailableReason,
   composerFooter,
 }: {
   pageId: string;
   pageName: string;
-  unavailableReason?: string;
   composerFooter?: ReactNode;
   draft: string;
   onDraftChange: (draft: string) => void;
@@ -90,25 +88,29 @@ export const ChatWorkspace = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
   const active = isRunActive(state.stage);
-  const modelConfigurationRequired = !unavailableReason && hasModelApiKey === false;
+  const modelConfigurationRequired = hasModelApiKey === false;
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
   }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages, state.streamedText, state.progressHistory, state.stage]);
+
   const currentUserMessageId = [...state.messages]
     .reverse()
     .find((message) => message.runId === state.run?.runId && message.role === 'user')?.messageId;
+
   const progress = state.progressHistory.length > 0 && (
     <ProgressSteps key={state.run?.runId ?? 'pending'} messages={state.progressHistory} />
   );
+
   const submit = async (): Promise<void> => {
-    if (unavailableReason || !draft.trim() || activity !== 'idle' || modelConfigurationRequired)
-      return;
+    if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
     try {
       await send(draft);
       if (mountedRef.current) onDraftChange('');
@@ -116,6 +118,7 @@ export const ChatWorkspace = ({
       // The hook keeps the actionable error and the draft remains available.
     }
   };
+
   return (
     <div ref={scrollRef} className='agent-chat-scrollbar min-h-0 flex-1 overflow-y-auto'>
       <div className='mx-auto flex min-h-full w-[min(780px,calc(100%-40px))] flex-col sm:w-[min(780px,calc(100%-64px))]'>
@@ -127,8 +130,7 @@ export const ChatWorkspace = ({
             <div>
               <strong className='text-sm'>准备好修改“{pageName}”</strong>
               <p className='mt-1 max-w-165 text-zinc-600 dark:text-zinc-300'>
-                {unavailableReason ??
-                  '以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。'}
+                以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。
               </p>
             </div>
           </div>
@@ -250,20 +252,19 @@ export const ChatWorkspace = ({
           onSubmit={() => void submit()}
           onCancel={() => void cancel()}
           running={active}
-          disabled={Boolean(unavailableReason) || activity !== 'idle' || modelConfigurationRequired}
+          disabled={activity !== 'idle' || modelConfigurationRequired}
           configurationRequired={modelConfigurationRequired}
           onConfigureModel={onConfigureModel}
           contextLabel='当前页面'
           footerContent={composerFooter}
           placeholder={
-            unavailableReason ??
-            (modelConfigurationRequired
+            modelConfigurationRequired
               ? '请先配置 模型 API Key'
               : activity === 'unknown'
                 ? '正在确认页面状态…'
                 : active
                   ? '本轮完成后可继续修改'
-                  : '描述你想创建或修改的页面')
+                  : '描述你想创建或修改的页面'
           }
         />
       </div>

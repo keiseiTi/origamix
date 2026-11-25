@@ -27,13 +27,13 @@ export const usePageSession = ({
   pageId,
   active,
   editing,
-  databaseProject,
+  isWeb,
 }: {
   projectId: string;
   pageId: string;
   active: boolean;
   editing: boolean;
-  databaseProject: boolean;
+  isWeb: boolean;
 }) => {
   const agent = useAgentChat(projectId, pageId);
   const materials = useEditorMaterials(projectId, editing);
@@ -66,7 +66,7 @@ export const usePageSession = ({
     externalWorkingChange: refresh.signal,
     visualWorkingVersion,
     active,
-    databaseProject,
+    isWeb,
     working,
     onSchemaCommitted: (signal) => setRefresh((current) => ({ ...current, signal })),
   });

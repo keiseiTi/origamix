@@ -21,7 +21,7 @@ export const usePageApplyState = ({
   externalWorkingChange,
   visualWorkingVersion = 0,
   active = true,
-  databaseProject = false,
+  isWeb = false,
   working,
   onSchemaCommitted,
 }: {
@@ -30,14 +30,13 @@ export const usePageApplyState = ({
   externalWorkingChange: number | symbol | null;
   visualWorkingVersion?: number;
   active?: boolean;
-  databaseProject?: boolean;
+  isWeb?: boolean;
   working: Pick<
     ReturnType<typeof useEditorSession>,
     'flush' | 'getConfirmedWorking' | 'acknowledgeWorking'
   >;
   onSchemaCommitted: (signal: number | symbol) => void;
 }) => {
-  const service = schemaService;
   const pageKey = pageOperationKey(projectId, pageId);
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
   const [applyState, setApplyState] = useState<{
@@ -57,11 +56,13 @@ export const usePageApplyState = ({
       pageKeyRef.current = '';
     };
   }, [pageKey]);
+
   const applyStatus = pendingApply
     ? 'result_pending'
     : applyState.pageKey === pageKey
       ? applyState.value
       : 'loading';
+
   const setApplyStatus = useCallback(
     (value: PageApplyStatus, reload?: ReloadFromProjectRequest): void =>
       setApplyState({ pageKey, value, reload }),
@@ -78,12 +79,12 @@ export const usePageApplyState = ({
       setApplyStatus(value, reload);
     };
     try {
-      if (databaseProject) {
-        const working = await service.workingState(projectId, pageId);
+      if (isWeb) {
+        const working = await schemaService.workingState(projectId, pageId);
         publish(working.workingHash === working.savedSchemaHash ? 'in_sync' : 'draft_unsaved');
         return;
       }
-      const state = await service.applyState(projectId, pageId);
+      const state = await schemaService.applyState(projectId, pageId);
       publish(state.status, {
         expectedWorkingVersion: state.workingVersion,
         expectedTargetHash: state.targetSchemaHash,
@@ -91,7 +92,7 @@ export const usePageApplyState = ({
     } catch {
       publish('error');
     }
-  }, [databaseProject, pageId, projectId, setApplyStatus, service]);
+  }, [isWeb, pageId, projectId, setApplyStatus]);
 
   useEffect(() => {
     if (!active) return;
@@ -113,7 +114,7 @@ export const usePageApplyState = ({
     const requestPageKey = pageOperationKey(projectId, pageId);
     await working.flush();
     if (pageKeyRef.current !== requestPageKey) return;
-    const current = await service.workingState(projectId, pageId);
+    const current = await schemaService.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
     const operations = usePendingOperations.getState();
     const previousRequest = operations.applies[requestPageKey];
@@ -126,7 +127,7 @@ export const usePageApplyState = ({
     };
     operations.setApply(requestPageKey, { ...request, inFlight: true });
     try {
-      await service.apply(
+      await schemaService.apply(
         projectId,
         pageId,
         request.revisionId,
@@ -152,7 +153,7 @@ export const usePageApplyState = ({
     const current = working.getConfirmedWorking();
     if (!current || current.scope.projectId !== projectId || current.scope.pageId !== pageId)
       throw new Error('页面尚未加载，请稍后再保存');
-    const saved = await service
+    const saved = await schemaService
       .saveRevision(projectId, pageId, current.workingVersion)
       .catch((error: unknown) => {
         if (
@@ -181,7 +182,7 @@ export const usePageApplyState = ({
       !applyState.reload
     )
       throw new Error('请刷新项目状态后重新确认');
-    const result = await service
+    const result = await schemaService
       .reloadFromProject(projectId, pageId, applyState.reload)
       .catch(async (error: unknown) => {
         if (pageKeyRef.current === requestPageKey) await refreshApplyState();
@@ -195,9 +196,9 @@ export const usePageApplyState = ({
     const requestPageKey = pageOperationKey(projectId, pageId);
     await working.flush();
     if (pageKeyRef.current !== requestPageKey) return;
-    const current = await service.workingState(projectId, pageId);
+    const current = await schemaService.workingState(projectId, pageId);
     if (pageKeyRef.current !== requestPageKey) return;
-    const restored = await service.restoreRevision(
+    const restored = await schemaService.restoreRevision(
       projectId,
       pageId,
       revisionId,

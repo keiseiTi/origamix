@@ -31,7 +31,7 @@ export const CreateProjectModal = ({
   isOpen,
   onClose,
 }: CreateProjectModalProps): React.JSX.Element => {
-  const databaseProject = workbenchHost() === 'web';
+  const isWeb = workbenchHost() === 'web';
   const setProjects = useWorkspaceStore((state) => state.setProjects);
   const [layoutEnabled, setLayoutEnabled] = useState(false);
   const [name, setName] = useState('');
@@ -67,12 +67,7 @@ export const CreateProjectModal = ({
   };
 
   const createProject = async (): Promise<void> => {
-    if (
-      !name.trim() ||
-      !code.trim() ||
-      !pageDirectory.trim() ||
-      (!databaseProject && !directoryGrantId)
-    ) {
+    if (!name.trim() || !code.trim() || !pageDirectory.trim() || (!isWeb && !directoryGrantId)) {
       toast.add({ title: '请填写所有必填项。', type: 'error' });
       return;
     }
@@ -82,7 +77,7 @@ export const CreateProjectModal = ({
         name: name.trim(),
         code: code.trim(),
         pageDirectory: pageDirectory.trim(),
-        ...(databaseProject ? {} : { directoryGrantId }),
+        ...(isWeb ? {} : { directoryGrantId }),
         layoutEnabled,
       });
       setProjects((current) => [
@@ -91,7 +86,7 @@ export const CreateProjectModal = ({
           id: project.id,
           name: project.name,
           path: project.path,
-          ...(databaseProject ? { runtime: 'origamix' as const, layoutEnabled } : {}),
+          ...(isWeb ? { runtime: 'origamix' as const, layoutEnabled } : {}),
           pages: [],
         },
       ]);
@@ -174,7 +169,7 @@ export const CreateProjectModal = ({
               />
             </div>
           </Field>
-          <Field hidden={databaseProject}>
+          <Field hidden={isWeb}>
             <div className='flex items-center gap-1.5'>
               <FieldLabel htmlFor='directory'>生成地址</FieldLabel>
               <Tooltip>
@@ -202,7 +197,7 @@ export const CreateProjectModal = ({
               value={directory}
               readOnly
               placeholder='选择目录'
-              required={!databaseProject}
+              required={!isWeb}
             />
           </Field>
           <Field orientation='horizontal'>

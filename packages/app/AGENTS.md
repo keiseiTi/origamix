@@ -102,7 +102,7 @@ pnpm --filter @origamix/app build
 
 - `components/page-role/` owns the login-page purpose selector and projection. Sidebar forms commit page names and that purpose through ProjectService with stable request identity. Set home and not-found pages in the layout form.
 
-- project-settings/use-project-settings-session.ts owns the retained settings draft, version fencing, proposal acceptance, hash-conflict review and explicit manifest save. use-project-settings-assistant.ts owns proposal streams and cancellation. project-settings-panel.tsx composes layout effects, form and assistant views. Creation has only name/code/pageDirectory/directory/layout enablement. Durable Page sessions and Agent targets remain page-only. Layout chat uses the shared composer/Markdown and a proposal-only streamed service; it does not fabricate Page Run records. No layout editor or project preview.
+- Project settings uses a form and a layout illustration. `project-settings/use-project-settings-session.ts` holds the tab-local settings draft and saves it through ProjectService. Agent sessions target pages.
 
 - Layout settings retain a tab-local form draft and save through ProjectService.
 

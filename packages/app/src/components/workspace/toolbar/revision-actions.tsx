@@ -20,7 +20,7 @@ interface RevisionActionsProps {
   onReloadFromProject: () => Promise<void>;
   applyStatus: ApplyStatus;
   canApply: boolean;
-  databaseProject?: boolean;
+  isWeb?: boolean;
   canSaveVersion: boolean;
   canReload: boolean;
   onErrorChange: (error: string | null) => void;
@@ -35,7 +35,7 @@ export const RevisionActions = ({
   onReloadFromProject,
   applyStatus,
   canApply,
-  databaseProject = false,
+  isWeb = false,
   canSaveVersion,
   canReload,
   onErrorChange,
@@ -109,7 +109,7 @@ export const RevisionActions = ({
           {applyStatus === 'loading'
             ? '检查状态…'
             : applyStatus === 'in_sync'
-              ? databaseProject
+              ? isWeb
                 ? '版本已保存'
                 : '与项目一致'
               : applyStatus === 'saved_pending_apply'
@@ -138,7 +138,7 @@ export const RevisionActions = ({
         </TooltipTrigger>
         <TooltipContent side='bottom'>把当前草稿保存为可恢复的历史版本</TooltipContent>
       </Tooltip>
-      {!databaseProject && (
+      {!isWeb && (
         <Tooltip>
           <TooltipTrigger
             render={

@@ -30,7 +30,6 @@ export const useEditorSession = (
   readyToEdit = true,
   externalWorkingChange: number | symbol | null = null,
 ) => {
-  const service = schemaService;
   // A new ref cell per scope isolates queues even when an old request is pending.
   const sessionRef = useMemo<{
     current: Session;
@@ -72,6 +71,7 @@ export const useEditorSession = (
   }, [onWorkingCommitted]);
   const explicitReload = useRef(false);
   const [retry, setRetry] = useState(0);
+
   useEffect(() => {
     const ownedSession = sessionRef.current;
     ownedSession.active = true;
@@ -81,6 +81,7 @@ export const useEditorSession = (
       if (ownedSession.timer !== null) window.clearTimeout(ownedSession.timer);
     };
   }, [sessionRef]);
+
   useEffect(() => {
     let active = true;
     const ownedSession = sessionRef.current;
@@ -111,7 +112,7 @@ export const useEditorSession = (
           throw new Error('Working 已更新，本地草稿已保留；请先重试保存草稿，再重试加载');
         const draftBeforeRead = ownedSession.draft;
         const baseVersion = ownedSession.workingVersion;
-        const result = await service.workingState(projectId, pageId);
+        const result = await schemaService.workingState(projectId, pageId);
         if (!active || request !== sequence) return;
         // Editing may have continued while the read was in flight.
         if (
@@ -155,7 +156,8 @@ export const useEditorSession = (
       unsubscribe();
       active = false;
     };
-  }, [projectId, pageId, sessionRef, externalWorkingChange, retry, service]);
+  }, [projectId, pageId, sessionRef, externalWorkingChange, retry]);
+
   useEffect(() => {
     if (!readyToEdit || loaded?.sessionRef !== sessionRef || !loaded.initial) return;
     const ownedSession = sessionRef.current;
@@ -167,6 +169,7 @@ export const useEditorSession = (
       ownedSession.ready = false;
     };
   }, [loaded, sessionRef, readyToEdit]);
+
   const flush = useCallback(async (): Promise<void> => {
     if (sessionRef.current.timer !== null) {
       window.clearTimeout(sessionRef.current.timer);
@@ -181,7 +184,7 @@ export const useEditorSession = (
         const session = sessionRef.current;
         if (session.uncertainSchema) {
           const candidate = session.uncertainSchema;
-          const recovery = service
+          const recovery = schemaService
             .workingState(projectId, pageId)
             .then((working) => {
               if (!session.active) throw new Error('编辑会话已关闭');
@@ -221,7 +224,7 @@ export const useEditorSession = (
           },
           candidate,
         );
-        const request = service.applyWorkingOperations(
+        const request = schemaService.applyWorkingOperations(
           transaction.scope.projectId,
           transaction.scope.pageId,
           transaction.baseWorkingVersion,
@@ -258,7 +261,8 @@ export const useEditorSession = (
       }
       throw reason;
     }
-  }, [readOnly, sessionRef, service, projectId, pageId]);
+  }, [readOnly, sessionRef, projectId, pageId]);
+
   const generation = sessionRef.current.generation;
   const onChange = (
     schema: OrigamixPageSchema,
@@ -283,6 +287,7 @@ export const useEditorSession = (
         options?.immediate ? 0 : 700,
       );
   };
+
   const getConfirmedWorking = useCallback(() => {
     const current = sessionRef.current;
     if (
@@ -297,6 +302,7 @@ export const useEditorSession = (
       workingVersion: current.workingVersion,
     };
   }, [sessionRef]);
+
   const acknowledgeWorking = useCallback(
     (working: EditorWorkingState): void => {
       const current = sessionRef.current;
@@ -313,6 +319,7 @@ export const useEditorSession = (
     },
     [sessionRef],
   );
+
   const current = loaded?.sessionRef === sessionRef ? loaded : null;
   const initial = current?.initial ?? null;
   // A canvas mount consumes the retained draft; ordinary saves do not change
@@ -324,6 +331,7 @@ export const useEditorSession = (
           sessionKey: `${projectId}:${pageId}:${generation}`,
         }
       : null;
+
   return {
     initial,
     loading: !current,
