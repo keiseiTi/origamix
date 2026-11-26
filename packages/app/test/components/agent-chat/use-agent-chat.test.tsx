@@ -315,7 +315,8 @@ describe('Agent recovery', () => {
     await act(async () => hook.result.current.refresh());
 
     expect(hook.result.current.conversationId).toBe('conversation_old');
-    expect(hook.result.current.otherActiveConversationId).toBe('conversation_other');
+    expect(hook.result.current.selectConversation('conversation_other')).toBe(false);
+    expect(hook.result.current.selectConversation(null)).toBe(false);
     expect(hook.result.current.activity).toBe('running');
     await act(async () => {
       await expect(hook.result.current.send('编辑页面')).rejects.toThrow();
@@ -326,6 +327,10 @@ describe('Agent recovery', () => {
     await act(async () => hook.result.current.refresh());
     expect(hook.result.current.activity).toBe('idle');
     expect(hook.result.current.committedWorkingVersion).toBe(2);
+    act(() => {
+      expect(hook.result.current.selectConversation('conversation_other')).toBe(true);
+    });
+    await waitFor(() => expect(hook.result.current.canSend).toBe(true));
   });
 
   it('expires a retained clarification when the confirmed Working version changes', async () => {

@@ -19,10 +19,7 @@ import type { AgentChatSession } from './use-agent-chat';
 type ConversationActionsProps = {
   projectId: string;
   pageId: string;
-  agent: Pick<
-    AgentChatSession,
-    'conversationId' | 'activity' | 'selectConversation' | 'otherActiveConversationId'
-  >;
+  agent: Pick<AgentChatSession, 'conversationId' | 'activity' | 'selectConversation'>;
 };
 
 const ConversationHistory = ({ projectId, pageId, agent }: ConversationActionsProps) => {
@@ -70,10 +67,6 @@ const ConversationHistory = ({ projectId, pageId, agent }: ConversationActionsPr
                 className='flex h-auto w-full justify-between gap-3 py-2 text-left'
                 variant={item.conversationId === agent.conversationId ? 'secondary' : 'ghost'}
                 aria-current={item.conversationId === agent.conversationId}
-                disabled={
-                  agent.activity !== 'idle' &&
-                  agent.otherActiveConversationId !== item.conversationId
-                }
                 onClick={() => agent.selectConversation(item.conversationId)}
               />
             }
@@ -90,9 +83,6 @@ const ConversationHistory = ({ projectId, pageId, agent }: ConversationActionsPr
           <p className='text-muted-foreground'>暂无对话记录</p>
         )}
       </div>
-      {agent.activity !== 'idle' && (
-        <p className='text-muted-foreground'>运行结束或请求状态确认后可切换其他对话。</p>
-      )}
       {loading && (
         <p role='status' className='text-muted-foreground'>
           正在加载对话…
@@ -125,13 +115,26 @@ export const ConversationHistoryDialog = ({
   agent,
 }: ConversationActionsProps & { active: boolean }) => {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const available = active && agent.activity === 'idle';
+  if (!available && historyOpen) setHistoryOpen(false);
+
   return (
-    <Dialog open={active && historyOpen} onOpenChange={setHistoryOpen}>
+    <Dialog
+      open={available && historyOpen}
+      onOpenChange={(open) => setHistoryOpen(available && open)}
+    >
       <Tooltip>
         <TooltipTrigger
           render={
             <DialogTrigger
-              render={<Button size='icon-sm' variant='ghost' aria-label='对话历史' />}
+              render={
+                <Button
+                  size='icon-sm'
+                  variant='ghost'
+                  aria-label='对话历史'
+                  disabled={!available}
+                />
+              }
             />
           }
         >
@@ -139,7 +142,7 @@ export const ConversationHistoryDialog = ({
         </TooltipTrigger>
         <TooltipContent side='bottom'>对话历史</TooltipContent>
       </Tooltip>
-      {active && historyOpen && (
+      {available && historyOpen && (
         <DialogContent>
           <DialogTitle>对话历史</DialogTitle>
           <ConversationHistory projectId={projectId} pageId={pageId} agent={agent} />

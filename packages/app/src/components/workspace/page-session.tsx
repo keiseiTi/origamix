@@ -156,7 +156,7 @@ const PageSessionContent = ({
           pageName={page.name}
           draft={draft}
           onDraftChange={(value) => setConversationDraft(page.id, agent.conversationId, value)}
-          session={{ ...agent, selectConversation }}
+          session={agent}
           applyStatus={pageApply.applyStatus}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}

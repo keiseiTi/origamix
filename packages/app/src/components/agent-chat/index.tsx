@@ -82,11 +82,9 @@ export const ChatWorkspace = ({
     state,
     activity,
     canSend,
-    otherActiveConversationId,
     hasOlderMessages,
     loadingOlderMessages,
     loadOlderMessages,
-    selectConversation,
     pendingSubmission,
     clarificationExpired,
     send,
@@ -190,21 +188,6 @@ export const ChatWorkspace = ({
             </div>
           </div>
           <ErrorToast message={interactionError} />
-          {otherActiveConversationId && (
-            <div
-              className='mb-4 flex items-center gap-2 text-xs text-muted-foreground'
-              role='status'
-            >
-              此页面有另一个对话正在运行。
-              <Button
-                size='sm'
-                variant='ghost'
-                onClick={() => selectConversation(otherActiveConversationId)}
-              >
-                查看运行中的对话
-              </Button>
-            </div>
-          )}
           {hasOlderMessages && (
             <Button
               className='mb-4'
@@ -349,10 +332,10 @@ export const ChatWorkspace = ({
           placeholder={
             modelConfigurationRequired
               ? '请先配置 模型 API Key'
-              : activity === 'unknown' || (!canSend && !active)
-                ? '正在确认页面状态…'
-                : active
-                  ? '本轮完成后可继续修改'
+              : activity === 'running'
+                ? '当前页面的 Agent 运行结束后可继续发送'
+                : !canSend
+                  ? '正在确认页面状态…'
                   : '描述你想创建或修改的页面'
           }
         />

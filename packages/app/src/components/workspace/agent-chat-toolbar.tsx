@@ -13,10 +13,7 @@ export const AgentChatToolbar = ({
   agent,
   ...props
 }: WorkspaceToolbarProps & {
-  agent: Pick<
-    AgentChatSession,
-    'activity' | 'conversationId' | 'selectConversation' | 'otherActiveConversationId'
-  >;
+  agent: Pick<AgentChatSession, 'activity' | 'conversationId' | 'selectConversation'>;
 }) => (
   <PageToolbarShell
     {...props}

@@ -18,7 +18,6 @@ export type AgentChatSession = {
   activity: 'unknown' | 'idle' | 'running';
   pendingSubmission: boolean;
   canSend: boolean;
-  otherActiveConversationId: string | null;
   committedWorkingVersion: number | null;
   hasOlderMessages: boolean;
   loadingOlderMessages: boolean;
@@ -198,8 +197,6 @@ export const useAgentChat = (
         ? 'running'
         : 'idle';
   const canSend = activity === 'idle' && historyReady === pageKey;
-  const otherActiveConversationId =
-    pageRun && pageRun.conversationId !== conversationId ? pageRun.conversationId : null;
 
   const submit = useCallback(
     async (
@@ -414,7 +411,7 @@ export const useAgentChat = (
   const selectConversation = (id: string | null): boolean => {
     const operations = usePendingOperations.getState();
     if (
-      (activity !== 'idle' && !(id && id === otherActiveConversationId)) ||
+      activity !== 'idle' ||
       sending.current ||
       operations.agents[pageKey] ||
       operations.agentPreparations[pageKey] ||
@@ -434,7 +431,6 @@ export const useAgentChat = (
     state: pageActivity.error && !state.error ? { ...state, error: pageActivity.error } : state,
     activity,
     canSend,
-    otherActiveConversationId,
     committedWorkingVersion: pageActivity.committedWorkingVersion,
     hasOlderMessages,
     loadingOlderMessages,
