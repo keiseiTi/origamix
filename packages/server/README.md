@@ -290,7 +290,7 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 项目清单记录框架及 `materialSet: { id, version }`。清单丢失会阻止写入，已登记或含 `.origamix` 的目录会保留现有文件。Working、Revision 和 Apply 的未完成写入由各自服务按恢复协议处理。
 
-`database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 2`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
+`database/initialize.ts` 创建数据库结构并写入 `PRAGMA user_version = 1`。现有数据库必须匹配版本和表结构。Working 文件的格式版本为 1，`workingVersion` 随草稿更新递增。
 
 `pnpm release:version --check` 校验首版包、Schema、物料版本和模板清单。
 

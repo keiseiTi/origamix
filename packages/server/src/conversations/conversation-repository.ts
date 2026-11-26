@@ -110,28 +110,12 @@ export class ConversationRepository {
       .get();
     return row && conversationFromRow(row, this.client);
   }
-  findActive(projectId: string, pageId: string | undefined): ConversationRecord | undefined {
-    if (!pageId) throw new Error('页面 ID 缺失');
-    const row = this.client
-      .select()
-      .from(conversations)
-      .where(
-        and(
-          eq(conversations.projectId, projectKey(this.client, projectId)),
-          eq(conversations.pageId, pageKey(this.client, pageId!)),
-          eq(conversations.status, conversationStatus.encode('active')),
-        ),
-      )
-      .orderBy(desc(conversations.updatedAt))
-      .limit(1)
-      .get();
-    return row && conversationFromRow(row, this.client);
-  }
   list(
     projectId: string,
     pageId: string | undefined,
     limit = 50,
     before?: string,
+    offset = 0,
   ): ConversationRecord[] {
     return this.client
       .select()
@@ -144,8 +128,9 @@ export class ConversationRepository {
           ...(before ? [lt(conversations.updatedAt, before)] : []),
         ),
       )
-      .orderBy(desc(conversations.updatedAt))
+      .orderBy(desc(conversations.updatedAt), desc(conversations.id))
       .limit(limit)
+      .offset(offset)
       .all()
       .map((row) => conversationFromRow(row, this.client));
   }

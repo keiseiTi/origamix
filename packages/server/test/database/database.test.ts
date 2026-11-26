@@ -12,7 +12,7 @@ afterEach(async () => {
 });
 
 describe('ApplicationDatabase', () => {
-  it('creates current tables and rejects an existing v1 database without changing it', async () => {
+  it('creates the initial schema', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'origamix-db-'));
     directories.push(directory);
     const path = join(directory, 'origamix.db');
@@ -27,28 +27,6 @@ describe('ApplicationDatabase', () => {
       user_version: DATABASE_VERSION,
     });
     database.close();
-    const legacyPath = join(directory, 'legacy.db');
-    const legacy = new DatabaseSync(legacyPath);
-    legacy.exec(
-      schemaSql
-        .replace(
-          /, reported_input_tokens INTEGER NOT NULL DEFAULT 0, reported_output_tokens INTEGER NOT NULL DEFAULT 0, fully_reported_calls INTEGER NOT NULL DEFAULT 0/,
-          '',
-        )
-        .replace('CREATE INDEX idx_agent_runs_created ON agent_runs(created_at);', ''),
-    );
-    legacy.exec(
-      "PRAGMA user_version = 2; INSERT INTO projects VALUES (1, 'project_test', '/temporary', 'Keep me', 0, '2026-10-24', '2026-10-24')",
-    );
-    legacy.close();
-    expect(() => new ApplicationDatabase(legacyPath)).toThrow('数据库版本不受当前应用支持');
-    const unchanged = new DatabaseSync(legacyPath, { readOnly: true });
-    try {
-      expect(unchanged.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 });
-      expect(unchanged.prepare('SELECT name FROM projects').get()).toEqual({ name: 'Keep me' });
-    } finally {
-      unchanged.close();
-    }
   });
 
   it('contains no foreign keys in generated current-schema SQL or the database', async () => {

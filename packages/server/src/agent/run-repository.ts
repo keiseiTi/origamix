@@ -31,6 +31,7 @@ export interface AgentRunRecord {
   conversationId: string;
   userMessageId: string;
   clientRequestId: string;
+  newConversation?: true;
   baseWorkingVersion: number;
   resultWorkingVersion?: number;
   resultWorkingHash?: string;
@@ -93,6 +94,7 @@ const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
     conversationId: encodeDatabaseId('conversation', row.conversationId),
     userMessageId: encodeDatabaseId('message', row.userMessageId),
     clientRequestId: row.clientRequestId,
+    ...(row.newConversation ? { newConversation: true } : {}),
     baseWorkingVersion: row.baseWorkingVersion,
     ...(row.resultWorkingVersion === null
       ? {}
@@ -137,6 +139,7 @@ const toRow = (run: AgentRunRecord, client: DatabaseClient): typeof agentRuns.$i
   userMessageId: decodeDatabaseId('message', run.userMessageId),
   status: agentRunStatus.encode(run.status),
   budgetJson: JSON.stringify(run.budget),
+  newConversation: run.newConversation ? 1 : 0,
   resultWorkingVersion: run.resultWorkingVersion ?? null,
   resultWorkingHash: run.resultWorkingHash ?? null,
   outcome: run.outcome ?? null,

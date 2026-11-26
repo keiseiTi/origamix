@@ -67,6 +67,8 @@ export class AgentService {
   ) {}
 
   async start(request: CreateAgentRunRequest, requestId?: string): Promise<StartedAgentRun> {
+    if (!request.conversationId && (request.retryOfRunId || request.clarification))
+      throw new ApiError('重试或澄清需要指定原对话', 400);
     if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
     const project = await this.dependencies.projects.getProject(request.projectId);
     if (!project) throw notFound('项目不存在');

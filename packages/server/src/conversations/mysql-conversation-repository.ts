@@ -7,10 +7,10 @@ const documents = <T>(rows: DocumentRow[]) => rows.map(({ document }) => JSON.pa
 export class MysqlConversationRepository {
   constructor(private readonly sql: Pool | PoolConnection) {}
 
-  async list(projectId: string, pageId: string, limit: number) {
+  async list(projectId: string, pageId: string, limit: number, offset = 0) {
     const [rows] = await this.sql.execute<DocumentRow[]>(
-      'SELECT document FROM origamix_web_conversations WHERE project_id = ? AND page_id = ? ORDER BY updated_at DESC, id DESC LIMIT ?',
-      [projectId, pageId, limit],
+      'SELECT document FROM origamix_web_conversations WHERE project_id = ? AND page_id = ? ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?',
+      [projectId, pageId, limit, offset],
     );
     return documents<ConversationRecord>(rows);
   }

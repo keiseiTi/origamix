@@ -12,6 +12,7 @@ import type { ConversationRecord, StoredMessage } from './conversation-repositor
 import {
   assertMatchingRunRequest,
   createQueuedRun,
+  conversationTitle,
   type StartConversationRunInput,
 } from './conversation-service';
 import { MysqlConversationRepository } from './mysql-conversation-repository';
@@ -76,24 +77,18 @@ export class MysqlConversationService implements AgentConversations {
             input.projectId,
             pageId,
           )
-        : (await conversations.list(input.projectId, pageId, 1))[0];
+        : undefined;
       if (!conversation) {
         conversation = {
           id: `conversation_${nanoid()}`,
           projectId: input.projectId,
           pageId,
-          title: '新对话',
+          title: conversationTitle(input.content),
           status: 'active',
           createdAt: timestamp,
           updatedAt: timestamp,
         };
         await conversations.insert(conversation);
-      } else if (!input.conversationId) {
-        conversation = scopedConversation(
-          await conversations.get(conversation.id, true),
-          input.projectId,
-          pageId,
-        );
       }
       if (input.retryOfRunId) {
         const parent = await runs.get(input.retryOfRunId);
@@ -127,10 +122,10 @@ export class MysqlConversationService implements AgentConversations {
     });
   }
 
-  async list(projectId: string, pageId: string | undefined, limit = 50) {
+  async list(projectId: string, pageId: string | undefined, limit = 50, offset = 0) {
     if (!pageId || !(await this.projects.agentProjects.getPage(projectId, pageId)))
       throw notFound('页面不存在');
-    return this.repository.list(projectId, pageId, Math.min(Math.max(limit, 1), 100));
+    return this.repository.list(projectId, pageId, Math.min(Math.max(limit, 1), 100), offset);
   }
 
   async history(

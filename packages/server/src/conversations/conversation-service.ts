@@ -38,6 +38,12 @@ export interface StartConversationRunInput {
 const now = (): string => new Date().toISOString();
 const id = (prefix: string): string => `${prefix}_${nanoid()}`;
 
+export const conversationTitle = (content: MessageContent): string => {
+  const text = content.blocks.find((block) => block.type === 'text')?.text ?? '';
+  const characters = Array.from(text.trim().replace(/\s+/g, ' '));
+  return characters.slice(0, 40).join('') + (characters.length > 40 ? '…' : '') || '新对话';
+};
+
 export const createQueuedRun = (
   input: StartConversationRunInput,
   runId: string,
@@ -51,6 +57,7 @@ export const createQueuedRun = (
   conversationId: conversationId,
   userMessageId: messageId,
   clientRequestId: input.clientRequestId,
+  ...(!input.conversationId ? { newConversation: true } : {}),
   baseWorkingVersion: input.baseWorkingVersion,
   modelRef: input.modelRef,
   runKind: input.runKind,
@@ -77,7 +84,7 @@ export const assertMatchingRunRequest: (
 ) => asserts storedMessage is StoredMessage = (run, input, storedMessage) => {
   if (
     run.baseWorkingVersion !== input.baseWorkingVersion ||
-    run.conversationId !== (input.conversationId ?? run.conversationId) ||
+    (run.newConversation ? undefined : run.conversationId) !== input.conversationId ||
     run.modelRef !== input.modelRef ||
     run.runKind !== input.runKind ||
     run.retryOfRunId !== input.retryOfRunId ||
@@ -96,25 +103,20 @@ export class ConversationService {
     private readonly runs: AgentRunRepository,
   ) {}
 
-  getOrCreateActive(projectId: string, pageId: string | undefined): ConversationRecord {
+  list(
+    projectId: string,
+    pageId: string | undefined,
+    limit = 50,
+    offset = 0,
+  ): ConversationRecord[] {
     this.requirePage(projectId, pageId);
-    const active = this.conversations.findActive(projectId, pageId);
-    if (active) return active;
-    const timestamp = now();
-    return this.conversations.create({
-      id: '',
+    return this.conversations.list(
       projectId,
-      pageId: pageId!,
-      title: '新对话',
-      status: 'active',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
-  }
-
-  list(projectId: string, pageId: string | undefined, limit = 50): ConversationRecord[] {
-    this.requirePage(projectId, pageId);
-    return this.conversations.list(projectId, pageId, Math.min(Math.max(limit, 1), 100));
+      pageId,
+      Math.min(Math.max(limit, 1), 100),
+      undefined,
+      offset,
+    );
   }
 
   startRun(input: StartConversationRunInput): {
@@ -160,14 +162,14 @@ export class ConversationService {
 
     let conversation = input.conversationId
       ? this.requireConversation(input.conversationId, input.projectId, input.pageId, conversations)
-      : conversations.findActive(input.projectId, input.pageId);
+      : undefined;
     if (!conversation) {
       const timestamp = now();
       conversation = conversations.create({
         id: '',
         projectId: input.projectId,
         pageId: requireAgentTarget(input).pageId,
-        title: '新对话',
+        title: conversationTitle(input.content),
         status: 'active',
         createdAt: timestamp,
         updatedAt: timestamp,

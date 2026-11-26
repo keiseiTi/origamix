@@ -217,6 +217,41 @@ describe('Agent HTTP API', () => {
       });
       expect(history.json().data.messages).toHaveLength(1);
       expect(history.json().data.messages[0].runId).toBe(runId);
+      const startNew = (body: Record<string, unknown>) =>
+        fixture.server.inject({
+          method: 'POST',
+          url: '/api/v1/agent/runs/create',
+          headers,
+          payload: { ...payload, clientRequestId: 'new-conversation', ...body },
+        });
+      const second = await startNew({});
+      expect(second.statusCode).toBe(202);
+      expect(second.json().data.conversationId).not.toBe(conversationId);
+      const replay = await startNew({});
+      expect(replay.json().data.runId).toBe(second.json().data.runId);
+      expect(
+        (await startNew({ conversationId: second.json().data.conversationId })).statusCode,
+      ).toBe(409);
+      const listed = await fixture.server.inject({
+        method: 'POST',
+        url: '/api/v1/agent/conversations/list',
+        headers,
+        payload: { projectId: 'project_a', pageId: 'page_a' },
+      });
+      expect(
+        listed
+          .json()
+          .data.conversations.map((item: { conversationId: string }) => item.conversationId),
+      ).toEqual([second.json().data.conversationId, conversationId]);
+      const oldHistory = await fixture.server.inject({
+        method: 'POST',
+        url: '/api/v1/agent/messages/list',
+        headers,
+        payload: { projectId: 'project_a', pageId: 'page_a', conversationId },
+      });
+      expect(
+        oldHistory.json().data.messages.map((message: { runId: string }) => message.runId),
+      ).toEqual([runId]);
       const streamPromise = fixture.server.inject({
         method: 'GET',
         url: `/api/v1/projects/project_a/agent/runs/${runId}/events`,

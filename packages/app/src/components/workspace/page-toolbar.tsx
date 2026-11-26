@@ -35,6 +35,7 @@ export interface PageToolbarProps {
   pageId: string;
   navigation: 'chat' | 'edit';
   children?: ReactNode;
+  actions?: ReactNode;
   onSaveVersion: () => Promise<void>;
   onRefreshState?: () => Promise<void>;
   onApply: () => Promise<void>;
@@ -58,6 +59,7 @@ export const PageToolbarShell = ({
   pageId,
   navigation,
   children,
+  actions,
   onSaveVersion,
   onRefreshState,
   onApply,
@@ -129,6 +131,7 @@ export const PageToolbarShell = ({
         </div>
         {children}
         <div className='flex shrink-0 items-center gap-1'>
+          {actions}
           <RevisionActions
             active={active}
             saveBusy={saveBusy}

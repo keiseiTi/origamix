@@ -118,6 +118,7 @@ export const agentRuns = sqliteTable(
     reportedInputTokens: integer('reported_input_tokens').notNull().default(0),
     reportedOutputTokens: integer('reported_output_tokens').notNull().default(0),
     fullyReportedCalls: integer('fully_reported_calls').notNull().default(0),
+    newConversation: integer('new_conversation').notNull().default(0),
   },
   (table) => [
     uniqueIndex('agent_runs_run_id_unique').on(table.runId),

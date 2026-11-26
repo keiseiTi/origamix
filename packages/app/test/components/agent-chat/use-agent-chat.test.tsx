@@ -238,15 +238,18 @@ describe('Agent recovery', () => {
     });
     const first = renderHook(() => useAgentChat('project_1', pageId));
     await waitFor(() => expect(first.result.current.activity).toBe('idle'));
+    act(() => first.result.current.selectConversation(null));
+    await waitFor(() => expect(first.result.current.activity).toBe('idle'));
     await act(async () => {
       await expect(first.result.current.send('hello')).rejects.toThrow();
     });
     const original = mocks.createAgentRun.mock.calls[0]![0];
     expect(original.target.kind).toBe('page');
+    expect(original).not.toHaveProperty('conversationId');
 
     first.unmount();
     // Recovery discovers a conversation created by the ambiguous request. Retry must
-    // still omit conversationId exactly as the original request did.
+    // still omit conversationId as the original request did.
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
@@ -260,6 +263,34 @@ describe('Agent recovery', () => {
     expect(mocks.createAgentRun.mock.calls[1]![0]).toEqual(original);
     expect(usePendingOperations.getState().agents).toEqual({});
     expect(next.result.current.activity).toBe('idle');
+  });
+
+  it('keeps the selected conversation when a prior history refresh resolves late', async () => {
+    const first = { conversationId: 'conversation_1', messageId: 'message_1' };
+    const second = { conversationId: 'conversation_2', messageId: 'message_2' };
+    const stale = deferred<{ messages: (typeof first)[] }>();
+    mocks.listConversations.mockResolvedValue({ conversations: [first, second] });
+    mocks.listAllMessages
+      .mockResolvedValueOnce({ messages: [first] })
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce({ messages: [second] });
+
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(hook.result.current.state.messages).toEqual([first]));
+
+    let refresh: Promise<void>;
+    act(() => {
+      refresh = hook.result.current.refresh();
+      hook.result.current.selectConversation(second.conversationId);
+    });
+    await waitFor(() => expect(hook.result.current.state.messages).toEqual([second]));
+
+    await act(async () => {
+      stale.resolve({ messages: [first] });
+      await refresh;
+    });
+    expect(hook.result.current.conversationId).toBe(second.conversationId);
+    expect(hook.result.current.state.messages).toEqual([second]);
   });
 
   it('continues a prepared submission after closing its tab and blocks a reopened tab', async () => {

@@ -43,6 +43,7 @@ export const CreateAgentRunResponseSchema = strictObject({
 export const ListConversationsResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,
   conversations: Type.Array(ConversationSchema),
+  nextOffset: Type.Optional(Type.Integer({ minimum: 1 })),
 });
 
 export const ListMessagesResponseSchema = strictObject({

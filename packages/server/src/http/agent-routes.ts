@@ -54,44 +54,61 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     for (const stream of streams) stream.end();
   });
   const agent = input.agent;
-  {
-    const prefix = '/agent';
-    const ScopeSchema = PageScopeSchema;
-    const scopePageId = (body: { projectId: string; pageId?: string }) => body.pageId;
-    const requireOwnedRun = async (projectId: string, runId: string): Promise<AgentRunRecord> => {
-      const run = await agent.runs.get(runId);
-      if (run.projectId !== projectId || !run.pageId) throw notFound('Agent Run 不存在');
-      return run;
-    };
+  const ScopeSchema = PageScopeSchema;
+  const scopePageId = (body: { projectId: string; pageId?: string }) => body.pageId;
+  const requireOwnedRun = async (projectId: string, runId: string): Promise<AgentRunRecord> => {
+    const run = await agent.runs.get(runId);
+    if (run.projectId !== projectId || !run.pageId) throw notFound('Agent Run 不存在');
+    return run;
+  };
 
-    const ConversationScopeSchema = Type.Object(
-      { ...ScopeSchema.properties, conversationId: ConversationIdSchema },
-      { additionalProperties: false },
-    );
-    const MessageListBodySchema = Type.Object(
-      {
-        ...ConversationScopeSchema.properties,
-        afterSequence: Type.Optional(Type.Integer({ minimum: -1 })),
+  const ConversationScopeSchema = Type.Object(
+    { ...ScopeSchema.properties, conversationId: ConversationIdSchema },
+    { additionalProperties: false },
+  );
+  const MessageListBodySchema = Type.Object(
+    {
+      ...ConversationScopeSchema.properties,
+      afterSequence: Type.Optional(Type.Integer({ minimum: -1 })),
+    },
+    { additionalProperties: false },
+  );
+  const RunScopeSchema = Type.Object(
+    { projectId: ProjectIdSchema, runId: Type.String({ pattern: '^run_[A-Za-z0-9_-]+$' }) },
+    { additionalProperties: false },
+  );
+  const CancelRunBodySchema = Type.Object(
+    { ...RunScopeSchema.properties, ...CancelAgentRunRequestSchema.properties },
+    { additionalProperties: false },
+  );
+
+  server.post(
+    `/api/v1/agent/conversations/list`,
+    {
+      schema: {
+        body: Type.Object(
+          {
+            ...ScopeSchema.properties,
+            offset: Type.Optional(
+              Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 50 }),
+            ),
+          },
+          { additionalProperties: false },
+        ),
       },
-      { additionalProperties: false },
-    );
-    const RunScopeSchema = Type.Object(
-      { projectId: ProjectIdSchema, runId: Type.String({ pattern: '^run_[A-Za-z0-9_-]+$' }) },
-      { additionalProperties: false },
-    );
-    const CancelRunBodySchema = Type.Object(
-      { ...RunScopeSchema.properties, ...CancelAgentRunRequestSchema.properties },
-      { additionalProperties: false },
-    );
-
-    server.post(
-      `/api/v1${prefix}/conversations/list`,
-      { schema: { body: ScopeSchema } },
-      route<{ projectId: string; pageId?: string }>(async (request) => ({
+    },
+    route<{ projectId: string; pageId?: string; offset?: number }>(async (request) => {
+      const offset = request.body.offset ?? 0;
+      const items = await agent.conversations.list(
+        request.body.projectId,
+        scopePageId(request.body),
+        51,
+        offset,
+      );
+      return {
         version: '1',
-        conversations: (
-          await agent.conversations.list(request.body.projectId, scopePageId(request.body))
-        ).map((item) => ({
+        ...(items.length > 50 ? { nextOffset: offset + 50 } : {}),
+        conversations: items.slice(0, 50).map((item) => ({
           version: '1',
           conversationId: item.id,
           projectId: item.projectId,
@@ -102,174 +119,162 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
         })),
-      })),
-    );
-    server.post(
-      `/api/v1${prefix}/messages/list`,
-      { schema: { body: MessageListBodySchema } },
-      route<{ projectId: string; pageId?: string; conversationId: string; afterSequence?: number }>(
-        async (request) => ({
-          version: '1',
-          messages: (
-            await agent.conversations.history(
-              request.body.projectId,
-              scopePageId(request.body),
-              request.body.conversationId,
-              request.body.afterSequence ?? -1,
-            )
-          ).map((message) => ({
-            version: message.version,
-            messageId: message.messageId,
-            conversationId: message.conversationId,
-            ...(message.runId ? { runId: message.runId } : {}),
-            role: message.role,
-            content: message.content,
-            sequence: message.sequence,
-            createdAt: message.createdAt,
-          })),
-        }),
-      ),
-    );
-    server.post(
-      `/api/v1${prefix}/runs/create`,
-      { schema: { body: CreateAgentRunRequestSchema } },
-      route<Static<typeof CreateAgentRunRequestSchema>>(async (request) => {
-        const target = resolveAgentTarget(request.body);
-        if (!target || target.kind !== 'page')
-          throw new ApiError('Agent 请求目标与接口不一致', 400);
-        const started = await agent.service.start(request.body, request.requestId);
-        return {
-          version: '1',
-          runId: started.run.id,
-          run: publicRun(started.run),
-          conversationId: started.conversationId,
-          userMessageId: started.userMessageId,
-          runKind: started.run.runKind,
-          status: started.run.status,
-        };
-      }, 202),
-    );
-    server.post(
-      `/api/v1${prefix}/runs/get`,
-      { schema: { body: RunScopeSchema } },
-      route<Static<typeof RunScopeSchema>>(async (request) => ({
+      };
+    }),
+  );
+  server.post(
+    `/api/v1/agent/messages/list`,
+    { schema: { body: MessageListBodySchema } },
+    route<{ projectId: string; pageId?: string; conversationId: string; afterSequence?: number }>(
+      async (request) => ({
         version: '1',
-        run: publicRun(await requireOwnedRun(request.body.projectId, request.body.runId)),
-      })),
-    );
-    server.post(
-      `/api/v1${prefix}/runs/cancel`,
-      { schema: { body: CancelRunBodySchema } },
-      route<Static<typeof CancelRunBodySchema>>(async (request) => {
-        const run = await requireOwnedRun(request.body.projectId, request.body.runId);
-        const cancelled = await agent.service.cancel(run.id, request.body.requestId);
-        return {
-          version: '1',
-          runId: run.id,
-          status: ['cancelled', 'committing', 'completed', 'failed', 'interrupted'].includes(
-            cancelled.status,
+        messages: (
+          await agent.conversations.history(
+            request.body.projectId,
+            scopePageId(request.body),
+            request.body.conversationId,
+            request.body.afterSequence ?? -1,
           )
-            ? cancelled.status
-            : ('cancelling' as const),
-        };
+        ).map((message) => ({
+          version: message.version,
+          messageId: message.messageId,
+          conversationId: message.conversationId,
+          ...(message.runId ? { runId: message.runId } : {}),
+          role: message.role,
+          content: message.content,
+          sequence: message.sequence,
+          createdAt: message.createdAt,
+        })),
       }),
-    );
-    server.get(
-      `/api/v1/projects/:projectId${prefix}/runs/:runId/events`,
-      async (request, reply) => {
-        const { projectId, runId } = request.params as { projectId: string; runId: string };
-        const durable = await requireOwnedRun(projectId, runId);
-        if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
-        const cursor = Number(request.headers['last-event-id'] ?? -1);
-        const after =
-          Number.isSafeInteger(cursor) && cursor < Number.MAX_SAFE_INTEGER
-            ? Math.max(-1, cursor)
-            : -1;
-        const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(
-          durable.status,
-        );
-        let subscription: import('../agent/event-broker').AgentEventSubscription | undefined;
-        const write = (event: import('@origamix/shared').AgentEvent): void => {
-          if (reply.raw.destroyed || reply.raw.writableEnded) return;
-          const accepted = reply.raw.write(
-            `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
-          );
-          if (
-            !accepted ||
-            ['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(event.type)
-          ) {
-            subscription?.close();
-            reply.raw.end();
-          }
-        };
-        if (!terminal) subscription = agent.events.subscribe(runId, after, write);
-        reply.hijack();
-        // Hijacked responses bypass Fastify's normal header serialization. Copy the
-        // authenticated Origin/CORS headers installed by the request boundary.
-        for (const [name, value] of Object.entries(reply.getHeaders())) {
-          if (value !== undefined) reply.raw.setHeader(name, value);
-        }
-        reply.raw.writeHead(200, {
-          'content-type': 'text/event-stream; charset=utf-8',
-          'cache-control': 'no-cache, no-transform',
-          connection: 'keep-alive',
-          'x-accel-buffering': 'no',
-        });
-        streams.add(reply.raw);
-        const heartbeat = setInterval(() => {
-          if (
-            !reply.raw.destroyed &&
-            !reply.raw.writableEnded &&
-            !reply.raw.write(': heartbeat\n\n')
-          ) {
-            subscription?.close();
-            reply.raw.end();
-          }
-        }, 15_000);
-        heartbeat.unref();
-        reply.raw.on('close', () => {
-          input.logger?.debug({
-            event: 'agent.sse.closed',
-            requestId: request.id,
-            runId,
-            outcome: reply.raw.writableFinished ? 'ended' : 'disconnected',
-            durationMs: Math.round(reply.elapsedTime),
-          });
-          streams.delete(reply.raw);
-          clearInterval(heartbeat);
-          subscription?.close();
-        });
-        if (terminal) {
-          write({
-            version: '1',
-            eventId: after + 1,
-            sequence: after + 1,
-            type: `run.${durable.status}`,
-            runId,
-            ...agentTargetFields(durable.projectId, durable.pageId),
-            requestId: durable.clientRequestId,
-            occurredAt: durable.updatedAt,
-            payload:
-              durable.status === 'completed'
-                ? {
-                    status: 'completed',
-                    outcome: durable.outcome ?? 'answered_only',
-                    ...(durable.resultWorkingVersion
-                      ? { resultWorkingVersion: durable.resultWorkingVersion }
-                      : {}),
-                  }
-                : durable.status === 'failed'
-                  ? {
-                      status: 'failed',
-                      errorCode: durable.errorCode ?? 'INTERNAL_ERROR',
-                      safeMessage: 'Agent 请求未完成，请读取运行记录后重试',
-                    }
-                  : { status: durable.status },
-          });
-        }
-        for (const event of subscription?.replay ?? []) write(event);
-        if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
-      },
-    );
-  }
+    ),
+  );
+  server.post(
+    `/api/v1/agent/runs/create`,
+    { schema: { body: CreateAgentRunRequestSchema } },
+    route<Static<typeof CreateAgentRunRequestSchema>>(async (request) => {
+      const target = resolveAgentTarget(request.body);
+      if (!target || target.kind !== 'page') throw new ApiError('Agent 请求目标与接口不一致', 400);
+      const started = await agent.service.start(request.body, request.requestId);
+      return {
+        version: '1',
+        runId: started.run.id,
+        run: publicRun(started.run),
+        conversationId: started.conversationId,
+        userMessageId: started.userMessageId,
+        runKind: started.run.runKind,
+        status: started.run.status,
+      };
+    }, 202),
+  );
+  server.post(
+    `/api/v1/agent/runs/get`,
+    { schema: { body: RunScopeSchema } },
+    route<Static<typeof RunScopeSchema>>(async (request) => ({
+      version: '1',
+      run: publicRun(await requireOwnedRun(request.body.projectId, request.body.runId)),
+    })),
+  );
+  server.post(
+    `/api/v1/agent/runs/cancel`,
+    { schema: { body: CancelRunBodySchema } },
+    route<Static<typeof CancelRunBodySchema>>(async (request) => {
+      const run = await requireOwnedRun(request.body.projectId, request.body.runId);
+      const cancelled = await agent.service.cancel(run.id, request.body.requestId);
+      return {
+        version: '1',
+        runId: run.id,
+        status: ['cancelled', 'committing', 'completed', 'failed', 'interrupted'].includes(
+          cancelled.status,
+        )
+          ? cancelled.status
+          : ('cancelling' as const),
+      };
+    }),
+  );
+  server.get(`/api/v1/projects/:projectId/agent/runs/:runId/events`, async (request, reply) => {
+    const { projectId, runId } = request.params as { projectId: string; runId: string };
+    const durable = await requireOwnedRun(projectId, runId);
+    if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
+    const cursor = Number(request.headers['last-event-id'] ?? -1);
+    const after =
+      Number.isSafeInteger(cursor) && cursor < Number.MAX_SAFE_INTEGER ? Math.max(-1, cursor) : -1;
+    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(durable.status);
+    let subscription: import('../agent/event-broker').AgentEventSubscription | undefined;
+    const write = (event: import('@origamix/shared').AgentEvent): void => {
+      if (reply.raw.destroyed || reply.raw.writableEnded) return;
+      const accepted = reply.raw.write(
+        `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
+      );
+      if (
+        !accepted ||
+        ['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(event.type)
+      ) {
+        subscription?.close();
+        reply.raw.end();
+      }
+    };
+    if (!terminal) subscription = agent.events.subscribe(runId, after, write);
+    reply.hijack();
+    // Hijacked responses bypass Fastify's normal header serialization. Copy the
+    // authenticated Origin/CORS headers installed by the request boundary.
+    for (const [name, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) reply.raw.setHeader(name, value);
+    }
+    reply.raw.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      'x-accel-buffering': 'no',
+    });
+    streams.add(reply.raw);
+    const heartbeat = setInterval(() => {
+      if (!reply.raw.destroyed && !reply.raw.writableEnded && !reply.raw.write(': heartbeat\n\n')) {
+        subscription?.close();
+        reply.raw.end();
+      }
+    }, 15_000);
+    heartbeat.unref();
+    reply.raw.on('close', () => {
+      input.logger?.debug({
+        event: 'agent.sse.closed',
+        requestId: request.id,
+        runId,
+        outcome: reply.raw.writableFinished ? 'ended' : 'disconnected',
+        durationMs: Math.round(reply.elapsedTime),
+      });
+      streams.delete(reply.raw);
+      clearInterval(heartbeat);
+      subscription?.close();
+    });
+    if (terminal) {
+      write({
+        version: '1',
+        eventId: after + 1,
+        sequence: after + 1,
+        type: `run.${durable.status}`,
+        runId,
+        ...agentTargetFields(durable.projectId, durable.pageId),
+        requestId: durable.clientRequestId,
+        occurredAt: durable.updatedAt,
+        payload:
+          durable.status === 'completed'
+            ? {
+                status: 'completed',
+                outcome: durable.outcome ?? 'answered_only',
+                ...(durable.resultWorkingVersion
+                  ? { resultWorkingVersion: durable.resultWorkingVersion }
+                  : {}),
+              }
+            : durable.status === 'failed'
+              ? {
+                  status: 'failed',
+                  errorCode: durable.errorCode ?? 'INTERNAL_ERROR',
+                  safeMessage: 'Agent 请求未完成，请读取运行记录后重试',
+                }
+              : { status: durable.status },
+      });
+    }
+    for (const event of subscription?.replay ?? []) write(event);
+    if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
+  });
 };

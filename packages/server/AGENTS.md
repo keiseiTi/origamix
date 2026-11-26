@@ -140,4 +140,6 @@ pnpm --filter @origamix/server gate:agent
 
 - ProjectService getNavigation returns read-only runtime/page metadata. Material validation checks navigatePage against those page IDs; application configuration, shared-state actions and access-rule APIs are removed.
 
+- A page Agent Run without conversationId creates a conversation. Sending conversationId continues the scoped conversation. Persist the creation intent in the Run so a retry with the original request identity cannot change the intended conversation.
+
 - Agent first-batch efficiency: `agent/run-budget.ts` owns validated host budget profiles/overrides, persisted only for new Runs. `get_capability_manifests` shares exact paginated reads; never compact contracts. `validate_page_operations` is read-only candidate preflight and shares `prepareWorkingOperations` with final commit, including Agent executable-flow checks. Do not restore a model-facing full-Schema preflight or add a write path. `agent.model_usage` logs contain numeric measurements and Run identity only; no prompt, arguments, private content or credentials.

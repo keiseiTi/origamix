@@ -88,6 +88,35 @@ const PageSessionContent = ({
       active,
       editing: active && mode === 'edit',
     });
+  const [conversationDrafts, setConversationDrafts] = useState<Record<string, string>>({});
+  const [draftScope, setDraftScope] = useState<{
+    original: string | null;
+    selected: string | null;
+  } | null>(null);
+  const selectedDraftId =
+    draftScope && (draftScope.selected === null || draftScope.selected !== draftScope.original)
+      ? (draftScope.selected ?? 'new')
+      : null;
+  const selectConversation = (id: string | null) => {
+    if (!agent.selectConversation(id)) return false;
+    const currentConversationId = agent.conversationId;
+    if (draftScope?.selected === null && currentConversationId) {
+      // The empty conversation acquired a server ID on its first successful send.
+      // Subsequent text belongs to that conversation when revisiting it.
+      setConversationDrafts((current) => ({
+        ...current,
+        [currentConversationId]: current.new ?? '',
+        new: '',
+      }));
+    }
+    setDraftScope({
+      original: draftScope ? draftScope.original : agent.conversationId,
+      selected: id,
+    });
+    setClarificationHighlight(null);
+    return true;
+  };
+
   const setPageStatus = useWorkspaceStore((state) => state.setPageStatus);
   useImperativeHandle(editorRef, () => ({ flush: working.flush }), [working.flush]);
 
@@ -138,12 +167,20 @@ const PageSessionContent = ({
   return (
     <section className='relative flex min-w-0 flex-1 flex-col bg-white dark:bg-zinc-950'>
       <div className={mode === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-        <AgentChatToolbar {...toolbarProps} active={active && mode === 'chat'} />
+        <AgentChatToolbar
+          {...toolbarProps}
+          agent={{ ...agent, selectConversation }}
+          active={active && mode === 'chat'}
+        />
         <ChatWorkspace
           pageId={page.id}
           pageName={page.name}
-          draft={draft}
-          onDraftChange={(value) => setPageDraft(page.id, value)}
+          draft={selectedDraftId ? (conversationDrafts[selectedDraftId] ?? '') : draft}
+          onDraftChange={(value) => {
+            if (selectedDraftId)
+              setConversationDrafts((current) => ({ ...current, [selectedDraftId]: value }));
+            else setPageDraft(page.id, value);
+          }}
           session={agent}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}

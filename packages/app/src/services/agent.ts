@@ -84,8 +84,8 @@ const isAgentEvent = (value: unknown): value is AgentEvent => {
   return false;
 };
 
-export const listConversations = (projectId: string, pageId: string) =>
-  request<ListConversationsResponse>('/agent/conversations/list', { projectId, pageId });
+export const listConversations = (projectId: string, pageId: string, offset?: number) =>
+  request<ListConversationsResponse>('/agent/conversations/list', { projectId, pageId, offset });
 
 export const listMessages = (
   projectId: string,
