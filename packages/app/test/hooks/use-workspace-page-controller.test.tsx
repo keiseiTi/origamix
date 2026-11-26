@@ -24,7 +24,7 @@ describe('workspace page operations', () => {
         status: null,
       })),
       activeTabId: 'a',
-      pageDrafts: { a: 'retained draft' },
+      conversationDrafts: { a: { '': 'retained draft' } },
     });
     const onPageSelected = vi.fn();
     const firstSave = vi
@@ -42,7 +42,7 @@ describe('workspace page operations', () => {
 
     await act(async () => hook.result.current.selectPage('b'));
     expect(useWorkspaceStore.getState().activeTabId).toBe('a');
-    expect(useWorkspaceStore.getState().pageDrafts.a).toBe('retained draft');
+    expect(useWorkspaceStore.getState().conversationDrafts.a?.['']).toBe('retained draft');
     expect(useWorkspaceStore.getState().transitionError).toBe('save failed');
     expect(onPageSelected).not.toHaveBeenCalled();
     await act(async () => hook.result.current.selectPage('b'));

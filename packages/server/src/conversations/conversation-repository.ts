@@ -114,7 +114,6 @@ export class ConversationRepository {
     projectId: string,
     pageId: string | undefined,
     limit = 50,
-    before?: string,
     offset = 0,
   ): ConversationRecord[] {
     return this.client
@@ -125,7 +124,6 @@ export class ConversationRepository {
           eq(conversations.projectId, projectKey(this.client, projectId)),
           eq(conversations.pageId, pageKey(this.client, pageId!)),
           ne(conversations.status, conversationStatus.encode('deleted')),
-          ...(before ? [lt(conversations.updatedAt, before)] : []),
         ),
       )
       .orderBy(desc(conversations.updatedAt), desc(conversations.id))
@@ -243,11 +241,20 @@ export class ConversationRepository {
       .all()
       .map((row) => messageFromRow(row, this.client));
   }
-  listRecentMessages(conversationId: string, limit = 100): StoredMessage[] {
+  listRecentMessages(
+    conversationId: string,
+    limit = 100,
+    beforeSequence?: number,
+  ): StoredMessage[] {
     return this.client
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, decodeDatabaseId('conversation', conversationId)))
+      .where(
+        and(
+          eq(messages.conversationId, decodeDatabaseId('conversation', conversationId)),
+          beforeSequence === undefined ? undefined : lt(messages.sequence, beforeSequence),
+        ),
+      )
       .orderBy(desc(messages.sequence))
       .limit(limit)
       .all()

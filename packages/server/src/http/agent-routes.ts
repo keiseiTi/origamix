@@ -12,8 +12,8 @@ import { Type, type Static } from '@sinclair/typebox';
 
 import { PageScopeSchema, ProjectIdSchema } from './body-schemas';
 import type { AgentRunRecord } from '../agent/run-repository';
-import { notFound } from '../errors';
-import { ApiError } from '../errors';
+import { ApiError, notFound } from '../errors';
+import { registerAgentEventRoutes } from './agent-event-routes';
 import type { RouteRegistrationContext } from './types';
 
 const publicRun = (run: AgentRunRecord): AgentRun => ({
@@ -49,29 +49,28 @@ const publicRun = (run: AgentRunRecord): AgentRun => ({
 
 export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationContext): void => {
   if (!input.agent) return;
-  const streams = new Set<import('node:http').ServerResponse>();
-  server.addHook('preClose', async () => {
-    for (const stream of streams) stream.end();
-  });
   const agent = input.agent;
-  const ScopeSchema = PageScopeSchema;
-  const scopePageId = (body: { projectId: string; pageId?: string }) => body.pageId;
   const requireOwnedRun = async (projectId: string, runId: string): Promise<AgentRunRecord> => {
     const run = await agent.runs.get(runId);
     if (run.projectId !== projectId || !run.pageId) throw notFound('Agent Run 不存在');
     return run;
   };
 
-  const ConversationScopeSchema = Type.Object(
-    { ...ScopeSchema.properties, conversationId: ConversationIdSchema },
+  const ConversationListBodySchema = Type.Object(
+    {
+      ...PageScopeSchema.properties,
+      offset: Type.Optional(Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 50 })),
+    },
     { additionalProperties: false },
   );
   const MessageListBodySchema = Type.Object(
     {
-      ...ConversationScopeSchema.properties,
-      afterSequence: Type.Optional(Type.Integer({ minimum: -1 })),
+      ...PageScopeSchema.properties,
+      conversationId: ConversationIdSchema,
+      afterSequence: Type.Optional(Type.Integer({ minimum: -1, maximum: Number.MAX_SAFE_INTEGER })),
+      beforeSequence: Type.Optional(Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })),
     },
-    { additionalProperties: false },
+    { additionalProperties: false, not: { required: ['afterSequence', 'beforeSequence'] } },
   );
   const RunScopeSchema = Type.Object(
     { projectId: ProjectIdSchema, runId: Type.String({ pattern: '^run_[A-Za-z0-9_-]+$' }) },
@@ -83,28 +82,19 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
   );
 
   server.post(
-    `/api/v1/agent/conversations/list`,
-    {
-      schema: {
-        body: Type.Object(
-          {
-            ...ScopeSchema.properties,
-            offset: Type.Optional(
-              Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER - 50 }),
-            ),
-          },
-          { additionalProperties: false },
-        ),
-      },
-    },
-    route<{ projectId: string; pageId?: string; offset?: number }>(async (request) => {
-      const offset = request.body.offset ?? 0;
-      const items = await agent.conversations.list(
-        request.body.projectId,
-        scopePageId(request.body),
-        51,
-        offset,
-      );
+    '/api/v1/agent/pages/activity',
+    { schema: { body: PageScopeSchema } },
+    route<Static<typeof PageScopeSchema>>(async ({ body }) => ({
+      version: '1',
+      ...(await agent.service.pageActivity(body.projectId, body.pageId)),
+    })),
+  );
+  server.post(
+    '/api/v1/agent/conversations/list',
+    { schema: { body: ConversationListBodySchema } },
+    route<Static<typeof ConversationListBodySchema>>(async ({ body }) => {
+      const offset = body.offset ?? 0;
+      const items = await agent.conversations.list(body.projectId, body.pageId, 51, offset);
       return {
         version: '1',
         ...(items.length > 50 ? { nextOffset: offset + 50 } : {}),
@@ -123,30 +113,45 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
     }),
   );
   server.post(
-    `/api/v1/agent/messages/list`,
+    '/api/v1/agent/messages/list',
     { schema: { body: MessageListBodySchema } },
-    route<{ projectId: string; pageId?: string; conversationId: string; afterSequence?: number }>(
-      async (request) => ({
-        version: '1',
-        messages: (
-          await agent.conversations.history(
-            request.body.projectId,
-            scopePageId(request.body),
-            request.body.conversationId,
-            request.body.afterSequence ?? -1,
+    route<Static<typeof MessageListBodySchema>>(async ({ body }) => {
+      const { projectId, pageId, conversationId, afterSequence, beforeSequence } = body;
+      const limit = 50;
+      const recent = afterSequence === undefined;
+      const items = recent
+        ? await agent.conversations.recentHistory(
+            projectId,
+            pageId,
+            conversationId,
+            limit + 1,
+            beforeSequence,
           )
-        ).map((message) => ({
-          version: message.version,
-          messageId: message.messageId,
-          conversationId: message.conversationId,
-          ...(message.runId ? { runId: message.runId } : {}),
-          role: message.role,
-          content: message.content,
-          sequence: message.sequence,
-          createdAt: message.createdAt,
-        })),
-      }),
-    ),
+        : await agent.conversations.history(
+            projectId,
+            pageId,
+            conversationId,
+            afterSequence,
+            limit + 1,
+          );
+      const messages = recent ? items.slice(-limit) : items.slice(0, limit);
+      return {
+        version: '1',
+        hasMore: items.length > limit,
+        messages: messages.map(
+          ({ version, messageId, conversationId, runId, role, content, sequence, createdAt }) => ({
+            version,
+            messageId,
+            conversationId,
+            ...(runId ? { runId } : {}),
+            role,
+            content,
+            sequence,
+            createdAt,
+          }),
+        ),
+      };
+    }),
   );
   server.post(
     `/api/v1/agent/runs/create`,
@@ -191,90 +196,5 @@ export const registerAgentRoutes = ({ server, input, route }: RouteRegistrationC
       };
     }),
   );
-  server.get(`/api/v1/projects/:projectId/agent/runs/:runId/events`, async (request, reply) => {
-    const { projectId, runId } = request.params as { projectId: string; runId: string };
-    const durable = await requireOwnedRun(projectId, runId);
-    if (streams.size >= 256) throw new ApiError('事件订阅过多，请稍后重试', 429);
-    const cursor = Number(request.headers['last-event-id'] ?? -1);
-    const after =
-      Number.isSafeInteger(cursor) && cursor < Number.MAX_SAFE_INTEGER ? Math.max(-1, cursor) : -1;
-    const terminal = ['completed', 'failed', 'cancelled', 'interrupted'].includes(durable.status);
-    let subscription: import('../agent/event-broker').AgentEventSubscription | undefined;
-    const write = (event: import('@origamix/shared').AgentEvent): void => {
-      if (reply.raw.destroyed || reply.raw.writableEnded) return;
-      const accepted = reply.raw.write(
-        `id: ${event.eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`,
-      );
-      if (
-        !accepted ||
-        ['run.completed', 'run.failed', 'run.cancelled', 'run.interrupted'].includes(event.type)
-      ) {
-        subscription?.close();
-        reply.raw.end();
-      }
-    };
-    if (!terminal) subscription = agent.events.subscribe(runId, after, write);
-    reply.hijack();
-    // Hijacked responses bypass Fastify's normal header serialization. Copy the
-    // authenticated Origin/CORS headers installed by the request boundary.
-    for (const [name, value] of Object.entries(reply.getHeaders())) {
-      if (value !== undefined) reply.raw.setHeader(name, value);
-    }
-    reply.raw.writeHead(200, {
-      'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-cache, no-transform',
-      connection: 'keep-alive',
-      'x-accel-buffering': 'no',
-    });
-    streams.add(reply.raw);
-    const heartbeat = setInterval(() => {
-      if (!reply.raw.destroyed && !reply.raw.writableEnded && !reply.raw.write(': heartbeat\n\n')) {
-        subscription?.close();
-        reply.raw.end();
-      }
-    }, 15_000);
-    heartbeat.unref();
-    reply.raw.on('close', () => {
-      input.logger?.debug({
-        event: 'agent.sse.closed',
-        requestId: request.id,
-        runId,
-        outcome: reply.raw.writableFinished ? 'ended' : 'disconnected',
-        durationMs: Math.round(reply.elapsedTime),
-      });
-      streams.delete(reply.raw);
-      clearInterval(heartbeat);
-      subscription?.close();
-    });
-    if (terminal) {
-      write({
-        version: '1',
-        eventId: after + 1,
-        sequence: after + 1,
-        type: `run.${durable.status}`,
-        runId,
-        ...agentTargetFields(durable.projectId, durable.pageId),
-        requestId: durable.clientRequestId,
-        occurredAt: durable.updatedAt,
-        payload:
-          durable.status === 'completed'
-            ? {
-                status: 'completed',
-                outcome: durable.outcome ?? 'answered_only',
-                ...(durable.resultWorkingVersion
-                  ? { resultWorkingVersion: durable.resultWorkingVersion }
-                  : {}),
-              }
-            : durable.status === 'failed'
-              ? {
-                  status: 'failed',
-                  errorCode: durable.errorCode ?? 'INTERNAL_ERROR',
-                  safeMessage: 'Agent 请求未完成，请读取运行记录后重试',
-                }
-              : { status: durable.status },
-      });
-    }
-    for (const event of subscription?.replay ?? []) write(event);
-    if (agent.events.isTerminal(runId) && !reply.raw.writableEnded) reply.raw.end();
-  });
+  registerAgentEventRoutes(server, agent.events, requireOwnedRun, input.logger);
 };

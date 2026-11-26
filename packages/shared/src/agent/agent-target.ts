@@ -10,8 +10,6 @@ export const AgentTargetSchema = Type.Object(
   { additionalProperties: false },
 );
 export type AgentTarget = Static<typeof AgentTargetSchema>;
-export const SessionTargetSchema = AgentTargetSchema;
-export type SessionTarget = AgentTarget;
 export const withAgentTarget = <T extends TObject>(schema: T) =>
   Type.Intersect([
     schema,

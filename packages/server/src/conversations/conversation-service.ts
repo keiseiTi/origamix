@@ -110,13 +110,7 @@ export class ConversationService {
     offset = 0,
   ): ConversationRecord[] {
     this.requirePage(projectId, pageId);
-    return this.conversations.list(
-      projectId,
-      pageId,
-      Math.min(Math.max(limit, 1), 100),
-      undefined,
-      offset,
-    );
+    return this.conversations.list(projectId, pageId, Math.min(Math.max(limit, 1), 100), offset);
   }
 
   startRun(input: StartConversationRunInput): {
@@ -270,10 +264,15 @@ export class ConversationService {
     pageId: string | undefined,
     conversationId: string,
     limit = 500,
+    beforeSequence?: number,
   ): StoredMessage[] {
     this.requirePage(projectId, pageId);
     this.requireConversation(conversationId, projectId, pageId);
-    return this.conversations.listRecentMessages(conversationId, Math.min(Math.max(limit, 1), 500));
+    return this.conversations.listRecentMessages(
+      conversationId,
+      Math.min(Math.max(limit, 1), 500),
+      beforeSequence,
+    );
   }
 
   private existingStartResult(

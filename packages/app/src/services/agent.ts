@@ -1,4 +1,8 @@
-import { validateCreateAgentRunResponse } from '@origamix/shared';
+import {
+  validateAgentEvent,
+  validateCreateAgentRunResponse,
+  validateGetPageAgentActivityResponse,
+} from '@origamix/shared';
 import { observeWebSession } from './web-session';
 import type {
   AgentEvent,
@@ -6,6 +10,7 @@ import type {
   CreateAgentRunRequest,
   CreateAgentRunResponse,
   GetAgentRunResponse,
+  GetPageAgentActivityResponse,
   ListConversationsResponse,
   ListMessagesResponse,
 } from '@origamix/shared';
@@ -16,73 +21,13 @@ import {
   subscribeBackendStatus,
 } from './request';
 
-const isAgentEvent = (value: unknown): value is AgentEvent => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const event = value as Record<string, unknown>;
-  const validEnvelope =
-    event['version'] === '1' &&
-    Number.isSafeInteger(event['eventId']) &&
-    Number(event['eventId']) >= 0 &&
-    Number.isSafeInteger(event['sequence']) &&
-    Number(event['sequence']) >= 0 &&
-    typeof event['type'] === 'string' &&
-    event['type'].length > 0 &&
-    typeof event['runId'] === 'string' &&
-    /^run_[A-Za-z0-9_-]+$/.test(event['runId']) &&
-    typeof event['pageId'] === 'string' &&
-    /^page_[A-Za-z0-9_-]+$/.test(event['pageId']) &&
-    typeof event['requestId'] === 'string' &&
-    event['requestId'].length > 0 &&
-    typeof event['occurredAt'] === 'string' &&
-    !Number.isNaN(Date.parse(event['occurredAt']));
-  if (!validEnvelope) return false;
-  const payload = event['payload'];
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
-  const record = payload as Record<string, unknown>;
-  if (event['type'] === 'run.queued') return record['status'] === 'queued';
-  if (event['type'] === 'run.progress') {
-    return (
-      typeof record['status'] === 'string' &&
-      record['phase'] === record['status'] &&
-      typeof record['message'] === 'string'
-    );
-  }
-  if (event['type'] === 'working.committed') {
-    return (
-      Number.isSafeInteger(record['baseWorkingVersion']) &&
-      Number.isSafeInteger(record['resultWorkingVersion']) &&
-      Number.isSafeInteger(record['operationCount'])
-    );
-  }
-  if (event['type'] === 'clarification.available') {
-    return (
-      record['status'] === 'completed' &&
-      record['outcome'] === 'needs_clarification' &&
-      Boolean(record['clarification'])
-    );
-  }
-  if (event['type'] === 'tool.activity') {
-    return typeof record['toolName'] === 'string' && typeof record['phase'] === 'string';
-  }
-  if (event['type'] === 'run.completed') {
-    return (
-      record['status'] === 'completed' &&
-      typeof record['outcome'] === 'string' &&
-      (record['response'] === undefined || typeof record['response'] === 'string')
-    );
-  }
-  if (event['type'] === 'run.failed') {
-    return (
-      record['status'] === 'failed' &&
-      typeof record['errorCode'] === 'string' &&
-      typeof record['safeMessage'] === 'string'
-    );
-  }
-  if (event['type'] === 'run.cancelled' || event['type'] === 'run.interrupted') {
-    return record['status'] === event['type'].slice(4);
-  }
-  return false;
-};
+export const getPageAgentActivity = (projectId: string, pageId: string) =>
+  request<GetPageAgentActivityResponse>(
+    '/agent/pages/activity',
+    { projectId, pageId },
+    (value): value is GetPageAgentActivityResponse =>
+      validateGetPageAgentActivityResponse(value).valid,
+  );
 
 export const listConversations = (projectId: string, pageId: string, offset?: number) =>
   request<ListConversationsResponse>('/agent/conversations/list', { projectId, pageId, offset });
@@ -91,32 +36,14 @@ export const listMessages = (
   projectId: string,
   pageId: string,
   conversationId: string,
-  afterSequence = -1,
+  cursor?: { afterSequence: number } | { beforeSequence: number },
 ) =>
   request<ListMessagesResponse>('/agent/messages/list', {
     projectId,
     pageId,
     conversationId,
-    afterSequence,
+    ...cursor,
   });
-
-export const listAllMessages = async (
-  projectId: string,
-  pageId: string,
-  conversationId: string,
-): Promise<ListMessagesResponse> => {
-  const messages: ListMessagesResponse['messages'] = [];
-  let afterSequence = -1;
-  while (true) {
-    const page = await listMessages(projectId, pageId, conversationId, afterSequence);
-    messages.push(...page.messages);
-    if (page.messages.length < 100) break;
-    const next = page.messages.at(-1)?.sequence;
-    if (next === undefined || next <= afterSequence) break;
-    afterSequence = next;
-  }
-  return { version: '1', messages };
-};
 
 export const createAgentRun = (input: CreateAgentRunRequest) =>
   request<CreateAgentRunResponse>(
@@ -199,8 +126,8 @@ export const subscribeAgentEvents = (
         } catch {
           continue;
         }
-        if (!active() || !isAgentEvent(value)) continue;
-        const event = value;
+        if (!active() || !validateAgentEvent(value).valid) continue;
+        const event = value as AgentEvent;
         if (event.runId !== runId || event.eventId <= lastEventId) continue;
         lastEventId = event.eventId;
         options.onEvent(event);
@@ -239,7 +166,7 @@ export const subscribeAgentEvents = (
 export const agentService = {
   listConversations,
   listMessages,
-  listAllMessages,
+  getPageAgentActivity,
   createAgentRun,
   getAgentRun,
   cancelAgentRun,

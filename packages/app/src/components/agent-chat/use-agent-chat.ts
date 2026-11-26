@@ -1,19 +1,15 @@
-import type { RuntimeRepairEvidence } from '@origamix/shared';
+import type { AgentRun, CreateAgentRunRequest, RuntimeRepairEvidence } from '@origamix/shared';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { AgentEvent, AgentRun, CreateAgentRunRequest } from '@origamix/shared';
-import {
-  cancelAgentRun,
-  createAgentRun,
-  getAgentRun,
-  listConversations,
-  listAllMessages,
-  subscribeAgentEvents,
-} from '@/services/agent';
+import { cancelAgentRun, createAgentRun, getAgentRun, listConversations } from '@/services/agent';
 import { pageOperationKey, usePendingOperations } from '@/store/pending-operations';
 import { isMutationRejected, subscribeBackendStatus } from '@/services/request';
 import { schemaService } from '@/services/schema';
 import { agentChatReducer, initialAgentChatState, isRunActive } from './agent-chat-state';
 import { uniqueId } from '@/utils';
+import { useWorkspaceStore } from '@/store/workspace';
+import { useConversationMessages } from './use-conversation-messages';
+import { usePageAgentActivity } from './use-page-agent-activity';
+import { useAgentEvents } from './use-agent-events';
 
 const requestId = (): string => uniqueId();
 
@@ -21,6 +17,12 @@ export type AgentChatSession = {
   state: ReturnType<typeof agentChatReducer>;
   activity: 'unknown' | 'idle' | 'running';
   pendingSubmission: boolean;
+  canSend: boolean;
+  otherActiveConversationId: string | null;
+  committedWorkingVersion: number | null;
+  hasOlderMessages: boolean;
+  loadingOlderMessages: boolean;
+  loadOlderMessages: () => Promise<void>;
   conversationId: string | null;
   selectConversation: (id: string | null) => boolean;
   clarificationExpired: boolean;
@@ -34,6 +36,7 @@ export type AgentChatSession = {
 export const useAgentChat = (
   projectId: string,
   pageId: string,
+  { active = true, workingVersion }: { active?: boolean; workingVersion?: number } = {},
 ): AgentChatSession & {
   repair: (evidence: RuntimeRepairEvidence, workingVersion: number) => Promise<void>;
 } => {
@@ -45,23 +48,27 @@ export const useAgentChat = (
   const pageKey = pageOperationKey(projectId, pageId);
   const pending = usePendingOperations((value) => value.agents[pageKey]);
   const preparing = usePendingOperations((value) => value.agentPreparations[pageKey]);
-  const [verifiedPageKey, setVerifiedPageKey] = useState<string | null>(null);
-  // Undefined selects the most recent conversation on initial recovery.
-  // Null represents an explicitly opened empty conversation.
+  const pageActivity = usePageAgentActivity(projectId, pageId, active);
+  const { refresh: refreshPageActivity, acceptRun } = pageActivity;
+  const [historyReady, setHistoryReady] = useState<string | null>(null);
+  // Undefined selects the latest conversation. Null is an explicit empty conversation.
   const selection = useRef<string | null | undefined>(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  const [latestWorking, setLatestWorking] = useState<{
-    pageKey: string;
-    version: number;
-  } | null>(null);
-
   // A page tab owns its Hook instance. This token also expires callbacks from
   // an earlier effect lifecycle, including a StrictMode cleanup and setup.
   const captureSession = useCallback(() => {
     const token = sessionToken.current;
     return () => token !== null && sessionToken.current === token;
   }, []);
+
+  const {
+    readMessages,
+    retainMessages,
+    clearMessages,
+    loadOlderMessages,
+    hasOlderMessages,
+    loadingOlderMessages,
+  } = useConversationMessages(projectId, pageId, captureSession, dispatch);
 
   const loadAuthority = useCallback(async (): Promise<void> => {
     const isSessionCurrent = captureSession();
@@ -74,51 +81,59 @@ export const useAgentChat = (
       if (selected === undefined) {
         const listed = await listConversations(projectId, pageId);
         if (!isAuthorityCurrent()) return;
-        selected = listed.conversations[0]?.conversationId;
+        selected = listed.conversations[0]?.conversationId ?? null;
       }
-      setConversationId(selected ?? null);
       if (!selected) {
-        setVerifiedPageKey(pageKey);
+        selection.current = null;
+        setConversationId(null);
+        setHistoryReady(pageKey);
         dispatch({ type: 'history.loaded', messages: [] });
         return;
       }
-      const history = await listAllMessages(projectId, pageId, selected);
+      const history = await readMessages(selected, isAuthorityCurrent);
+      if (!isAuthorityCurrent()) return;
       const lastRunId = [...history.messages].reverse().find((message) => message.runId)?.runId;
       let run: AgentRun | null = null;
       if (lastRunId) run = (await getAgentRun(projectId, lastRunId)).run;
       if (isAuthorityCurrent()) {
         selection.current = selected;
-        setVerifiedPageKey(pageKey);
-        dispatch({ type: 'history.loaded', messages: history.messages, run });
+        setConversationId(selected);
+        setHistoryReady(pageKey);
+        dispatch({ type: 'history.loaded', messages: retainMessages(history), run });
       }
     } catch (error) {
-      if (isAuthorityCurrent())
+      if (isAuthorityCurrent()) {
+        setHistoryReady(null);
         dispatch({
           type: 'history.failed',
           message: error instanceof Error ? error.message : '无法加载对话记录',
         });
+      }
     }
-  }, [pageId, projectId, pageKey, captureSession]);
+  }, [projectId, pageId, pageKey, captureSession, readMessages, retainMessages]);
 
   useEffect(() => {
     sessionToken.current = Symbol();
     selection.current = undefined;
     lastSubmission.current = null;
-    dispatch({ type: 'reset' });
     // Cancel the initial load when StrictMode immediately disposes the mount.
     const initial = window.setTimeout(() => {
+      setConversationId(null);
+      setHistoryReady(null);
+      clearMessages();
+      dispatch({ type: 'reset' });
       void loadAuthority();
     }, 0);
     return () => {
       window.clearTimeout(initial);
       sessionToken.current = null;
     };
-  }, [loadAuthority]);
+  }, [clearMessages, loadAuthority]);
 
   useEffect(
     () =>
       subscribeBackendStatus((status) => {
-        setVerifiedPageKey(null);
+        setHistoryReady(null);
         authorityRequest.current += 1;
         if (status === 'ready') void loadAuthority();
         else dispatch({ type: 'connection.changed', connection: 'recovering' });
@@ -138,91 +153,53 @@ export const useAgentChat = (
           // A request initiated by an unmounted view has settled. Recheck the backend
           // before releasing the new view's editing lock.
           selection.current = undefined;
-          setVerifiedPageKey(null);
-          void loadAuthority();
+          clearMessages();
+          setHistoryReady(null);
+          void Promise.all([loadAuthority(), refreshPageActivity()]);
         }
       }),
-    [pageKey, loadAuthority],
+    [clearMessages, pageKey, loadAuthority, refreshPageActivity],
   );
 
   const activeRunId = state.run && isRunActive(state.stage) ? state.run.runId : null;
   const clarification = state.run?.clarification;
 
-  useEffect(() => {
-    if (!clarification) return;
-    let disposed = false;
-    const refresh = () => {
-      void schemaService
-        .workingState(projectId, pageId)
-        .then((working) => {
-          if (!disposed) setLatestWorking({ pageKey, version: working.workingVersion });
-        })
-        .catch(() => undefined);
-    };
-    refresh();
-    return () => {
-      disposed = true;
-    };
-  }, [clarification, pageId, pageKey, projectId]);
+  useAgentEvents({
+    projectId,
+    pageId,
+    runId: activeRunId,
+    lastEventId: state.lastEventId,
+    onWorkingCommitted: pageActivity.observeCommit,
+    dispatch,
+    reconcile: async (terminal) => {
+      if (terminal) setHistoryReady(null);
+      await Promise.all([loadAuthority(), refreshPageActivity(true)]);
+    },
+  });
 
+  const observedRunId = pageActivity.snapshot?.activeRun?.runId;
+  const observedConversationId = pageActivity.snapshot?.activeRun?.conversationId;
+  const selectedRunId = state.run?.runId;
   useEffect(() => {
-    if (!activeRunId) return;
-    dispatch({ type: 'connection.changed', connection: 'connecting' });
-    const afterEventId = state.lastEventId >= 0 ? state.lastEventId : undefined;
-    const isSessionCurrent = captureSession();
-    let disposed = false;
-    let terminalReceived = false;
-    let timer: number | undefined;
-    const isSubscriptionCurrent = () => !disposed && isSessionCurrent();
-    const reconnect = () => {
-      if (!isSubscriptionCurrent()) return;
-      dispatch({ type: 'connection.changed', connection: 'recovering' });
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        if (isSubscriptionCurrent())
-          void loadAuthority().finally(() => {
-            if (isSubscriptionCurrent()) setReconnectAttempt((value) => value + 1);
-          });
-      }, 750);
-    };
-    const unsubscribe = subscribeAgentEvents(projectId, activeRunId, {
-      afterEventId,
-      onOpen: () => {
-        if (isSubscriptionCurrent())
-          dispatch({ type: 'connection.changed', connection: 'connected' });
-      },
-      onEvent: (event: AgentEvent) => {
-        if (!isSubscriptionCurrent()) return;
-        if (event.target && (event.target.kind !== 'page' || event.target.projectId !== projectId))
-          return;
-        dispatch({ type: 'event.received', event });
-        if (
-          event.type === 'run.completed' ||
-          event.type === 'run.failed' ||
-          event.type === 'run.cancelled' ||
-          event.type === 'run.interrupted'
-        ) {
-          terminalReceived = true;
-          setVerifiedPageKey(null);
-          void loadAuthority();
-        }
-      },
-      onError: () => {
-        if (!terminalReceived) reconnect();
-      },
-      onClose: () => {
-        if (!terminalReceived) reconnect();
-      },
-    });
-    return () => {
-      disposed = true;
-      window.clearTimeout(timer);
-      unsubscribe();
-    };
-    // Event ids are per Run. The current cursor is captured only when opening a stream;
-    // received deltas must not tear down and recreate the same connection.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRunId, loadAuthority, projectId, reconnectAttempt, captureSession]);
+    if (
+      !sending.current &&
+      conversationId &&
+      conversationId === observedConversationId &&
+      observedRunId !== selectedRunId
+    )
+      void loadAuthority();
+  }, [conversationId, observedRunId, observedConversationId, selectedRunId, loadAuthority]);
+
+  const pageRun = pageActivity.snapshot?.activeRun ?? null;
+  const activity =
+    !pageActivity.snapshot || pending || preparing
+      ? 'unknown'
+      : pageRun || activeRunId
+        ? 'running'
+        : 'idle';
+  const canSend = activity === 'idle' && historyReady === pageKey;
+  const otherActiveConversationId =
+    pageRun && pageRun.conversationId !== conversationId ? pageRun.conversationId : null;
 
   const submit = useCallback(
     async (
@@ -246,8 +223,7 @@ export const useAgentChat = (
         operations.agentPreparations[pageKey]
       )
         throw new Error('请求仍在处理中，请稍后重试');
-      if (!retryInput && (verifiedPageKey !== pageKey || isRunActive(state.stage)))
-        throw new Error('请等待页面运行状态确认后再发送');
+      if (!retryInput && !canSend) throw new Error('请等待页面运行状态确认后再发送');
       if (!retryInput && operations.agents[pageKey])
         throw new Error('上次发送结果待确认，请先重试');
       const preparationId = retryInput ? null : requestId();
@@ -257,21 +233,23 @@ export const useAgentChat = (
       dispatch({ type: 'submission.started' });
       authorityRequest.current += 1;
       const submissionAuthorityRequest = authorityRequest.current;
-      setVerifiedPageKey(null);
+      setHistoryReady(null);
       const isSessionCurrent = captureSession();
+      const intendedConversation = selection.current;
       let input: CreateAgentRunRequest | undefined;
       let accepted = false;
       try {
-        const working = retryInput
-          ? undefined
-          : await schemaService.workingState(projectId, pageId);
-        const baseWorkingVersion = retryInput?.baseWorkingVersion ?? working!.workingVersion;
-        if (
-          submission.repair &&
-          (working?.workingVersion !== submission.repair.workingVersion ||
-            working.workingHash !== submission.repair.evidence.workingHash)
-        )
-          throw new Error('预览已过期，请刷新后重现故障。');
+        let baseWorkingVersion = retryInput?.baseWorkingVersion;
+        if (baseWorkingVersion === undefined) {
+          const working = await schemaService.workingState(projectId, pageId);
+          baseWorkingVersion = working.workingVersion;
+          if (
+            submission.repair &&
+            (working.workingVersion !== submission.repair.workingVersion ||
+              working.workingHash !== submission.repair.evidence.workingHash)
+          )
+            throw new Error('预览已过期，请刷新后重现故障。');
+        }
         const latest = usePendingOperations.getState().agents[pageKey];
         if (latest?.inFlight || (!retryInput && latest))
           throw new Error('请求仍在处理中，请稍后重试');
@@ -280,7 +258,7 @@ export const useAgentChat = (
           projectId,
           pageId,
           target: { kind: 'page' as const, projectId, pageId },
-          ...(selection.current ? { conversationId: selection.current } : {}),
+          ...(intendedConversation ? { conversationId: intendedConversation } : {}),
           clientRequestId: requestId(),
           baseWorkingVersion,
           content: {
@@ -304,34 +282,46 @@ export const useAgentChat = (
           text: content,
           repair: isRepair,
         };
+        useWorkspaceStore
+          .getState()
+          .settleConversationDraft(
+            pageId,
+            input.conversationId ?? null,
+            created.conversationId,
+            !isRepair && !input.clarification && !input.retryOfRunId ? content : undefined,
+          );
         selection.current = created.conversationId;
         setConversationId(created.conversationId);
+        acceptRun({ ...created.run, conversationId: created.conversationId });
         const replayEvents = isRunActive(created.status);
         // The create response includes the Run snapshot, so subscribe before
         // loading message history or making another backend state request.
         const { run } = created;
         if (replayEvents) dispatch({ type: 'run.queued', run });
-        const history = await listAllMessages(projectId, pageId, created.conversationId);
+        const isSubmissionCurrent = () =>
+          isSessionCurrent() && authorityRequest.current === submissionAuthorityRequest;
+        const history = await readMessages(created.conversationId, isSubmissionCurrent);
         // A terminal SSE event may have started a newer backend state reload while
         // this initial reconciliation was in flight. Never let this older
         // snapshot overwrite the persisted final assistant message.
-        if (!isSessionCurrent() || authorityRequest.current !== submissionAuthorityRequest) return;
-        setVerifiedPageKey(pageKey);
+        if (!isSubmissionCurrent()) return;
+        const reconciled = retainMessages(history);
+        setHistoryReady(pageKey);
         dispatch({
           type: 'history.loaded',
           messages: replayEvents
-            ? history.messages.filter(
+            ? reconciled.filter(
                 (message) => message.runId !== created.runId || message.role !== 'assistant',
               )
-            : history.messages,
+            : reconciled,
           run,
           preserveStream: replayEvents,
         });
       } catch (error) {
         const rejected = !input || isMutationRejected(error);
         if (input && !accepted) operations.finishAgent(pageKey, input.clientRequestId, rejected);
-        if (isSessionCurrent()) {
-          setVerifiedPageKey(null);
+        if (isSessionCurrent() && authorityRequest.current === submissionAuthorityRequest) {
+          setHistoryReady(null);
           dispatch({
             type: 'history.failed',
             message: accepted
@@ -341,6 +331,7 @@ export const useAgentChat = (
                 : '发送失败，请重试。',
           });
           if (accepted || (isRepair && rejected)) void loadAuthority();
+          if (rejected) void refreshPageActivity(true);
         }
         if (accepted) return;
         throw error;
@@ -349,11 +340,23 @@ export const useAgentChat = (
         sending.current = false;
       }
     },
-    [pageId, projectId, pageKey, verifiedPageKey, state.stage, loadAuthority, captureSession],
+    [
+      acceptRun,
+      pageId,
+      projectId,
+      pageKey,
+      canSend,
+      loadAuthority,
+      captureSession,
+      readMessages,
+      refreshPageActivity,
+      retainMessages,
+    ],
   );
 
   const send = useCallback((text: string) => submit({ text }), [submit]);
 
+  const [rejectedClarification, setRejectedClarification] = useState<string | null>(null);
   const selectClarification = useCallback(
     async (elementId: string): Promise<void> => {
       const clarification = state.run?.clarification;
@@ -364,6 +367,7 @@ export const useAgentChat = (
       const working = await schemaService.workingState(projectId, pageId);
       if (!isSessionCurrent() || authority !== authorityRequest.current) return;
       if (working.workingVersion !== clarification.baseWorkingVersion) {
+        setRejectedClarification(clarification.clarificationId);
         throw new Error('选项已过期，请重新描述你的需求');
       }
       await submit({
@@ -380,9 +384,10 @@ export const useAgentChat = (
 
   const cancel = useCallback(async (): Promise<void> => {
     if (!state.run || !isRunActive(state.stage)) return;
+    const isSessionCurrent = captureSession();
     await cancelAgentRun(projectId, state.run.runId, requestId());
-    await loadAuthority();
-  }, [loadAuthority, projectId, state.run, state.stage]);
+    if (isSessionCurrent()) await Promise.all([loadAuthority(), refreshPageActivity(true)]);
+  }, [captureSession, loadAuthority, projectId, refreshPageActivity, state.run, state.stage]);
 
   const retry = useCallback(async (): Promise<void> => {
     const request = usePendingOperations.getState().agents[pageKey];
@@ -396,27 +401,20 @@ export const useAgentChat = (
     }
     const submitted = lastSubmission.current;
     if (
-      verifiedPageKey === pageKey &&
+      canSend &&
       state.run &&
       submitted?.runId === state.run.runId &&
       !submitted.repair &&
       ['failed', 'cancelled', 'interrupted'].includes(state.run.status)
     ) {
       await submit({ text: submitted.text, retryOfRunId: state.run.runId });
-    } else await loadAuthority();
-  }, [pageKey, verifiedPageKey, loadAuthority, state.run, submit]);
-
-  const activity =
-    verifiedPageKey !== pageKey || pending || preparing
-      ? 'unknown'
-      : isRunActive(state.stage)
-        ? 'running'
-        : 'idle';
+    } else await Promise.all([loadAuthority(), refreshPageActivity(true)]);
+  }, [canSend, pageKey, loadAuthority, refreshPageActivity, state.run, submit]);
 
   const selectConversation = (id: string | null): boolean => {
     const operations = usePendingOperations.getState();
     if (
-      activity !== 'idle' ||
+      (activity !== 'idle' && !(id && id === otherActiveConversationId)) ||
       sending.current ||
       operations.agents[pageKey] ||
       operations.agentPreparations[pageKey] ||
@@ -425,22 +423,29 @@ export const useAgentChat = (
       return false;
     selection.current = id;
     setConversationId(id);
-    setVerifiedPageKey(null);
+    clearMessages();
+    setHistoryReady(null);
     dispatch({ type: 'reset' });
     void loadAuthority();
     return true;
   };
 
   return {
-    state,
+    state: pageActivity.error && !state.error ? { ...state, error: pageActivity.error } : state,
     activity,
+    canSend,
+    otherActiveConversationId,
+    committedWorkingVersion: pageActivity.committedWorkingVersion,
+    hasOlderMessages,
+    loadingOlderMessages,
+    loadOlderMessages,
     conversationId,
     selectConversation,
     pendingSubmission: Boolean(pending && !pending.inFlight),
     clarificationExpired: Boolean(
       clarification &&
-      latestWorking?.pageKey === pageKey &&
-      latestWorking.version !== clarification.baseWorkingVersion,
+      (rejectedClarification === clarification.clarificationId ||
+        (workingVersion !== undefined && workingVersion !== clarification.baseWorkingVersion)),
     ),
     send,
     repair: (evidence: RuntimeRepairEvidence, workingVersion: number) =>
@@ -452,8 +457,7 @@ export const useAgentChat = (
     cancel,
     retry,
     refresh: async () => {
-      setVerifiedPageKey(null);
-      await loadAuthority();
+      await Promise.all([loadAuthority(), refreshPageActivity(true)]);
     },
   };
 };

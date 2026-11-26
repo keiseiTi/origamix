@@ -92,7 +92,9 @@ test/                       核心流与架构测试；fixtures/ 放假引擎和
 
 ### Agent Run
 
-`src/http/agent-routes.ts` → `agent/agent-service.ts#start` → 路由意图并由 ConversationService 创建消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
+`POST /api/v1/agent/pages/activity` 按项目与页面读取活动 Run 身份和最新已记录的 Agent Working 版本。会话和消息继续按页面及会话归属读取。`POST /api/v1/agent/messages/list` 默认返回最近一页，可用 `beforeSequence` 向前翻页，或用 `afterSequence` 增量对账。每页最多 50 条，按消息序号升序返回，并附 `hasMore`。
+
+`src/http/agent-routes.ts` → `agent/agent-service.ts#start` → 校验页面、基线与并发，由会话服务创建用户消息和 Run → `agent/run-executor.ts#execute` → 上下文、模型与工具执行 → 消息和 Run 状态更新。
 
 Agent 仅通过终态工具 `src/agent/tools/complete-page-run.ts` 提交完整的版本化 Operation Batch，并原子更新 Working Schema，不自动创建 Revision。`src/agent/event-broker.ts` 为事件订阅提供通道。启动时通过 `src/agent/run-recovery.ts` 恢复未完成 Run 的持久化状态，不恢复模型请求。
 
@@ -140,7 +142,7 @@ Agent 写入回执由现有 Working Store 管理，位于页面自己的 `.origa
 
 `AgentService.start(request)` 是唯一运行启动入口。HTTP 立即返回 Run 标识；进程内测试可等待返回对象的 `completion`。同一请求的并发调用共享一次执行；已完成 Run 的重放返回持久化记录，不会重新路由或执行模型。
 
-Agent SSE 通过 `Last-Event-ID` 请求头恢复订阅。Agent SSE 只发布共享协议定义的阶段进度、脱敏工具活动、Working 提交、结构化澄清与 Run 终态事件。阶段变化立即发布安全固定文案，活动 Run 每 4 秒可重复发布当前中性状态；这些心跳不写入消息、不调用模型，也不参与恢复或成功判定。断线后的权威状态来自持久化 Run、Message 与 Working，而不是进程内事件重放。
+Agent SSE 通过 `Last-Event-ID` 请求头恢复订阅。Agent SSE 只发布共享协议定义的阶段进度、脱敏工具活动、Working 提交、结构化澄清与 Run 终态事件。阶段变化立即发布安全固定文案，SSE 每 15 秒发送连接保活注释。断线后的权威状态来自持久化 Run、Message 与 Working，而不是进程内事件重放。
 
 `needs_clarification` 的候选必须存在于该 Run 基线 Working Schema。后续选择请求携带来源 Run、`clarificationId` 和 Element ID；Server 会再次核对项目、页面、会话、Working Version 与候选集合，过期或跨页面选择不会启动新 Run。
 
@@ -253,11 +255,11 @@ curl --fail-with-body "$ORIGAMIX_API_URL/pages/working-state/get" \
 
 常用接口入口：
 
-| 流程                                  | 路由/契约                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 读取/编辑 Working、保存/恢复 Revision | [schema-routes.ts](src/http/schema-routes.ts) 与 Shared [page-api.ts](../shared/src/page/page-api.ts)  |
-| 检查 Apply 状态、Apply、从项目重载    | [apply-routes.ts](src/http/apply-routes.ts)                                                            |
-| 创建/查询/取消 Run、会话及 SSE        | [agent-routes.ts](src/http/agent-routes.ts) 与 Shared [agent-api.ts](../shared/src/agent/agent-api.ts) |
+| 流程                                  | 路由/契约                                                                                                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 读取/编辑 Working、保存/恢复 Revision | [schema-routes.ts](src/http/schema-routes.ts) 与 Shared [page-api.ts](../shared/src/page/page-api.ts)                                                           |
+| 检查 Apply 状态、Apply、从项目重载    | [apply-routes.ts](src/http/apply-routes.ts)                                                                                                                     |
+| 创建/查询/取消 Run、会话及 SSE        | [agent-routes.ts](src/http/agent-routes.ts)、[agent-event-routes.ts](src/http/agent-event-routes.ts) 与 Shared [agent-api.ts](../shared/src/agent/agent-api.ts) |
 
 SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端必须发送认证头；不要把 token 放进 URL。断线后查询持久化 Run/消息和 Working，事件通道不是可恢复数据库。
 

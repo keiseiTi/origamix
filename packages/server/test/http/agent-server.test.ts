@@ -93,6 +93,7 @@ const setup = () => {
         userMessageId: started.message.messageId,
       };
     }),
+    pageActivity: (projectId: string, pageId: string) => runs.pageActivity(projectId, pageId),
     get: (runId: string) => runService.get(runId),
     cancel: (runId: string) => runService.cancel(runId),
   } as unknown as AgentService;

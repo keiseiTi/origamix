@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, max, notInArray } from 'drizzle-orm';
 import { Value } from '@sinclair/typebox/value';
 import {
   AgentRunStatusSchema,
@@ -6,6 +6,7 @@ import {
   PageAgentOutcomeSchema,
   RunBudgetSchema,
   type AgentRunStatus,
+  type GetPageAgentActivityResponse,
   type RunBudget,
   type AgentRunKind,
   type PageAgentOutcome,
@@ -62,6 +63,11 @@ export interface AgentRunRecord {
   updatedAt: string;
   finishedAt?: string;
 }
+
+export type PageAgentActivity = Omit<GetPageAgentActivityResponse, 'version'>;
+
+const terminalStatuses: AgentRunStatus[] = ['completed', 'failed', 'cancelled', 'interrupted'];
+const terminalCodes = terminalStatuses.map((status) => agentRunStatus.encode(status));
 
 type RunRow = typeof agentRuns.$inferSelect;
 const fromRow = (row: RunRow, client: DatabaseClient): AgentRunRecord => {
@@ -191,18 +197,37 @@ export class AgentRunRepository {
     return this.client
       .select()
       .from(agentRuns)
-      .where(
-        notInArray(
-          agentRuns.status,
-          ['completed', 'failed', 'cancelled', 'interrupted'].map((status) =>
-            agentRunStatus.encode(status as AgentRunStatus),
-          ),
-        ),
-      )
+      .where(notInArray(agentRuns.status, terminalCodes))
       .orderBy(asc(agentRuns.createdAt))
       .all()
       .map((row) => fromRow(row, this.client));
   }
+  pageActivity(projectId: string, pageId: string): PageAgentActivity {
+    const scope = and(
+      eq(agentRuns.projectId, projectKey(this.client, projectId)),
+      eq(agentRuns.pageId, pageKey(this.client, pageId)),
+    );
+    const active = this.client
+      .select({ runId: agentRuns.runId, conversationId: agentRuns.conversationId })
+      .from(agentRuns)
+      .where(and(scope, notInArray(agentRuns.status, terminalCodes)))
+      .get();
+    const commit = this.client
+      .select({ version: max(agentRuns.resultWorkingVersion) })
+      .from(agentRuns)
+      .where(scope)
+      .get();
+    return {
+      activeRun: active
+        ? {
+            runId: active.runId,
+            conversationId: encodeDatabaseId('conversation', active.conversationId),
+          }
+        : null,
+      committedWorkingVersion: commit?.version ?? null,
+    };
+  }
+
   listAll(): AgentRunRecord[] {
     return this.client
       .select()

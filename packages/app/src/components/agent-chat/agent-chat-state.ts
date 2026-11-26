@@ -26,6 +26,7 @@ export type AgentChatAction =
       run?: AgentRun | null;
       preserveStream?: boolean;
     }
+  | { type: 'messages.prepended'; conversationId: string; messages: AgentMessage[] }
   | { type: 'history.failed'; message: string }
   | { type: 'submission.started' }
   | { type: 'run.queued'; run: AgentRun }
@@ -103,7 +104,10 @@ const toolLabels: Record<string, string> = {
   get_event_flow: '读取事件流程',
   get_flow_node_manifest: '读取逻辑节点定义',
   search_product_docs: '查询产品规则',
-  validate_page_schema: '校验页面结构',
+  validate_page_operations: '预检页面操作',
+  get_capability_manifests: '读取物料和节点定义',
+  allocate_element_ids: '分配元素 ID',
+  prepare_block: '准备组合模块',
   get_page_diagnostics: '检查页面诊断',
   complete_page_run: '生成并执行页面操作链',
 };
@@ -129,6 +133,17 @@ export const agentChatReducer = (
 ): AgentChatState => {
   if (action.type === 'reset') return initialAgentChatState;
   if (action.type === 'connection.changed') return { ...state, connection: action.connection };
+  if (action.type === 'messages.prepended') {
+    if (state.messages[0]?.conversationId !== action.conversationId) return state;
+    const existing = new Set(state.messages.map(({ messageId }) => messageId));
+    return {
+      ...state,
+      messages: [
+        ...action.messages.filter(({ messageId }) => !existing.has(messageId)),
+        ...state.messages,
+      ],
+    };
+  }
   if (action.type === 'history.failed')
     return { ...state, error: action.message, connection: 'idle' };
   if (action.type === 'submission.started')
@@ -206,7 +221,7 @@ export const agentChatReducer = (
   }
 
   const event = action.event;
-  if (state.run && (event.runId !== state.run.runId || event.pageId !== state.run.pageId)) {
+  if (!state.run || event.runId !== state.run.runId || event.pageId !== state.run.pageId) {
     return state;
   }
   if (event.eventId <= state.lastEventId) return state;

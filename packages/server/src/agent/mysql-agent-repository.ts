@@ -1,7 +1,9 @@
 import type { Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import type { AgentRunRepository, AgentRunRecord } from './run-repository';
+import type { AgentRunRepository, AgentRunRecord, PageAgentActivity } from './run-repository';
 import type { AgentRunStore } from './persistence';
 import type { ToolAuditEvent } from './tools/registry';
+
+const activeStatus = "status NOT IN ('failed', 'completed', 'cancelled', 'interrupted')";
 
 type DocumentRow = RowDataPacket & { document: string };
 
@@ -27,7 +29,31 @@ export class MysqlAgentRunRepository implements AgentRunStore {
       ])
     )[0];
 
-  listActive = () => this.read("status NOT IN ('failed', 'completed', 'cancelled', 'interrupted')");
+  listActive = () => this.read(activeStatus);
+
+  async pageActivity(projectId: string, pageId: string): Promise<PageAgentActivity> {
+    const [rows] = await this.sql.execute<
+      (RowDataPacket & {
+        runId: string | null;
+        conversationId: string | null;
+        workingVersion: number | string | null;
+      })[]
+    >(
+      `SELECT MAX(CASE WHEN ${activeStatus} THEN id END) AS runId,
+              MAX(CASE WHEN ${activeStatus} THEN JSON_UNQUOTE(JSON_EXTRACT(document, '$.conversationId')) END) AS conversationId,
+              MAX(CAST(JSON_UNQUOTE(JSON_EXTRACT(document, '$.resultWorkingVersion')) AS UNSIGNED)) AS workingVersion
+       FROM origamix_web_agent_runs WHERE project_id = ? AND page_id = ?`,
+      [projectId, pageId],
+    );
+    const row = rows[0];
+    return {
+      activeRun:
+        row?.runId && row.conversationId
+          ? { runId: row.runId, conversationId: row.conversationId }
+          : null,
+      committedWorkingVersion: row?.workingVersion == null ? null : Number(row.workingVersion),
+    };
+  }
 
   async create(run: AgentRunRecord): Promise<void> {
     await this.sql.execute(

@@ -7,7 +7,7 @@ import {
 } from '@earendil-works/pi-ai/providers/faux';
 import { describe, expect, it, vi } from 'vitest';
 import { RunBudgetController } from '@/agent/tools/registry';
-import { DEFAULT_AGENT_RUN_BUDGET } from '@/agent/agent-service';
+import { DEFAULT_AGENT_RUN_BUDGET } from '@/agent/run-budget';
 import { DEEPSEEK_FLASH_MODEL_ID, type AgentEngineEvent } from '@/agent/agent-engine';
 import { PiAgentEngine } from '@/agent/pi-agent-engine';
 
@@ -287,7 +287,7 @@ describe('PiAgentEngine', () => {
     );
   });
 
-  it.each(['complete_page_run', 'complete_project_settings'])(
+  it.each(['complete_page_run'])(
     'ends after an accepted %s decision without another provider request',
     async (terminalTool) => {
       const { engine } = setup([

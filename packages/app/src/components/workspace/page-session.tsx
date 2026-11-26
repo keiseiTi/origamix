@@ -1,6 +1,7 @@
 import type { AgentUsageScope } from '@origamix/shared';
 import { PageUsage } from '@/components/usage/page-usage';
 import { workbenchHost } from '@/utils';
+import { ErrorToast } from '@/components/error-toast';
 import { useEffect, useImperativeHandle, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/store/preferences';
@@ -70,14 +71,11 @@ const PageSessionContent = ({
   projectName: string;
 }): React.JSX.Element => {
   const isWeb = workbenchHost() === 'web';
-  const { mode, draft, setPageDraft } = useWorkspaceStore(
-    useShallow((state) => ({
-      mode: state.openPages.find((tab) => tab.id === page.id)?.mode ?? 'chat',
-      draft: state.pageDrafts[page.id] ?? '',
-      setPageDraft: state.setPageDraft,
-    })),
+  const mode = useWorkspaceStore(
+    (state) => state.openPages.find((tab) => tab.id === page.id)?.mode ?? 'chat',
   );
   const theme = usePreferencesStore((state) => state.theme);
+  const [interactionError, setInteractionError] = useState<Error | null>(null);
   const [clarificationHighlight, setClarificationHighlight] = useState<string | null>(null);
 
   const { working, materials, pageApply, agent, capabilities, externalWorkingChange } =
@@ -88,31 +86,12 @@ const PageSessionContent = ({
       active,
       editing: active && mode === 'edit',
     });
-  const [conversationDrafts, setConversationDrafts] = useState<Record<string, string>>({});
-  const [draftScope, setDraftScope] = useState<{
-    original: string | null;
-    selected: string | null;
-  } | null>(null);
-  const selectedDraftId =
-    draftScope && (draftScope.selected === null || draftScope.selected !== draftScope.original)
-      ? (draftScope.selected ?? 'new')
-      : null;
+  const draft = useWorkspaceStore(
+    (state) => state.conversationDrafts[page.id]?.[agent.conversationId ?? ''] ?? '',
+  );
+  const setConversationDraft = useWorkspaceStore((state) => state.setConversationDraft);
   const selectConversation = (id: string | null) => {
     if (!agent.selectConversation(id)) return false;
-    const currentConversationId = agent.conversationId;
-    if (draftScope?.selected === null && currentConversationId) {
-      // The empty conversation acquired a server ID on its first successful send.
-      // Subsequent text belongs to that conversation when revisiting it.
-      setConversationDrafts((current) => ({
-        ...current,
-        [currentConversationId]: current.new ?? '',
-        new: '',
-      }));
-    }
-    setDraftScope({
-      original: draftScope ? draftScope.original : agent.conversationId,
-      selected: id,
-    });
     setClarificationHighlight(null);
     return true;
   };
@@ -175,13 +154,10 @@ const PageSessionContent = ({
         <ChatWorkspace
           pageId={page.id}
           pageName={page.name}
-          draft={selectedDraftId ? (conversationDrafts[selectedDraftId] ?? '') : draft}
-          onDraftChange={(value) => {
-            if (selectedDraftId)
-              setConversationDrafts((current) => ({ ...current, [selectedDraftId]: value }));
-            else setPageDraft(page.id, value);
-          }}
-          session={agent}
+          draft={draft}
+          onDraftChange={(value) => setConversationDraft(page.id, agent.conversationId, value)}
+          session={{ ...agent, selectConversation }}
+          applyStatus={pageApply.applyStatus}
           onConfigureModel={onConfigureModel}
           onClarificationHover={setClarificationHighlight}
           composerFooter={
@@ -203,6 +179,7 @@ const PageSessionContent = ({
         />
       </div>
       <div className={mode === 'edit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+        {active && mode === 'edit' && <ErrorToast message={interactionError?.message} />}
         <PageEditor
           visible={active && mode === 'edit'}
           working={working}
@@ -221,9 +198,9 @@ const PageSessionContent = ({
               ? []
               : (agent.state.run?.clarification?.candidates ?? []),
             highlightedElementId: clarificationHighlight,
-            disabled: agent.clarificationExpired,
+            disabled: agent.clarificationExpired || !agent.canSend,
             onSelect: (elementId) =>
-              void agent.selectClarification(elementId).catch(() => undefined),
+              void agent.selectClarification(elementId).catch(setInteractionError),
           }}
         />
       </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAgentChat } from '@/components/agent-chat/use-agent-chat';
 import { useEditorSession } from '@/components/editor/use-editor-session';
 import { useEditorMaterials } from '@/materials/use-editor-materials';
@@ -35,13 +35,28 @@ export const usePageSession = ({
   editing: boolean;
   isWeb: boolean;
 }) => {
-  const agent = useAgentChat(projectId, pageId);
   const materials = useEditorMaterials(projectId, editing);
   const [refresh, setRefresh] = useState<{
     signal: number | symbol | null;
     agentVersion: number | null;
   }>({ signal: null, agentVersion: null });
-  const agentVersion = agent.state.committedWorkingVersion;
+  const [observedWorkingVersion, setObservedWorkingVersion] = useState(0);
+  const [visualWorkingVersion, setVisualWorkingVersion] = useState(0);
+  const observeWorking = useCallback(
+    (version: number) => setObservedWorkingVersion((current) => Math.max(current, version)),
+    [],
+  );
+  const confirmedWorkingVersion = Math.max(
+    observedWorkingVersion,
+    visualWorkingVersion,
+    refresh.agentVersion ?? 0,
+    typeof refresh.signal === 'number' ? refresh.signal : 0,
+  );
+  const agent = useAgentChat(projectId, pageId, {
+    active,
+    workingVersion: confirmedWorkingVersion || undefined,
+  });
+  const agentVersion = agent.committedWorkingVersion;
   // Consume an Agent commit in the same render that unlocks the editor.
   // A later non-writing Run must not invalidate the loaded schema.
   if (agentVersion !== null && agentVersion > (refresh.agentVersion ?? 0))
@@ -51,7 +66,6 @@ export const usePageSession = ({
       agentVersion,
     });
 
-  const [visualWorkingVersion, setVisualWorkingVersion] = useState(0);
   const working = useEditorSession(
     projectId,
     pageId,
@@ -68,6 +82,7 @@ export const usePageSession = ({
     active,
     isWeb,
     working,
+    onWorkingObserved: observeWorking,
     onSchemaCommitted: (signal) => setRefresh((current) => ({ ...current, signal })),
   });
 

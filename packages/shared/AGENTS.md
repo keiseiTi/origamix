@@ -54,14 +54,12 @@ pnpm --filter @origamix/shared build
 
 - Page validation owns unique-parent layout semantics (including rejection of a parent for the root). Consumers reuse this rule; Runtime retains rendering-boundary checks. equalJson compares acyclic JSON values independently of object key order; compileJsonSchema caches strict property validators by schema identity.
 
-- `block/block.ts` defines serializable composition templates and a pure ID/reference expansion into ordinary Schema operations. IDs come from the caller; code is never evaluated or rewritten. Internal references use structured HyperValue bindings/function parameters. Project `page-role.ts` owns the fixed login/home/not-found roles and one-to-one assignments; roles have no implicit runtime/layout behavior. Agent `project-proposal.ts` owns confirmed project-role proposals and recoverable task transport.
+- `block/block.ts` defines serializable composition templates and a pure ID/reference expansion into ordinary Schema operations. IDs come from the caller; code is never evaluated or rewritten. Internal references use structured HyperValue bindings/function parameters. Project `page-role.ts` owns the fixed login/home/not-found roles and one-to-one assignments; roles have no implicit runtime/layout behavior.
 
 - project-routing.ts owns Browser/Hash deployment settings and initial side/top/mix selection. Manifest routing is project-level, independent of page Schema; layout (including initialVariant) and routing are required in every project manifest; missing fields are rejected, not defaulted on reads.
 
 - project-shell.ts owns required shell and hash-checked settings. Stable page references, acyclic menu parents and safe logo URLs are validated. Agent/session targets are page-only. page-preview.ts transports page Working previews without layout data.
 
 - project-navigation.ts defines read-only page navigation metadata. navigatePage accepts only pageId; no application-state nodes or context namespace. ProjectManifest rejects removed applicationState/access fields through its current strict shape.
-
-- project-settings-agent.ts defines read-only proposal requests and streamed events with project/draft-version identity. This does not extend page Run/Session targets or persisted page protocols.
 
 - Runtime repair evidence is a bounded, structured Agent message block. Its shape permits execution IDs, Working hash, node path, duration and fixed error categories. Server verifies page and Working ownership before starting the Run. The structured block participates in existing request identity checks.

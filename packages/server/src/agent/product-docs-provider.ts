@@ -53,6 +53,15 @@ export const DEFAULT_PRODUCT_DOCS: readonly ProductDocument[] = [
       '# Agent 修改与恢复\n\n每次修改基于当前页面 Working Version，并通过 Operation List 原子更新 Working Schema。提交失败不会覆盖有效草稿；成功修改只保留草稿，不会自动保存 Revision 或应用到真实项目。用户可点击“保存版本”创建历史检查点，也可从版本历史恢复到 Working 草稿。网络中断后可使用同一请求重试，系统不会重复执行已确认的请求。',
   },
   {
+    id: 'builder-agent-conversations',
+    sectionId: 'multiple-conversations',
+    version: '1.0.0',
+    title: '在同一页面使用多个对话',
+    keywords: ['对话', '会话', '历史', '新建', '草稿', '切换'],
+    markdown:
+      '页面工具栏可新建空白对话或打开对话历史。首条消息受理时才建立会话。历史和输入草稿按会话隔离，同一页面的会话共享一份 Working 草稿。切换历史不会恢复页面版本。同一页面一次运行一个 Agent 请求。',
+  },
+  {
     id: 'builder-agent-scope',
     sectionId: 'supported-requests',
     version: '1.0.0',

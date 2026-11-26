@@ -51,7 +51,7 @@ export const useProjectActions = (input: ProjectActionsInput) => {
       openPages: opened.pages[0]
         ? [{ ...opened.pages[0], projectId: opened.id, mode: 'chat', status: null }]
         : [],
-      pageDrafts: {},
+      conversationDrafts: {},
     });
   };
 

@@ -12,11 +12,14 @@ type AwaitableMethods<T> = {
 export type AgentRunStore = AwaitableMethods<
   Pick<
     AgentRunRepository,
-    'get' | 'findByClientRequest' | 'listActive' | 'updateStatus' | 'updateMetrics'
+    'get' | 'findByClientRequest' | 'listActive' | 'pageActivity' | 'updateStatus' | 'updateMetrics'
   >
 >;
 export type AgentConversations = AwaitableMethods<
-  Pick<ConversationService, 'startRun' | 'list' | 'history' | 'finishAssistant' | 'failAssistant'>
+  Pick<
+    ConversationService,
+    'startRun' | 'list' | 'history' | 'recentHistory' | 'finishAssistant' | 'failAssistant'
+  >
 >;
 export type AgentProjects = AwaitableMethods<Pick<ProjectRepository, 'getProject' | 'getPage'>>;
 

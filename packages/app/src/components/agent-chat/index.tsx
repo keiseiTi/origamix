@@ -8,6 +8,7 @@ import { usePreferencesStore } from '@/store/preferences';
 import { isRunActive, messageText } from './agent-chat-state';
 import { MessageMarkdown } from './message-markdown';
 import type { AgentChatSession } from './use-agent-chat';
+import type { PageApplyStatus } from '@/components/workspace/hooks/use-page-apply-state';
 const stageLabels = {
   queued: '已排队',
   preparing: '正在准备',
@@ -63,10 +64,12 @@ export const ChatWorkspace = ({
   onConfigureModel,
   onClarificationHover,
   composerFooter,
+  applyStatus,
 }: {
   pageId: string;
   pageName: string;
   composerFooter?: ReactNode;
+  applyStatus: PageApplyStatus;
   draft: string;
   onDraftChange: (draft: string) => void;
   session: AgentChatSession;
@@ -78,6 +81,12 @@ export const ChatWorkspace = ({
   const {
     state,
     activity,
+    canSend,
+    otherActiveConversationId,
+    hasOlderMessages,
+    loadingOlderMessages,
+    loadOlderMessages,
+    selectConversation,
     pendingSubmission,
     clarificationExpired,
     send,
@@ -86,20 +95,67 @@ export const ChatWorkspace = ({
     retry,
   } = session;
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mountedRef = useRef(false);
-  const active = isRunActive(state.stage);
+  const previousTail = useRef<{ id: string | undefined; conversationId: string | null } | null>(
+    null,
+  );
+  const scrollRestore = useRef<{
+    conversationId: string | null;
+    firstId: string | undefined;
+    bottom: number;
+  } | null>(null);
+  const [interactionError, setInteractionError] = useState<string | null>(null);
+  const reportError = (error: unknown) =>
+    setInteractionError(error instanceof Error ? error.message : '操作失败，请重试');
+  const conversationId = session.conversationId;
+  const tailId = state.messages.at(-1)?.messageId;
+  const firstId = state.messages[0]?.messageId;
+  const active = Boolean(state.run) && isRunActive(state.stage);
   const modelConfigurationRequired = hasModelApiKey === false;
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+    const container = scrollRef.current;
+    const previous = previousTail.current;
+    previousTail.current = { id: tailId, conversationId };
+    const restore = scrollRestore.current;
+    if (restore && restore.conversationId !== conversationId) scrollRestore.current = null;
+    if (container && restore?.conversationId === conversationId && restore.firstId !== firstId) {
+      scrollRestore.current = null;
+      container.scrollTop = container.scrollHeight - restore.bottom;
+      return;
+    }
+    if (
+      container &&
+      (tailId !== previous?.id ||
+        conversationId !== previous?.conversationId ||
+        (active && container.scrollHeight - container.scrollTop - container.clientHeight < 80))
+    )
+      container.scrollTo({ top: container.scrollHeight });
+  }, [
+    active,
+    conversationId,
+    firstId,
+    state.messages,
+    state.streamedText,
+    state.progressHistory,
+    tailId,
+  ]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [state.messages, state.streamedText, state.progressHistory, state.stage]);
+  const loadEarlier = async () => {
+    const container = scrollRef.current;
+    if (!container) return;
+    scrollRestore.current = {
+      conversationId,
+      firstId,
+      bottom: container.scrollHeight - container.scrollTop,
+    };
+    setInteractionError(null);
+    try {
+      await loadOlderMessages();
+    } catch (error) {
+      scrollRestore.current = null;
+      reportError(error);
+    }
+  };
 
   const currentUserMessageId = [...state.messages]
     .reverse()
@@ -110,10 +166,9 @@ export const ChatWorkspace = ({
   );
 
   const submit = async (): Promise<void> => {
-    if (!draft.trim() || activity !== 'idle' || modelConfigurationRequired) return;
+    if (!draft.trim() || !canSend || modelConfigurationRequired) return;
     try {
       await send(draft);
-      if (mountedRef.current) onDraftChange('');
     } catch {
       // The hook keeps the actionable error and the draft remains available.
     }
@@ -130,10 +185,37 @@ export const ChatWorkspace = ({
             <div>
               <strong className='text-sm'>准备好修改“{pageName}”</strong>
               <p className='mt-1 max-w-165 text-zinc-600 dark:text-zinc-300'>
-                以当前页面为主进行搭建与调整。项目角色变更会先请你确认；页面修改保留为草稿，由你决定何时保存版本。
+                在当前页面搭建和调整内容。页面修改会保留为草稿，由你决定何时保存版本。
               </p>
             </div>
           </div>
+          <ErrorToast message={interactionError} />
+          {otherActiveConversationId && (
+            <div
+              className='mb-4 flex items-center gap-2 text-xs text-muted-foreground'
+              role='status'
+            >
+              此页面有另一个对话正在运行。
+              <Button
+                size='sm'
+                variant='ghost'
+                onClick={() => selectConversation(otherActiveConversationId)}
+              >
+                查看运行中的对话
+              </Button>
+            </div>
+          )}
+          {hasOlderMessages && (
+            <Button
+              className='mb-4'
+              size='sm'
+              variant='outline'
+              disabled={loadingOlderMessages}
+              onClick={() => void loadEarlier()}
+            >
+              {loadingOlderMessages ? '正在加载…' : '加载更早消息'}
+            </Button>
+          )}
           {state.connection === 'recovering' && state.messages.length === 0 ? (
             <div className='flex items-center gap-2 text-zinc-500' role='status'>
               <Spinner className='size-3.5' />
@@ -194,9 +276,12 @@ export const ChatWorkspace = ({
           )}
           {state.committedWorkingVersion && (
             <div className='mt-3 flex items-center gap-2' role='status'>
-              <span className='text-xs text-success'>AI 已修改草稿，尚未保存版本。</span>
+              <span className='text-xs text-success'>本次修改已写入页面草稿。</span>
+              {applyStatus === 'draft_unsaved' && (
+                <span className='text-xs text-muted-foreground'>当前页面有未保存的修改。</span>
+              )}
               <Button size='sm' variant='ghost' onClick={() => void changePageMode(pageId, 'edit')}>
-                查看修改
+                查看页面草稿
               </Button>
             </div>
           )}
@@ -211,14 +296,15 @@ export const ChatWorkspace = ({
                     key={candidate.elementId}
                     size='sm'
                     variant='outline'
-                    disabled={clarificationExpired || activity !== 'idle'}
+                    disabled={clarificationExpired || !canSend}
                     onMouseEnter={() => onClarificationHover?.(candidate.elementId)}
                     onMouseLeave={() => onClarificationHover?.(null)}
                     onFocus={() => onClarificationHover?.(candidate.elementId)}
                     onBlur={() => onClarificationHover?.(null)}
-                    onClick={() =>
-                      void selectClarification(candidate.elementId).catch(() => undefined)
-                    }
+                    onClick={() => {
+                      setInteractionError(null);
+                      void selectClarification(candidate.elementId).catch(reportError);
+                    }}
                   >
                     {String.fromCharCode(65 + index)} · {candidate.label}
                   </Button>
@@ -250,9 +336,12 @@ export const ChatWorkspace = ({
           value={draft}
           onChange={onDraftChange}
           onSubmit={() => void submit()}
-          onCancel={() => void cancel()}
+          onCancel={() => {
+            setInteractionError(null);
+            void cancel().catch(reportError);
+          }}
           running={active}
-          disabled={activity !== 'idle' || modelConfigurationRequired}
+          disabled={!canSend || modelConfigurationRequired}
           configurationRequired={modelConfigurationRequired}
           onConfigureModel={onConfigureModel}
           contextLabel='当前页面'
@@ -260,7 +349,7 @@ export const ChatWorkspace = ({
           placeholder={
             modelConfigurationRequired
               ? '请先配置 模型 API Key'
-              : activity === 'unknown'
+              : activity === 'unknown' || (!canSend && !active)
                 ? '正在确认页面状态…'
                 : active
                   ? '本轮完成后可继续修改'

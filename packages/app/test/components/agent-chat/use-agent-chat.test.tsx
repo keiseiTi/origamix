@@ -5,7 +5,10 @@ import { usePendingOperations } from '@/store/pending-operations';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
-  listAllMessages: vi.fn(),
+  listMessages: vi.fn(),
+  getPageAgentActivity: vi
+    .fn()
+    .mockResolvedValue({ activeRun: null, committedWorkingVersion: null }),
   getAgentRun: vi.fn(),
   createAgentRun: vi.fn(),
   cancelAgentRun: vi.fn(),
@@ -29,9 +32,13 @@ const deferred = <T,>() => {
 describe('Agent recovery', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.getPageAgentActivity.mockResolvedValue({
+      activeRun: null,
+      committedWorkingVersion: null,
+    });
     usePendingOperations.setState({ applies: {}, agents: {}, agentPreparations: {} });
     mocks.listConversations.mockResolvedValue({ conversations: [] });
-    mocks.listAllMessages.mockResolvedValue({ messages: [] });
+    mocks.listMessages.mockResolvedValue({ messages: [] });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_1', workingVersion: 1 });
     mocks.getAgentRun.mockResolvedValue({ run: { runId: 'run_1', status: 'completed' } });
     mocks.subscribeAgentEvents.mockReturnValue(() => undefined);
@@ -126,7 +133,7 @@ describe('Agent recovery', () => {
         resultWorkingVersion: 2,
       },
     });
-    mocks.listAllMessages
+    mocks.listMessages
       .mockResolvedValueOnce({ messages: [userMessage, assistantMessage] })
       .mockResolvedValueOnce({ messages: [userMessage] })
       .mockResolvedValue({ messages: [userMessage, assistantMessage] });
@@ -175,11 +182,12 @@ describe('Agent recovery', () => {
     });
     expect(hook.result.current.state.committedWorkingVersion).toBe(2);
     await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
-    expect(hook.result.current.state.messages).toEqual([userMessage]);
-    expect(hook.result.current.state.streamedText).toBe('已添加表单。');
-
-    await act(async () => hook.result.current.refresh());
-    expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]);
+    await waitFor(() =>
+      expect(hook.result.current.state.messages).toEqual([userMessage, assistantMessage]),
+    );
+    expect(mocks.listMessages).toHaveBeenLastCalledWith('project_1', 'page_a', 'conversation_1', {
+      afterSequence: 1,
+    });
     expect(hook.result.current.state.streamedText).toBe('');
   });
 
@@ -208,7 +216,7 @@ describe('Agent recovery', () => {
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
-    mocks.listAllMessages
+    mocks.listMessages
       .mockResolvedValueOnce({ messages: [userMessage] })
       .mockResolvedValue({ messages: [userMessage, assistantMessage] });
     mocks.getAgentRun
@@ -255,7 +263,7 @@ describe('Agent recovery', () => {
     });
     mocks.workingState.mockResolvedValue({ revisionId: 'revision_2', workingVersion: 2 });
     const next = renderHook(() => useAgentChat('project_1', pageId));
-    await waitFor(() => expect(mocks.listAllMessages).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.listMessages).toHaveBeenCalled());
     expect(next.result.current.pendingSubmission).toBe(true);
     expect(next.result.current.activity).toBe('unknown');
     expect(mocks.createAgentRun).toHaveBeenCalledTimes(1);
@@ -270,7 +278,7 @@ describe('Agent recovery', () => {
     const second = { conversationId: 'conversation_2', messageId: 'message_2' };
     const stale = deferred<{ messages: (typeof first)[] }>();
     mocks.listConversations.mockResolvedValue({ conversations: [first, second] });
-    mocks.listAllMessages
+    mocks.listMessages
       .mockResolvedValueOnce({ messages: [first] })
       .mockReturnValueOnce(stale.promise)
       .mockResolvedValueOnce({ messages: [second] });
@@ -291,6 +299,60 @@ describe('Agent recovery', () => {
     });
     expect(hook.result.current.conversationId).toBe(second.conversationId);
     expect(hook.result.current.state.messages).toEqual([second]);
+  });
+
+  it('keeps the page locked when another conversation has an active Run', async () => {
+    mocks.listConversations.mockResolvedValue({
+      conversations: [{ conversationId: 'conversation_old' }],
+    });
+    const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
+    await waitFor(() => expect(hook.result.current.canSend).toBe(true));
+
+    mocks.getPageAgentActivity.mockResolvedValue({
+      activeRun: { runId: 'run_other', conversationId: 'conversation_other' },
+      committedWorkingVersion: null,
+    });
+    await act(async () => hook.result.current.refresh());
+
+    expect(hook.result.current.conversationId).toBe('conversation_old');
+    expect(hook.result.current.otherActiveConversationId).toBe('conversation_other');
+    expect(hook.result.current.activity).toBe('running');
+    await act(async () => {
+      await expect(hook.result.current.send('编辑页面')).rejects.toThrow();
+    });
+    expect(mocks.createAgentRun).not.toHaveBeenCalled();
+
+    mocks.getPageAgentActivity.mockResolvedValue({ activeRun: null, committedWorkingVersion: 2 });
+    await act(async () => hook.result.current.refresh());
+    expect(hook.result.current.activity).toBe('idle');
+    expect(hook.result.current.committedWorkingVersion).toBe(2);
+  });
+
+  it('expires a retained clarification when the confirmed Working version changes', async () => {
+    mocks.listConversations.mockResolvedValue({
+      conversations: [{ conversationId: 'conversation_1' }],
+    });
+    mocks.listMessages.mockResolvedValue({
+      messages: [{ messageId: 'message_1', runId: 'run_1', sequence: 0, role: 'user' }],
+    });
+    mocks.getAgentRun.mockResolvedValue({
+      run: {
+        runId: 'run_1',
+        status: 'completed',
+        clarification: { clarificationId: 'clarification_1', baseWorkingVersion: 1 },
+      },
+    });
+    const hook = renderHook(
+      ({ workingVersion }) => useAgentChat('project_1', 'page_a', { workingVersion }),
+      { initialProps: { workingVersion: 1 } },
+    );
+    await waitFor(() => expect(hook.result.current.state.run?.clarification).toBeDefined());
+    expect(hook.result.current.clarificationExpired).toBe(false);
+
+    hook.rerender({ workingVersion: 2 });
+
+    expect(hook.result.current.clarificationExpired).toBe(true);
+    expect(mocks.getAgentRun).toHaveBeenCalledTimes(1);
   });
 
   it('continues a prepared submission after closing its tab and blocks a reopened tab', async () => {
@@ -335,19 +397,17 @@ describe('Agent recovery', () => {
     mocks.listConversations
       .mockResolvedValueOnce({ conversations: [] })
       .mockResolvedValue({ conversations: [{ conversationId: 'conversation_1' }] });
-    mocks.listAllMessages
-      .mockRejectedValueOnce(new Error('history unavailable'))
-      .mockResolvedValue({
-        messages: [
-          {
-            messageId: 'message_1',
-            runId: 'run_1',
-            sequence: 1,
-            role: 'user',
-            content: { version: '1', blocks: [{ type: 'text', text: 'hello' }] },
-          },
-        ],
-      });
+    mocks.listMessages.mockRejectedValueOnce(new Error('history unavailable')).mockResolvedValue({
+      messages: [
+        {
+          messageId: 'message_1',
+          runId: 'run_1',
+          sequence: 1,
+          role: 'user',
+          content: { version: '1', blocks: [{ type: 'text', text: 'hello' }] },
+        },
+      ],
+    });
     const hook = renderHook(() => useAgentChat('project_1', 'page_a'));
     await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
     await act(async () => hook.result.current.send('hello'));
@@ -367,7 +427,7 @@ describe('Agent recovery', () => {
     hook.rerender({ pageId: 'page_b' });
     await waitFor(() => expect(hook.result.current.activity).toBe('idle'));
     await act(async () => response.resolve({ conversations: [{ conversationId: 'old' }] }));
-    expect(mocks.listAllMessages).not.toHaveBeenCalled();
+    expect(mocks.listMessages).not.toHaveBeenCalled();
     expect(hook.result.current.activity).toBe('idle');
   });
 });

@@ -32,7 +32,7 @@ export interface OpenPageTab extends PageItem {
 export interface WorkspaceSession {
   activeTabId: string | null;
   openPages: OpenPageTab[];
-  pageDrafts: Record<string, string>;
+  conversationDrafts: Record<string, Record<string, string>>;
 }
 
 interface WorkspaceState extends WorkspaceSession {
@@ -48,7 +48,13 @@ interface WorkspaceState extends WorkspaceSession {
   removePages: (pageIds: Iterable<string>) => void;
   changePageMode: (pageId: string, mode: WorkspaceMode) => Promise<void>;
   setPageStatus: (pageId: string, status: PageLifecycleStatus | null) => void;
-  setPageDraft: (pageId: string, draft: string) => void;
+  setConversationDraft: (pageId: string, conversationId: string | null, draft: string) => void;
+  settleConversationDraft: (
+    pageId: string,
+    sourceConversationId: string | null,
+    conversationId: string,
+    submittedText?: string,
+  ) => void;
   replaceWorkspace: (session: Partial<WorkspaceSession>) => void;
 }
 
@@ -58,7 +64,7 @@ export const clearWorkspaceSession = () => sessionStorage.removeItem(storageKey)
 const emptySession: WorkspaceSession = {
   activeTabId: null,
   openPages: [],
-  pageDrafts: {},
+  conversationDrafts: {},
 };
 const isMode = (value: unknown): value is WorkspaceMode =>
   value === 'chat' || value === 'edit' || value === 'preview';
@@ -116,7 +122,17 @@ export const parseWorkspaceSession = (raw: string | null): WorkspaceSession => {
     return {
       activeTabId,
       openPages,
-      pageDrafts: stringRecord(record.pageDrafts),
+      conversationDrafts:
+        record.conversationDrafts &&
+        typeof record.conversationDrafts === 'object' &&
+        !Array.isArray(record.conversationDrafts)
+          ? Object.fromEntries(
+              Object.entries(record.conversationDrafts).map(([pageId, drafts]) => [
+                pageId,
+                stringRecord(drafts),
+              ]),
+            )
+          : {},
     };
   } catch {
     return emptySession;
@@ -164,7 +180,7 @@ const reconcileTabs = (projects: ProjectItem[], tabs: OpenPageTab[]): OpenPageTa
       : [];
   });
 
-const withoutDrafts = (drafts: Record<string, string>, keptIds: Set<string>) =>
+const withoutDrafts = (drafts: WorkspaceSession['conversationDrafts'], keptIds: Set<string>) =>
   Object.fromEntries(Object.entries(drafts).filter(([id]) => keptIds.has(id)));
 
 type PageDraftHandle = { flush: () => Promise<void> };
@@ -240,8 +256,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         workspaceError: null,
         activeTabId: activeLocation ? state.activeTabId : null,
         openPages,
-        pageDrafts: withoutDrafts(
-          state.pageDrafts,
+        conversationDrafts: withoutDrafts(
+          state.conversationDrafts,
           new Set(projects.flatMap((project) => [...project.pages.map((page) => page.id)])),
         ),
       };
@@ -269,11 +285,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const index = state.openPages.findIndex((tab) => tab.id === pageId);
       if (index < 0) return state;
       const openPages = state.openPages.filter((tab) => tab.id !== pageId);
-      const { [pageId]: _removed, ...pageDrafts } = state.pageDrafts;
+      const { [pageId]: _removed, ...conversationDrafts } = state.conversationDrafts;
       void _removed;
       return {
         openPages,
-        pageDrafts,
+        conversationDrafts,
         activeTabId:
           state.activeTabId === pageId
             ? (openPages[Math.min(index, openPages.length - 1)]?.id ?? null)
@@ -286,8 +302,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const openPages = state.openPages.filter((tab) => !removed.has(tab.id));
       return {
         openPages,
-        pageDrafts: Object.fromEntries(
-          Object.entries(state.pageDrafts).filter(([id]) => !removed.has(id)),
+        conversationDrafts: Object.fromEntries(
+          Object.entries(state.conversationDrafts).filter(([id]) => !removed.has(id)),
         ),
         activeTabId:
           state.activeTabId && !removed.has(state.activeTabId)
@@ -319,8 +335,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         openPages: state.openPages.map((item) => (item.id === pageId ? { ...item, status } : item)),
       };
     }),
-  setPageDraft: (pageId, draft) =>
-    set((state) => ({ pageDrafts: { ...state.pageDrafts, [pageId]: draft } })),
+  setConversationDraft: (pageId, conversationId, draft) =>
+    set((state) => {
+      const drafts = { ...state.conversationDrafts[pageId] };
+      const key = conversationId ?? '';
+      if (draft) drafts[key] = draft;
+      else delete drafts[key];
+      return { conversationDrafts: { ...state.conversationDrafts, [pageId]: drafts } };
+    }),
+  settleConversationDraft: (pageId, sourceConversationId, conversationId, submittedText) =>
+    set((state) => {
+      const existing = state.conversationDrafts[pageId];
+      if (!existing) return state;
+      const key = sourceConversationId ?? '';
+      const draft = existing[key];
+      if (draft === undefined) return state;
+      const sent = submittedText !== undefined && draft.trim() === submittedText;
+      if (!sent && sourceConversationId !== null) return state;
+      const drafts = { ...existing };
+      delete drafts[key];
+      if (!sent && !drafts[conversationId]) drafts[conversationId] = draft;
+      return { conversationDrafts: { ...state.conversationDrafts, [pageId]: drafts } };
+    }),
   replaceWorkspace: (session) => set(session),
 }));
 
@@ -334,14 +370,14 @@ useWorkspaceStore.subscribe((state, previous) => {
   if (
     state.openPages === previous.openPages &&
     state.activeTabId === previous.activeTabId &&
-    state.pageDrafts === previous.pageDrafts
+    state.conversationDrafts === previous.conversationDrafts
   )
     return;
   try {
     const session: WorkspaceSession = {
       activeTabId: state.activeTabId,
       openPages: state.openPages.map((tab) => ({ ...tab, status: null })),
-      pageDrafts: state.pageDrafts,
+      conversationDrafts: state.conversationDrafts,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(session));
   } catch {

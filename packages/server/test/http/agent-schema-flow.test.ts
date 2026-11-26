@@ -205,6 +205,27 @@ it('commits an Agent edit through HTTP, rejects a foreign Apply, and applies onl
       status: 'completed',
       resultWorkingVersion: expect.any(Number),
     });
+    const activity = await server.inject({
+      method: 'POST',
+      url: '/api/v1/agent/pages/activity',
+      headers,
+      payload: { projectId: project.id, pageId: page.id },
+    });
+    expect(activity.json().data).toEqual({
+      version: '1',
+      activeRun: null,
+      committedWorkingVersion: result?.resultWorkingVersion,
+    });
+    expect(
+      (
+        await server.inject({
+          method: 'POST',
+          url: '/api/v1/agent/pages/activity',
+          headers,
+          payload: { projectId: 'project_other', pageId: page.id },
+        })
+      ).statusCode,
+    ).toBe(404);
     const requestId = response.headers['x-request-id'];
     expect(requestId).toEqual(expect.any(String));
     expect(requestId).not.toBe('caller-controlled-id');

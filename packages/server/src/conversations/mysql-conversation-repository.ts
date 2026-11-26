@@ -43,14 +43,21 @@ export class MysqlConversationRepository {
     );
   }
 
-  async listMessages(id: string, after: number, limit: number, recent = false) {
+  async listMessages(id: string, after: number, limit: number) {
     const [rows] = await this.sql.execute<DocumentRow[]>(
-      `SELECT document FROM origamix_web_messages WHERE conversation_id = ? AND sequence_no > ?
-       ORDER BY sequence_no ${recent ? 'DESC' : 'ASC'} LIMIT ?`,
+      'SELECT document FROM origamix_web_messages WHERE conversation_id = ? AND sequence_no > ? ORDER BY sequence_no ASC LIMIT ?',
       [id, after, limit],
     );
-    const messages = documents<StoredMessage>(rows);
-    return recent ? messages.reverse() : messages;
+    return documents<StoredMessage>(rows);
+  }
+
+  async listRecentMessages(id: string, limit: number, beforeSequence?: number) {
+    const [rows] = await this.sql.execute<DocumentRow[]>(
+      `SELECT document FROM origamix_web_messages WHERE conversation_id = ?
+       ${beforeSequence === undefined ? '' : 'AND sequence_no < ?'} ORDER BY sequence_no DESC LIMIT ?`,
+      beforeSequence === undefined ? [id, limit] : [id, beforeSequence, limit],
+    );
+    return documents<StoredMessage>(rows).reverse();
   }
 
   async findMessage(id: string) {

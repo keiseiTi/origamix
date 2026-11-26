@@ -6,6 +6,7 @@ export {
   CreateAgentRunResponseSchema,
   ListConversationsResponseSchema,
   ListMessagesResponseSchema,
+  GetPageAgentActivityResponseSchema,
   GetAgentRunResponseSchema,
   GetAgentRunRequestSchema,
   SubscribeAgentEventsRequestSchema,
@@ -18,6 +19,7 @@ export type {
   CreateAgentRunResponse,
   ListConversationsResponse,
   ListMessagesResponse,
+  GetPageAgentActivityResponse,
   GetAgentRunRequest,
   GetAgentRunResponse,
   SubscribeAgentEventsRequest,
@@ -122,6 +124,7 @@ export {
   validateCreateAgentRunResponse,
   validateGetAgentRunRequest,
   validateGetAgentRunResponse,
+  validateGetPageAgentActivityResponse,
   validateSubscribeAgentEventsRequest,
   validateCancelAgentRunRequest,
   validateCancelAgentRunResponse,
@@ -393,8 +396,8 @@ export type {
   ProjectSettingsUpdate,
 } from './project/project-shell.ts';
 
-export { AgentTargetSchema, SessionTargetSchema } from './agent/agent-target.ts';
-export type { AgentTarget, SessionTarget } from './agent/agent-target.ts';
+export { AgentTargetSchema } from './agent/agent-target.ts';
+export type { AgentTarget } from './agent/agent-target.ts';
 
 export { isProjectLogo, readProjectShell } from './project/project-shell.ts';
 

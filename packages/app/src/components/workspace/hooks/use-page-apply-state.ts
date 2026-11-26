@@ -24,6 +24,7 @@ export const usePageApplyState = ({
   isWeb = false,
   working,
   onSchemaCommitted,
+  onWorkingObserved,
 }: {
   projectId: string;
   pageId: string;
@@ -36,6 +37,7 @@ export const usePageApplyState = ({
     'flush' | 'getConfirmedWorking' | 'acknowledgeWorking'
   >;
   onSchemaCommitted: (signal: number | symbol) => void;
+  onWorkingObserved?: (version: number) => void;
 }) => {
   const pageKey = pageOperationKey(projectId, pageId);
   const pendingApply = usePendingOperations((state) => state.applies[pageKey]);
@@ -73,26 +75,34 @@ export const usePageApplyState = ({
     const requestPageKey = pageOperationKey(projectId, pageId);
     const requestState = requests.current;
     const sequence = ++requestState.issued;
-    const publish = (value: PageApplyStatus, reload?: ReloadFromProjectRequest) => {
+    const publish = (
+      value: PageApplyStatus,
+      version?: number,
+      reload?: ReloadFromProjectRequest,
+    ) => {
       if (pageKeyRef.current !== requestPageKey || sequence <= requestState.accepted) return;
       requestState.accepted = sequence;
+      if (version !== undefined) onWorkingObserved?.(version);
       setApplyStatus(value, reload);
     };
     try {
       if (isWeb) {
         const working = await schemaService.workingState(projectId, pageId);
-        publish(working.workingHash === working.savedSchemaHash ? 'in_sync' : 'draft_unsaved');
+        publish(
+          working.workingHash === working.savedSchemaHash ? 'in_sync' : 'draft_unsaved',
+          working.workingVersion,
+        );
         return;
       }
       const state = await schemaService.applyState(projectId, pageId);
-      publish(state.status, {
+      publish(state.status, state.workingVersion, {
         expectedWorkingVersion: state.workingVersion,
         expectedTargetHash: state.targetSchemaHash,
       });
     } catch {
       publish('error');
     }
-  }, [isWeb, pageId, projectId, setApplyStatus]);
+  }, [isWeb, onWorkingObserved, pageId, projectId, setApplyStatus]);
 
   useEffect(() => {
     if (!active) return;

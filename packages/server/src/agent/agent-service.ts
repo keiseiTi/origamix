@@ -10,7 +10,7 @@ import {
 
 import type { AgentEventBroker } from './event-broker';
 import type { RunExecutor, RunResult } from './run-executor';
-import type { AgentRunRecord } from './run-repository';
+import type { AgentRunRecord, PageAgentActivity } from './run-repository';
 import type { AgentRunService } from './run-service';
 import type {
   ConversationService,
@@ -18,14 +18,12 @@ import type {
 } from '../conversations/conversation-service';
 import { KeyedQueue } from '../infrastructure/keyed-queue';
 import { getAgentModel, DEEPSEEK_FLASH_MODEL_ID } from './agent-engine';
-import { conflict, notFound } from '../errors';
+import { ApiError, conflict, notFound } from '../errors';
 import { progressPayload } from './progress';
 import { redactAgentMessage } from './safe-error';
 import type { AgentConversations, AgentProjects, AgentRunStore } from './persistence';
 import { withProjectActivity } from '../projects/project-activity';
-import { ApiError } from '../errors';
 
-export { DEFAULT_AGENT_RUN_BUDGET } from './run-budget';
 import { DEFAULT_AGENT_RUN_BUDGET } from './run-budget';
 
 export interface StartedAgentRun {
@@ -61,7 +59,7 @@ export class AgentService {
       modelRef?: string;
       getModelRef?: () => string | Promise<string>;
       budget?: RunBudget;
-      projects: Pick<AgentProjects, 'getProject'>;
+      projects: AgentProjects;
       maxConcurrentRuns?: number;
     },
   ) {}
@@ -72,9 +70,9 @@ export class AgentService {
     if (this.closing) throw conflict('服务正在关闭，不能启动新的 Agent Run');
     const project = await this.dependencies.projects.getProject(request.projectId);
     if (!project) throw notFound('项目不存在');
-    const target = requireAgentTarget(request);
+    const { pageId } = requireAgentTarget(request);
     const admit = () =>
-      this.starts.run(`${request.projectId}\0${target.kind}\0${request.pageId ?? ''}`, async () => {
+      this.starts.run(`${request.projectId}\0${pageId}`, async () => {
         this.assertOpen();
         const duplicate = await this.dependencies.runs.findByClientRequest(
           request.projectId,
@@ -94,54 +92,9 @@ export class AgentService {
         if (current.workingVersion !== request.baseWorkingVersion) {
           throw conflict('页面版本已变化，请刷新后重试');
         }
-        const evidenceBlocks = request.content.blocks.filter(
-          (block) => block.type === 'runtime_repair',
-        );
-        const evidence = evidenceBlocks[0];
-        if (evidence) {
-          const schema = current.schema;
-          const flow =
-            schema && Object.hasOwn(schema.flows, evidence.flowId)
-              ? schema.flows[evidence.flowId]
-              : undefined;
-          if (
-            evidenceBlocks.length !== 1 ||
-            evidence.workingHash !== current.workingHash ||
-            !schema ||
-            !Object.hasOwn(schema.elements, evidence.elementId) ||
-            !schema.bindElements.some(
-              (binding) => binding.id === evidence.elementId && binding.flowId === evidence.flowId,
-            ) ||
-            !flow ||
-            !Object.hasOwn(flow.nodes, evidence.nodeId) ||
-            !evidence.visited.every((id) => Object.hasOwn(flow.nodes, id)) ||
-            (evidence.failure.code !== 'NODE_EXECUTION_ERROR' &&
-              flow.nodes[evidence.nodeId]?.type !== 'interfaceRequest')
-          ) {
-            throw conflict('预览运行证据已过期或与当前页面流程不匹配，请刷新预览后重现。');
-          }
-        }
-        if (request.clarification) {
-          const source = await this.dependencies.runs.get(request.clarification.runId);
-          const clarification = source?.outcomeJson as ClarificationResult | undefined;
-          const candidate = clarification?.candidates?.find(
-            (item) => item.elementId === request.clarification?.selectedElementId,
-          );
-          if (
-            !source ||
-            source.status !== 'completed' ||
-            source.outcome !== 'needs_clarification' ||
-            source.projectId !== request.projectId ||
-            source.pageId !== request.pageId ||
-            source.conversationId !== request.conversationId ||
-            clarification?.clarificationId !== request.clarification.clarificationId ||
-            clarification.baseWorkingVersion !== request.baseWorkingVersion ||
-            !candidate ||
-            (current.schema && !current.schema.elements[candidate.elementId])
-          ) {
-            throw conflict('澄清选项已过期或不属于当前页面');
-          }
-        }
+        const evidence = this.validateRepairEvidence(request, current);
+        if (request.clarification)
+          await this.validateClarification(request, request.clarification, current.schema);
         const message = request.content.blocks
           .filter(
             (block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text',
@@ -204,6 +157,72 @@ export class AgentService {
     };
     void pending.then(remove, remove);
     return pending;
+  }
+
+  async pageActivity(projectId: string, pageId: string): Promise<PageAgentActivity> {
+    if (!(await this.dependencies.projects.getPage(projectId, pageId)))
+      throw notFound('页面不存在或不属于项目');
+    return this.dependencies.runs.pageActivity(projectId, pageId);
+  }
+
+  private validateRepairEvidence(
+    request: CreateAgentRunRequest,
+    current: { workingHash?: string; schema?: OrigamixPageSchema },
+  ): RuntimeRepairEvidence | undefined {
+    const evidenceBlocks = request.content.blocks.filter(
+      (block) => block.type === 'runtime_repair',
+    );
+    const evidence = evidenceBlocks[0];
+    if (evidence) {
+      const schema = current.schema;
+      const flow =
+        schema && Object.hasOwn(schema.flows, evidence.flowId)
+          ? schema.flows[evidence.flowId]
+          : undefined;
+      if (
+        evidenceBlocks.length !== 1 ||
+        evidence.workingHash !== current.workingHash ||
+        !schema ||
+        !Object.hasOwn(schema.elements, evidence.elementId) ||
+        !schema.bindElements.some(
+          (binding) => binding.id === evidence.elementId && binding.flowId === evidence.flowId,
+        ) ||
+        !flow ||
+        !Object.hasOwn(flow.nodes, evidence.nodeId) ||
+        !evidence.visited.every((id) => Object.hasOwn(flow.nodes, id)) ||
+        (evidence.failure.code !== 'NODE_EXECUTION_ERROR' &&
+          flow.nodes[evidence.nodeId]?.type !== 'interfaceRequest')
+      ) {
+        throw conflict('预览运行证据已过期或与当前页面流程不匹配，请刷新预览后重现。');
+      }
+    }
+    return evidence;
+  }
+
+  private async validateClarification(
+    request: CreateAgentRunRequest,
+    selection: NonNullable<CreateAgentRunRequest['clarification']>,
+    schema?: OrigamixPageSchema,
+  ): Promise<void> {
+    const source = await this.dependencies.runs.get(selection.runId);
+    const clarification = source?.outcomeJson as ClarificationResult | undefined;
+    const candidate = clarification?.candidates?.find(
+      (item) => item.elementId === selection.selectedElementId,
+    );
+    if (
+      !source ||
+      source.status !== 'completed' ||
+      source.outcome !== 'needs_clarification' ||
+      source.projectId !== request.projectId ||
+      source.pageId !== request.pageId ||
+      source.conversationId !== request.conversationId ||
+      clarification?.clarificationId !== selection.clarificationId ||
+      clarification.baseWorkingVersion !== request.baseWorkingVersion ||
+      !candidate ||
+      (schema && !Object.hasOwn(schema.elements, candidate.elementId))
+    ) {
+      throw conflict('澄清选项已过期或不属于当前页面');
+    }
   }
 
   /** A timeout leaves persistence open: an uncooperative task must never outlive its database. */

@@ -191,6 +191,12 @@ try {
   assert.match(await events(completed.runId), /event: run\.completed/);
   const applied = await working();
   assert.equal(applied.workingVersion, canvas.workingVersion + 1);
+  const agentActivity = await post('/agent/pages/activity', scope);
+  assert.deepEqual(agentActivity, {
+    version: '1',
+    activeRun: null,
+    committedWorkingVersion: applied.workingVersion,
+  });
   assert.equal(applied.revisionId, draft.revisionId);
   assert.equal(applied.schema.elements[rootElementId].props.height, 64);
   await post(

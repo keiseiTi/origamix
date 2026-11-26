@@ -27,7 +27,10 @@ describe('workspace tab recovery', () => {
             status: 'in_sync',
           })),
         ],
-        pageDrafts: { page_a: 'retained draft', removed: 'stale' },
+        conversationDrafts: {
+          page_a: { conversation_1: 'retained draft' },
+          removed: { '': 'stale' },
+        },
       }),
     );
     useWorkspaceStore.setState({ ...session, projects: [], workspaceReady: false });
@@ -41,7 +44,7 @@ describe('workspace tab recovery', () => {
       mode: 'edit',
       status: null,
     });
-    expect(restored.pageDrafts[activePage!.id]).toBe('retained draft');
-    expect(restored.pageDrafts).not.toHaveProperty('removed');
+    expect(restored.conversationDrafts[activePage!.id]?.conversation_1).toBe('retained draft');
+    expect(restored.conversationDrafts).not.toHaveProperty('removed');
   });
 });

@@ -49,6 +49,16 @@ export const ListConversationsResponseSchema = strictObject({
 export const ListMessagesResponseSchema = strictObject({
   version: AgentProtocolVersionSchema,
   messages: Type.Array(AgentMessageSchema),
+  hasMore: Type.Boolean(),
+});
+
+export const GetPageAgentActivityResponseSchema = strictObject({
+  version: AgentProtocolVersionSchema,
+  activeRun: Type.Union([
+    strictObject({ runId: AgentRunIdSchema, conversationId: ConversationIdSchema }),
+    Type.Null(),
+  ]),
+  committedWorkingVersion: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
 });
 
 export const GetAgentRunResponseSchema = strictObject({
@@ -107,6 +117,8 @@ export type CreateAgentRunResponse = Static<typeof CreateAgentRunResponseSchema>
 export type ListConversationsResponse = Static<typeof ListConversationsResponseSchema>;
 
 export type ListMessagesResponse = Static<typeof ListMessagesResponseSchema>;
+
+export type GetPageAgentActivityResponse = Static<typeof GetPageAgentActivityResponseSchema>;
 
 export type GetAgentRunRequest = Static<typeof GetAgentRunRequestSchema>;
 

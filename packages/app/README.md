@@ -2,6 +2,8 @@
 
 React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状态与预览展示。外部消费的是 Vite 生成的 `dist/`，不导出内部组件或 Store 给其他包。
 
+每个保留的页面 Tab 持有一个 Agent Hook。页面级活动 Run 决定编辑、保存、Apply 与发送是否可用，选中会话决定消息、进度与澄清。首发创建会话后，按会话归档输入草稿。消息先读最近一页，终态或重连按序号对账，旧消息由用户继续加载。
+
 ## 代码入口
 
 - [src/app.tsx](src/app.tsx)：工作台装配。
@@ -9,7 +11,7 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 - [src/store](src/store)：窗口级导航和偏好投影；导航、页签和未发送草稿使用 `sessionStorage`。
 - [页面会话](src/components/workspace/hooks/use-page-session.ts)：按项目和页面管理 Working 草稿提交、版本操作与预览刷新。
 - [src/components/editor](src/components/editor)：PageEditor 装配与 Working 草稿队列；编辑实现见 [Editor](../editor/README.md)。
-- [src/components/agent-chat](src/components/agent-chat)：Agent 会话及事件恢复。
+- [src/components/agent-chat](src/components/agent-chat)：选中会话、历史分页、发送、SSE 恢复与页面级 Run 状态读取。
 - [src/preview](src/preview)：给 Runtime 渲染结果添加工作台反馈；引擎创建归 Runtime。
 - [src/materials](src/materials)：读取 Server 解析的项目技术栈，通过固定导入表按需加载编辑/运行物料；加载失败可重试，旧页面响应不会覆盖当前注册。
 - [dev-server.ts](dev-server.ts)：Node 开发宿主，允许使用 Server 的公开启动入口。

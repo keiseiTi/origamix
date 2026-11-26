@@ -22,6 +22,7 @@ import {
   CreateAgentRunResponseSchema,
   GetAgentRunRequestSchema,
   GetAgentRunResponseSchema,
+  GetPageAgentActivityResponseSchema,
   SubscribeAgentEventsRequestSchema,
   CancelAgentRunRequestSchema,
   CancelAgentRunResponseSchema,
@@ -58,6 +59,7 @@ const schemas = {
   createResponse: CreateAgentRunResponseSchema,
   getRequest: GetAgentRunRequestSchema,
   getResponse: GetAgentRunResponseSchema,
+  pageActivityResponse: GetPageAgentActivityResponseSchema,
   subscribeRequest: SubscribeAgentEventsRequestSchema,
   cancelRequest: CancelAgentRunRequestSchema,
   cancelResponse: CancelAgentRunResponseSchema,
@@ -164,6 +166,9 @@ export const validateGetAgentRunRequest = (value: unknown) =>
 
 export const validateGetAgentRunResponse = (value: unknown) =>
   check(getValidator('getResponse'), value);
+
+export const validateGetPageAgentActivityResponse = (value: unknown) =>
+  check(getValidator('pageActivityResponse'), value);
 
 export const validateSubscribeAgentEventsRequest = (value: unknown) =>
   check(getValidator('subscribeRequest'), value);

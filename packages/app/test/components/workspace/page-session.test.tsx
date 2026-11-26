@@ -20,7 +20,10 @@ vi.mock('@/utils', async (importOriginal) => ({
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
-  listAllMessages: vi.fn(),
+  listMessages: vi.fn(),
+  getPageAgentActivity: vi
+    .fn()
+    .mockResolvedValue({ activeRun: null, committedWorkingVersion: null }),
   getAgentRun: vi.fn(),
   createAgentRun: vi.fn(),
   cancelAgentRun: vi.fn(),
@@ -190,6 +193,10 @@ const props = {
 describe('workspace recovery controls', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.getPageAgentActivity.mockResolvedValue({
+      activeRun: null,
+      committedWorkingVersion: null,
+    });
     usePendingOperations.setState({ applies: {}, agents: {} });
     useWorkspaceStore.setState({
       projects: [
@@ -221,7 +228,7 @@ describe('workspace recovery controls', () => {
           status: null,
         },
       ],
-      pageDrafts: { page_a: 'hello', page_b: '' },
+      conversationDrafts: { page_a: { '': 'hello' } },
     });
     mocks.applyState.mockResolvedValue({ status: 'saved_pending_apply' });
     mocks.workingState.mockResolvedValue({
@@ -333,7 +340,7 @@ describe('workspace recovery controls', () => {
     mocks.listConversations.mockResolvedValue({
       conversations: [{ conversationId: 'conversation_1' }],
     });
-    mocks.listAllMessages.mockResolvedValue({
+    mocks.listMessages.mockResolvedValue({
       messages: [
         {
           runId: 'run_1',

@@ -141,10 +141,26 @@ export class MysqlConversationService implements AgentConversations {
     return this.repository.listMessages(conversationId, after, Math.min(Math.max(limit, 1), 500));
   }
 
+  async recentHistory(
+    projectId: string,
+    pageId: string | undefined,
+    conversationId: string,
+    limit = 500,
+    beforeSequence?: number,
+  ) {
+    if (!pageId || !(await this.projects.agentProjects.getPage(projectId, pageId)))
+      throw notFound('页面不存在');
+    scopedConversation(await this.repository.get(conversationId), projectId, pageId);
+    return this.repository.listRecentMessages(
+      conversationId,
+      Math.min(Math.max(limit, 1), 500),
+      beforeSequence,
+    );
+  }
+
   listMessages = (id: string, after = -1, limit = 100) =>
     this.repository.listMessages(id, after, limit);
-  listRecentMessages = (id: string, limit = 100) =>
-    this.repository.listMessages(id, -1, limit, true);
+  listRecentMessages = (id: string, limit = 100) => this.repository.listRecentMessages(id, limit);
 
   private async writeAssistant(runId: string, content: MessageContent, errorCode?: string) {
     const run = await this.runs.get(runId);

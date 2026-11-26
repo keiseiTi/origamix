@@ -60,10 +60,10 @@ interface HttpServerServices {
   allowedOrigins?: readonly string[];
   templateDownload?: TemplateDownload;
   agent?: {
-    conversations: Pick<AgentConversations, 'list' | 'history'>;
+    conversations: Pick<AgentConversations, 'list' | 'history' | 'recentHistory'>;
     runs: Pick<AgentRunService, 'get'>;
     events: AgentEventBroker;
-    service: Pick<AgentService, 'start' | 'cancel'>;
+    service: Pick<AgentService, 'start' | 'cancel' | 'pageActivity'>;
   };
   agentUsage?: import('../agent/agent-usage-service').AgentUsageService;
   runtimeDiagnostics?: RuntimeDiagnosticService;
