@@ -51,6 +51,7 @@ interface HttpServerServices {
   logger?: DiagnosticLogger;
   desktopToken: string;
   serviceInstanceId: string;
+  modelConfigured?: boolean;
   projects: TreeQueries & Partial<ProjectQueries>;
   projectService: ProjectCommands & Partial<Pick<ProjectService, 'createProject' | 'openProject'>>;
   resolveSchemaPage?: (

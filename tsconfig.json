@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "./tsconfig.scripts.json" },
     { "path": "./apps/desktop" },
     { "path": "./packages/app" },
     { "path": "./packages/materials" },

@@ -7,7 +7,7 @@
       "request": "launch",
       "cwd": "${workspaceRoot}",
       "runtimeExecutable": "node",
-      "program": "${workspaceFolder}/apps/desktop/scripts/dev.ts",
+      "program": "${workspaceFolder}/scripts/dev-desktop.ts",
       "autoAttachChildProcesses": true,
       "env": {
         "ORIGAMIX_DEBUG": "1"

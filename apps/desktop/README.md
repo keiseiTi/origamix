@@ -132,7 +132,7 @@ ORIGAMIX_DEBUG=1
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；升级完成后由用户重新安装依赖。发布前本地归档验证不等同于 npm registry 已可安装。
 
-开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
+仓库根目录的 `scripts/dev-desktop.ts` 统一编排 Desktop 开发。包级 `dev` 复用同一个入口，Electron 启动与资源组装由 Desktop 包执行。`scripts/build-desktop.ts` 按顺序调用 Server、App 和 Desktop 的构建命令。开发依赖更新由 Server 的 `development-libraries.ts` 统一声明：Shared → Runtime → Materials，随后构建 Server；Desktop 与 Web 共用该规则。Web 启动自动准备库，库源码变化在整批构建成功后重启宿主，失败保留原运行实例，保存监听源码可重试。启动工具脚本变化会提示重新运行开发命令。不要同时启动多个会写同一 dist 的开发/构建进程。
 公开包的名单、版本和归档路径由根 `scripts/public-packages.ts` 维护；`ORIGAMIX_PACK_DIR` 对 pack、check 和 publish 一致生效，相对目录以仓库根为基准。归档检查验证包名及版本与当前源码清单一致。
 
 物料开发更新（包括 antd 组件实现、样式和 Manifest）会按顺序生成 Manifest、构建 Materials 与 Server、准备模板资源，再独立重启后端，通过现有状态通知更新 App 凭证，并重启 Vite、刷新 App。Electron 窗口保持不变；App 刷新会重置页面内存及组件临时状态。Shared、Runtime、Main、Preload 等混合变更仍整端重启。

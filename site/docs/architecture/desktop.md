@@ -11,7 +11,7 @@ Electron 提供本机能力，管理窗口、目录授权、模型凭据和本�
 
 ## 关键入口
 
-`src/main/index.ts` 是应用与后端启动入口；`src/preload/index.ts` 暴露命名桌面能力；`src/main/config.ts` 解析环境文件与资源路径；`scripts/dev.ts` 统一监听依赖、构建和重启；其他 `scripts/` 模块负责编译与资源组装。
+`src/main/index.ts` 是应用与后端启动入口；`src/preload/index.ts` 暴露命名桌面能力；`src/main/config.ts` 解析环境文件与资源路径；仓库根目录的 `scripts/dev-desktop.ts` 统一编排跨包监听、构建和重启，`scripts/build-desktop.ts` 编排交付构建。Desktop 包的 `scripts/` 负责 Electron 启动、编译与资源组装。
 
 ## 协作边界
 

@@ -4,6 +4,7 @@ export const desktopRoot = fileURLToPath(new URL('../', import.meta.url));
 export const workspaceRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 export const options = {
+  cwd: desktopRoot,
   tsconfig: `${desktopRoot}tsconfig.json`,
   entry: {
     'main/index': `${desktopRoot}src/main/index.ts`,

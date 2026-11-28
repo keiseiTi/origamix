@@ -231,15 +231,15 @@ HTTP 测试已按用途分开：`test/http/server.test.ts` 关注鉴权与响应
 
 ## 宿主配置与本地 HTTP
 
-推荐通过根 `pnpm dev` 或 `pnpm dev:web` 启动完整宿主。单独调试 API 时，先在 shell 设置 `ORIGAMIX_SERVER_TOKEN`，再运行 `pnpm --filter @origamix/server dev`；监督器准备构建并启动 worker。
+桌面宿主用根 `pnpm dev` 启动。Web 联调运行根 `pnpm dev:web`。单独调试 API 时，先在 shell 设置 `ORIGAMIX_SERVER_TOKEN`，再运行 `pnpm --filter @origamix/server dev`；监督器准备构建并启动 worker。
 
-| 环境变量                     | 单独 Server dev 的行为                                     |
-| ---------------------------- | ---------------------------------------------------------- |
-| `ORIGAMIX_SERVER_TOKEN`      | 必填，作为 bearer token；完整 Desktop/Web 宿主自行生成凭据 |
-| `ORIGAMIX_SERVICE_ID`        | 可选，固定服务实例标识；默认随机生成                       |
-| `ORIGAMIX_LOCAL_STATE_DIR`   | 数据目录，默认仓库根 `.origamix-local/`                    |
-| `ORIGAMIX_LOCAL_PROJECT_DIR` | 可选，宿主授权的项目路径                                   |
-| `DEEPSEEK_API_KEY`           | 可选，Agent 与真实模型探测使用的 Key                       |
+| 环境变量                     | 单独 Server dev 的行为                                             |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `ORIGAMIX_SERVER_TOKEN`      | 必填，作为 bearer token；Desktop Main 启动的后端使用宿主生成的凭据 |
+| `ORIGAMIX_SERVICE_ID`        | 可选，固定服务实例标识；默认随机生成                               |
+| `ORIGAMIX_LOCAL_STATE_DIR`   | 数据目录，默认仓库根 `.origamix-local/`                            |
+| `ORIGAMIX_LOCAL_PROJECT_DIR` | 可选，宿主授权的项目路径                                           |
+| `DEEPSEEK_API_KEY`           | 可选，Agent 与真实模型探测使用的 Key                               |
 
 变量读取见 [dev-worker.ts](scripts/dev-worker.ts)。端口默认是 1029，可通过 `ORIGAMIX_SERVER_PORT` 覆盖。worker 输出 API 地址与服务实例标识。下面的读取示例假定 `ORIGAMIX_API_URL` 已设置为该 `/api/v1` 地址，且 `ORIGAMIX_SERVICE_ID` 与启动实例一致：
 
@@ -298,11 +298,11 @@ SSE 地址为 `/api/v1/projects/:projectId/agent/runs/:runId/events`，客户端
 
 ## 独立开发环境配置
 
-只有独立 `pnpm --filter @origamix/server dev` 启动脚本读取本包 `.env` / `.env.local`。优先级为代码默认值 → `.env` → `.env.local` → 进程环境变量，两个配置文件均可省略。相对路径以 Server 包目录解析。Desktop 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
+独立 SQLite 命令 `pnpm --filter @origamix/server dev` 读取本包 `.env` / `.env.local`。优先级为代码默认值 → `.env` → `.env.local` → 进程环境变量，两个配置文件均可省略。相对路径以 Server 包目录解析。Desktop 启动的 startServer 继续只消费宿主注入参数，不读取本包环境文件。
 
 ORIGAMIX_LOCAL_STATE_DIR 控制独立开发数据目录，ORIGAMIX_LOCAL_PROJECT_DIR 指定开发授权项目，ORIGAMIX_TEMPLATE_DIR 指向已准备的模板制品。模板目录留空时使用已解析数据目录下的 `template`（默认仓库 `.origamix-local/template`），可显式指定已组装的 Desktop `dist/template` 绝对路径。
 
-ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。
+独立 SQLite 模式的 ORIGAMIX_SERVER_TOKEN、可选 ORIGAMIX_SERVICE_ID 与 DEEPSEEK_API_KEY 仍只接受进程注入，不写入环境文件。修改配置需重启；测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人文件。
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目；依赖变更由项目自行维护。发布前本地归档验证不等同于 npm registry 已可安装。
 
@@ -332,3 +332,18 @@ Desktop 和 Web 共用 Pino 结构化日志。Desktop 将 JSON Lines 写到 Elec
 - 用 `agent.run.accepted` 或 `agent.run.reused` 将编号关联到 `runId`，再查模型用量、Working 提交、Run 终态和恢复事件。
 - Working 提交的 `unconfirmed` 表示写入已进入提交阶段但结果未确认，应按现有 Working 和提交凭证检查。
 - 日志只包含诊断元数据。页面累计用量依然来自用量仓储，写入结果依然由业务持久化确认。
+
+## Web Server 配置
+
+开发运行 `pnpm dev:server:web`。生产先执行 `pnpm build:web`，再运行 `pnpm start:server:web`。两个 Server 入口均监听回环地址，App 通过 HTTP 代理访问。Web Server 的配置按默认值、`packages/server/.env`、开发专用 `packages/server/.env.local`、进程环境递增覆盖。
+
+| 变量                        | 用途                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| `ORIGAMIX_WEB_MYSQL_URL`    | 必填。专用 MySQL 数据库连接地址。                                                          |
+| `ORIGAMIX_SERVER_TOKEN`     | 必填。与 App 代理的 Bearer token 一致。                                                    |
+| `ORIGAMIX_SERVER_PORT`      | 监听端口，默认 `1029`。覆盖时 App 使用相同端口。                                           |
+| `ORIGAMIX_SERVICE_ID`       | API 服务标识，默认 `origamix-web`，与 App 一致。                                           |
+| `DEEPSEEK_API_KEY`          | 可选。服务端调用模型时使用。                                                               |
+| `ORIGAMIX_WEB_TEMPLATE_DIR` | 生产 ZIP 和清单目录，默认仓库根目录的 `dist/web-template/`。相对路径以 Server 包目录解析。 |
+
+开发启动器按依赖顺序构建 Shared、Runtime、Materials 和 Server，成功后重启 Server 进程。根 `pnpm dev:web` 和 `pnpm start:web` 在 Server 就绪后启动独立 App 进程。App 单独运行的配置见 [App README](../app/README.md#浏览器开发配置)。

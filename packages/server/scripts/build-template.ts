@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { prepareWebTemplate } from '../template-download.ts';
+import { prepareWebTemplate } from './template-download.ts';
 
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'origamix-web-template-'));
 const output = fileURLToPath(new URL('../../../dist/web-template', import.meta.url));

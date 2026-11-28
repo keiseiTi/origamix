@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsdown",
-    "pack:npm": "tsx ../../scripts/pack-public.ts shared"
+    "pack:npm": "node --import tsx ../../scripts/pack-public.ts shared"
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.52",

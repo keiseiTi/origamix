@@ -14,7 +14,7 @@ React 工作台，负责项目导航、页面编辑、Agent 会话、Apply 状�
 - [src/components/agent-chat](src/components/agent-chat)：选中会话、历史分页、发送、SSE 恢复与页面级 Run 状态读取。
 - [src/preview](src/preview)：给 Runtime 渲染结果添加工作台反馈；引擎创建归 Runtime。
 - [src/materials](src/materials)：读取 Server 解析的项目技术栈，通过固定导入表按需加载编辑/运行物料；加载失败可重试，旧页面响应不会覆盖当前注册。
-- [dev-server.ts](dev-server.ts)：Node 开发宿主，允许使用 Server 的公开启动入口。
+- [dev-server.ts](dev-server.ts)：Vite 开发代理，通过 HTTP 连接独立 Server。
 
 `src/` 依赖 Shared、UI、Editor、Materials、Runtime 及声明的前端依赖，不读取文件系统或导入 Server。页面会话维护 Server Working Schema 的内存投影，窗口导航只保存导航与未发送消息草稿，不能为方便同步而合并成第二个数据库。HTTP 不确定失败不能自动重放写请求。
 
@@ -33,7 +33,7 @@ pnpm build:web
 pnpm --filter @origamix/app test:web
 ```
 
-`dev:web` 先编译并启动连接 MySQL 的 Web Server，通过同源 `/api/v1` 代理认证；Server、Shared、Runtime、Materials 源码改动会按依赖顺序构建，成功后重启宿主，前端改动使用 HMR。`ORIGAMIX_WEB_STATE_DIR` 可覆盖默认的 `.origamix-web/` 模板暂存目录。代理只为同源浏览器请求注入认证信息，并要求 `Sec-Fetch-Site: same-origin`。`test:web` 使用 Electron 提供 Chromium 图形会话，运行临时项目验证预览隔离。
+根 `pnpm dev:web` 先启动独立 Web Server，检查 API 就绪后启动 Vite。Vite 通过同源 `/api/v1` 转发请求，前端源码改动走 HMR。单独调试后端时可运行 `pnpm dev:server:web`。代理只为同源浏览器请求注入认证信息，并要求 `Sec-Fetch-Site: same-origin`。`test:web` 使用 Electron 提供 Chromium 图形会话，运行临时项目验证预览隔离。
 
 浏览器开发模式没有原生目录选择器和凭据存储。Desktop 通过 Shared 中的命名桥提供这些能力。修改可见界面需实际验证亮暗主题；修改开发进程管理还需 Server `test:dev`。
 
@@ -41,56 +41,50 @@ pnpm --filter @origamix/app test:web
 
 ## 浏览器开发配置
 
-启动前，在宿主环境中设置下列变量；前端不读取或保存 API Key。
+在 App 进程环境或 `packages/app/.env.local` 设置代理配置，与 [Web Server](../server/README.md#web-server-配置) 对应。
 
-| 变量                     | 用途                                                                   |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `ORIGAMIX_WEB_MYSQL_URL` | 必填，仅由后端读取的开发 MySQL 数据库连接地址                          |
-| `ORIGAMIX_WEB_STATE_DIR` | Web 模板暂存目录，默认仓库根目录 `.origamix-web/`                      |
-| `DEEPSEEK_API_KEY`       | Web 宿主执行 Agent 时使用的凭据；未配置时 Agent 报错，普通编辑仍可使用 |
+| 变量                    | 用途                                    |
+| ----------------------- | --------------------------------------- |
+| `ORIGAMIX_SERVER_TOKEN` | 必填。代理发给 Server 的 Bearer token。 |
+| `ORIGAMIX_SERVER_PORT`  | Server 回环端口，默认 `1029`。          |
+| `ORIGAMIX_SERVICE_ID`   | API 服务标识，默认 `origamix-web`。     |
 
-```sh
-# 先通过进程环境配置 ORIGAMIX_WEB_MYSQL_URL。
-pnpm dev:web
-```
+在根目录执行 `pnpm dev:web`，根启动器使用 Server 的端口、服务 token 和服务标识配置 App 代理。分开调试时执行 `pnpm dev:server:web` 和 `pnpm --filter @origamix/app dev`，并为代理配置同一套连接参数。工作台默认访问 `http://127.0.0.1:9685`。
 
 Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepseek-flash` 或 `deepseek-v4-pro`。环境变量配置见 [dev-server.ts](dev-server.ts)，桌面模型配置见 [Desktop README](../../apps/desktop/README.md)。
 
 ## Web 模板交付
 
-`pnpm dev:web` 使用当前仓库的 Template 源码准备独立项目 ZIP。工作台同源请求 `GET /api/v1/templates/<version>/download` 可下载当前模板，响应包含 `Content-Disposition` 和 `X-Template-SHA256`。其中 `<version>` 为 Template 的 package.json 版本，其他版本返回 404。下载请求沿用开发代理的来源校验。
+`pnpm dev:server:web` 使用当前仓库的 Template 源码准备独立项目 ZIP。工作台同源请求 `GET /api/v1/templates/<version>/download` 可下载当前模板，响应包含 `Content-Disposition` 和 `X-Template-SHA256`。其中 `<version>` 为 Template 的 package.json 版本，其他版本返回 404。下载请求沿用开发代理的来源校验。
 
-`pnpm build:web` 构建 Web 工作台到 `packages/app/dist/web/`，另在仓库根目录的 `dist/web-template/` 输出版本化 ZIP 和 `manifest.json`。正式 Web 宿主启动时校验 ZIP，并通过同一个下载接口提供给已登录用户。解压后的模板从 npm 安装固定版本的 Origamix 依赖。对外交付前运行 `pnpm release:registry` 确认这些版本可安装。
+`pnpm build:web` 构建 Web 工作台到 `packages/app/dist/web/`，另在仓库根目录的 `dist/web-template/` 输出版本化 ZIP 和 `manifest.json`。正式 Web Server 启动时校验 ZIP，并通过同一个下载接口提供给已登录用户。解压后的模板从 npm 安装固定版本的 Origamix 依赖。对外交付前运行 `pnpm release:registry` 确认这些版本可安装。
 
 ## 部署正式 Web 宿主
 
-从仓库根目录构建并运行。启动前通过部署环境注入访问密码和 MySQL 连接地址，再执行启动命令。
+从仓库根目录构建并运行。构建后由根启动器依次启动 Server 和 App，两者各自运行在独立进程。MySQL 连接地址由 Server 配置，访问密码由 App 配置。
 
 ```sh
 pnpm build:web
 pnpm start:web
 ```
 
-| 变量                     | 用途                                                                                                      |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `ORIGAMIX_WEB_PASSWORD`  | 必填。单用户实例的访问密码，有效长度至少 16 字符，上限 512 字符。                                         |
-| `ORIGAMIX_WEB_PORT`      | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
-| `ORIGAMIX_WEB_ORIGIN`    | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
-| `ORIGAMIX_WEB_STATE_DIR` | 模板暂存目录，默认仓库根目录的 `.origamix-web/production/`。                                              |
-| `ORIGAMIX_WEB_MYSQL_URL` | 必填。专用 MySQL 数据库连接地址，仅由 Web 宿主读取。                                                      |
-| `DEEPSEEK_API_KEY`       | 可选，仅由后端读取。未配置时仍可打开项目、编辑和预览。                                                    |
+| 变量                    | 用途                                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ORIGAMIX_WEB_PASSWORD` | 必填。单用户实例的访问密码，有效长度至少 16 字符，上限 512 字符。                                         |
+| `ORIGAMIX_WEB_PORT`     | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
+| `ORIGAMIX_WEB_ORIGIN`   | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
 
-远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。宿主在回环地址启动内部 API 服务，浏览器通过 Web 宿主访问业务接口。生产宿主配置从进程环境读取。项目备份以 MySQL 数据库为准。
+远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。浏览器通过 Web 宿主访问业务接口。App 从进程环境读取访问配置，从 `packages/app/.env` 或进程环境读取上游代理配置。项目备份以 MySQL 数据库为准。
 
-打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
+独立部署时可分别运行 `pnpm start:server:web` 和 `pnpm --filter @origamix/app start:web`。打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
 
 正式 Web 宿主支持单用户自托管。网页登录后可创建项目、编辑页面、预览和保存版本。Web 项目存放在 MySQL。导出 ZIP 可以独立部署或解压后在桌面继续编辑。
 
 ### 使用本机 MySQL
 
-先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。随后执行 `pnpm start:web`。
+先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。在 Server 环境设置连接地址后执行 `pnpm start:server:web`。
 
-首次启动在空的 Origamix 表集中初始化首版结构。MySQL 保存项目、页面、Working、Revision，以及页面 Agent 的会话、消息、Run 和工具审计。设置 `DEEPSEEK_API_KEY` 后可使用页面 Agent。每个数据库运行一个 Web 宿主。重启时，宿主根据提交回执恢复 Run 结果。
+首次启动在空的 Origamix 表集中初始化首版结构。MySQL 保存项目、页面、Working、Revision，以及页面 Agent 的会话、消息、Run 和工具审计。设置 `DEEPSEEK_API_KEY` 后可使用页面 Agent。每个数据库运行一个 Web Server。重启时，Server根据提交回执恢复 Run 结果。
 
 ZIP 导出会校验模板及快照文件的路径和内容。 [文件校验](src/services/project-export-files.ts)
 
@@ -135,7 +129,7 @@ ZIP 导出会校验模板及快照文件的路径和内容。 [文件校验](src
 
 这些流程的实现入口见 [页面会话](src/components/workspace/hooks/use-page-session.ts)、[版本操作](src/components/workspace/toolbar/revision-actions.tsx) 和 [历史管理](src/components/workspace/history/revision-history-dialog.tsx)。
 
-开发宿主会通过 Server 的模板准备工具，在本地状态目录生成固定 Runtime/Materials npm 版本的模板，供新建项目使用。运行开发宿主前需已有当前工作区包的构建产物；缺失时先运行根 `pnpm build:libs`。
+开发 Server 准备固定 Runtime/Materials npm 版本的模板。单独启动 App 前可先启动开发 Server 或运行根 `pnpm build:libs` 准备工作区依赖。
 
 ## 开发环境配置
 
@@ -144,16 +138,16 @@ Web 开发按代码默认值 → 包内 `.env` → 同目录 `.env.local` → �
 ```dotenv
 # packages/app/.env.local 示例
 ORIGAMIX_RENDERER_PORT=5174
-ORIGAMIX_WEB_STATE_DIR=/absolute/path/to/development-state
+ORIGAMIX_SERVER_PORT=1029
 ```
 
 Desktop 启动时注入 `ORIGAMIX_HOST=desktop` 及自身 host/port；Web 开发默认 `ORIGAMIX_HOST=web`。监听地址仅允许 localhost / 127.0.0.1，端口需为 1–65535。Vite 显式关闭默认 envDir 加载，Node 端 config.ts 读取并挑选字段；只将宿主类型注入前端。App 的 `build:desktop` 和 `build:web` 分别指定宿主，输出到 `dist/desktop/` 和 `dist/web/`。正式 Web 宿主使用单独的启动入口和会话。
 
-这些文件不保存凭据。Web 开发模型密钥仍通过进程环境 DEEPSEEK_API_KEY 注入，仅在后端凭据回调使用；不得写入 VITE_*、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
+App 的代理 token 可通过进程环境或私有环境文件注入。模型密钥由 Server 读取。凭据不能写入 `VITE_*`、项目文件或客户端包。测试使用 ORIGAMIX_ENV_LOCAL=0 跳过个人覆盖。
 
 模板交付使用已发布的固定 npm 依赖版本，不再携带 vendor 归档。源码更新不自动更新已有用户项目。发布前本地归档验证不等同于 npm registry 已可安装。
 
-网页开发入口默认使用 `9685`。Web 后端绑定回环地址，由系统分配端口，开发宿主通过同源 `/api/v1` 代理并注入认证信息。
+网页开发入口默认使用 `9685`。Web Server 默认监听 `127.0.0.1:1029`，开发宿主通过同源 `/api/v1` 代理并注入认证信息。
 
 工作台通过 `backend.onStatusChanged` 接收后端状态；App 持有并清理一个订阅，通知只更新内存连接。后端恢复后重新读取项目、Agent 状态和 Apply 状态，SSE 使用新认证重连。传输层以连接代次拒绝旧响应，重启前的连接查询也不能覆盖新缓存；不自动重放不确定的写操作，不重挂载编辑器或替换已有草稿。
 

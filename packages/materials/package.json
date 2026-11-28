@@ -45,7 +45,7 @@
     "typecheck": "pnpm manifest:generate && pnpm typecheck:prepared",
     "test": "pnpm manifest:generate && pnpm test:prepared",
     "build": "pnpm manifest:generate && pnpm build:prepared",
-    "pack:npm": "tsx ../../scripts/pack-public.ts materials",
+    "pack:npm": "node --import tsx ../../scripts/pack-public.ts materials",
     "prepack": "node -e \"throw new Error('Use pnpm pack:npm to prepare isolated public artifacts')\"",
     "manifest:generate": "node --import tsx scripts/generate-manifest.ts",
     "manifest:watch": "node --import tsx scripts/generate-manifest.ts --watch",

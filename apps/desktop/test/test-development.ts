@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
-import { cp, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -127,6 +127,8 @@ try {
           .some((part) => ['.env.local', '.vite', '.origamix-web', 'dist'].includes(part)),
     });
   }
+  await mkdir(join(root, 'scripts'), { recursive: true });
+  await cp(join(original, 'scripts/dev-desktop.ts'), join(root, 'scripts/dev-desktop.ts'));
   const desktop = join(root, 'apps/desktop');
   await cp(join(original, 'apps/desktop'), desktop, {
     recursive: true,
@@ -146,7 +148,7 @@ try {
     `require('electron').app.setPath('userData', ${JSON.stringify(join(root, 'user-data'))});require('./dist/main/index.cjs');`,
   );
   const launch = () => {
-    child = fork(join(desktop, 'scripts/dev.ts'), [], {
+    child = fork(join(root, 'scripts/dev-desktop.ts'), [], {
       cwd: root,
       env: {
         ...process.env,

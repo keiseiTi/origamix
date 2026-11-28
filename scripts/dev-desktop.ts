@@ -1,45 +1,23 @@
-import { createDesktopControl } from './desktop-control.ts';
-import { rm as cleanOutput } from 'node:fs/promises';
-import { fork, spawn } from 'node:child_process';
+import { fork } from 'node:child_process';
 import { watch } from 'node:fs';
 import { mkdtemp, rename, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { once } from 'node:events';
 import { createInterface } from 'node:readline';
-import { build as buildEntries, type InlineConfig } from 'tsdown';
-
-const build = async (config: InlineConfig) => {
-  if (config.clean && config.outDir)
-    await cleanOutput(config.outDir, { recursive: true, force: true });
-  const pending = new Set(Object.keys(config.entry as Record<string, string>));
-  const onSuccess = config.onSuccess;
-  for (const [name, entry] of Object.entries(config.entry as Record<string, string>)) {
-    await buildEntries({
-      ...config,
-      entry: { [name]: entry },
-      clean: false,
-      onSuccess:
-        typeof onSuccess === 'function'
-          ? async (options, signal) => {
-              pending.delete(name);
-              if (!pending.size) await onSuccess(options, signal);
-            }
-          : onSuccess,
-    });
-  }
-};
-import electronPath from 'electron';
-import { desktopRoot, workspaceRoot, options } from './build-options.ts';
-import { copyServerArtifact } from './copy-server-artifact.ts';
-import { stopChild } from '@origamix/server/development';
-
-const require = createRequire(import.meta.url);
+import { desktopRoot, workspaceRoot, options } from '../apps/desktop/scripts/build-options.ts';
+import { copyServerArtifact } from '../apps/desktop/scripts/copy-server-artifact.ts';
+import { stopChild } from '../packages/server/scripts/dev-supervisor.ts';
 import {
   libraryWatchPaths,
   buildLibraries,
   createSourceChangeFilter,
-} from '@origamix/server/development-libraries';
+} from '../packages/server/scripts/development-libraries.ts';
+import { compileDesktop } from '../apps/desktop/scripts/compile.ts';
+import { launchDesktop } from '../apps/desktop/scripts/launch.ts';
+import type { createDesktopControl } from '../apps/desktop/scripts/desktop-control.ts';
+
+const requireDesktop = createRequire(join(desktopRoot, 'package.json'));
 const dirty = new Set(['shared', 'runtime', 'materials', 'server', 'desktop', 'template']);
 const watchers: import('node:fs').FSWatcher[] = [];
 let electron: import('node:child_process').ChildProcess | undefined;
@@ -117,33 +95,15 @@ const startVite = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
 };
 const start = async (env: NodeJS.ProcessEnv, rendererUrl: string) => {
   await startVite(env, rendererUrl);
-  const config = await import('../src/main/config.ts');
-  const debug = config.desktopDebug(env)
-    ? [
-        `--inspect=${config.desktopPort(env, 'ORIGAMIX_INSPECT_PORT')}`,
-        `--remote-debugging-port=${config.desktopPort(env, 'ORIGAMIX_DEBUG_PORT')}`,
-      ]
-    : [];
-  const launchEnv: NodeJS.ProcessEnv = {
-    ...env,
-    ELECTRON_RENDERER_URL: rendererUrl,
-    ORIGAMIX_DEVELOPMENT_CONTROL: '1',
-  };
-  delete launchEnv.ELECTRON_RUN_AS_NODE;
-  const child = spawn(electronPath as unknown as string, [...debug, desktopRoot], {
-    cwd: workspaceRoot,
-    stdio: ['pipe', 'pipe', 'inherit'],
-    env: launchEnv,
-  });
-  child.stdout?.on('data', (data) => process.stdout.write(data));
+  const { child, control } = launchDesktop(env, rendererUrl);
   electron = child;
-  desktopControl = createDesktopControl(child);
+  desktopControl = control;
   child.once('exit', () => {
     if (electron === child) {
       electron = undefined;
     }
   });
-  await desktopControl.ready;
+  await control.ready;
 };
 const updateTarget = (batch: ReadonlySet<string>, canKeepWindow: boolean) => {
   if (!canKeepWindow) return 'desktop';
@@ -165,14 +125,15 @@ const update = async () => {
   const batch = new Set(dirty);
   for (const name of batch) dirty.delete(name);
   try {
-    const config = await import(`../src/main/config.ts?generation=${++generation}`);
+    const config = await import(`../apps/desktop/src/main/config.ts?generation=${++generation}`);
     const env = config.loadDesktopEnvironment(desktopRoot);
     const rendererUrl = config.desktopRendererUrl(env);
     config.desktopDebug(env);
     if (batch.has('shared')) batch.add('desktop');
     await buildLibraries(batch, workspaceRoot, run);
-    if (batch.has('server')) await run(require.resolve('@origamix/server/build'), workspaceRoot);
-    if (batch.has('desktop')) await build({ ...options, clean: false });
+    if (batch.has('server'))
+      await run(requireDesktop.resolve('@origamix/server/build'), workspaceRoot);
+    if (batch.has('desktop')) await compileDesktop({ ...options, clean: false });
     if (stopping) return;
     const control = initial || !electron ? undefined : desktopControl;
     const target = updateTarget(batch, Boolean(control));

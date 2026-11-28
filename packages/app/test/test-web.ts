@@ -1,25 +1,28 @@
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'vite';
 import { strFromU8, unzipSync } from 'fflate';
+import { startWebTestBackend } from './helpers/web-backend.ts';
 import { startProductionWeb } from '../production-web.ts';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
 const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
 if (!mysqlUrl) throw new Error('Set ORIGAMIX_TEST_MYSQL_URL to a disposable MySQL database');
-process.env.ORIGAMIX_WEB_MYSQL_URL = mysqlUrl;
 
-const directory = await mkdtemp(join(tmpdir(), 'origamix-web-smoke-'));
 const root = fileURLToPath(new URL('../', import.meta.url));
-process.env.ORIGAMIX_WEB_STATE_DIR = directory;
+
 delete process.env.DEEPSEEK_API_KEY;
 process.env.ORIGAMIX_HOST = 'web';
+const backend = await startWebTestBackend(mysqlUrl);
+const { upstream } = backend;
+process.env.ORIGAMIX_SERVER_PORT = String(upstream.port);
+process.env.ORIGAMIX_SERVER_TOKEN = upstream.token;
+process.env.ORIGAMIX_SERVICE_ID = upstream.serviceInstanceId;
 let server;
 let production: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
 try {
@@ -108,10 +111,8 @@ try {
     password,
     host: '127.0.0.1',
     port: 5189,
-    stateDirectory: join(directory, 'production'),
     rendererDirectory: join(root, 'dist/web'),
-    templateDirectory: join(root, '../../dist/web-template'),
-    mysqlUrl,
+    upstream,
   });
   const health = new URL('/api/v1/health', origin);
   const productionTemplate = new URL(templateUrl.pathname, origin);
@@ -197,5 +198,5 @@ try {
 } finally {
   await production?.close();
   await server?.close();
-  await rm(directory, { recursive: true, force: true });
+  await backend.close();
 }

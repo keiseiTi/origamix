@@ -1,12 +1,8 @@
-import { loadAppConfig } from '../config.ts';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { runDevelopment } from '@origamix/server/development';
+import { pathToFileURL } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const config = loadAppConfig('development');
-runDevelopment({
-  entry: join(dirname(require.resolve('vite/package.json')), 'bin/vite.js'),
-  args: process.argv.slice(2),
-  watchServer: config.workbenchHost === 'web',
-});
+const entry = join(dirname(require.resolve('vite/package.json')), 'bin/vite.js');
+process.argv[1] = entry;
+await import(pathToFileURL(entry).href);

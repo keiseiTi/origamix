@@ -131,7 +131,10 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   server.get('/api/v1/health', async () => ({
     success: true,
     code: 200,
-    data: { serviceInstanceId: input.serviceInstanceId },
+    data: {
+      serviceInstanceId: input.serviceInstanceId,
+      ...(input.modelConfigured === undefined ? {} : { modelConfigured: input.modelConfigured }),
+    },
   }));
   const template = input.templateDownload;
   if (template)

@@ -6,11 +6,11 @@
 
 在仓库根目录使用 Node.js 24.15.0 至 24.x 和 pnpm 10，先执行 `pnpm install --frozen-lockfile`。只做可视化编辑时可以跳过模型配置。
 
-| 使用场景         | 启动方式                                                       | 项目内容如何交付                   |
-| ---------------- | -------------------------------------------------------------- | ---------------------------------- |
-| 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                                   | 保存页面版本后，点击「应用到项目」 |
-| 浏览器开发       | 配置 `ORIGAMIX_WEB_MYSQL_URL` 后执行 `pnpm dev:web`            | 保存版本后导出 ZIP                 |
-| 单用户自托管 Web | 配置 MySQL 和访问密码后执行 `pnpm build:web`、`pnpm start:web` | 保存版本后导出 ZIP                 |
+| 使用场景         | 启动方式                                         | 项目内容如何交付                   |
+| ---------------- | ------------------------------------------------ | ---------------------------------- |
+| 桌面编辑本机项目 | `pnpm dev`，在工作台选择目录                     | 保存页面版本后，点击「应用到项目」 |
+| 浏览器开发       | `pnpm dev:web`                                   | 保存版本后导出 ZIP                 |
+| 单用户自托管 Web | 先执行 `pnpm build:web`，再执行 `pnpm start:web` | 保存版本后导出 ZIP                 |
 
 桌面与 Web 开发默认使用前端端口 9685，请分别启动。桌面以本地目录和 SQLite 保存编辑状态，Web 使用 MySQL。Web 项目 ZIP 可以独立部署，也可以解压后在桌面打开继续编辑。两端各自保存草稿、版本历史、会话和回执。生产配置见 [App 部署说明](packages/app/README.md#部署正式-web-宿主)。
 
@@ -22,9 +22,9 @@
 4. 预览当前草稿，确认后点击“保存版本”创建 Revision，再点击“应用到项目”更新生成项目的 `schema.json`。
 5. 在生成项目目录运行 `pnpm install`、`pnpm dev`；部署说明见生成项目的 README。
 
-根开发命令会自动准备当前库构建产物。开发宿主会准备使用固定 npm 版本的模板，供新建项目使用。
+桌面和 Web Server 的开发启动器会准备当前库构建产物，并生成使用固定 npm 版本的模板。桌面的跨包开发和构建分别由根目录的 `scripts/dev-desktop.ts` 和 `scripts/build-desktop.ts` 编排。
 
-`pnpm dev` 和 `pnpm dev:web` 在每轮涉及 Materials 的构建中准备一次物料清单。物料源码变化按顺序更新 Materials 和 Server，生成文件不会触发下一轮构建。
+`pnpm dev` 和 Web Server 开发启动器 在每轮涉及 Materials 的构建中准备一次物料清单。物料源码变化按顺序更新 Materials 和 Server，生成文件不会触发下一轮构建。
 
 浏览器开发模式的目录授权、Key 环境变量与能力限制见 [App README](packages/app/README.md)。草稿、版本、历史和失败处理也见该文档；桌面数据位置及打包配置见 [Desktop README](apps/desktop/README.md)。
 
@@ -106,7 +106,7 @@ Lefthook 对暂存文件格式化和 lint；TypeScript 变更触发类型与测�
 
 Desktop、App 和独立 Server 在代码中提供默认值。开发命令按代码默认值 → 包内 `.env` → 同目录 `.env.local` → 进程环境变量合并。配置文件可省略，生产构建跳过 `.env.local`。Desktop 开发启动器监听自身环境文件并自动重启开发实例；独立 App／Server 修改配置后也需重启。Desktop 启动器将跨包页面地址参数传给 App。库包、Site 和生成项目不读取这些宿主配置；API Key 不写入环境文件。具体字段、路径基准和生产打包规则见各宿主包 README。
 
-公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 在隔离目录安装实际归档并加载公开入口。`pnpm publish:npm` 执行发布。模板使用的版本必须先在 npm 可安装。
+根 `scripts/` 编排 Web 启动与构建、全量与提交前检查、集成测试、桌面打包和 npm 发布，各包命令执行对应任务。公开 npm 包、私有工作台产物与发布流程见[包依赖与交付产物](site/docs/architecture/development.md)。`pnpm release:check` 在隔离目录安装实际归档并加载公开入口。`pnpm publish:npm` 执行发布。模板使用的版本必须先在 npm 可安装。
 
 ### 一次运行完整仓库检查
 

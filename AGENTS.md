@@ -34,7 +34,7 @@ This file is a repository map and durable guardrails, not a product specificatio
 - SQLite belongs to Server. **Never add `FOREIGN KEY`, `REFERENCES`, or cascading database actions.** Services enforce relationships and deletion order through explicit checks, transactions and reconciliation.
 - Renderer business operations use typed HTTP APIs. IPC is limited to named desktop capabilities; never expose raw `ipcRenderer`, filesystem, shell or arbitrary-path operations. Validate inputs and caller authority at the privileged boundary.
 - Main owns directory authorization, windows, credentials and backend lifecycle. Project writes remain within a user-authorized directory. Previews never receive desktop credentials or write privileges.
-- Use declared package exports and direct dependencies. Shared cannot depend on other workspace packages; Materials cannot import App/Desktop/Server; App runtime cannot import Desktop/Server; Server cannot import App/Desktop. App's Node-side development host may use exported Server entry points, never from browser source.
+- Use declared package exports and direct dependencies. Shared cannot depend on other workspace packages; Materials cannot import App/Desktop/Server; App runtime cannot import Desktop/Server; Server cannot import App/Desktop. App Web hosts connect to the independently started Server over loopback HTTP. App integration tests may use exported Server entry points.
 - Backend listeners remain loopback-only. Tokens, API keys and decrypted credentials must not enter URLs, logs, browser storage, project files or client bundles.
 
 ## Engineering and interface rules
@@ -111,7 +111,7 @@ pnpm build
 - Debug with reproducible inputs, request/revision identifiers and redacted errors. Close temporary servers/listeners after checks. Leave better verification evidence, not only a workaround.
 - This harness applies concise layered guidance and verification loops from [OpenAI's AGENTS.md guide](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and [Codex best practices](https://learn.chatgpt.com/guides/best-practices). Package boundaries and checks above are Origamix-specific engineering decisions.
 
-- Root `pnpm check` uses `build:libs:check` to prepare Shared/Runtime, verify the committed Materials Manifest once, then use prepared Materials build, typecheck, and test scripts without regeneration. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.
+- Root `scripts/check.ts` owns workspace and staged checks. It prepares Shared/Runtime, verifies the committed Materials Manifest once, then uses prepared Materials build, typecheck, and test scripts without regeneration. `*:prepared` scripts consume existing library artifacts and must not race library builds; pre-commit uses one ordered preparation/check sequence. Root lint includes `scripts/`.
 
 - Custom Node command entrypoints and integration launchers use TypeScript executed by tsx. Declare tsx in each invoking package, including public packages that invoke root packing tools; root scripts are checked by tsconfig.scripts.json. Preserve loader arguments for Node child scripts and keep Electron runtime fixtures distinct from Node launchers.
 

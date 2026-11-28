@@ -6,7 +6,7 @@ Applies to `apps/desktop/`. Read the [root guide](../../AGENTS.md) first.
 
 - `src/main/index.ts`: windows, trusted IPC, directory authorization and model settings. `src/main/backend-lifecycle.ts` owns backend startup, pause, resume, crash recovery and shutdown.
 - `src/preload/index.ts`: workbench bridge. Page previews are Renderer-owned sandboxed iframe documents and do not have a Desktop bridge.
-- `scripts/dev.ts`, `scripts/build.ts`, `scripts/build-options.ts`, `scripts/assemble-resources.ts`, `scripts/copy-server-artifact.ts`, `electron-builder.yml`: supervision, compilation and resource assembly. Template npm-version preparation comes from Server tooling rather than a Desktop-owned recipe.
+- Root `scripts/dev-desktop.ts` and `scripts/build-desktop.ts` own cross-package development and build orchestration. Desktop `scripts/launch.ts`, `scripts/compile.ts`, `scripts/build.ts`, `scripts/build-options.ts`, `scripts/assemble-resources.ts`, `scripts/copy-server-artifact.ts`, `electron-builder.yml`: Electron launch, compilation and resource assembly. Template npm-version preparation comes from Server tooling rather than a Desktop-owned recipe.
 
 ## Boundaries
 

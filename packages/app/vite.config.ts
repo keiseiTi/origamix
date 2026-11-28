@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { previewDocument } from './preview-document.ts';
-import { mysqlWebDevelopment } from './dev-server.ts';
+import { webDevelopmentProxy } from './dev-server.ts';
 
 export default defineConfig(({ command }) => {
   const config = loadAppConfig(command === 'serve' ? 'development' : 'production');
@@ -13,7 +13,7 @@ export default defineConfig(({ command }) => {
     build: { outDir: `dist/${workbenchHost}` },
     base: './',
     envDir: false as const,
-    plugins: [tailwindcss(), react(), previewDocument(), mysqlWebDevelopment(config)],
+    plugins: [tailwindcss(), react(), previewDocument(), webDevelopmentProxy(config)],
     server: {
       host: config.host,
       port: config.port,

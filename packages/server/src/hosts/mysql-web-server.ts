@@ -1,4 +1,3 @@
-import { nanoid } from 'nanoid';
 import { createLogger } from '../logging/logger';
 import { createPageAgentEngine, createPageAgentRuntime } from '../agent/page-agent-runtime';
 import { mysqlAgentUsage } from '../agent/agent-usage-repository';
@@ -19,6 +18,8 @@ import { getWorkingSchemaState } from '../schema/schema-service';
 
 export const startMysqlWebServer = async (input: {
   mysqlUrl: string;
+  port?: number;
+  modelConfigured?: boolean;
   desktopToken: string;
   serviceInstanceId: string;
   templateDownload?: TemplateDownload;
@@ -86,6 +87,7 @@ export const startMysqlWebServer = async (input: {
     };
     server = createHttpServer({
       host: 'web',
+      modelConfigured: input.modelConfigured,
       logger,
       desktopToken: input.desktopToken,
       serviceInstanceId: input.serviceInstanceId,
@@ -105,7 +107,7 @@ export const startMysqlWebServer = async (input: {
       agent: agent.http,
     });
     const listener = server;
-    await listener.listen({ host: '127.0.0.1', port: 0 });
+    await listener.listen({ host: '127.0.0.1', port: input.port ?? 0 });
     const address = listener.server.address();
     if (!address || typeof address === 'string') throw new Error('无法取得 HTTP 服务端口');
     const ownership = owner;
@@ -137,19 +139,6 @@ export const startMysqlWebServer = async (input: {
     return {
       port: address.port,
       close,
-      reportProxyFailure: (
-        statusCode: number,
-        reason: 'origin' | 'session' | 'upstream' | 'internal',
-      ) => {
-        const requestId = nanoid();
-        logger[statusCode >= 500 ? 'error' : 'warn']({
-          event: 'web.proxy.request.failed',
-          requestId,
-          statusCode,
-          reason,
-        });
-        return requestId;
-      },
     };
   } catch (error) {
     logger.error({ event: 'server.start.failed', stage: 'startup' });

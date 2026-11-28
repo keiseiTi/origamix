@@ -10,10 +10,13 @@ import {
 } from './development-libraries.ts';
 import { fileURLToPath } from 'node:url';
 
-export const stopChild = async (child: import('node:child_process').ChildProcess | undefined) => {
+export const stopChild = async (
+  child: import('node:child_process').ChildProcess | undefined,
+  timeout = 3000,
+) => {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
   await new Promise<void>((resolve) => {
-    const timer = setTimeout(() => child.kill('SIGKILL'), 3000);
+    const timer = setTimeout(() => child.kill('SIGKILL'), timeout);
     child.once('exit', () => {
       clearTimeout(timer);
       resolve();
@@ -70,6 +73,9 @@ export const runDevelopment = ({
           void shutdown(1);
         });
         const next = worker;
+        next.on('message', (message) => {
+          if (process.connected && worker === next) process.send?.(message);
+        });
         next.once('exit', (code) => {
           if (!stopping && worker === next) void shutdown(code ?? 1);
         });

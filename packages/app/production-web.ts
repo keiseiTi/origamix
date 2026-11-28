@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import {
   createServer,
   request as requestHttp,
@@ -8,9 +8,8 @@ import {
 } from 'node:http';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
-import { startMysqlWebServer } from '@origamix/server/web-runtime';
+import type { loadWebUpstream } from './config.ts';
 import { createWebSessions, loginDocument } from './web-session.ts';
-import { loadWebTemplate } from './web-template-assets.ts';
 
 const sendError = (response: ServerResponse, status: number, message: string) => {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -50,25 +49,30 @@ const responseHeaders = [
   'x-template-sha256',
 ];
 
-type ReportProxyFailure = Awaited<ReturnType<typeof startMysqlWebServer>>['reportProxyFailure'];
+type WebUpstream = ReturnType<typeof loadWebUpstream>;
 
 const sendProxyError = (
-  report: ReportProxyFailure,
   response: ServerResponse,
   status: number,
-  reason: Parameters<ReportProxyFailure>[1],
+  reason: 'origin' | 'session' | 'upstream' | 'internal',
   message: string,
 ) => {
-  response.setHeader('X-Request-Id', report(status, reason));
+  const requestId = nanoid();
+  console[status >= 500 ? 'error' : 'warn']({
+    event: 'web.proxy.request.failed',
+    requestId,
+    statusCode: status,
+    reason,
+  });
+  response.setHeader('X-Request-Id', requestId);
   sendError(response, status, message);
 };
 
 const proxyApi = (
   request: IncomingMessage,
   response: ServerResponse,
-  target: { port: number; token: string; serviceInstanceId: string },
+  target: WebUpstream,
   session: AbortSignal,
-  report: ReportProxyFailure,
 ) => {
   const headers = {
     ...Object.fromEntries(
@@ -105,8 +109,8 @@ const proxyApi = (
     if (response.headersSent) response.destroy();
     else if (session.aborted) {
       response.setHeader('X-Origamix-Session-Required', '1');
-      sendProxyError(report, response, 401, 'session', '会话已结束，请重新登录');
-    } else sendProxyError(report, response, 503, 'upstream', '后端暂时不可用');
+      sendProxyError(response, 401, 'session', '会话已结束，请重新登录');
+    } else sendProxyError(response, 503, 'upstream', '后端暂时不可用');
   });
   response.once('close', () => upstream.destroy());
   request.pipe(upstream);
@@ -128,39 +132,17 @@ interface WebHostOptions {
   password: string;
   host: string;
   port: number;
-  stateDirectory: string;
   rendererDirectory: string;
-  templateDirectory: string;
-  modelKey?: string;
-  mysqlUrl: string;
+  upstream: WebUpstream;
 }
 
 export const startProductionWeb = async (options: WebHostOptions) => {
-  const { origin } = options;
-  const mysqlUrl = options.mysqlUrl?.trim();
-  if (!mysqlUrl) throw new Error('Web 宿主需要配置 ORIGAMIX_WEB_MYSQL_URL');
-  const index = (await readFile(join(options.rendererDirectory, 'index.html'), 'utf8')).replace(
-    '<head>',
-    `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${Boolean(options.modelKey)}">`,
-  );
+  const { origin, upstream: target } = options;
+  const index = await readFile(join(options.rendererDirectory, 'index.html'), 'utf8');
   const preview = await readFile(join(options.rendererDirectory, 'preview.html'));
-  await mkdir(options.stateDirectory, { recursive: true });
-  const staging = await mkdtemp(join(options.stateDirectory, 'template-'));
   const sessions = createWebSessions(options.password, origin.protocol === 'https:');
-  let backend: Awaited<ReturnType<typeof startMysqlWebServer>> | undefined;
 
   try {
-    const templateDownload = await loadWebTemplate(options.templateDirectory, staging);
-    const token = nanoid(48);
-    const serviceInstanceId = nanoid();
-    const credentials = { desktopToken: token, serviceInstanceId, templateDownload };
-    backend = await startMysqlWebServer({
-      ...credentials,
-      mysqlUrl,
-      getModelCredential: async () => options.modelKey,
-    });
-    const target = { port: backend.port, token, serviceInstanceId };
-    const report = backend.reportProxyFailure;
     const handle = async (request: IncomingMessage, response: ServerResponse) => {
       response.setHeader('Cache-Control', 'no-store');
       response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -170,7 +152,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
         !request.url?.startsWith('/') ||
         request.url.startsWith('//')
       )
-        return sendProxyError(report, response, 403, 'origin', '请求来源不受信任');
+        return sendProxyError(response, 403, 'origin', '请求来源不受信任');
       const { pathname } = new URL(request.url, origin);
       const api = pathname === '/api/v1' || pathname.startsWith('/api/v1/');
       const auth = pathname.startsWith('/auth/');
@@ -183,7 +165,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
           (!safeMethod && source !== origin.origin) ||
           (site && site !== 'same-origin' && (api || !safeMethod))
         )
-          return sendProxyError(report, response, 403, 'origin', '请求来源不受信任');
+          return sendProxyError(response, 403, 'origin', '请求来源不受信任');
       }
 
       if (pathname === '/auth/login') {
@@ -216,9 +198,9 @@ export const startProductionWeb = async (options: WebHostOptions) => {
       if (api) {
         if (!session) {
           response.setHeader('X-Origamix-Session-Required', '1');
-          return sendProxyError(report, response, 401, 'session', '会话已结束，请重新登录');
+          return sendProxyError(response, 401, 'session', '会话已结束，请重新登录');
         }
-        return proxyApi(request, response, target, session, report);
+        return proxyApi(request, response, target, session);
       }
       if (request.method !== 'GET' && request.method !== 'HEAD')
         return sendError(response, 405, '请求方式不受支持');
@@ -253,7 +235,29 @@ export const startProductionWeb = async (options: WebHostOptions) => {
       ) {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
         response.setHeader('X-Frame-Options', 'DENY');
-        response.end(request.method === 'HEAD' ? undefined : index);
+        if (request.method === 'HEAD') return response.end();
+        const modelConfigured = await fetch(`http://127.0.0.1:${target.port}/api/v1/health`, {
+          headers: {
+            Authorization: `Bearer ${target.token}`,
+            'X-Origamix-Service': target.serviceInstanceId,
+          },
+          signal: AbortSignal.any([session, AbortSignal.timeout(1000)]),
+          redirect: 'error',
+        })
+          .then(async (health) => {
+            if (!health.ok) {
+              await health.body?.cancel();
+              return false;
+            }
+            return (await health.json()).data?.modelConfigured === true;
+          })
+          .catch(() => false);
+        response.end(
+          index.replace(
+            '<head>',
+            `<head><base href="/"><meta name="origamix-web-host" content="production"><meta name="origamix-model-configured" content="${modelConfigured}">`,
+          ),
+        );
         return;
       }
       sendError(response, 404, '页面不存在');
@@ -261,7 +265,7 @@ export const startProductionWeb = async (options: WebHostOptions) => {
     const server = createServer((request, response) => {
       void handle(request, response).catch(() => {
         if (response.headersSent) response.destroy();
-        else sendProxyError(report, response, 500, 'internal', 'Web 宿主请求失败');
+        else sendProxyError(response, 500, 'internal', 'Web 宿主请求失败');
       });
     });
     await new Promise<void>((resolve, reject) => {
@@ -282,14 +286,10 @@ export const startProductionWeb = async (options: WebHostOptions) => {
         );
         server.closeAllConnections();
         await stopped;
-        await backend?.close();
-        await rm(staging, { recursive: true, force: true });
       },
     };
   } catch (error) {
     sessions.close();
-    await backend?.close();
-    await rm(staging, { recursive: true, force: true });
     throw error;
   }
 };

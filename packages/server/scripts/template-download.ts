@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { zipSync, type Zippable } from 'fflate';
+import { prepareTemplateArtifact } from './prepare-template-artifact.ts';
 
 const archiveTime = new Date(2000, 0, 1, 12);
 
@@ -18,12 +19,11 @@ const collectFiles = async (directory: string): Promise<Zippable> => {
 };
 
 export const prepareWebTemplate = async (targetTemplate: string) => {
-  const { prepareTemplateArtifact } = await import('@origamix/server/template-artifact');
   await prepareTemplateArtifact({
-    sourceTemplate: fileURLToPath(new URL('../template', import.meta.url)),
+    sourceTemplate: fileURLToPath(new URL('../../template', import.meta.url)),
     targetTemplate,
-    runtimePackage: fileURLToPath(new URL('../runtime', import.meta.url)),
-    materialsPackage: fileURLToPath(new URL('../materials', import.meta.url)),
+    runtimePackage: fileURLToPath(new URL('../../runtime', import.meta.url)),
+    materialsPackage: fileURLToPath(new URL('../../materials', import.meta.url)),
   });
   const { version } = JSON.parse(await readFile(join(targetTemplate, 'package.json'), 'utf8'));
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+][\w.+-]+)?$/.test(version))

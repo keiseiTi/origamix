@@ -27,7 +27,7 @@ Shared、Runtime、Materials、Server、Main/Preload 等源码变化会触发依
 
 ## 能在浏览器直接使用吗？
 
-开发运行 `pnpm dev:web`。单用户部署使用 `pnpm build:web` 和 `pnpm start:web`。Web 保存版本后可导出完整项目 ZIP。详见 [正式 Web 宿主](/architecture/development#正式-web-宿主)。
+开发运行 `pnpm dev:web`。单用户部署先执行 `pnpm build:web`，再运行 `pnpm start:web`。根命令启动独立的 Server 和 App 进程。Web 保存版本后可导出完整项目 ZIP。详见 [正式 Web 宿主](/architecture/development#正式-web-宿主)。
 
 ## 可以离开 Origamix 运行页面吗？
 

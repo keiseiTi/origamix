@@ -4,17 +4,16 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start:web": "tsx scripts/start-web.ts",
-    "dev": "tsx scripts/dev.ts",
+    "start:web": "node --import tsx scripts/start-web.ts",
+    "dev": "node --import tsx scripts/dev.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "test:web:mysql": "tsx test/test-web-mysql.ts",
-    "test:web": "tsx test/test-web.ts",
+    "test:web:mysql": "node --import tsx test/test-web-mysql.ts",
+    "test:web": "node --import tsx test/test-web.ts",
     "build": "pnpm run build:desktop",
     "build:desktop": "node --import tsx scripts/build-renderer.ts desktop",
-    "build:web": "node --import tsx scripts/build-renderer.ts web",
-    "build:template": "tsx scripts/build-template.ts"
+    "build:web": "node --import tsx scripts/build-renderer.ts web"
   },
   "dependencies": {
     "@origamix/materials": "workspace:*",

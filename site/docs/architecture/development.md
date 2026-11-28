@@ -55,7 +55,7 @@ Desktop、App 和独立 Server 各自在包目录维护 `.env`，可选个人覆
 pnpm dev:web
 ```
 
-Web 开发连接专用 MySQL 数据库，项目在工作台创建。模板暂存默认使用 `.origamix-web/`，可用 `ORIGAMIX_WEB_STATE_DIR` 覆盖。独立 Web 开发启动器监听 Shared、Runtime、Materials 和 Server 的源码，构建成功后重启宿主。
+Web 开发连接专用 MySQL 数据库，项目在工作台创建。Server 默认监听 `127.0.0.1:1029`，App 的同源 API 代理连接该地址。Server 开发启动器监听 Shared、Runtime、Materials 和 Server 的源码，构建成功后独立重启。
 
 ### 正式 Web 宿主
 
@@ -66,7 +66,7 @@ pnpm build:web
 pnpm start:web
 ```
 
-默认访问地址为 `http://127.0.0.1:9685`。通过 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 数据库。Web 项目和桌面项目独立管理，Web 导出的应用源码可以独立部署，也可解压后在桌面打开并继续编辑。需要页面 Agent 时，在宿主环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
+默认访问地址为 `http://127.0.0.1:9685`。Server 通过 `ORIGAMIX_WEB_MYSQL_URL` 指定专用 MySQL 数据库。根启动器在 Server 就绪后将连接参数传给 App。独立启动时两个进程使用相同的 `ORIGAMIX_SERVER_TOKEN`。Web 项目和桌面项目独立管理，Web 导出的应用源码可以独立部署，也可解压后在桌面打开并继续编辑。需要页面 Agent 时，在 Server 环境配置 `DEEPSEEK_API_KEY`。远程使用时，将 `ORIGAMIX_WEB_ORIGIN` 配置为实际 HTTPS 源，并通过反向代理转发同源 API 和事件流。步骤与备份范围见 [App 部署说明](https://github.com/keiseiTi/origamix/blob/main/packages/app/README.md#部署正式-web-宿主)。
 
 ## 仓库检查
 

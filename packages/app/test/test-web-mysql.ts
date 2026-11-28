@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { nanoid } from 'nanoid';
+import { startWebTestBackend } from './helpers/web-backend.ts';
 import { startProductionWeb } from '../production-web.ts';
 
 const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
@@ -22,12 +23,10 @@ const options = {
   password,
   host: '127.0.0.1',
   port: 5193,
-  mysqlUrl,
-  stateDirectory,
   rendererDirectory: join(root, 'dist/web'),
-  templateDirectory: join(root, '../../dist/web-template'),
 };
 let host: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
+let backend: Awaited<ReturnType<typeof startWebTestBackend>> | undefined;
 let cookie = '';
 let projectId: string | undefined;
 
@@ -69,7 +68,8 @@ type Working = {
 };
 
 try {
-  host = await startProductionWeb(options);
+  backend = await startWebTestBackend(mysqlUrl);
+  host = await startProductionWeb({ ...options, upstream: backend.upstream });
   await login();
   const project = await post<Project>(
     '/projects/create',
@@ -159,9 +159,11 @@ try {
   );
   await host.close();
   host = undefined;
-  assert.deepEqual(await readdir(stateDirectory), []);
+  await backend.close();
+  backend = undefined;
 
-  host = await startProductionWeb(options);
+  backend = await startWebTestBackend(mysqlUrl);
+  host = await startProductionWeb({ ...options, upstream: backend.upstream });
   await post('/projects/list', {}, 401);
   await login();
   const projects = await post<Project[]>('/projects/list', {});
@@ -300,6 +302,7 @@ try {
     }
   } finally {
     await host?.close();
+    await backend?.close();
     await rm(stateDirectory, { recursive: true, force: true });
   }
 }

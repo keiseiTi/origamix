@@ -29,15 +29,16 @@ const waitFor = async <T>(check: () => T | Promise<T>) => {
   }
   throw new Error(`Development smoke timed out:\n${output}`);
 };
-const start = (entry: string, cwd: string, args: string[] = []) => {
+const start = (entry: string, cwd: string, args: string[] = [], port = '0') => {
   output = '';
   child = fork(entry, args, {
     cwd,
     env: {
       ...process.env,
       ORIGAMIX_HOST: 'web',
+      ORIGAMIX_RENDERER_PORT: '5189',
       ORIGAMIX_WEB_MYSQL_URL: mysqlUrl,
-      ORIGAMIX_SERVER_PORT: '0',
+      ORIGAMIX_SERVER_PORT: port,
       ORIGAMIX_SERVER_TOKEN: 'development-smoke-token',
       ORIGAMIX_LOCAL_PROJECT_DIR: '',
       ORIGAMIX_LOCAL_STATE_DIR: join(root, 'state'),
@@ -84,43 +85,38 @@ try {
   const appRoot = join(root, 'packages/app');
   await writeFile(join(appRoot, '.env.local'), 'ORIGAMIX_RENDERER_PORT=invalid');
   await writeFile(join(serverRoot, '.env.local'), 'ORIGAMIX_LOCAL_STATE_DIR=');
-  // App starts without any server dist files. An authenticated proxy must become ready.
-  start(join(appRoot, 'scripts/dev.ts'), appRoot, [
-    '--host',
-    '127.0.0.1',
-    '--port',
-    '5189',
-    '--strictPort',
-  ]);
+  await mkdir(join(root, 'scripts'));
+  for (const file of ['web.ts', 'run-pnpm.ts'])
+    await cp(join(original, 'scripts', file), join(root, 'scripts', file));
+  // The root launcher starts the backend before Vite and keeps Vite across backend rebuilds.
+  start(join(root, 'scripts/web.ts'), root, ['--development'], '5190');
   const api = 'http://127.0.0.1:5189/api/v1/health';
   const fetchWebHealth = () => fetch(api, { headers: { 'Sec-Fetch-Site': 'same-origin' } });
-  const first = await waitFor(
-    async () => (await (await fetchWebHealth()).json()).data.serviceInstanceId,
-  );
-  // Exercise relocated business modules, not only the unchanged runtime entry.
+  await waitFor(async () => (await fetchWebHealth()).ok);
+
   const schemaService = join(serverRoot, 'src/schema/schema-service.ts');
   await writeFile(
     schemaService,
     `${await readFile(schemaService, 'utf8')}\nconsole.info('dev-smoke-recompiled');\n`,
   );
-  await waitFor(async () => {
-    const next = (await (await fetchWebHealth()).json()).data.serviceInstanceId;
-    return next !== first && output.includes('dev-smoke-recompiled');
-  });
-  // A Shared source change must rebuild its inlined consumers before host replacement.
-  const beforeLibraryChange = (await (await fetchWebHealth()).json()).data.serviceInstanceId;
+  const launches = () => (output.match(/Web API:/g) ?? []).length;
+  await waitFor(
+    async () =>
+      launches() >= 2 && output.includes('dev-smoke-recompiled') && (await fetchWebHealth()).ok,
+  );
   const sharedSource = join(root, 'packages/shared/src/version.ts');
   await writeFile(
     sharedSource,
     `${await readFile(sharedSource, 'utf8')}\n// dependency rebuild smoke\n`,
   );
-  await waitFor(
-    async () =>
-      (await (await fetchWebHealth()).json()).data.serviceInstanceId !== beforeLibraryChange,
-  );
-  await stopChild(child);
+  await waitFor(async () => launches() >= 3 && (await fetchWebHealth()).ok);
+  const rendererReady = output.indexOf('Local:');
+  assert.ok(rendererReady > output.indexOf('Web API:'));
+  assert.equal((output.match(/Local:/g) ?? []).length, 1);
+  await stopChild(child, 10_000);
   child = undefined;
   await assert.rejects(fetchWebHealth());
+  await assert.rejects(fetch('http://127.0.0.1:5190/api/v1/health'));
   // Standalone Server uses the same watch/restart lifecycle.
   start(join(serverRoot, 'scripts/dev.ts'), serverRoot);
   const url = await waitFor(
@@ -145,6 +141,6 @@ try {
     'Development smoke passed: clean App startup, Web/Server rebuild and restart, listener cleanup.',
   );
 } finally {
-  await stopChild(child);
+  await stopChild(child, 10_000);
   await rm(root, { recursive: true, force: true });
 }

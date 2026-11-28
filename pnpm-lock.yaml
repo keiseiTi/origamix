@@ -325,6 +325,9 @@ importers:
       fastify:
         specifier: ^5.12.1
         version: 5.12.1
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       mysql2:
         specifier: ^3.24.6
         version: 3.24.6(@types/node@24.13.3)
