@@ -8,7 +8,6 @@ import { promisify } from 'node:util';
 import { createServer } from 'vite';
 import { strFromU8, unzipSync } from 'fflate';
 import { startWebTestBackend } from './helpers/web-backend.ts';
-import { startProductionWeb } from '../production-web.ts';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
 const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
@@ -18,13 +17,14 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 
 delete process.env.DEEPSEEK_API_KEY;
 process.env.ORIGAMIX_HOST = 'web';
-const backend = await startWebTestBackend(mysqlUrl);
+let backend: Awaited<ReturnType<typeof startWebTestBackend>> | undefined =
+  await startWebTestBackend(mysqlUrl);
 const { upstream } = backend;
 process.env.ORIGAMIX_SERVER_PORT = String(upstream.port);
 process.env.ORIGAMIX_SERVER_TOKEN = upstream.token;
 process.env.ORIGAMIX_SERVICE_ID = upstream.serviceInstanceId;
 let server;
-let production: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
+let production: Awaited<ReturnType<typeof startWebTestBackend>> | undefined;
 try {
   server = await createServer({
     root,
@@ -106,17 +106,24 @@ try {
   server = undefined;
   const origin = new URL('http://127.0.0.1:5189');
   const password = 'origamix-web-test-password';
-  production = await startProductionWeb({
+  await backend.close();
+  backend = undefined;
+  production = await startWebTestBackend(mysqlUrl, {
     origin,
     password,
-    host: '127.0.0.1',
-    port: 5189,
     rendererDirectory: join(root, 'dist/web'),
-    upstream,
   });
   const health = new URL('/api/v1/health', origin);
   const productionTemplate = new URL(templateUrl.pathname, origin);
   assert.equal((await fetch(health)).status, 401);
+  const withoutSession = await fetch(health, {
+    headers: {
+      Authorization: `Bearer ${production.upstream.token}`,
+      'X-Origamix-Service': production.upstream.serviceInstanceId,
+    },
+  });
+  assert.equal(withoutSession.status, 401);
+  assert.equal(withoutSession.headers.get('x-origamix-session-required'), '1');
   assert.equal((await fetch(productionTemplate)).status, 401);
   const login = new URL('/auth/login', origin);
   const body = new URLSearchParams({ password });
@@ -198,5 +205,5 @@ try {
 } finally {
   await production?.close();
   await server?.close();
-  await backend.close();
+  await backend?.close();
 }

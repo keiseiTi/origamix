@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stopChild } from '../scripts/dev-supervisor.ts';
+import { stopChild } from '../../../scripts/lib/child-process.ts';
 
 process.env.ORIGAMIX_ENV_LOCAL = '0';
 const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
@@ -88,8 +88,9 @@ try {
   await mkdir(join(root, 'scripts'));
   for (const file of ['web.ts', 'run-pnpm.ts'])
     await cp(join(original, 'scripts', file), join(root, 'scripts', file));
+  await cp(join(original, 'scripts/lib'), join(root, 'scripts/lib'), { recursive: true });
   // The root launcher starts the backend before Vite and keeps Vite across backend rebuilds.
-  start(join(root, 'scripts/web.ts'), root, ['--development'], '5190');
+  start(join(root, 'scripts/web.ts'), root, [], '5190');
   const api = 'http://127.0.0.1:5189/api/v1/health';
   const fetchWebHealth = () => fetch(api, { headers: { 'Sec-Fetch-Site': 'same-origin' } });
   await waitFor(async () => (await fetchWebHealth()).ok);

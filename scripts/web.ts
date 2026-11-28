@@ -2,11 +2,10 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { join } from 'node:path';
 import { loadWebServerConfig } from '../packages/server/scripts/config.ts';
-import { stopChild } from '../packages/server/scripts/dev-supervisor.ts';
+import { stopChild } from './lib/child-process.ts';
 import { workspaceRoot } from './run-pnpm.ts';
 
-const development = process.argv.includes('--development');
-const { port, token, serviceInstanceId } = loadWebServerConfig(development);
+const { port, token, serviceInstanceId } = loadWebServerConfig(true);
 if (port === 0) throw new Error('Web 联调需要固定的 ORIGAMIX_SERVER_PORT');
 
 const lifetime = new AbortController();
@@ -38,12 +37,7 @@ process.once('SIGINT', interrupt);
 process.once('SIGTERM', interrupt);
 
 try {
-  const server = launch(
-    'packages/server',
-    development ? 'dev.ts' : 'web-worker.ts',
-    development ? ['--web'] : [],
-    process.env,
-  );
+  const server = launch('packages/server', 'dev.ts', ['--web'], process.env);
   const startup = AbortSignal.any([lifetime.signal, AbortSignal.timeout(120_000)]);
   // Wait for this child to bind its port before probing, even if a service is already listening.
   const [ready] = await once(server, 'message', { signal: startup });
@@ -67,8 +61,7 @@ try {
   };
   delete appEnv.ORIGAMIX_WEB_MYSQL_URL;
   delete appEnv.DEEPSEEK_API_KEY;
-  const appArgs = process.argv.slice(2).filter((arg) => arg !== '--development');
-  launch('packages/app', development ? 'dev.ts' : 'start-web.ts', appArgs, appEnv);
+  launch('packages/app', 'dev.ts', process.argv.slice(2), appEnv);
   if (!lifetime.signal.aborted) await once(lifetime.signal, 'abort');
 } catch (error) {
   if (!lifetime.signal.aborted) {

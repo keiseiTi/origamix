@@ -4,7 +4,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start:web": "node --import tsx scripts/start-web.ts",
     "dev": "node --import tsx scripts/dev.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",

@@ -69,9 +69,6 @@ importers:
       electron-builder:
         specifier: ^26.15.0
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
-      tsdown:
-        specifier: ^0.23.3
-        version: 0.23.3(@tsdown/css@0.23.3)(tsx@4.23.13)(typescript@6.0.3)
       tsx:
         specifier: 4.23.13
         version: 4.23.13

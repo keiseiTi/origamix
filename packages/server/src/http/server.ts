@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { registerProjectExportRoutes } from './project-export-routes';
 import Fastify, {
   type FastifyInstance,
@@ -47,6 +48,24 @@ const installRequestBoundary = (server: FastifyInstance, input: HttpServerInput)
   );
   server.addHook('onRequest', async (request, reply) => {
     reply.header('X-Request-Id', request.id);
+    const production = input.host === 'web' ? input.productionWeb : undefined;
+    if (production) {
+      production.setHeaders(reply.raw);
+      if (!production.trustedOrigin(request.raw, true))
+        return reply.code(403).send(failure(new ApiError('请求来源不受信任', 403), 403));
+      const session = production.session(request.raw);
+      if (!session)
+        return reply.header('X-Origamix-Session-Required', '1').code(401).send({
+          success: false,
+          code: 401,
+          data: null,
+          message: '会话已结束，请重新登录',
+        });
+      const revoke = () => reply.raw.destroy();
+      session.addEventListener('abort', revoke, { once: true });
+      reply.raw.once('close', () => session.removeEventListener('abort', revoke));
+      return;
+    }
     const origin = request.headers.origin;
     if (origin && !allowedOrigins.has(origin))
       return reply.code(403).send({
@@ -118,7 +137,16 @@ const route: RouteAdapter =
   };
 
 export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
+  const production = input.host === 'web' ? input.productionWeb : undefined;
   const options: FastifyServerOptions = {
+    ...(production && {
+      serverFactory: (handler: Parameters<NonNullable<FastifyServerOptions['serverFactory']>>[0]) =>
+        createServer((request, response) => {
+          const path = request.url?.split('?')[0];
+          if (path === '/api/v1' || path?.startsWith('/api/v1/')) handler(request, response);
+          else production.serve(request, response);
+        }),
+    }),
     bodyLimit: 2 * 1024 * 1024,
     ...(input.logger ? { loggerInstance: input.logger } : { logger: false }),
     logController: new Fastify.LogController({ disableRequestLogging: true }),
@@ -128,6 +156,7 @@ export const createHttpServer = (input: HttpServerInput): FastifyInstance => {
   };
   const server = Fastify(options);
   installRequestBoundary(server, input);
+  if (production) server.addHook('preClose', async () => production.close());
   server.get('/api/v1/health', async () => ({
     success: true,
     code: 200,

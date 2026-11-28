@@ -1,3 +1,4 @@
+import { createProductionWeb, type ProductionWebOptions } from './production-web';
 import { createLogger } from '../logging/logger';
 import { createPageAgentEngine, createPageAgentRuntime } from '../agent/page-agent-runtime';
 import { mysqlAgentUsage } from '../agent/agent-usage-repository';
@@ -19,6 +20,7 @@ import { getWorkingSchemaState } from '../schema/schema-service';
 export const startMysqlWebServer = async (input: {
   mysqlUrl: string;
   port?: number;
+  productionWeb?: ProductionWebOptions;
   modelConfigured?: boolean;
   desktopToken: string;
   serviceInstanceId: string;
@@ -26,6 +28,9 @@ export const startMysqlWebServer = async (input: {
   getModelCredential?: (provider: 'deepseek') => Promise<string | undefined>;
   agentEngine?: AgentEngine;
 }) => {
+  const productionWeb =
+    input.productionWeb &&
+    (await createProductionWeb(input.productionWeb, input.modelConfigured === true));
   const logger = createLogger('web', input.serviceInstanceId);
   const pool = await openWebDatabase(input.mysqlUrl).catch((error: unknown) => {
     logger.error({ event: 'server.start.failed', stage: 'database' });
@@ -87,6 +92,7 @@ export const startMysqlWebServer = async (input: {
     };
     server = createHttpServer({
       host: 'web',
+      productionWeb,
       modelConfigured: input.modelConfigured,
       logger,
       desktopToken: input.desktopToken,

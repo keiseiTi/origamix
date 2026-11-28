@@ -7,7 +7,7 @@ import { prepareWebTemplate } from './template-download.ts';
 import { loadWebTemplate } from './web-template-assets.ts';
 
 const development = process.argv.includes('--development');
-const { mysqlUrl, token, port, serviceInstanceId, modelKey, templateDirectory } =
+const { mysqlUrl, token, port, serviceInstanceId, modelKey, templateDirectory, productionWeb } =
   loadWebServerConfig(development);
 const prepareDevelopmentTemplate = async () => {
   const staging = await mkdtemp(join(tmpdir(), 'origamix-web-template-'));
@@ -23,6 +23,7 @@ const templateDownload = development
 
 const server = await startMysqlWebServer({
   port,
+  productionWeb,
   mysqlUrl,
   desktopToken: token,
   serviceInstanceId,
@@ -30,7 +31,11 @@ const server = await startMysqlWebServer({
   modelConfigured: Boolean(modelKey),
   getModelCredential: async () => modelKey,
 });
-console.info(`Web API: http://127.0.0.1:${server.port}/api/v1`);
+console.info(
+  productionWeb
+    ? `Origamix Web: ${productionWeb.origin.origin} (127.0.0.1:${server.port})`
+    : `Web API: http://127.0.0.1:${server.port}/api/v1`,
+);
 const shutdown = () => {
   void server.close().catch(() => {
     console.error('Web Server 关闭失败');

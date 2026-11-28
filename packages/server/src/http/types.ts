@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { DiagnosticLogger } from '../logging/logger';
 import type { ProjectExportSnapshot } from '@origamix/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -9,6 +10,14 @@ import type { AgentConversations } from '../agent/persistence';
 import type { AgentRunService } from '../agent/run-service';
 import type { AgentEventBroker } from '../agent/event-broker';
 import type { AgentService } from '../agent/agent-service';
+
+export interface ProductionWebBoundary {
+  setHeaders: (response: ServerResponse) => void;
+  trustedOrigin: (request: IncomingMessage, api: boolean) => boolean;
+  session: (request: IncomingMessage) => AbortSignal | undefined;
+  close: () => void;
+  serve: (request: IncomingMessage, response: ServerResponse) => void;
+}
 
 export interface TemplateDownload {
   version: string;
@@ -75,6 +84,7 @@ export type HttpServerInput = HttpServerServices &
     | { host: 'desktop'; projectApplyService?: ProjectApplyService }
     | {
         host: 'web';
+        productionWeb?: ProductionWebBoundary;
         createDatabaseProject: import('../projects/mysql-project-service').MysqlProjectService['createDatabaseProject'];
         exportProject?: (projectId: string) => Promise<ProjectExportSnapshot>;
       }

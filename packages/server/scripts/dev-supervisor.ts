@@ -7,40 +7,18 @@ import {
   libraryWatchPaths,
   buildLibraries,
   createSourceChangeFilter,
-} from './development-libraries.ts';
+} from '../../../scripts/lib/development-libraries.ts';
 import { fileURLToPath } from 'node:url';
-
-export const stopChild = async (
-  child: import('node:child_process').ChildProcess | undefined,
-  timeout = 3000,
-) => {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  await new Promise<void>((resolve) => {
-    const timer = setTimeout(() => child.kill('SIGKILL'), timeout);
-    child.once('exit', () => {
-      clearTimeout(timer);
-      resolve();
-    });
-    child.kill('SIGTERM');
-  });
-};
+import { stopChild } from '../../../scripts/lib/child-process.ts';
 
 // Rebuild complete dependency batches before replacing the running host.
-export const runDevelopment = ({
-  entry,
-  args = [],
-  watchServer = true,
-}: {
-  entry: string;
-  args?: string[];
-  watchServer?: boolean;
-}) => {
+export const runDevelopment = ({ entry, args = [] }: { entry: string; args?: string[] }) => {
   let worker: import('node:child_process').ChildProcess | undefined;
   let builder: import('node:child_process').ChildProcess | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopping = false,
     running = false;
-  const dirty = new Set(watchServer ? libraryNames : []);
+  const dirty = new Set(libraryNames);
   const root = fileURLToPath(new URL('../../../', import.meta.url));
   const watchers: import('node:fs').FSWatcher[] = [];
   const run = async (script: string, cwd: string) => {
@@ -57,10 +35,8 @@ export const runDevelopment = ({
     dirty.clear();
     let completed = false;
     try {
-      if (watchServer) {
-        await buildLibraries(batch, root, run);
-        await run(fileURLToPath(new URL('./build.ts', import.meta.url)), root);
-      }
+      await buildLibraries(batch, root, run);
+      await run(fileURLToPath(new URL('./build.ts', import.meta.url)), root);
       if (stopping) return;
       if (!dirty.size) {
         const previous = worker;
@@ -102,27 +78,26 @@ export const runDevelopment = ({
     process.exitCode = code;
   };
   const sourceGroups = { ...libraryWatchPaths, server: ['packages/server/src'] };
-  const sourceChanged = watchServer ? createSourceChangeFilter(root, sourceGroups) : undefined;
-  if (watchServer)
-    for (const [name, paths] of Object.entries(sourceGroups))
-      for (const path of paths) {
-        try {
-          watchers.push(
-            watch(join(root, path), { recursive: true }, (_event, filename) => {
-              if (
-                path === 'packages/materials/antd' &&
-                filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
-              )
-                return;
-              if (!sourceChanged?.(name)) return;
-              dirty.add(name);
-              schedule();
-            }),
-          );
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-        }
+  const sourceChanged = createSourceChangeFilter(root, sourceGroups);
+  for (const [name, paths] of Object.entries(sourceGroups))
+    for (const path of paths) {
+      try {
+        watchers.push(
+          watch(join(root, path), { recursive: true }, (_event, filename) => {
+            if (
+              path === 'packages/materials/antd' &&
+              filename?.toString().replaceAll('\\', '/').split('/')[0] === 'generated'
+            )
+              return;
+            if (!sourceChanged(name)) return;
+            dirty.add(name);
+            schedule();
+          }),
+        );
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }
+    }
   for (const directory of ['apps/desktop', 'packages/server']) {
     try {
       watchers.push(
@@ -136,7 +111,7 @@ export const runDevelopment = ({
     }
   }
   // Tooling modules are cached by Node; changing them requires restarting the launcher.
-  for (const directory of ['packages/server/scripts', 'apps/desktop/scripts']) {
+  for (const directory of ['packages/server/scripts', 'apps/desktop/scripts', 'scripts/lib']) {
     try {
       watchers.push(
         watch(join(root, directory), () =>

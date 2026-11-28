@@ -31,7 +31,7 @@ const check = (staged: boolean) => {
   if (!staged) runPnpm('build:prepared');
 };
 
-const [mode = 'all', prepared] = process.argv.slice(2);
+const [mode = 'all'] = process.argv.slice(2);
 switch (mode) {
   case 'all':
   case 'staged':
@@ -45,7 +45,7 @@ switch (mode) {
     break;
   case 'typecheck':
   case 'test':
-    if (prepared !== '--prepared') runPnpm('build:libs');
+    runPnpm('build:libs');
     if (mode === 'typecheck') typecheck();
     else test();
     break;

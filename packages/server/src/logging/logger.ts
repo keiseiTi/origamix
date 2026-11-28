@@ -3,7 +3,6 @@ import type { DestinationStream } from 'pino';
 
 const eventFields: Readonly<Record<string, readonly string[]>> = {
   'http.request.completed': ['requestId', 'route', 'statusCode', 'errorCode', 'durationMs'],
-  'web.proxy.request.failed': ['requestId', 'statusCode', 'reason'],
   'agent.sse.closed': ['requestId', 'runId', 'outcome', 'durationMs'],
   'agent.run.accepted': ['requestId', 'runId', 'projectId', 'pageId', 'baseWorkingVersion'],
   'agent.run.reused': ['requestId', 'runId', 'projectId', 'pageId', 'baseWorkingVersion'],

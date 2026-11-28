@@ -7,13 +7,13 @@ import { once } from 'node:events';
 import { createInterface } from 'node:readline';
 import { desktopRoot, workspaceRoot, options } from '../apps/desktop/scripts/build-options.ts';
 import { copyServerArtifact } from '../apps/desktop/scripts/copy-server-artifact.ts';
-import { stopChild } from '../packages/server/scripts/dev-supervisor.ts';
+import { stopChild } from './lib/child-process.ts';
 import {
   libraryWatchPaths,
   buildLibraries,
   createSourceChangeFilter,
-} from '../packages/server/scripts/development-libraries.ts';
-import { compileDesktop } from '../apps/desktop/scripts/compile.ts';
+} from './lib/development-libraries.ts';
+import { buildEntriesSequentially } from './lib/build-entries.ts';
 import { launchDesktop } from '../apps/desktop/scripts/launch.ts';
 import type { createDesktopControl } from '../apps/desktop/scripts/desktop-control.ts';
 
@@ -133,7 +133,7 @@ const update = async () => {
     await buildLibraries(batch, workspaceRoot, run);
     if (batch.has('server'))
       await run(requireDesktop.resolve('@origamix/server/build'), workspaceRoot);
-    if (batch.has('desktop')) await compileDesktop({ ...options, clean: false });
+    if (batch.has('desktop')) await buildEntriesSequentially({ ...options, clean: false });
     if (stopping) return;
     const control = initial || !electron ? undefined : desktopControl;
     const target = updateTarget(batch, Boolean(control));
@@ -291,7 +291,7 @@ for (const directory of ['apps/desktop', 'packages/server']) {
   }
 }
 // Tooling modules are cached by Node; changing them requires restarting the launcher.
-for (const directory of ['packages/server/scripts', 'apps/desktop/scripts']) {
+for (const directory of ['packages/server/scripts', 'apps/desktop/scripts', 'scripts/lib']) {
   try {
     watchers.push(
       watch(join(workspaceRoot, directory), () =>

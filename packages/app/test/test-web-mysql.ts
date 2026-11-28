@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { nanoid } from 'nanoid';
 import { startWebTestBackend } from './helpers/web-backend.ts';
-import { startProductionWeb } from '../production-web.ts';
 
 const mysqlUrl = process.env.ORIGAMIX_TEST_MYSQL_URL;
 if (!mysqlUrl) throw new Error('Set ORIGAMIX_TEST_MYSQL_URL to a disposable MySQL database');
@@ -21,12 +20,9 @@ const password = 'origamix-web-mysql-test-password';
 const options = {
   origin,
   password,
-  host: '127.0.0.1',
-  port: 5193,
   rendererDirectory: join(root, 'dist/web'),
 };
-let host: Awaited<ReturnType<typeof startProductionWeb>> | undefined;
-let backend: Awaited<ReturnType<typeof startWebTestBackend>> | undefined;
+let host: Awaited<ReturnType<typeof startWebTestBackend>> | undefined;
 let cookie = '';
 let projectId: string | undefined;
 
@@ -68,8 +64,7 @@ type Working = {
 };
 
 try {
-  backend = await startWebTestBackend(mysqlUrl);
-  host = await startProductionWeb({ ...options, upstream: backend.upstream });
+  host = await startWebTestBackend(mysqlUrl, options);
   await login();
   const project = await post<Project>(
     '/projects/create',
@@ -159,11 +154,8 @@ try {
   );
   await host.close();
   host = undefined;
-  await backend.close();
-  backend = undefined;
 
-  backend = await startWebTestBackend(mysqlUrl);
-  host = await startProductionWeb({ ...options, upstream: backend.upstream });
+  host = await startWebTestBackend(mysqlUrl, options);
   await post('/projects/list', {}, 401);
   await login();
   const projects = await post<Project[]>('/projects/list', {});
@@ -302,7 +294,6 @@ try {
     }
   } finally {
     await host?.close();
-    await backend?.close();
     await rm(stateDirectory, { recursive: true, force: true });
   }
 }

@@ -15,7 +15,6 @@
     "evaluate:agent": "tsx test/evaluate-agent.ts",
     "test:resources": "node --import tsx test/test-electron.ts --resources",
     "build": "node --import tsx scripts/build.ts",
-    "package": "pnpm package:mac",
     "package:dir": "electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
     "package:mac": "electron-builder --config electron-builder.yml --mac --arm64 --publish never",
     "test:dev": "node --import tsx test/test-development.ts"
@@ -29,7 +28,6 @@
   "devDependencies": {
     "electron": "^44.0.0",
     "electron-builder": "^26.15.0",
-    "tsdown": "^0.23.3",
     "tsx": "4.23.13"
   }
 }

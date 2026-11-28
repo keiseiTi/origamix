@@ -328,22 +328,26 @@ ORIGAMIX_LOCAL_STATE_DIR 控制独立开发数据目录，ORIGAMIX_LOCAL_PROJECT
 
 Desktop 和 Web 共用 Pino 结构化日志。Desktop 将 JSON Lines 写到 Electron 应用日志目录的 `server.jsonl`，单文件约 10 MiB，最多保留当前文件和四份归档，并在写入时删除七天未修改的日志文件。Web 将 JSON Lines 写到标准输出，由部署环境管理留存。默认级别为 `info`，`NODE_ENV=development` 时包含 `debug`。
 
-- HTTP 响应的 `X-Request-Id` 由 Server 生成，使用它查找 `http.request.completed`。生产 Web 代理透传该头，代理自己拒绝的请求使用 `web.proxy.request.failed` 的编号。
+- 业务 API 的 `X-Request-Id` 由 Server 生成，使用它查找 `http.request.completed`。
 - 用 `agent.run.accepted` 或 `agent.run.reused` 将编号关联到 `runId`，再查模型用量、Working 提交、Run 终态和恢复事件。
 - Working 提交的 `unconfirmed` 表示写入已进入提交阶段但结果未确认，应按现有 Working 和提交凭证检查。
 - 日志只包含诊断元数据。页面累计用量依然来自用量仓储，写入结果依然由业务持久化确认。
 
 ## Web Server 配置
 
-开发运行 `pnpm dev:server:web`。生产先执行 `pnpm build:web`，再运行 `pnpm start:server:web`。两个 Server 入口均监听回环地址，App 通过 HTTP 代理访问。Web Server 的配置按默认值、`packages/server/.env`、开发专用 `packages/server/.env.local`、进程环境递增覆盖。
+开发运行 `pnpm dev:server:web`。生产先执行 `pnpm build:web`，再运行 `pnpm start:web`。两个 Server 入口均监听回环地址。开发时 App 通过 Vite 代理联调。生产时 Server 提供前端构建产物、登录会话和 API。Web Server 的配置按默认值、`packages/server/.env`、开发专用 `packages/server/.env.local`、进程环境递增覆盖。
 
 | 变量                        | 用途                                                                                       |
 | --------------------------- | ------------------------------------------------------------------------------------------ |
 | `ORIGAMIX_WEB_MYSQL_URL`    | 必填。专用 MySQL 数据库连接地址。                                                          |
-| `ORIGAMIX_SERVER_TOKEN`     | 必填。与 App 代理的 Bearer token 一致。                                                    |
-| `ORIGAMIX_SERVER_PORT`      | 监听端口，默认 `1029`。覆盖时 App 使用相同端口。                                           |
+| `ORIGAMIX_SERVER_TOKEN`     | 开发必填。与 App 代理的 Bearer token 一致。                                                |
+| `ORIGAMIX_SERVER_PORT`      | 开发监听端口，默认 `1029`。覆盖时 App 使用相同端口。                                       |
 | `ORIGAMIX_SERVICE_ID`       | API 服务标识，默认 `origamix-web`，与 App 一致。                                           |
 | `DEEPSEEK_API_KEY`          | 可选。服务端调用模型时使用。                                                               |
 | `ORIGAMIX_WEB_TEMPLATE_DIR` | 生产 ZIP 和清单目录，默认仓库根目录的 `dist/web-template/`。相对路径以 Server 包目录解析。 |
+| `ORIGAMIX_WEB_PASSWORD`     | 生产必填。浏览器登录密码，有效长度 16 至 512 字符。                                        |
+| `ORIGAMIX_WEB_PORT`         | 生产监听端口，默认 `9685`。                                                                |
+| `ORIGAMIX_WEB_ORIGIN`       | 生产浏览器访问源，默认 `http://127.0.0.1:<端口>`。                                         |
+| `ORIGAMIX_WEB_RENDERER_DIR` | 生产前端产物目录，默认 `packages/app/dist/web/`。相对路径以 Server 包目录解析。            |
 
-开发启动器按依赖顺序构建 Shared、Runtime、Materials 和 Server，成功后重启 Server 进程。根 `pnpm dev:web` 和 `pnpm start:web` 在 Server 就绪后启动独立 App 进程。App 单独运行的配置见 [App README](../app/README.md#浏览器开发配置)。
+开发启动器按依赖顺序构建 Shared、Runtime、Materials 和 Server，成功后重启 Server 进程。根 `pnpm dev:web` 在 Server 就绪后启动独立 App 开发进程。生产 `pnpm start:web` 只运行 Server。App 单独运行的配置见 [App README](../app/README.md#浏览器开发配置)。

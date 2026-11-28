@@ -61,7 +61,7 @@ Web 使用 Server 默认模型 `deepseek-flash`；桌面设置可选择 `deepsee
 
 ## 部署正式 Web 宿主
 
-从仓库根目录构建并运行。构建后由根启动器依次启动 Server 和 App，两者各自运行在独立进程。MySQL 连接地址由 Server 配置，访问密码由 App 配置。
+从仓库根目录构建并运行。构建后由 Server 直接提供前端产物、网页登录和同源 API。连接数据库和访问密码均由 Server 配置。
 
 ```sh
 pnpm build:web
@@ -74,17 +74,17 @@ pnpm start:web
 | `ORIGAMIX_WEB_PORT`     | Web 宿主在 `127.0.0.1` 上的端口，默认 `9685`。                                                            |
 | `ORIGAMIX_WEB_ORIGIN`   | 浏览器实际访问的源地址，例如 `https://origamix.example.com`。默认 `http://127.0.0.1:<端口>`，供本机使用。 |
 
-远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。浏览器通过 Web 宿主访问业务接口。App 从进程环境读取访问配置，从 `packages/app/.env` 或进程环境读取上游代理配置。项目备份以 MySQL 数据库为准。
+远程部署时，让 HTTPS 反向代理把站点根路径全部转发到 Web 宿主，保留公网 `Host` 和浏览器 `Origin`，关闭 SSE 响应缓冲，并把读取超时设置为高于 15 秒的事件心跳间隔。浏览器通过同一个 Server 访问页面和业务接口。生产配置在 Server 环境中设置，见 [Web Server 配置](../server/README.md#web-server-配置)。项目备份以 MySQL 数据库为准。
 
-独立部署时可分别运行 `pnpm start:server:web` 和 `pnpm --filter @origamix/app start:web`。打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
+打开站点后使用访问密码登录。会话使用 HttpOnly Cookie，有效期 12 小时，重启宿主后需要重新登录。授权过期时，工作台提示在新标签页重新登录，当前页面继续保留内存中的草稿。主动退出前会保存待写入的编辑，保存失败时可以留在页面处理。
 
 正式 Web 宿主支持单用户自托管。网页登录后可创建项目、编辑页面、预览和保存版本。Web 项目存放在 MySQL。导出 ZIP 可以独立部署或解压后在桌面继续编辑。
 
 ### 使用本机 MySQL
 
-先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。在 Server 环境设置连接地址后执行 `pnpm start:server:web`。
+先在 MySQL 创建专用库（例如 `CREATE DATABASE origamix_web CHARACTER SET utf8mb4`），为 Web 服务配置有该库建表及读写权限的账号。把连接地址作为环境变量注入，地址格式为 `mysql://用户名:密码@127.0.0.1:3306/origamix_web`，特殊字符需 URL 编码。通过 Homebrew 的本机 socket 连接时，可在地址后加 `?socketPath=%2Ftmp%2Fmysql.sock`，并按实际 socket 路径调整。在 Server 环境设置连接地址后执行 `pnpm start:web`。
 
-首次启动在空的 Origamix 表集中初始化首版结构。MySQL 保存项目、页面、Working、Revision，以及页面 Agent 的会话、消息、Run 和工具审计。设置 `DEEPSEEK_API_KEY` 后可使用页面 Agent。每个数据库运行一个 Web Server。重启时，Server根据提交回执恢复 Run 结果。
+首次启动在空的 Origamix 表集中初始化首版结构。MySQL 保存项目、页面、Working、Revision，以及页面 Agent 的会话、消息、Run 和工具审计。设置 `DEEPSEEK_API_KEY` 后可使用页面 Agent。每个数据库运行一个 Web Server。重启时，Server 根据提交回执恢复 Run 结果。
 
 ZIP 导出会校验模板及快照文件的路径和内容。 [文件校验](src/services/project-export-files.ts)
 

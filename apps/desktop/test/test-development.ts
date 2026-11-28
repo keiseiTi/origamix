@@ -4,7 +4,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { stopChild } from '@origamix/server/development';
+import { stopChild } from '../../../scripts/lib/child-process.ts';
 
 // Native integration: ordered rebuilds must restart the host with matching backend/template artifacts.
 const original = fileURLToPath(new URL('../../../', import.meta.url));
@@ -129,6 +129,7 @@ try {
   }
   await mkdir(join(root, 'scripts'), { recursive: true });
   await cp(join(original, 'scripts/dev-desktop.ts'), join(root, 'scripts/dev-desktop.ts'));
+  await cp(join(original, 'scripts/lib'), join(root, 'scripts/lib'), { recursive: true });
   const desktop = join(root, 'apps/desktop');
   await cp(join(original, 'apps/desktop'), desktop, {
     recursive: true,

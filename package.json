@@ -6,10 +6,9 @@
   "author": "yupeilin <yuchacha250@gmail.com>",
   "scripts": {
     "dev": "node --import tsx scripts/dev-desktop.ts",
-    "start:web": "node --import tsx scripts/web.ts",
+    "start:web": "pnpm --filter @origamix/server start:web",
     "dev:server:web": "pnpm --filter @origamix/server dev:web",
-    "start:server:web": "pnpm --filter @origamix/server start:web",
-    "dev:web": "node --import tsx scripts/web.ts --development",
+    "dev:web": "node --import tsx scripts/web.ts",
     "site": "pnpm --filter @origamix/site dev",
     "site:build": "pnpm --filter @origamix/site build",
     "build": "node --import tsx scripts/build-desktop.ts",
@@ -37,8 +36,6 @@
     "publish:npm": "node --import tsx scripts/release.ts publish",
     "release:registry": "node --import tsx scripts/check-registry.ts",
     "build:prepared": "node --import tsx scripts/build-desktop.ts --prepared",
-    "typecheck:prepared": "node --import tsx scripts/check.ts typecheck --prepared",
-    "test:prepared": "node --import tsx scripts/check.ts test --prepared",
     "check": "node --import tsx scripts/check.ts",
     "build:libs:check": "node --import tsx scripts/check.ts prepare",
     "check:staged": "node --import tsx scripts/check.ts staged"

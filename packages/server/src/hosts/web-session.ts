@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { setMaxListeners } from 'node:events';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const lifetime = 12 * 60 * 60 * 1000;
@@ -48,7 +49,9 @@ export const createWebSessions = (password: string, secure: boolean) => {
       if (sessions.size >= maxSessions && oldest) revoke(oldest);
       const id = randomBytes(32).toString('base64url');
       const timer = setTimeout(() => revoke(id), lifetime).unref();
-      sessions.set(id, { controller: new AbortController(), timer });
+      const controller = new AbortController();
+      setMaxListeners(0, controller.signal);
+      sessions.set(id, { controller, timer });
       response.setHeader('Set-Cookie', cookie(id, lifetime / 1000));
       return 303;
     },

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile, utimes, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { createSourceChangeFilter } from '../../scripts/source-changes';
+import { createSourceChangeFilter } from '../../../../scripts/lib/source-changes';
 
 // Repeated host restarts interrupt Agent/edit recovery; notifications alone cannot authorize a rebuild.
 it('ignores metadata, identical writes and generated outputs while detecting each source change once', async () => {
